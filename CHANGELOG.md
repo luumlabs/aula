@@ -3,6 +3,18 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [Unreleased]
+
+### New
+- A sun cursor, the same as in the videos: Aula's sun leaves a short comet tail as it moves and a brick ripple when you
+  click, with a ring over anything you can press. Settings → Appearance → Cursor switches back to the system pointer.
+
+### Fixed
+- "Create document" greys out the kinds a course can't produce yet (no flashcards, exercises or formulas) and says
+  why, instead of failing with "Couldn't prepare the document".
+- The reader's Aula panel no longer gets stuck on "Reading the document…" when the answer arrives very fast.
+- The floating Aula button steps aside when a switch sits half under its edge.
+
 ## [0.1.0] - 2026-10-28 (early access)
 
 First public version. Aula is a study app for macOS, Windows and Linux, built with Electron, React and TypeScript, and
