@@ -1,0 +1,85 @@
+/* La gota flotante de Aula. Solo transform y opacity, en su propia capa del compositor: pasar el ratón no maqueta ni repinta
+   la página de debajo. Con «Reducir movimiento» las transiciones son instantáneas (styles.css). */
+.aula-orb {
+  will-change: transform;
+  animation: aula-orb-in 0.55s cubic-bezier(0.34, 1.45, 0.5, 1) 0.3s both;
+}
+@keyframes aula-orb-in {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Apartada (mientras se desplaza la vista, o porque con la vista quieta tapa un control): tampoco se enfoca con Tab ni se pulsa
+   (`visibility` cambia al final de la transición al irse y al principio al volver: A4-P2-13). */
+.aula-orb[data-scrolling] .aula-orb__drop,
+.aula-orb[data-covering] .aula-orb__drop {
+  opacity: 0;
+  transform: translateY(10px) scale(0.85);
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.16s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+}
+
+.aula-orb__drop {
+  position: relative;
+  will-change: transform;
+  box-shadow: var(--e3);
+  transition: transform 0.38s cubic-bezier(0.25, 1.35, 0.5, 1), opacity 0.3s ease, visibility 0s;
+}
+.aula-orb__drop:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+.aula-orb__drop:active {
+  transform: scale(0.95);
+  transition-duration: 0.12s;
+}
+.aula-orb__drop:focus-visible {
+  box-shadow: var(--e3), 0 0 0 3px var(--accent-wash), 0 0 0 1.5px var(--accent);
+}
+
+/* El bocadillo: aparece a la izquierda de la gota, deslizándose hacia ella */
+.aula-orb__label {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--text);
+  background: var(--raised);
+  border: 0.5px solid var(--line);
+  box-shadow: var(--e2);
+  pointer-events: none;
+  will-change: transform, opacity;
+  opacity: 0;
+  transform: translate(8px, -50%) scale(0.96);
+  transform-origin: right center;
+  transition:
+    opacity 0.18s ease,
+    transform 0.32s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.aula-orb__drop:hover .aula-orb__label,
+.aula-orb__drop:focus-visible .aula-orb__label {
+  opacity: 1;
+  transform: translate(0, -50%) scale(1);
+  transition-delay: 0.06s;
+}
+
+/* Reducir movimiento (ajuste de la app o del sistema): sin entrada animada ni desplazamientos, solo aparece el bocadillo */
+.reduce-motion .aula-orb {
+  animation: none;
+}
+.reduce-motion .aula-orb__drop,
+.reduce-motion .aula-orb__drop:hover,
+.reduce-motion .aula-orb__drop:active {
+  transform: none;
+  transition: none;
+}
+.reduce-motion .aula-orb__label,
+.reduce-motion .aula-orb__drop:hover .aula-orb__label {
+  transform: translate(0, -50%);
+  transition: opacity 0.12s linear;
+}

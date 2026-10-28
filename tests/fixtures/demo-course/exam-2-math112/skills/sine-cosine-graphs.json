@@ -1,0 +1,659 @@
+{
+ "id": "sine-cosine-graphs",
+ "title": "Graphs of sine and cosine",
+ "summary": "Sketch y = sin x and y = cos x from their five key points and read period, range, zeros and symmetry.",
+ "objectives": [
+  "Sketch one period of sine and cosine",
+  "Read zeros, maxima and minima",
+  "Use even/odd symmetry"
+ ],
+ "prerequisites": [
+  "unit-circle-coordinates"
+ ],
+ "lesson": [
+  {
+   "id": "scg-b01",
+   "type": "text",
+   "md": "# Graphs of sine and cosine\n\nAs $t$ travels around the unit circle, the $y$-coordinate of $P(t)$ rises and falls between $-1$ and $1$. Plot that height against $t$ and you get the **sine wave**; plot the $x$-coordinate and you get the **cosine wave**. Both repeat every $2\\pi$."
+  },
+  {
+   "id": "scg-b02",
+   "type": "plot",
+   "title": "One period of $y=\\sin x$ and $y=\\cos x$",
+   "xMin": 0,
+   "xMax": 6.2832,
+   "yMin": -1.4,
+   "yMax": 1.4,
+   "xPi": true,
+   "curves": [
+    {
+     "expr": "sin(x)",
+     "label": "y = sin x",
+     "color": "accent"
+    },
+    {
+     "expr": "cos(x)",
+     "label": "y = cos x",
+     "color": "orange",
+     "dashed": true
+    }
+   ],
+   "points": [
+    {
+     "x": "pi/2",
+     "y": "1",
+     "color": "accent"
+    },
+    {
+     "x": "3*pi/2",
+     "y": "-1",
+     "color": "accent"
+    },
+    {
+     "x": "pi",
+     "y": "-1",
+     "color": "orange"
+    }
+   ],
+   "caption": "Sine starts at $0$ and climbs; cosine starts at its maximum."
+  },
+  {
+   "id": "scg-b03",
+   "type": "table",
+   "headers": [
+    "$x$",
+    "$0$",
+    "$\\frac{\\pi}{2}$",
+    "$\\pi$",
+    "$\\frac{3\\pi}{2}$",
+    "$2\\pi$"
+   ],
+   "rows": [
+    [
+     "$\\sin x$",
+     "$0$",
+     "$1$",
+     "$0$",
+     "$-1$",
+     "$0$"
+    ],
+    [
+     "$\\cos x$",
+     "$1$",
+     "$0$",
+     "$-1$",
+     "$0$",
+     "$1$"
+    ]
+   ],
+   "caption": "The five key points of one period",
+   "firstColumnIsHeader": true
+  },
+  {
+   "id": "scg-b04",
+   "type": "predict",
+   "question": "The graph of $y=\\cos x$ is the graph of $y=\\sin x$…",
+   "options": [
+    {
+     "md": "shifted left by $\\frac{\\pi}{2}$",
+     "correct": true,
+     "why": "$\\cos x=\\sin(x+\\frac{\\pi}{2})$: cosine reaches each value a quarter period earlier."
+    },
+    {
+     "md": "reflected over the $x$-axis",
+     "correct": false,
+     "why": "That gives $y=-\\sin x$, which starts at $0$ and goes down."
+    },
+    {
+     "md": "shifted up by $1$",
+     "correct": false,
+     "why": "That would change the range to $[0,2]$."
+    }
+   ]
+  },
+  {
+   "id": "scg-b05",
+   "type": "compare",
+   "title": "Sine and cosine side by side",
+   "leftTitle": "$y=\\sin x$",
+   "rightTitle": "$y=\\cos x$",
+   "rows": [
+    {
+     "label": "Value at $x=0$",
+     "left": "$0$",
+     "right": "$1$"
+    },
+    {
+     "label": "Maximum at",
+     "left": "$x=\\frac{\\pi}{2}$",
+     "right": "$x=0,\\ 2\\pi$"
+    },
+    {
+     "label": "Zeros on $[0,2\\pi]$",
+     "left": "$0,\\ \\pi,\\ 2\\pi$",
+     "right": "$\\frac{\\pi}{2},\\ \\frac{3\\pi}{2}$"
+    },
+    {
+     "label": "Symmetry",
+     "left": "odd: $\\sin(-x)=-\\sin x$",
+     "right": "even: $\\cos(-x)=\\cos x$"
+    },
+    {
+     "label": "Period and range",
+     "left": "$2\\pi$, $[-1,1]$",
+     "right": "$2\\pi$, $[-1,1]$"
+    }
+   ]
+  },
+  {
+   "id": "scg-b06",
+   "type": "callout",
+   "kind": "definition",
+   "title": "Period, range and symmetry",
+   "md": "Both functions have **period** $2\\pi$ and **range** $[-1,1]$. Sine is **odd**, so its graph is symmetric about the origin; cosine is **even**, so its graph is symmetric about the $y$-axis."
+  },
+  {
+   "id": "scg-b07",
+   "type": "example",
+   "title": "Sketch $y=-\\sin x$",
+   "problem": "Sketch one period of $y=-\\sin x$.",
+   "steps": [
+    {
+     "md": "Start from the key points of $\\sin x$: $(0,0)$, $(\\frac{\\pi}{2},1)$, $(\\pi,0)$, $(\\frac{3\\pi}{2},-1)$, $(2\\pi,0)$."
+    },
+    {
+     "md": "Multiply every $y$ by $-1$: $(0,0)$, $(\\frac{\\pi}{2},-1)$, $(\\pi,0)$, $(\\frac{3\\pi}{2},1)$, $(2\\pi,0)$."
+    },
+    {
+     "md": "Join them with a smooth wave: it goes **down** first."
+    }
+   ],
+   "answer": "A sine wave reflected over the $x$-axis."
+  },
+  {
+   "id": "scg-b08",
+   "type": "spot",
+   "intro": "A student listed the zeros of $y=\\cos x$ on $[0,2\\pi]$.",
+   "lines": [
+    "$\\cos x=0$ where the point $P(x)$ is on the $y$-axis.",
+    "That happens at $x=\\frac{\\pi}{2}$ and $x=\\frac{3\\pi}{2}$.",
+    "So the zeros are $0$, $\\pi$ and $2\\pi$."
+   ],
+   "wrongIndex": 2,
+   "explanation": "$0$, $\\pi$ and $2\\pi$ are the zeros of **sine**. The zeros of cosine are $\\frac{\\pi}{2}$ and $\\frac{3\\pi}{2}$."
+  },
+  {
+   "id": "scg-b09",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "scg-e1",
+    "scg-e2",
+    "scg-e3",
+    "scg-e5"
+   ]
+  },
+  {
+   "id": "scg-b10",
+   "type": "recap",
+   "points": [
+    "$\\sin x$ is the height of $P(x)$; $\\cos x$ is its horizontal position.",
+    "Period $2\\pi$, range $[-1,1]$.",
+    "Learn the five key points of one period."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "scg-e1",
+   "skill": "sine-cosine-graphs",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "scg-e1-q",
+     "type": "text",
+     "md": "What is the maximum value of $y=\\sin x$?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "1"
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "scg-e1-s",
+     "type": "text",
+     "md": "The height of a point on the unit circle is at most $1$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "2*pi",
+     "why": "That is the period, not the maximum value."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e2",
+   "skill": "sine-cosine-graphs",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "scg-e2-q",
+     "type": "text",
+     "md": "List the zeros of $y=\\cos x$ on $[0, 2\\pi]$, separated by commas."
+    }
+   ],
+   "answer": {
+    "kind": "set",
+    "expected": [
+     "pi/2",
+     "3*pi/2"
+    ],
+    "placeholder": "e.g. π/4, π"
+   },
+   "hints": [
+    "Where is the point $P(x)$ on the $y$-axis?"
+   ],
+   "solution": [
+    {
+     "id": "scg-e2-s",
+     "type": "text",
+     "md": "$\\cos x=0$ at $x=\\frac{\\pi}{2}$ and $x=\\frac{3\\pi}{2}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "0, pi, 2*pi",
+     "why": "Those are the zeros of $\\sin x$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e3",
+   "skill": "sine-cosine-graphs",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "scg-e3-q",
+     "type": "text",
+     "md": "On $[0, 2\\pi]$, where does $y=\\sin x$ reach its minimum?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$x=\\dfrac{3\\pi}{2}$",
+      "correct": true,
+      "why": "$\\sin\\frac{3\\pi}{2}=-1$."
+     },
+     {
+      "id": "b",
+      "md": "$x=\\pi$",
+      "correct": false,
+      "why": "$\\sin\\pi=0$: that is a zero."
+     },
+     {
+      "id": "c",
+      "md": "$x=\\dfrac{\\pi}{2}$",
+      "correct": false,
+      "why": "That is the maximum."
+     },
+     {
+      "id": "d",
+      "md": "$x=2\\pi$",
+      "correct": false,
+      "why": "$\\sin2\\pi=0$."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [],
+   "solution": [],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e4",
+   "skill": "sine-cosine-graphs",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "scg-e4-q",
+     "type": "text",
+     "md": "True or false: $\\cos(-x)=\\cos x$ for every $x$."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": true
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "scg-e4-s",
+     "type": "text",
+     "md": "True: cosine is even; reflecting $P(x)$ over the $x$-axis does not change $x$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e5",
+   "skill": "sine-cosine-graphs",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "scg-e5-q",
+     "type": "text",
+     "md": "Use symmetry to find the exact value of $\\sin(-\\dfrac{\\pi}{6})$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-1/2"
+   },
+   "hints": [
+    "Sine is odd."
+   ],
+   "solution": [
+    {
+     "id": "scg-e5-s",
+     "type": "text",
+     "md": "$\\sin(-\\frac{\\pi}{6})=-\\sin\\frac{\\pi}{6}=-\\frac12$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "1/2",
+     "why": "Sine is odd: $\\sin(-x)=-\\sin x$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e6",
+   "skill": "sine-cosine-graphs",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "scg-e6-q",
+     "type": "text",
+     "md": "Which function has $y$-intercept $1$?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$y=\\cos x$",
+      "correct": true
+     },
+     {
+      "id": "b",
+      "md": "$y=\\sin x$",
+      "correct": false,
+      "why": "$\\sin0=0$."
+     },
+     {
+      "id": "c",
+      "md": "$y=-\\cos x$",
+      "correct": false,
+      "why": "$-\\cos0=-1$."
+     },
+     {
+      "id": "d",
+      "md": "$y=\\sin x-1$",
+      "correct": false,
+      "why": "$\\sin0-1=-1$."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [],
+   "solution": [],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e7",
+   "skill": "sine-cosine-graphs",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "scg-e7-q",
+     "type": "text",
+     "md": "On $[0, 2\\pi]$, write the interval where $\\cos x<0$."
+    }
+   ],
+   "answer": {
+    "kind": "interval",
+    "expected": "(pi/2, 3*pi/2)"
+   },
+   "hints": [
+    "Cosine is negative in Quadrants II and III."
+   ],
+   "solution": [
+    {
+     "id": "scg-e7-s",
+     "type": "text",
+     "md": "$\\cos x<0$ for $\\frac{\\pi}{2}<x<\\frac{3\\pi}{2}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "[pi/2, 3*pi/2]",
+     "why": "At the endpoints $\\cos x=0$, which is not negative: use parentheses."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e8",
+   "skill": "sine-cosine-graphs",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "scg-e8-q",
+     "type": "text",
+     "md": "Match each graph with its description."
+    }
+   ],
+   "answer": {
+    "kind": "matching",
+    "pairs": [
+     {
+      "left": "$y=\\sin x$",
+      "right": "passes through the origin going up"
+     },
+     {
+      "left": "$y=\\cos x$",
+      "right": "has a maximum at $x=0$"
+     },
+     {
+      "left": "$y=-\\sin x$",
+      "right": "passes through the origin going down"
+     },
+     {
+      "left": "$y=-\\cos x$",
+      "right": "has a minimum at $x=0$"
+     }
+    ],
+    "extraRights": [
+     "never crosses the $x$-axis"
+    ]
+   },
+   "hints": [],
+   "solution": [],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e9",
+   "skill": "sine-cosine-graphs",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "scg-e9-q",
+     "type": "text",
+     "md": "How many times does $y=\\sin x$ cross the line $y=0.3$ on $[0, 4\\pi]$?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "4"
+   },
+   "hints": [
+    "How many times does it happen in one period?"
+   ],
+   "solution": [
+    {
+     "id": "scg-e9-s",
+     "type": "text",
+     "md": "Twice per period, and $[0,4\\pi]$ holds two periods: $4$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "2",
+     "why": "That is one period; $[0,4\\pi]$ has two."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "scg-e10",
+   "skill": "sine-cosine-graphs",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "scg-e10-q",
+     "type": "text",
+     "md": "What is the period of $y=\\cos x$?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "2*pi"
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "scg-e10-s",
+     "type": "text",
+     "md": "$2\\pi$: one full lap around the unit circle."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "pi",
+     "why": "After $\\pi$ the cosine is $-1$, not back to the start. The period is $2\\pi$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [],
+ "cards": [
+  {
+   "id": "scg-c1",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "Period and range of $\\sin x$ and $\\cos x$",
+   "back": "Period $2\\pi$, range $[-1,1]$.",
+   "tags": []
+  },
+  {
+   "id": "scg-c2",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "Zeros of $\\sin x$ on $[0,2\\pi]$",
+   "back": "$0,\\ \\pi,\\ 2\\pi$",
+   "tags": []
+  },
+  {
+   "id": "scg-c3",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "Zeros of $\\cos x$ on $[0,2\\pi]$",
+   "back": "$\\frac{\\pi}{2},\\ \\frac{3\\pi}{2}$",
+   "tags": []
+  },
+  {
+   "id": "scg-c4",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "Is cosine even or odd?",
+   "back": "Even: $\\cos(-x)=\\cos x$.",
+   "tags": []
+  },
+  {
+   "id": "scg-c5",
+   "skill": "sine-cosine-graphs",
+   "kind": "cloze",
+   "front": "Sine is {{c1::odd}}: $\\sin(-x)=$ {{c2::$-\\sin x$}}.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "scg-c6",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "Key points of $y=\\sin x$",
+   "back": "$(0,0)$, $(\\frac{\\pi}{2},1)$, $(\\pi,0)$, $(\\frac{3\\pi}{2},-1)$, $(2\\pi,0)$",
+   "tags": []
+  },
+  {
+   "id": "scg-c7",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "$\\cos x$ as a shifted sine",
+   "back": "$\\cos x=\\sin(x+\\frac{\\pi}{2})$",
+   "tags": []
+  },
+  {
+   "id": "scg-c8",
+   "skill": "sine-cosine-graphs",
+   "kind": "basic",
+   "front": "Where is $\\sin x$ at its maximum on $[0,2\\pi]$?",
+   "back": "$x=\\frac{\\pi}{2}$",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Zeros of the wrong function",
+   "wrong": "zeros of $\\cos x$: $0,\\pi,2\\pi$",
+   "right": "zeros of $\\cos x$: $\\frac{\\pi}{2},\\frac{3\\pi}{2}$",
+   "why": "Cosine is zero where the point is on the $y$-axis."
+  }
+ ],
+ "sources": [
+  {
+   "source": "exam-2-review",
+   "page": 1
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

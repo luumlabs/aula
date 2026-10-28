@@ -1,0 +1,6 @@
+{
+  "name": "aula-video",
+  "private": true,
+  "type": "module",
+  "description": "Cadena de render del vídeo de Aula (solo desarrollo; no va en la app empaquetada)"
+}

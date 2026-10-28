@@ -1,0 +1,134 @@
+/* Dibujo a mano sobre el papel. Las líneas son vectores que se dibujan una vez (Ink.tsx: una máscara por trazo que la mano
+   recorre); los rellenos, máscaras quietas con grano de papel. En reposo nada pide fotogramas. */
+
+/* ── Tintas y pigmentos de Aula (un color cada uno; en la oscuridad, claros y cálidos, nunca un gris) ── */
+:root {
+  --ink: #2a2520;
+  --pigment-brick: #b4502f;
+  --pigment-sun: #e3a243;
+  --graphite: #77716a;
+}
+.dark {
+  --ink: #efe6dc;
+  --pigment-brick: #ee9f72;
+  --pigment-sun: #eeb760;
+  --graphite: #b3aca3;
+}
+
+/* ── Rellenos ── */
+.paint {
+  position: absolute;
+  pointer-events: none;
+  background: var(--paint);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.paint[data-ready] {
+  opacity: var(--paint-alpha, 1);
+}
+.paint[data-instant] {
+  transition: none;
+}
+
+/* ── Líneas ── */
+.ink {
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+.ink-box {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+.ink-box > .ink {
+  width: 100%;
+  height: 100%;
+}
+.ink-fixed {
+  position: absolute;
+}
+
+/* subrayado: bajo la línea base, un poco más largo que el texto */
+.brush-underline {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+}
+.brush-underline__stroke {
+  left: -0.08em;
+  right: -0.22em;
+  bottom: -0.17em;
+  height: 0.32em;
+  z-index: -1;
+}
+
+/* rodeado a mano */
+.ink-ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  isolation: isolate;
+}
+.ink-ring__line {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  z-index: -1;
+}
+
+/* losa dibujada tras un icono: primero la línea, luego el color (algo desplazado) */
+.drawn-tile {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  isolation: isolate;
+}
+.drawn-tile__fill {
+  inset: 0;
+  z-index: -1;
+  /* fuera de registro: el color no cae justo dentro de la línea */
+  translate: 1.5px 2px;
+  transition-delay: 0.3s;
+}
+.drawn-tile__line {
+  position: absolute;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  z-index: 1;
+}
+
+/* borde dibujado (burbujas destacadas) */
+.drawn-border {
+  inset: -3px;
+  z-index: 1;
+}
+
+/* tachado a mano */
+.ink-strike {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+.ink-strike__line {
+  left: -0.2em;
+  right: -0.3em;
+  top: 0.05em;
+  bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paint {
+    transition: opacity 0.2s ease;
+  }
+}
+.reduce-motion .paint {
+  transition: opacity 0.2s ease;
+}

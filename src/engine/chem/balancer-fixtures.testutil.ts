@@ -1,0 +1,82 @@
+// Ecuaciones de libro de texto de la app Swift anterior: Tests/ChemKitTests/BalancerTests.swift con sus coeficientes mínimos
+// (en el orden en que se escriben las especies).
+
+export const TEXTBOOK: readonly (readonly [string, readonly number[]])[] = [
+  // Combustión
+  ["CH4 + O2 -> CO2 + H2O", [1, 2, 1, 2]], ["C2H6 + O2 -> CO2 + H2O", [2, 7, 4, 6]], ["C3H8 + O2 -> CO2 + H2O", [1, 5, 3, 4]],
+  ["C4H10 + O2 -> CO2 + H2O", [2, 13, 8, 10]], ["C5H12 + O2 -> CO2 + H2O", [1, 8, 5, 6]], ["C6H14 + O2 -> CO2 + H2O", [2, 19, 12, 14]],
+  ["C7H16 + O2 -> CO2 + H2O", [1, 11, 7, 8]], ["C8H18 + O2 -> CO2 + H2O", [2, 25, 16, 18]], ["C2H4 + O2 -> CO2 + H2O", [1, 3, 2, 2]],
+  ["C2H2 + O2 -> CO2 + H2O", [2, 5, 4, 2]], ["C6H6 + O2 -> CO2 + H2O", [2, 15, 12, 6]], ["C6H12O6 + O2 -> CO2 + H2O", [1, 6, 6, 6]],
+  ["C2H5OH + O2 -> CO2 + H2O", [1, 3, 2, 3]], ["CH3OH + O2 -> CO2 + H2O", [2, 3, 2, 4]], ["C12H22O11 + O2 -> CO2 + H2O", [1, 12, 12, 11]],
+  ["C3H7OH + O2 -> CO2 + H2O", [2, 9, 6, 8]], ["C10H8 + O2 -> CO2 + H2O", [1, 12, 10, 4]], ["CH3COOH + O2 -> CO2 + H2O", [1, 2, 2, 2]],
+  ["NH3 + O2 -> NO + H2O", [4, 5, 4, 6]], ["NH3 + O2 -> N2 + H2O", [4, 3, 2, 6]], ["H2S + O2 -> SO2 + H2O", [2, 3, 2, 2]],
+  ["C3H8O3 + O2 -> CO2 + H2O", [2, 7, 6, 8]], ["CS2 + O2 -> CO2 + SO2", [1, 3, 1, 2]], ["FeS2 + O2 -> Fe2O3 + SO2", [4, 11, 2, 8]],
+  ["ZnS + O2 -> ZnO + SO2", [2, 3, 2, 2]], ["C6H5COOH + O2 -> CO2 + H2O", [2, 15, 14, 6]], ["C2H6O + O2 -> CO2 + H2O", [1, 3, 2, 3]],
+  // Síntesis
+  ["P4 + O2 -> P4O10", [1, 5, 1]], ["C + O2 -> CO", [2, 1, 2]], ["Al + O2 -> Al2O3", [4, 3, 2]], ["Fe + O2 -> Fe2O3", [4, 3, 2]],
+  ["Mg + O2 -> MgO", [2, 1, 2]], ["Na + O2 -> Na2O", [4, 1, 2]], ["H2 + O2 -> H2O", [2, 1, 2]], ["N2 + H2 -> NH3", [1, 3, 2]],
+  ["H2 + Cl2 -> HCl", [1, 1, 2]], ["Na + Cl2 -> NaCl", [2, 1, 2]], ["Fe + Cl2 -> FeCl3", [2, 3, 2]], ["Al + Br2 -> AlBr3", [2, 3, 2]],
+  ["P + Cl2 -> PCl5", [2, 5, 2]], ["S8 + O2 -> SO3", [1, 12, 8]], ["SO2 + O2 -> SO3", [2, 1, 2]], ["NO + O2 -> NO2", [2, 1, 2]],
+  ["N2 + O2 -> NO", [1, 1, 2]], ["CaO + H2O -> Ca(OH)2", [1, 1, 1]], ["P4O10 + H2O -> H3PO4", [1, 6, 4]], ["SO3 + H2O -> H2SO4", [1, 1, 1]],
+  ["N2O5 + H2O -> HNO3", [1, 1, 2]], ["Li + N2 -> Li3N", [6, 1, 2]], ["Mg + N2 -> Mg3N2", [3, 1, 1]],
+  // Descomposición
+  ["H2O2 -> H2O + O2", [2, 2, 1]], ["KClO3 -> KCl + O2", [2, 2, 3]], ["CaCO3 -> CaO + CO2", [1, 1, 1]],
+  ["NaHCO3 -> Na2CO3 + H2O + CO2", [2, 1, 1, 1]], ["NH4NO3 -> N2O + H2O", [1, 1, 2]], ["HgO -> Hg + O2", [2, 2, 1]],
+  ["NaN3 -> Na + N2", [2, 2, 3]], ["(NH4)2Cr2O7 -> Cr2O3 + N2 + H2O", [1, 1, 1, 4]], ["Pb(NO3)2 -> PbO + NO2 + O2", [2, 2, 4, 1]],
+  ["C3H5N3O9 -> N2 + CO2 + H2O + O2", [4, 6, 12, 10, 1]], ["KNO3 -> KNO2 + O2", [2, 2, 1]], ["Cu(NO3)2 -> CuO + NO2 + O2", [2, 2, 4, 1]],
+  ["Al(OH)3 -> Al2O3 + H2O", [2, 1, 3]], ["H2O -> H2 + O2", [2, 2, 1]], ["NaCl -> Na + Cl2", [2, 2, 1]],
+  // Desplazamiento simple
+  ["Zn + HCl -> ZnCl2 + H2", [1, 2, 1, 1]], ["Al + HCl -> AlCl3 + H2", [2, 6, 2, 3]], ["Fe + CuSO4 -> FeSO4 + Cu", [1, 1, 1, 1]],
+  ["Cu + AgNO3 -> Cu(NO3)2 + Ag", [1, 2, 1, 2]], ["Na + H2O -> NaOH + H2", [2, 2, 2, 1]], ["Al + CuSO4 -> Al2(SO4)3 + Cu", [2, 3, 1, 3]],
+  ["Cl2 + NaBr -> NaCl + Br2", [1, 2, 2, 1]], ["Mg + HCl -> MgCl2 + H2", [1, 2, 1, 1]], ["Fe2O3 + CO -> Fe + CO2", [1, 3, 2, 3]],
+  ["Fe2O3 + C -> Fe + CO2", [2, 3, 4, 3]], ["Fe3O4 + H2 -> Fe + H2O", [1, 4, 3, 4]], ["Al + Fe2O3 -> Al2O3 + Fe", [2, 1, 1, 2]],
+  ["Ca + H2O -> Ca(OH)2 + H2", [1, 2, 1, 1]], ["Zn + H2SO4 -> ZnSO4 + H2", [1, 1, 1, 1]], ["K + H2O -> KOH + H2", [2, 2, 2, 1]],
+  // Doble desplazamiento y ácido-base
+  ["AgNO3 + NaCl -> AgCl + NaNO3", [1, 1, 1, 1]], ["BaCl2 + Na2SO4 -> BaSO4 + NaCl", [1, 1, 1, 2]],
+  ["Pb(NO3)2 + KI -> PbI2 + KNO3", [1, 2, 1, 2]], ["CaCl2 + Na3PO4 -> Ca3(PO4)2 + NaCl", [3, 2, 1, 6]],
+  ["FeCl3 + NaOH -> Fe(OH)3 + NaCl", [1, 3, 1, 3]], ["H2SO4 + NaOH -> Na2SO4 + H2O", [1, 2, 1, 2]],
+  ["H3PO4 + Ca(OH)2 -> Ca3(PO4)2 + H2O", [2, 3, 1, 6]], ["HCl + Ca(OH)2 -> CaCl2 + H2O", [2, 1, 1, 2]],
+  ["Al2(SO4)3 + Ca(OH)2 -> Al(OH)3 + CaSO4", [1, 3, 2, 3]], ["Na2CO3 + HCl -> NaCl + H2O + CO2", [1, 2, 2, 1, 1]],
+  ["CaCO3 + HCl -> CaCl2 + H2O + CO2", [1, 2, 1, 1, 1]], ["NH4Cl + Ca(OH)2 -> CaCl2 + NH3 + H2O", [2, 1, 1, 2, 2]],
+  ["K3PO4 + MgCl2 -> Mg3(PO4)2 + KCl", [2, 3, 1, 6]], ["FeS + HCl -> FeCl2 + H2S", [1, 2, 1, 1]], ["Al4C3 + H2O -> Al(OH)3 + CH4", [1, 12, 4, 3]],
+  ["CaC2 + H2O -> Ca(OH)2 + C2H2", [1, 2, 1, 1]], ["Mg3N2 + H2O -> Mg(OH)2 + NH3", [1, 6, 3, 2]],
+  ["Ca3(PO4)2 + H2SO4 -> CaSO4 + H3PO4", [1, 3, 3, 2]], ["Ca3(PO4)2 + SiO2 + C -> CaSiO3 + P4 + CO", [2, 6, 10, 6, 1, 10]],
+  ["HNO3 + KOH -> KNO3 + H2O", [1, 1, 1, 1]],
+  // Redox con fórmulas moleculares
+  ["Cu + HNO3 -> Cu(NO3)2 + NO + H2O", [3, 8, 3, 2, 4]], ["Cu + HNO3 -> Cu(NO3)2 + NO2 + H2O", [1, 4, 1, 2, 2]],
+  ["KMnO4 + HCl -> KCl + MnCl2 + Cl2 + H2O", [2, 16, 2, 2, 5, 8]], ["K2Cr2O7 + HCl -> KCl + CrCl3 + Cl2 + H2O", [1, 14, 2, 2, 3, 7]],
+  ["MnO2 + HCl -> MnCl2 + Cl2 + H2O", [1, 4, 1, 1, 2]],
+  ["KMnO4 + FeSO4 + H2SO4 -> K2SO4 + MnSO4 + Fe2(SO4)3 + H2O", [2, 10, 8, 1, 2, 5, 8]],
+  ["K2Cr2O7 + FeSO4 + H2SO4 -> Cr2(SO4)3 + Fe2(SO4)3 + K2SO4 + H2O", [1, 6, 7, 1, 3, 1, 7]],
+  ["Zn + HNO3 -> Zn(NO3)2 + NH4NO3 + H2O", [4, 10, 4, 1, 3]], ["Ag + HNO3 -> AgNO3 + NO + H2O", [3, 4, 3, 1, 2]],
+  ["C + HNO3 -> CO2 + NO2 + H2O", [1, 4, 1, 4, 2]], ["Cl2 + NaOH -> NaCl + NaClO3 + H2O", [3, 6, 5, 1, 3]],
+  ["Cl2 + NaOH -> NaCl + NaClO + H2O", [1, 2, 1, 1, 1]], ["P4 + NaOH + H2O -> PH3 + NaH2PO2", [1, 3, 3, 1, 3]],
+  ["KClO3 + HCl -> KCl + Cl2 + H2O", [1, 6, 1, 3, 3]], ["H2S + HNO3 -> S + NO + H2O", [3, 2, 3, 2, 4]],
+  ["As2S3 + HNO3 + H2O -> H3AsO4 + H2SO4 + NO", [3, 28, 4, 6, 9, 28]],
+  ["K4Fe(CN)6 + KMnO4 + H2SO4 -> KHSO4 + Fe2(SO4)3 + MnSO4 + HNO3 + CO2 + H2O", [10, 122, 299, 162, 5, 122, 60, 60, 188]],
+  ["Cu2S + HNO3 -> Cu(NO3)2 + CuSO4 + NO2 + H2O", [1, 12, 1, 1, 10, 6]], ["Fe + H2SO4 -> Fe2(SO4)3 + SO2 + H2O", [2, 6, 1, 3, 6]],
+  ["I2 + HNO3 -> HIO3 + NO2 + H2O", [1, 10, 2, 10, 4]], ["Na2S2O3 + I2 -> Na2S4O6 + NaI", [2, 1, 1, 2]],
+  ["KI + H2SO4 -> K2SO4 + I2 + H2S + H2O", [8, 5, 4, 4, 1, 4]], ["SnCl2 + HgCl2 -> SnCl4 + Hg2Cl2", [1, 2, 1, 1]],
+  ["CuO + NH3 -> Cu + N2 + H2O", [3, 2, 3, 1, 3]],
+  // Con H2O2: ambigua con solo átomos; se resuelve con los números de oxidación (semirreacciones).
+  ["H2O2 + KMnO4 + H2SO4 -> K2SO4 + MnSO4 + O2 + H2O", [5, 2, 3, 1, 2, 5, 8]],
+  // Redox iónicas en medio ácido (ya con H+ y H2O)
+  ["MnO4- + Fe2+ + H+ -> Mn2+ + Fe3+ + H2O", [1, 5, 8, 1, 5, 4]], ["Cr2O7^2- + Fe2+ + H+ -> Cr3+ + Fe3+ + H2O", [1, 6, 14, 2, 6, 7]],
+  ["MnO4- + C2O4^2- + H+ -> Mn2+ + CO2 + H2O", [2, 5, 16, 2, 10, 8]], ["Cu + NO3- + H+ -> Cu2+ + NO + H2O", [3, 2, 8, 3, 2, 4]],
+  ["MnO4- + H2O2 + H+ -> Mn2+ + O2 + H2O", [2, 5, 6, 2, 5, 8]], ["Cr2O7^2- + I- + H+ -> Cr3+ + I2 + H2O", [1, 6, 14, 2, 3, 7]],
+  ["MnO4- + SO3^2- + H+ -> Mn2+ + SO4^2- + H2O", [2, 5, 6, 2, 5, 3]], ["IO3- + I- + H+ -> I2 + H2O", [1, 5, 6, 3, 3]],
+  ["Cr2O7^2- + Cl- + H+ -> Cr3+ + Cl2 + H2O", [1, 6, 14, 2, 3, 7]], ["MnO4- + Cl- + H+ -> Mn2+ + Cl2 + H2O", [2, 10, 16, 2, 5, 8]],
+  ["Zn + NO3- + H+ -> Zn2+ + NH4+ + H2O", [4, 1, 10, 4, 1, 3]], ["H2O2 + Fe2+ + H+ -> Fe3+ + H2O", [1, 2, 2, 2, 2]],
+  ["Cr2O7^2- + H2S + H+ -> Cr3+ + S + H2O", [1, 3, 8, 2, 3, 7]], ["BrO3- + Br- + H+ -> Br2 + H2O", [1, 5, 6, 3, 3]],
+  ["Ag + NO3- + H+ -> Ag+ + NO + H2O", [3, 1, 4, 3, 1, 2]], ["Sn2+ + Fe3+ -> Sn4+ + Fe2+", [1, 2, 1, 2]],
+  // Semirreacciones con electrones
+  ["Fe3+ + e- -> Fe2+", [1, 1, 1]], ["MnO4- + H+ + e- -> Mn2+ + H2O", [1, 8, 5, 1, 4]],
+  ["Cr2O7^2- + H+ + e- -> Cr3+ + H2O", [1, 14, 6, 2, 7]], ["Cl2 + e- -> Cl-", [1, 2, 2]], ["Zn -> Zn2+ + e-", [1, 1, 2]],
+  // Redox iónicas en medio básico (ya con OH- y H2O)
+  ["MnO4- + I- + H2O -> MnO2 + IO3- + OH-", [2, 1, 1, 2, 1, 2]],
+  ["Cr(OH)3 + ClO3- + OH- -> CrO4^2- + Cl- + H2O", [2, 1, 4, 2, 1, 5]],
+  ["MnO4- + CN- + H2O -> MnO2 + CNO- + OH-", [2, 3, 1, 2, 3, 2]], ["Cl2 + OH- -> Cl- + ClO3- + H2O", [3, 6, 5, 1, 3]],
+  ["Al + OH- + H2O -> Al(OH)4- + H2", [2, 2, 6, 2, 3]], ["MnO4- + SO3^2- + H2O -> MnO2 + SO4^2- + OH-", [2, 3, 1, 2, 3, 2]],
+  ["CrO4^2- + Fe(OH)2 + H2O -> Cr(OH)3 + Fe(OH)3 + OH-", [1, 3, 4, 1, 3, 2]],
+  ["H2O2 + ClO2 + OH- -> ClO2- + O2 + H2O", [1, 2, 2, 2, 1, 2]],
+]

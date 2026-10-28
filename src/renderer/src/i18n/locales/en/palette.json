@@ -1,0 +1,16 @@
+{
+  "inCourses": "In your courses",
+  "searching": "Searching your courses…",
+  "page": "p. {{page}}",
+  "kinds": {
+    "lesson": "Lesson",
+    "exercise": "Exercise",
+    "glossary": "Glossary",
+    "formula": "Formula",
+    "material": "Material"
+  },
+  "actions": {
+    "importCourse": "Import a course (.aulapack)",
+    "memory": "What Aula remembers"
+  }
+}

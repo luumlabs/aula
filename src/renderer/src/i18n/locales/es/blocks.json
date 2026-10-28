@@ -1,0 +1,136 @@
+{
+  "callout": {
+    "note": "Nota",
+    "tip": "Consejo",
+    "warning": "Ojo",
+    "definition": "Definición",
+    "theorem": "Teorema",
+    "remember": "Recuerda",
+    "example": "Ejemplo",
+    "examTip": "Para el examen",
+    "mistake": "Error común",
+    "question": "Pregúntate",
+    "source": "De tus materiales"
+  },
+  "source": {
+    "page": "p. {{page}}",
+    "pages": "p. {{from}}–{{to}}",
+    "yours": "De tus materiales",
+    "open": "Abrir este material"
+  },
+  "recap": {
+    "title": "Lo esencial"
+  },
+  "example": {
+    "eyebrow": "Ejemplo resuelto",
+    "progress": "Paso {{shown}} de {{total}}",
+    "result": "Resultado",
+    "first": "Ver el primer paso",
+    "next": "Siguiente paso",
+    "all": "Ver la solución completa",
+    "hide": "Ocultar los pasos"
+  },
+  "formulas": {
+    "copy": "Copiar LaTeX",
+    "when": "Cuándo se usa:"
+  },
+  "code": {
+    "copy": "Copiar el código",
+    "copied": "Copiado",
+    "copyFailed": "No se pudo copiar",
+    "code": "Código",
+    "output": "Salida"
+  },
+  "predict": {
+    "eyebrow": "Piensa antes de seguir",
+    "hint": "Elige una respuesta: después te explico por qué.",
+    "right": "¡Bien pensado!",
+    "wrong": "Casi. La buena era la {{letter}}.",
+    "wrongNoAnswer": "No era esa."
+  },
+  "spot": {
+    "eyebrow": "Encuentra el error",
+    "lines_one": "{{count}} línea",
+    "lines_many": "{{count}} líneas",
+    "lines_other": "{{count}} líneas",
+    "here": "Aquí está el error",
+    "hint": "Pulsa la línea donde está el error.",
+    "right": "¡Esa es! La has encontrado.",
+    "wrong": "No era esa: el error está en la línea {{line}}.",
+    "wrongNoLine": "No era esa."
+  },
+  "common": {
+    "retry": "Volver a intentar",
+    "close": "Cerrar"
+  },
+  "tryit": {
+    "title": "Pruébalo",
+    "count_one": "{{count}} ejercicio",
+    "count_many": "{{count}} ejercicios",
+    "count_other": "{{count}} ejercicios",
+    "inLesson": "se resuelve dentro de la lección",
+    "start": "Empezar"
+  },
+  "image": {
+    "image": "Imagen",
+    "zoom": "Ampliar: {{alt}}",
+    "missing": "La imagen no está disponible en este curso.",
+    "point": "Punto {{n}}: {{label}}"
+  },
+  "numberline": {
+    "label": "Recta numérica"
+  },
+  "plot": {
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "reset": "Volver a la vista inicial",
+    "wheelHint": "{{mod}} + rueda para acercar · arrastra para mover",
+    "summary": "Gráfica {{title}}: {{curves}}. x de {{x0}} a {{x1}}; y de {{y0}} a {{y1}}."
+  },
+  "explore": {
+    "eyebrow": "Explora",
+    "reset": "Restablecer",
+    "try": "Prueba esto"
+  },
+  "chart": {
+    "empty": "Este gráfico no tiene datos.",
+    "other": "Otros",
+    "total": "Total"
+  },
+  "timeline": {
+    "bc": "{{n}} a. C.",
+    "ma": "{{n}} Ma",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "asScale": "Ver a escala",
+    "asList": "Ver como lista",
+    "undated": "Sin fecha en la escala: {{list}}",
+    "hint": "Pulsa un hecho para ver qué pasó."
+  },
+  "unknown": {
+    "title": "Este contenido no se puede mostrar",
+    "tooDeep": "Estaba anidado demasiadas veces.",
+    "damaged": "Este bloque está dañado y no se puede leer. El resto de la lección sigue igual.",
+    "newer": "Es de un tipo («{{type}}») que esta versión de Aula no conoce. El resto de la lección sigue igual.",
+    "failed": "Algo falló al dibujarlo. El resto de la lección sigue igual."
+  },
+  "preview": {
+    "title": "Bloques de lección",
+    "subtitle": "Cada tipo de bloque con el curso de ejemplo y muestras escritas a mano.",
+    "mode": {
+      "lesson": "Lección",
+      "chat": "Chat",
+      "print": "Impresión"
+    },
+    "section": "Sección",
+    "samples": "Muestras de cada tipo",
+    "all": "Todo",
+    "blocks_one": "{{count}} bloque",
+    "blocks_many": "{{count}} bloques",
+    "blocks_other": "{{count}} bloques",
+    "tryit_one": "Abriría {{count}} ejercicio",
+    "tryit_many": "Abriría {{count}} ejercicios",
+    "tryit_other": "Abriría {{count}} ejercicios",
+    "source": "Abriría el material en la página {{page}}"
+  }
+}

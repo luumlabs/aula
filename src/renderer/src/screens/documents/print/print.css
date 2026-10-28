@@ -1,0 +1,528 @@
+/* Vista de impresión de los documentos que crea Aula (la dibuja la ventana oculta de impresión y Chromium la pasa a PDF).
+   Papel blanco, serif para leer, el color del curso como única tinta (o gris, si se pidió sin color) y saltos de página
+   pensados: cada lección empieza en página nueva, las figuras y las preguntas no se parten. */
+
+#aula-print {
+  display: none;
+}
+html.aula-printing,
+html.aula-printing body,
+html.aula-printing #root {
+  height: auto !important;
+  overflow: visible !important;
+  background: #fff !important;
+}
+html.aula-printing body > *:not(#aula-print) {
+  display: none !important;
+}
+html.aula-printing #aula-print {
+  display: block;
+}
+html.aula-printing .reduce-motion *,
+html.aula-printing * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.pd {
+  --ink: #8c3f24;
+  --ink-soft: color-mix(in oklab, var(--ink) 12%, white);
+  --pd-text: #1f1b16;
+  --pd-text2: #4a4540;
+  --pd-text3: #78726b;
+  --pd-line: #ddd6cc;
+  color: var(--pd-text);
+  background: #fff;
+  font-family: var(--font-serif);
+  line-height: 1.5;
+  user-select: text;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.pd.pd-sans {
+  font-family: var(--font-sans);
+}
+.pd.pd-gray {
+  filter: grayscale(1);
+}
+.pd :where(h1, h2, h3, h4) {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  break-after: avoid;
+  color: var(--pd-text);
+}
+
+/* Portada */
+.pd-cover {
+  min-height: 9.4in;
+  display: flex;
+  flex-direction: column;
+  break-after: page;
+}
+.pd-letter .pd-slide {
+  height: 6.7in;
+}
+.pd-letter .pd-cover {
+  min-height: 8.8in;
+}
+.pd-cover-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pd-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.pd-cover h1 {
+  font-size: 3.1em;
+  line-height: 1.06;
+  margin: 1.3in 0 0.18in;
+}
+.pd-cover-sub {
+  font-size: 1.35em;
+  color: var(--pd-text2);
+  margin: 0;
+}
+.pd-cover-rule {
+  height: 3px;
+  width: 1.1in;
+  background: var(--ink);
+  border-radius: 2px;
+  margin: 0.32in 0 0.22in;
+}
+.pd-cover-meta {
+  font-family: var(--font-sans);
+  font-size: 0.82em;
+  color: var(--pd-text3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.pd-toc {
+  margin-top: 0.5in;
+  font-size: 0.95em;
+}
+.pd-toc h2 {
+  font-size: 1.05em;
+  margin: 0 0 0.6em;
+}
+.pd-toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 0.4in;
+}
+.pd-toc li {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 0.5px dotted var(--pd-line);
+  break-inside: avoid;
+}
+.pd-toc li span:first-child {
+  font-family: var(--font-sans);
+  font-size: 0.78em;
+  color: var(--ink);
+  min-width: 1.6em;
+  padding-top: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+.pd .pd-notice {
+  margin-top: auto;
+  font-family: var(--font-sans);
+  font-size: 0.74em;
+  color: var(--pd-text3);
+  border-top: 0.5px solid var(--pd-line);
+  padding-top: 8px;
+}
+
+/* Cabecera compacta (chuleta, tarjetas, examen) */
+.pd-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+.pd-head h1 {
+  font-size: 1.7em;
+  line-height: 1.15;
+  margin: 0;
+}
+.pd-head .pd-head-sub {
+  font-family: var(--font-sans);
+  font-size: 0.8em;
+  color: var(--pd-text3);
+  text-align: right;
+}
+
+/* Secciones */
+.pd-section {
+  margin-bottom: 0.25in;
+}
+.pd-section.pd-newpage {
+  break-before: page;
+}
+.pd-section-head {
+  margin-bottom: 0.16in;
+}
+.pd-section-head h2 {
+  font-size: 1.75em;
+  line-height: 1.15;
+  margin: 0.06in 0 0.08in;
+  padding-bottom: 0.08in;
+  border-bottom: 1.5px solid var(--ink);
+}
+.pd-lead {
+  font-style: italic;
+  color: var(--pd-text2);
+  margin: 0.06in 0 0;
+}
+.pd-h3 {
+  font-size: 1.12em;
+  color: var(--ink);
+  margin: 0.2in 0 0.06in;
+}
+.pd-h4 {
+  font-size: 1em;
+  margin: 0.14in 0 0.04in;
+}
+.pd-item {
+  margin: 0 0 0.12in;
+}
+.pd-item.pd-avoid {
+  break-inside: avoid;
+}
+.pd-item .blk-static,
+.pd-item [data-block] {
+  max-width: none !important;
+}
+.pd p {
+  margin: 0 0 0.5em;
+}
+.pd ul,
+.pd ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.3em;
+}
+.pd ul { list-style: disc; }
+.pd ol { list-style: decimal; }
+.pd-term b {
+  font-weight: 650;
+}
+.pd-term .pd-alias {
+  color: var(--pd-text3);
+}
+.pd-mistake {
+  border-left: 3px solid var(--ink);
+  padding: 2px 0 2px 10px;
+  break-inside: avoid;
+}
+.pd-mistake .pd-mk {
+  display: grid;
+  grid-template-columns: 1.1em 1fr;
+  gap: 2px 6px;
+  font-size: 0.95em;
+  margin-top: 3px;
+}
+.pd-note {
+  border-left: 3px solid var(--mark, #f4d35e);
+  background: color-mix(in oklab, var(--mark, #f4d35e) 22%, white);
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  break-inside: avoid;
+}
+.pd-note .pd-note-text {
+  font-family: var(--font-sans);
+  font-size: 0.84em;
+  color: var(--pd-text2);
+  margin-top: 4px;
+}
+
+/* Chuleta: dos columnas, apretada */
+.pd-cheat {
+  font-size: 0.86em;
+}
+.pd-cheat .pd-sections {
+  columns: 2;
+  column-gap: 0.28in;
+  column-rule: 0.5px solid var(--pd-line);
+}
+.pd-cheat .pd-section {
+  break-inside: auto;
+  margin-bottom: 0.12in;
+}
+.pd-cheat .pd-section-head h2 {
+  font-size: 1.15em;
+  border-bottom-width: 1px;
+  margin-top: 0;
+}
+.pd-cheat .pd-item {
+  break-inside: avoid;
+  margin-bottom: 0.07in;
+}
+
+/* Examen */
+.pd-examhead {
+  font-family: var(--font-sans);
+  font-size: 0.86em;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 24px;
+  margin-bottom: 0.2in;
+}
+.pd-examhead .pd-line {
+  border-bottom: 1px solid var(--pd-text3);
+  min-width: 2.3in;
+  display: inline-block;
+  height: 1.1em;
+  margin-left: 6px;
+}
+.pd-instructions {
+  font-style: italic;
+  color: var(--pd-text2);
+  border-left: 3px solid var(--pd-line);
+  padding-left: 10px;
+  margin: 0 0 0.2in;
+}
+.pd-q {
+  display: grid;
+  grid-template-columns: 1.7em 1fr auto;
+  gap: 0 8px;
+  margin: 0 0 0.2in;
+  break-inside: avoid;
+}
+.pd-qn {
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+}
+.pd-qpts {
+  font-family: var(--font-sans);
+  font-size: 0.72em;
+  color: var(--pd-text3);
+  white-space: nowrap;
+  padding-top: 0.2em;
+}
+.pd-qbody > * + * {
+  margin-top: 0.08in;
+}
+.pd-opt {
+  display: grid;
+  grid-template-columns: 0.9em 1.3em 1fr;
+  align-items: baseline;
+  gap: 4px;
+  margin: 3px 0;
+}
+.pd-box {
+  display: inline-block;
+  width: 0.72em;
+  height: 0.72em;
+  border: 1px solid var(--pd-text2);
+  border-radius: 50%;
+  transform: translateY(0.06em);
+}
+.pd-box.pd-square {
+  border-radius: 2px;
+}
+.pd-ruled {
+  border-bottom: 0.75px solid #c9c2b8;
+  height: 0.3in;
+}
+.pd-work {
+  border: 0.75px dashed #d3ccc2;
+  border-radius: 6px;
+  height: 0.9in;
+}
+.pd-answerline {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.86em;
+  color: var(--pd-text2);
+}
+.pd-answerline .pd-fill {
+  flex: 0 0 2.4in;
+  border-bottom: 1px solid var(--pd-text3);
+  height: 1.2em;
+}
+.pd-match {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+}
+.pd-ans {
+  margin: 0 0 0.14in;
+  break-inside: avoid;
+}
+.pd-ans .pd-sol {
+  border-left: 2px solid var(--pd-line);
+  padding-left: 10px;
+  margin-top: 4px;
+  font-size: 0.94em;
+}
+
+/* Tarjetas para recortar */
+.pd-cards-page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  break-after: page;
+  border-top: 1px dashed #b9b1a6;
+  border-left: 1px dashed #b9b1a6;
+}
+.pd-cards-page:last-child {
+  break-after: auto;
+}
+.pd-card {
+  border-right: 1px dashed #b9b1a6;
+  border-bottom: 1px dashed #b9b1a6;
+  padding: 0.16in 0.2in;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.pd-card .pd-card-topic {
+  font-family: var(--font-sans);
+  font-size: 0.62em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.pd-card .pd-card-n {
+  position: absolute;
+  right: 0.14in;
+  top: 0.12in;
+  font-family: var(--font-sans);
+  font-size: 0.62em;
+  color: var(--pd-text3);
+}
+.pd-card .pd-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  font-size: 1.04em;
+}
+.pd-card.pd-back .pd-card-body {
+  font-size: 0.95em;
+  color: var(--pd-text2);
+}
+.pd-cut {
+  font-family: var(--font-sans);
+  font-size: 0.64em;
+  color: var(--pd-text3);
+  margin: 0 0 6px;
+}
+
+/* Diapositivas */
+.pd-slide {
+  --pd-zoom: 1.12;
+  break-after: page;
+  border: 0.75px solid var(--pd-line);
+  border-radius: 10px;
+  padding: 0.4in 0.55in;
+  height: 6.45in;
+  overflow: hidden;
+  font-size: 1.12em;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.pd-slide:last-child {
+  break-after: auto;
+}
+.pd-slide::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.35in;
+  bottom: 0.35in;
+  width: 3px;
+  background: var(--ink);
+  border-radius: 0 2px 2px 0;
+}
+.pd-slide-title {
+  font-size: 1.9em;
+  line-height: 1.15;
+  margin: 0 0 0.12in;
+}
+.pd-slide.pd-cover-slide {
+  justify-content: center;
+}
+.pd-slide.pd-cover-slide .pd-slide-title {
+  font-size: 2.6em;
+}
+.pd-slide-num {
+  position: absolute;
+  right: 0.25in;
+  bottom: 0.18in;
+  font-family: var(--font-sans);
+  font-size: 0.7em;
+  color: var(--pd-text3);
+}
+.pd-slide-notes {
+  margin-top: auto;
+  font-family: var(--font-sans);
+  font-size: 0.8em;
+  color: var(--pd-text2);
+  border-top: 0.5px solid var(--pd-line);
+  padding-top: 6px;
+}
+.pd-handout {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 0.25in;
+  margin-bottom: 0.25in;
+  break-inside: avoid;
+}
+.pd-handout .pd-slide {
+  --pd-zoom: 0.6;
+  height: 2.75in;
+  min-height: 0;
+  font-size: 0.62em;
+  break-after: auto;
+  padding: 0.2in 0.25in;
+}
+.pd-handout .pd-lines .pd-ruled {
+  height: 0.32in;
+}
+.pd-handout:nth-of-type(3n) {
+  break-after: page;
+}
+
+/* Chuleta: fórmulas y avisos en una línea */
+.pd-formula {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+  gap: 2px 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 0.5px dotted var(--pd-line);
+  break-inside: avoid;
+}
+.pd-formula-name {
+  font-weight: 600;
+}
+.pd-formula-when {
+  grid-column: 1 / -1;
+  font-size: 0.85em;
+  color: var(--pd-text3);
+}
+.pd-compact {
+  font-size: 0.96em;
+}
+.pd-compact b {
+  color: var(--ink);
+}

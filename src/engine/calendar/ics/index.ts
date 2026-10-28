@@ -1,0 +1,11 @@
+// Calendarios .ics de las plataformas (CanvasKit/ICS + Core/{ExamDetector,StudyEvent,CourseCode}). Isomorfo.
+export * from './studyEvent'
+export * from './courseCode'
+export * from './examDetector'
+export * from './lexer'
+export * from './recurrence'
+export * from './limits'
+export * from './parser'
+export * from './feedUrl'
+export { stableID, sha256Hex } from './hash'
+export { htmlToMarkdown, htmlToPlainText, looksLikeHTML } from './htmlText'

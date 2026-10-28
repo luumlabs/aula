@@ -1,0 +1,23 @@
+[
+ {
+  "id": "54fc2d8c5a9eb18e",
+  "ordinal": 0,
+  "page": 1,
+  "sourceID": "unit-3-notes",
+  "text": "The unit circle. Every point on the circle x² + y² = 1 can be written as (cos θ, sin θ), where θ is the angle measured counterclockwise from the positive x-axis. The x-coordinate is the cosine and the y-coordinate is the sine; the tangent is their ratio y/x."
+ },
+ {
+  "id": "cbefb2ee0bc3f8fd",
+  "ordinal": 1,
+  "page": 2,
+  "sourceID": "unit-3-notes",
+  "text": "Signs by quadrant. In Quadrant I both coordinates are positive. In Quadrant II x is negative, so cosine is negative. In Quadrant III both are negative, so sine and cosine are negative and tangent is positive. In Quadrant IV y is negative, so sine is negative."
+ },
+ {
+  "id": "cc0cf7c6cdde3a8f",
+  "ordinal": 2,
+  "page": 3,
+  "sourceID": "unit-3-notes",
+  "text": "Reference angles. The reference angle is the acute angle between the terminal side and the x-axis. Use it to find exact values: cos 210° has reference angle 30°, so |cos 210°| = √3/2, and the sign comes from the quadrant (QIII: negative)."
+ }
+]

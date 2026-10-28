@@ -1,0 +1,912 @@
+{
+ "id": "unit-circle-coordinates",
+ "title": "Unit-circle coordinates and arc distance t",
+ "summary": "Find the terminal point P(t) on the unit circle for any real number t and read off sin t and cos t.",
+ "objectives": [
+  "Find terminal points for the special values of t",
+  "Use reference numbers and quadrant signs",
+  "Use x² + y² = 1 to find a missing coordinate"
+ ],
+ "prerequisites": [
+  "degree-radian-conversion",
+  "exact-trig-values"
+ ],
+ "lesson": [
+  {
+   "id": "ucc-b01",
+   "type": "text",
+   "md": "# The unit circle and arc distance $t$\n\nWrap the real number line around the circle $x^2+y^2=1$, starting at $(1,0)$. A real number $t$ lands at its **terminal point** $P(t)=(x,y)$ after traveling a distance $|t|$ along the circle: counterclockwise if $t>0$, clockwise if $t<0$. Because the radius is $1$, the arc length $t$ is also the angle in radians."
+  },
+  {
+   "id": "ucc-b02",
+   "type": "callout",
+   "kind": "definition",
+   "title": "Sine and cosine of a real number",
+   "md": "For any real number $t$ with terminal point $P(t)=(x,y)$:\n\n$\\cos t=x,\\qquad \\sin t=y,\\qquad \\tan t=\\dfrac{y}{x}\\ (x\\neq0).$"
+  },
+  {
+   "id": "ucc-b03",
+   "type": "explore",
+   "title": "Move the point around the circle",
+   "plot": {
+    "xMin": -1.6,
+    "xMax": 1.6,
+    "yMin": -1.25,
+    "yMax": 1.25,
+    "equalAspect": true,
+    "xTickStep": 0.5,
+    "yTickStep": 0.5,
+    "parametric": [
+     {
+      "x": "cos(t)",
+      "y": "sin(t)",
+      "tMin": 0,
+      "tMax": 6.2832,
+      "color": "gray"
+     },
+     {
+      "x": "cos(t*a/6.2832)",
+      "y": "sin(t*a/6.2832)",
+      "tMin": 0,
+      "tMax": 6.2832,
+      "color": "orange"
+     }
+    ],
+    "lines": [
+     {
+      "kind": "segment",
+      "x1": "0",
+      "y1": "0",
+      "x2": "cos(a)",
+      "y2": "sin(a)",
+      "color": "accent",
+      "dashed": false
+     },
+     {
+      "kind": "segment",
+      "x1": "cos(a)",
+      "y1": "0",
+      "x2": "cos(a)",
+      "y2": "sin(a)",
+      "color": "gray"
+     }
+    ],
+    "points": [
+     {
+      "x": "cos(a)",
+      "y": "sin(a)",
+      "label": "P(t)",
+      "color": "accent"
+     }
+    ]
+   },
+   "params": [
+    {
+     "name": "a",
+     "label": "Distance a along the circle",
+     "min": 0,
+     "max": 6.2832,
+     "step": 0.2618,
+     "value": 3.6652
+    }
+   ],
+   "prompts": [
+    "Where is $P(t)$ when $t=\\pi$? And when $t=\\frac{3\\pi}{2}$?",
+    "For which $t$ is the $x$-coordinate negative?",
+    "How far along the circle is $t=2\\pi$?"
+   ]
+  },
+  {
+   "id": "ucc-b04",
+   "type": "predict",
+   "question": "Where is the terminal point $P(\\pi)$?",
+   "options": [
+    {
+     "md": "$(0,1)$",
+     "correct": false,
+     "why": "That is $P(\\frac{\\pi}{2})$, a quarter turn."
+    },
+    {
+     "md": "$(-1,0)$",
+     "correct": true,
+     "why": "$\\pi$ is half the circumference: halfway around from $(1,0)$."
+    },
+    {
+     "md": "$(0,-1)$",
+     "correct": false,
+     "why": "That is $P(\\frac{3\\pi}{2})$."
+    }
+   ]
+  },
+  {
+   "id": "ucc-b05",
+   "type": "plot",
+   "title": "The special terminal points",
+   "xMin": -1.55,
+   "xMax": 1.55,
+   "yMin": -1.25,
+   "yMax": 1.25,
+   "equalAspect": true,
+   "grid": false,
+   "xTickStep": 0.5,
+   "yTickStep": 0.5,
+   "parametric": [
+    {
+     "x": "cos(t)",
+     "y": "sin(t)",
+     "tMin": 0,
+     "tMax": 6.2832,
+     "color": "accent"
+    }
+   ],
+   "points": [
+    {
+     "x": "cos(0)",
+     "y": "sin(0)",
+     "label": "0",
+     "color": "accent"
+    },
+    {
+     "x": "cos(pi/6)",
+     "y": "sin(pi/6)",
+     "label": "π/6",
+     "color": "accent"
+    },
+    {
+     "x": "cos(pi/4)",
+     "y": "sin(pi/4)",
+     "label": "π/4",
+     "color": "accent"
+    },
+    {
+     "x": "cos(pi/3)",
+     "y": "sin(pi/3)",
+     "label": "π/3",
+     "color": "accent"
+    },
+    {
+     "x": "cos(pi/2)",
+     "y": "sin(pi/2)",
+     "label": "π/2",
+     "color": "accent"
+    },
+    {
+     "x": "cos(2*pi/3)",
+     "y": "sin(2*pi/3)",
+     "label": "2π/3",
+     "color": "accent"
+    },
+    {
+     "x": "cos(3*pi/4)",
+     "y": "sin(3*pi/4)",
+     "label": "3π/4",
+     "color": "accent"
+    },
+    {
+     "x": "cos(5*pi/6)",
+     "y": "sin(5*pi/6)",
+     "label": "5π/6",
+     "color": "accent"
+    },
+    {
+     "x": "cos(pi)",
+     "y": "sin(pi)",
+     "label": "π",
+     "color": "accent"
+    },
+    {
+     "x": "cos(7*pi/6)",
+     "y": "sin(7*pi/6)",
+     "label": "7π/6",
+     "color": "accent"
+    },
+    {
+     "x": "cos(5*pi/4)",
+     "y": "sin(5*pi/4)",
+     "label": "5π/4",
+     "color": "accent"
+    },
+    {
+     "x": "cos(4*pi/3)",
+     "y": "sin(4*pi/3)",
+     "label": "4π/3",
+     "color": "accent"
+    },
+    {
+     "x": "cos(3*pi/2)",
+     "y": "sin(3*pi/2)",
+     "label": "3π/2",
+     "color": "accent"
+    },
+    {
+     "x": "cos(5*pi/3)",
+     "y": "sin(5*pi/3)",
+     "label": "5π/3",
+     "color": "accent"
+    },
+    {
+     "x": "cos(7*pi/4)",
+     "y": "sin(7*pi/4)",
+     "label": "7π/4",
+     "color": "accent"
+    },
+    {
+     "x": "cos(11*pi/6)",
+     "y": "sin(11*pi/6)",
+     "label": "11π/6",
+     "color": "accent"
+    }
+   ],
+   "caption": "Each point is $(\\cos t, \\sin t)$. Points in the same row or column share a coordinate up to sign."
+  },
+  {
+   "id": "ucc-b06",
+   "type": "table",
+   "headers": [
+    "$t$",
+    "$0$",
+    "$\\frac{\\pi}{6}$",
+    "$\\frac{\\pi}{4}$",
+    "$\\frac{\\pi}{3}$",
+    "$\\frac{\\pi}{2}$"
+   ],
+   "rows": [
+    [
+     "$\\cos t$",
+     "$1$",
+     "$\\frac{\\sqrt3}{2}$",
+     "$\\frac{\\sqrt2}{2}$",
+     "$\\frac12$",
+     "$0$"
+    ],
+    [
+     "$\\sin t$",
+     "$0$",
+     "$\\frac12$",
+     "$\\frac{\\sqrt2}{2}$",
+     "$\\frac{\\sqrt3}{2}$",
+     "$1$"
+    ]
+   ],
+   "caption": "Terminal points in the first quadrant",
+   "firstColumnIsHeader": true
+  },
+  {
+   "id": "ucc-b07",
+   "type": "text",
+   "md": "## Reference numbers\n\nFor $t$ outside $\\left[0,\\frac{\\pi}{2}\\right]$, use the **reference number** $\\bar t$: the shortest distance along the circle from $P(t)$ to the $x$-axis. The coordinates of $P(t)$ are those of $P(\\bar t)$, with the signs of its quadrant."
+  },
+  {
+   "id": "ucc-b08",
+   "type": "example",
+   "title": "$P(\\dfrac{5\\pi}{6})$",
+   "problem": "Find the terminal point for $t=\\dfrac{5\\pi}{6}$.",
+   "steps": [
+    {
+     "md": "$\\frac{\\pi}{2}<\\frac{5\\pi}{6}<\\pi$, so $P(t)$ is in Quadrant II."
+    },
+    {
+     "md": "Reference number: $\\bar t=\\pi-\\frac{5\\pi}{6}=\\frac{\\pi}{6}$, and $P(\\frac{\\pi}{6})=(\\frac{\\sqrt3}{2},\\frac12)$."
+    },
+    {
+     "md": "In Quadrant II, $x<0$ and $y>0$: $P(\\frac{5\\pi}{6})=(-\\frac{\\sqrt3}{2},\\frac12)$."
+    }
+   ],
+   "answer": "$(-\\dfrac{\\sqrt3}{2},\\dfrac12)$"
+  },
+  {
+   "id": "ucc-b09",
+   "type": "example",
+   "title": "$P(-\\dfrac{7\\pi}{4})$",
+   "problem": "Find the terminal point for $t=-\\dfrac{7\\pi}{4}$.",
+   "steps": [
+    {
+     "md": "Add $2\\pi$: $-\\frac{7\\pi}{4}+2\\pi=\\frac{\\pi}{4}$ has the same terminal point.",
+     "note": "Adding or subtracting $2\\pi$ is one full lap: the point does not move."
+    },
+    {
+     "md": "So the point is the same as for $\\frac{\\pi}{4}$: $P(-\\frac{7\\pi}{4})=(\\frac{\\sqrt2}{2},\\frac{\\sqrt2}{2})$, in Quadrant I."
+    }
+   ],
+   "answer": "$(\\dfrac{\\sqrt2}{2},\\dfrac{\\sqrt2}{2})$"
+  },
+  {
+   "id": "ucc-b10",
+   "type": "diagram",
+   "kind": "flow",
+   "title": "Finding $P(t)$ for any $t$",
+   "direction": "lr",
+   "nodes": [
+    {
+     "id": "a",
+     "label": "Quadrant of $P(t)$",
+     "color": "blue"
+    },
+    {
+     "id": "b",
+     "label": "Reference number $\\bar t$",
+     "color": "orange"
+    },
+    {
+     "id": "c",
+     "label": "Coordinates of $P(\\bar t)$",
+     "color": "orange"
+    },
+    {
+     "id": "d",
+     "label": "Signs",
+     "shape": "round",
+     "color": "green"
+    }
+   ],
+   "edges": [
+    {
+     "from": "a",
+     "to": "b"
+    },
+    {
+     "from": "b",
+     "to": "c"
+    },
+    {
+     "from": "c",
+     "to": "d"
+    }
+   ],
+   "caption": "Remove whole laps of $2\\pi$ first. The reference number gives the coordinates; the quadrant gives their signs."
+  },
+  {
+   "id": "ucc-b11",
+   "type": "callout",
+   "kind": "tip",
+   "title": "Symmetry shortcuts",
+   "md": "$P(t+\\pi)=(-x,-y)$, $P(-t)=(x,-y)$ and $P(\\pi-t)=(-x,y)$. Use them to check your signs."
+  },
+  {
+   "id": "ucc-b12",
+   "type": "spot",
+   "intro": "Find $P(\\frac{4\\pi}{3})$. Which line is wrong?",
+   "lines": [
+    "$\\frac{4\\pi}{3}$ is in Quadrant III.",
+    "The reference number is $\\frac{4\\pi}{3}-\\pi=\\frac{\\pi}{3}$.",
+    "$P(\\frac{\\pi}{3})=(\\frac12,\\frac{\\sqrt3}{2})$.",
+    "$P(\\frac{4\\pi}{3})=(\\frac12,-\\frac{\\sqrt3}{2})$."
+   ],
+   "wrongIndex": 3,
+   "explanation": "In Quadrant III both coordinates are negative: $P(\\frac{4\\pi}{3})=(-\\frac12,-\\frac{\\sqrt3}{2})$."
+  },
+  {
+   "id": "ucc-b13",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "ucc-e1",
+    "ucc-e2",
+    "ucc-e3",
+    "ucc-e5"
+   ]
+  },
+  {
+   "id": "ucc-b14",
+   "type": "recap",
+   "points": [
+    "$P(t)=(\\cos t,\\sin t)$ lies on $x^2+y^2=1$.",
+    "The reference number gives the coordinates; the quadrant gives the signs.",
+    "Adding $2\\pi$ does not move the point."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "ucc-e1",
+   "skill": "unit-circle-coordinates",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "ucc-e1-q",
+     "type": "text",
+     "md": "Find the terminal point $P(t)$ for $t=\\dfrac{5\\pi}{6}$."
+    }
+   ],
+   "answer": {
+    "kind": "point",
+    "expected": [
+     "-sqrt(3)/2",
+     "1/2"
+    ]
+   },
+   "hints": [
+    "Reference number $\\frac{\\pi}{6}$, Quadrant II."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e1-s",
+     "type": "text",
+     "md": "$P(\\frac{5\\pi}{6})=(-\\frac{\\sqrt3}{2},\\frac12)$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "(√3/2, 1/2)",
+     "why": "That is $P(\\frac{\\pi}{6})$. In Quadrant II the $x$-coordinate is negative."
+    },
+    {
+     "input": "(-1/2, √3/2)",
+     "why": "You swapped the coordinates: for a reference number of $\\frac{\\pi}{6}$, $x$ goes with $\\frac{\\sqrt3}{2}$."
+    }
+   ],
+   "points": 1,
+   "tags": [],
+   "source": {
+    "source": "textbook-4-2",
+    "page": 2
+   }
+  },
+  {
+   "id": "ucc-e2",
+   "skill": "unit-circle-coordinates",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "ucc-e2-q",
+     "type": "text",
+     "md": "Find the terminal point $P(t)$ for $t=\\pi$."
+    }
+   ],
+   "answer": {
+    "kind": "point",
+    "expected": [
+     "-1",
+     "0"
+    ]
+   },
+   "hints": [
+    "Half of the circumference."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e2-s",
+     "type": "text",
+     "md": "Halfway around from $(1,0)$: $P(\\pi)=(-1,0)$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "(0, -1)",
+     "why": "That is $P(\\frac{3\\pi}{2})$, three quarters of the way around."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e3",
+   "skill": "unit-circle-coordinates",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ucc-e3-q",
+     "type": "text",
+     "md": "Find the terminal point $P(t)$ for $t=\\dfrac{4\\pi}{3}$."
+    }
+   ],
+   "answer": {
+    "kind": "point",
+    "expected": [
+     "-1/2",
+     "-sqrt(3)/2"
+    ]
+   },
+   "hints": [
+    "Reference number $\\frac{\\pi}{3}$, Quadrant III."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e3-s",
+     "type": "text",
+     "md": "$P(\\frac{4\\pi}{3})=(-\\frac12,-\\frac{\\sqrt3}{2})$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "(1/2, -√3/2)",
+     "why": "In Quadrant III both coordinates are negative."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e4",
+   "skill": "unit-circle-coordinates",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ucc-e4-q",
+     "type": "text",
+     "md": "Find the terminal point $P(t)$ for $t=-\\dfrac{\\pi}{4}$."
+    }
+   ],
+   "answer": {
+    "kind": "point",
+    "expected": [
+     "sqrt(2)/2",
+     "-sqrt(2)/2"
+    ]
+   },
+   "hints": [
+    "Go clockwise $\\frac{\\pi}{4}$ from $(1,0)$."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e4-s",
+     "type": "text",
+     "md": "$P(-\\frac{\\pi}{4})=(\\frac{\\sqrt2}{2},-\\frac{\\sqrt2}{2})$ (Quadrant IV)."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "(-√2/2, √2/2)",
+     "why": "A negative $t$ goes clockwise, into Quadrant IV: $x>0$, $y<0$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e5",
+   "skill": "unit-circle-coordinates",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ucc-e5-q",
+     "type": "text",
+     "md": "The terminal point of $t$ is $(-\\dfrac35,\\dfrac45)$. Find $\\tan t$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-4/3",
+    "prefix": "$\\tan t =$"
+   },
+   "hints": [
+    "$\\tan t=\\frac{y}{x}$."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e5-s",
+     "type": "text",
+     "md": "$\\tan t=\\dfrac{4/5}{-3/5}=-\\dfrac43$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-3/4",
+     "why": "That is $\\frac{x}{y}=\\cot t$. Tangent is $\\frac{y}{x}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e6",
+   "skill": "unit-circle-coordinates",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ucc-e6-q",
+     "type": "text",
+     "md": "The point $(x,-\\dfrac{5}{13})$ lies on the unit circle in Quadrant III. Find $x$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-12/13",
+    "prefix": "$x =$"
+   },
+   "hints": [
+    "Use $x^2+y^2=1$."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e6-s",
+     "type": "text",
+     "md": "$x^2=1-\\frac{25}{169}=\\frac{144}{169}$, and $x<0$ in Quadrant III, so $x=-\\frac{12}{13}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "12/13",
+     "why": "Both roots solve $x^2=\\frac{144}{169}$; in Quadrant III, $x$ is negative."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e7",
+   "skill": "unit-circle-coordinates",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "ucc-e7-q",
+     "type": "text",
+     "md": "Find the reference number for $t=\\dfrac{11\\pi}{6}$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "pi/6",
+    "prefix": "$\\bar t =$"
+   },
+   "hints": [
+    "$\\frac{11\\pi}{6}$ is in Quadrant IV."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e7-s",
+     "type": "text",
+     "md": "$\\bar t=2\\pi-\\frac{11\\pi}{6}=\\frac{\\pi}{6}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "5*pi/6",
+     "why": "That is $\\frac{11\\pi}{6}-\\pi$, the Quadrant III rule. In Quadrant IV use $2\\pi-t$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e8",
+   "skill": "unit-circle-coordinates",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ucc-e8-q",
+     "type": "text",
+     "md": "In which quadrant is the terminal point of $t=4$?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "Quadrant I",
+      "correct": false,
+      "why": "Quadrant I holds $0<t<\\frac{\\pi}{2}\\approx1.57$."
+     },
+     {
+      "id": "b",
+      "md": "Quadrant II",
+      "correct": false,
+      "why": "Quadrant II ends at $t=\\pi\\approx3.14$."
+     },
+     {
+      "id": "c",
+      "md": "Quadrant III",
+      "correct": true,
+      "why": "$\\pi\\approx3.14<4<\\frac{3\\pi}{2}\\approx4.71$."
+     },
+     {
+      "id": "d",
+      "md": "Quadrant IV",
+      "correct": false,
+      "why": "Quadrant IV starts at $\\frac{3\\pi}{2}\\approx4.71$."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [
+    "Compare $4$ with $\\pi\\approx3.14$ and $\\frac{3\\pi}{2}\\approx4.71$."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e8-s",
+     "type": "text",
+     "md": "Since $\\pi<4<\\frac{3\\pi}{2}$, $P(4)$ is in Quadrant III."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e9",
+   "skill": "unit-circle-coordinates",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "ucc-e9-q",
+     "type": "text",
+     "md": "Find the terminal point $P(t)$ for $t=\\dfrac{29\\pi}{6}$."
+    }
+   ],
+   "answer": {
+    "kind": "point",
+    "expected": [
+     "-sqrt(3)/2",
+     "1/2"
+    ]
+   },
+   "hints": [
+    "Subtract $2\\pi=\\frac{12\\pi}{6}$ twice."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e9-s",
+     "type": "text",
+     "md": "$\\frac{29\\pi}{6}-4\\pi=\\frac{5\\pi}{6}$, so $P=(-\\frac{\\sqrt3}{2},\\frac12)$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "(√3/2, 1/2)",
+     "why": "$\\frac{29\\pi}{6}$ lands on $\\frac{5\\pi}{6}$, in Quadrant II: $x<0$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e10",
+   "skill": "unit-circle-coordinates",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "ucc-e10-q",
+     "type": "text",
+     "md": "True or false: every terminal point $P(t)=(x,y)$ satisfies $x^2+y^2=1$."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": true
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "ucc-e10-s",
+     "type": "text",
+     "md": "True: every terminal point lies on the unit circle. That is the identity $\\sin^2t+\\cos^2t=1$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ucc-e11",
+   "skill": "unit-circle-coordinates",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "ucc-e11-q",
+     "type": "text",
+     "md": "If $P(t)=(\\dfrac{\\sqrt5}{3},\\dfrac23)$, find $\\sin(t+\\pi)$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-2/3",
+    "prefix": "$\\sin(t+\\pi) =$"
+   },
+   "hints": [
+    "$P(t+\\pi)=(-x,-y)$."
+   ],
+   "solution": [
+    {
+     "id": "ucc-e11-s",
+     "type": "text",
+     "md": "Half a turn more gives $P(t+\\pi)=(-\\frac{\\sqrt5}{3},-\\frac23)$, so $\\sin(t+\\pi)=-\\frac23$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "2/3",
+     "why": "Adding $\\pi$ moves the point to the opposite side of the circle, so both coordinates change sign."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [],
+ "cards": [
+  {
+   "id": "ucc-c1",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "Terminal point of $t$ on the unit circle",
+   "back": "$P(t)=(\\cos t,\\sin t)$",
+   "tags": []
+  },
+  {
+   "id": "ucc-c2",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "$P(\\frac{\\pi}{6})$",
+   "back": "$(\\frac{\\sqrt3}{2},\\frac12)$",
+   "tags": []
+  },
+  {
+   "id": "ucc-c3",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "$P(\\frac{\\pi}{4})$",
+   "back": "$(\\frac{\\sqrt2}{2},\\frac{\\sqrt2}{2})$",
+   "tags": []
+  },
+  {
+   "id": "ucc-c4",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "$P(\\frac{\\pi}{3})$",
+   "back": "$(\\frac12,\\frac{\\sqrt3}{2})$",
+   "tags": []
+  },
+  {
+   "id": "ucc-c5",
+   "skill": "unit-circle-coordinates",
+   "kind": "cloze",
+   "front": "On the unit circle, the point at angle $\\theta$ is {{c1::$(\\cos\\theta,\\ \\sin\\theta)$}}.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "ucc-c6",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "What is a reference number?",
+   "back": "The shortest distance along the circle from $P(t)$ to the $x$-axis.",
+   "tags": []
+  },
+  {
+   "id": "ucc-c7",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "$P(t+\\pi)$ in terms of $P(t)=(x,y)$",
+   "back": "$(-x,-y)$",
+   "tags": []
+  },
+  {
+   "id": "ucc-c8",
+   "skill": "unit-circle-coordinates",
+   "kind": "basic",
+   "front": "$P(\\frac{5\\pi}{6})$",
+   "back": "$(-\\frac{\\sqrt3}{2},\\frac12)$",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Swapped coordinates",
+   "wrong": "$P(\\frac{\\pi}{6})=(\\frac12,\\frac{\\sqrt3}{2})$",
+   "right": "$P(\\frac{\\pi}{6})=(\\frac{\\sqrt3}{2},\\frac12)$",
+   "why": "The first coordinate is the cosine: near $t=0$ the point is far to the right."
+  },
+  {
+   "title": "Clockwise vs counterclockwise",
+   "wrong": "$P(-\\frac{\\pi}{4})$ in Quadrant II",
+   "right": "$P(-\\frac{\\pi}{4})$ in Quadrant IV",
+   "why": "Negative $t$ travels clockwise from $(1,0)$."
+  }
+ ],
+ "sources": [
+  {
+   "source": "textbook-4-2",
+   "page": 1
+  },
+  {
+   "source": "unit-3-notes",
+   "page": 1
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

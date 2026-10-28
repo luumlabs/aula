@@ -1,0 +1,10 @@
+// Tipos y utilidades de IA que comparten el proceso principal y la interfaz.
+export * from './json'
+export * from './types'
+export * from './reasoning'
+export * from './apiKey'
+export * from './urlScheme'
+export * from './models'
+export * from './errors'
+export * from './views'
+export * from './i18n'

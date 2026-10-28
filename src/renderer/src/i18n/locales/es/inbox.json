@@ -1,0 +1,311 @@
+{
+  "title": "Novedades",
+  "subtitle": {
+    "unread_one": "{{count}} sin leer",
+    "unread_other": "{{count}} sin leer",
+    "allRead": "Todo al día",
+    "what": "Lo que Aula hizo por ti mientras no mirabas"
+  },
+  "tabs": {
+    "inbox": "Novedades",
+    "automations": "Automatizaciones"
+  },
+  "views": {
+    "open": "Abiertas",
+    "snoozed": "Pospuestas",
+    "archived": "Archivadas"
+  },
+  "filters": {
+    "all": "Todo",
+    "unread": "Sin leer",
+    "label": "Filtrar por tipo"
+  },
+  "kinds": {
+    "platform": "Plataforma",
+    "reminder": "Recordatorio",
+    "summary": "Resumen",
+    "offer": "Examen sin preparar",
+    "followup": "Seguimiento",
+    "automation": "Automatización",
+    "system": "Aula",
+    "problem": "Necesita tu ayuda",
+    "digest": "Resumen de avisos"
+  },
+  "sections": {
+    "snoozedBack": "Pospuestas que vuelven",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "week": "Esta semana",
+    "earlier": "Antes",
+    "unread_one": "{{count}} sin leer",
+    "unread_other": "{{count}} sin leer"
+  },
+  "actions": {
+    "markAllRead": "Marcar todo como leído",
+    "markRead": "Marcar como leída",
+    "markUnread": "Marcar como no leída",
+    "archive": "Archivar",
+    "unarchive": "Sacar del archivo",
+    "snooze": "Posponer",
+    "unsnooze": "Dejar de posponer",
+    "reply": "Responder",
+    "openAutomation": "Ver la automatización",
+    "openRoutine": "Ver la rutina",
+    "why": "¿Por qué veo esto?",
+    "clearRead": "Archivar lo leído",
+    "search": "Buscar en Novedades",
+    "groupByDay": "Agrupar por día",
+    "groupByKind": "Agrupar por tipo",
+    "more": "Más opciones",
+    "pauseThis": "Pausar esta automatización",
+    "pauseRoutine": "Pausar esta rutina",
+    "settings": "Avisos y estilo…"
+  },
+  "snooze": {
+    "oneHour": "1 hora",
+    "thisEvening": "Esta tarde",
+    "tomorrow": "Mañana",
+    "weekend": "Este fin de semana",
+    "nextWeek": "La semana que viene"
+  },
+  "badges": {
+    "dueSoon": "Vence pronto",
+    "resurfaced": "Pospuesta",
+    "back": "Vuelve {{when}}"
+  },
+  "why": {
+    "platform": "La revisión de tu plataforma encontró algo nuevo.",
+    "platformNamed": "Tu automatización «{{name}}» encontró algo nuevo en tu plataforma.",
+    "reminder": "Aula te avisa antes de cada entrega y examen de tu calendario.",
+    "summary": "Es tu resumen de «Aula siempre activa»: lo que tienes hoy y lo que viene.",
+    "offer": "Se acerca un examen y aún no tienes un curso para prepararlo.",
+    "followup": "Aula se programó este seguimiento durante una conversación para avisarte cuando hubiera algo.",
+    "automation": "Es el resultado de una de tus automatizaciones.",
+    "automationNamed": "Es el resultado de tu automatización «{{name}}».",
+    "problem": "Algo no salió bien y necesita tu ayuda: los fallos siempre se avisan.",
+    "system": "Es un aviso de Aula sobre cómo va lo que hace sola."
+  },
+  "empty": {
+    "title": "No hay nada pendiente",
+    "body": "Cuando Aula haga algo por ti —el resumen de la mañana, un recordatorio, lo nuevo de tu plataforma— lo verás aquí.",
+    "filteredTitle": "Nada por aquí",
+    "filteredBody": "Prueba con otro filtro o borra la búsqueda.",
+    "snoozedTitle": "Nada pospuesto",
+    "snoozedBody": "Lo que pospongas vuelve solo, sin leer y arriba, a la hora que elijas.",
+    "archivedTitle": "El archivo está vacío",
+    "archivedBody": "Lo que archives queda aquí por si lo necesitas otra vez.",
+    "showAll": "Ver todo"
+  },
+  "detail": {
+    "onlyHere": "Este mensaje solo está en Novedades.",
+    "replyPrompt": "Sobre «{{title}}»: "
+  },
+  "error": {
+    "title": "No se pudo abrir Novedades",
+    "retry": "Reintentar"
+  },
+  "proactive": {
+    "title": "Aula siempre activa",
+    "off": "Apagada",
+    "on": "Activa",
+    "paused": "En pausa",
+    "pausedUntil": "En pausa hasta {{when}}",
+    "working": "Revisando ahora",
+    "next": "Próxima: {{what}} · {{when}}",
+    "nothing": "Nada programado",
+    "offer": "Cada mañana te resume el día, te avisa antes de entregas y exámenes y revisa tu plataforma, también con la ventana cerrada. En tu plataforma solo lee.",
+    "activate": "Activar",
+    "resume": "Reanudar",
+    "pause": "Pausar",
+    "pauseHour": "1 hora",
+    "pauseTomorrow": "Hasta mañana",
+    "pauseWeek": "Una semana",
+    "routines": "Rutinas",
+    "light": "Con Aula abierta",
+    "lightHint": "Los recordatorios y los exámenes sin preparar no gastan nada: llegan mientras Aula está abierta, aunque el modo esté apagado.",
+    "usage": "Uso de hoy",
+    "runsLeft_one": "Hoy queda para una revisión más.",
+    "runsLeft_other": "Hoy queda para unas {{count}} revisiones más.",
+    "exhausted": "Hoy ya se usó lo previsto. Lo urgente sigue llegando con una reserva; lo demás vuelve mañana.",
+    "upNext": "Lo próximo",
+    "upNextEmpty": "Cuando actives «Aula siempre activa», aquí verás lo que hará y cuándo."
+  },
+  "routines": {
+    "morningBrief": "Resumen de la mañana",
+    "platformCheck": "Revisión de la plataforma",
+    "deadlineReminders": "Entregas y exámenes",
+    "examOffers": "Exámenes sin preparar",
+    "weeklySummary": "Resumen semanal",
+    "morningBriefDetail": "Tus clases, lo que vence pronto y qué estudiar hoy.",
+    "platformCheckDetail": "Lo nuevo de tu plataforma, con un repasito.",
+    "deadlineRemindersDetail": "Te avisa antes de cada entrega y examen.",
+    "examOffersDetail": "Si se acerca un examen sin curso, te ofrece prepararlo.",
+    "weeklySummaryDetail": "Cómo te fue la semana y qué viene.",
+    "examOffersWhen_one": "≤ {{count}} día",
+    "examOffersWhen_other": "≤ {{count}} días"
+  },
+  "health": {
+    "paused": "En pausa",
+    "pausedDetail": "No revisa nada hasta que la reanudes.",
+    "pausedUntilDetail": "Vuelve sola {{when}}.",
+    "noAI": "Aula necesita una IA",
+    "noAIDetail": "Los recordatorios siguen llegando; para revisar tu plataforma y resumir, elige una en Ajustes.",
+    "signIn": "La sesión de {{site}} caducó",
+    "signInDetail": "Aula nunca inicia sesión por su cuenta: hazlo tú y vuelve a revisar.",
+    "aiUnavailable": "Tu IA no responde",
+    "aiUnavailableDetail": "{{reason}}. Aula vuelve a intentarlo {{when}}; los recordatorios siguen llegando.",
+    "budget": "Pausada por el presupuesto de hoy",
+    "budgetDetail": "Lo urgente sigue llegando; lo demás vuelve {{when}}.",
+    "failing": "«{{title}}» está fallando",
+    "fixSignIn": "Iniciar sesión",
+    "fixAI": "Elegir en Ajustes",
+    "fixRetry": "Reintentar",
+    "fixBudget": "Ajustar"
+  },
+  "automations": {
+    "yours": "Tus automatizaciones",
+    "new": "Nueva automatización",
+    "count_one": "{{count}} automatización",
+    "count_other": "{{count}} automatizaciones",
+    "overviewTitle": "Aula trabaja por ti mientras no estás",
+    "overviewBody": "Pídele que vigile tu plataforma, te recuerde fechas o te prepare un resumen a la hora que quieras. Solo lee: nunca entrega, envía ni cambia nada, y lo que encuentre te lo deja en Novedades.",
+    "examples": [
+      "Revisa Canvas cada día a las 8:00 y avísame si hay algo nuevo",
+      "Mira tres veces al día si ya están las tareas del nuevo semestre y avísame cuando aparezcan",
+      "Recuérdame cada entrega 24 h y 2 h antes",
+      "Los viernes a las 18:00 dime qué tengo pendiente para la semana que viene"
+    ],
+    "fromAula": "de Aula",
+    "completed": "Terminada",
+    "paused": "En pausa",
+    "nextRun": "Próxima vez: {{when}}",
+    "lastRun": "Última: {{when}}",
+    "running": "Revisando ahora…",
+    "runNow": "Ejecutar ahora",
+    "edit": "Editar…",
+    "recent": "Lo último que hizo",
+    "history": "Historial",
+    "delete": "Eliminar…",
+    "deleteTitle": "¿Eliminar «{{title}}»?",
+    "deleteBody": "También se elimina su historial.",
+    "deleteConfirm": "Eliminar",
+    "noRuns": "Todavía no se ha ejecutado.",
+    "started": "En marcha: el resultado llegará a Novedades.",
+    "skipped": "No hizo (solo lectura): {{what}}",
+    "created": "Preparó: {{what}}",
+    "tokens_one": "{{count}} token",
+    "tokens_other": "{{count}} tokens",
+    "outcomes": {
+      "news": "Algo nuevo",
+      "conditionMet": "Encontrado",
+      "nothingNew": "Sin novedades",
+      "done": "Hecho",
+      "needsSignIn": "Inicia sesión",
+      "failed": "Falló",
+      "budget": "Esperó por el presupuesto",
+      "missed": "No se hizo (el ordenador dormía)",
+      "skipped": "Omitida"
+    },
+    "triggers": {
+      "catchUp": "recuperada",
+      "manual": "a mano",
+      "retry": "reintento"
+    }
+  },
+  "editor": {
+    "newTitle": "Nueva automatización",
+    "editTitle": "Editar automatización",
+    "subtitle": "Aula lo hará sola a su hora y te dejará el resultado en Novedades.",
+    "name": "Nombre",
+    "namePlaceholder": "Revisar Canvas",
+    "what": "¿Qué hago?",
+    "whatPlaceholder": "Revisa mis notificaciones de Canvas y avísame si me llegó algo nuevo (tareas, anuncios, notas).",
+    "when": "¿Cuándo?",
+    "kinds": {
+      "daily": "A horas fijas",
+      "interval": "Cada cierto tiempo",
+      "once": "Una vez",
+      "beforeEvents": "Antes de entregas"
+    },
+    "addTime": "Otra hora",
+    "removeTime": "Quitar esta hora",
+    "every": "Cada",
+    "hours": "h",
+    "from": "de",
+    "to": "a",
+    "eventKinds": {
+      "assignment": "Entregas",
+      "exam": "Exámenes",
+      "quiz": "Pruebas"
+    },
+    "where": "¿Dónde mira?",
+    "capabilities": {
+      "platform": "Tu plataforma",
+      "calendar": "Calendario",
+      "courses": "Tus cursos",
+      "web": "Internet",
+      "study": "Preparar repasos"
+    },
+    "notify": "Avisos",
+    "notifyPolicies": {
+      "news": "Solo si hay algo nuevo",
+      "always": "Siempre",
+      "chatOnly": "Sin notificación"
+    },
+    "untilFound": "Cuando lo encuentre, avísame y deja de mirar",
+    "firstRun": "Primera vez: {{when}}",
+    "safety": "En tu plataforma solo lee: nunca entrega, envía, empieza exámenes ni cambia nada, y no inicia sesión por su cuenta.",
+    "create": "Programar",
+    "save": "Guardar",
+    "needsWhat": "Escribe qué tiene que hacer Aula.",
+    "invalidSchedule": "El horario no está completo."
+  },
+  "schedule": {
+    "everyDay": "todos los días",
+    "weekdays": "de lunes a viernes",
+    "weekend": "los fines de semana",
+    "dailyAt": "{{days}} a las {{times}}",
+    "every": "Cada {{hours}} h, de {{from}} a {{to}}",
+    "once": "Una vez: {{when}}",
+    "onceEmpty": "Una vez",
+    "before": "{{hours}} antes de {{what}}",
+    "whatAssign": "entregas",
+    "whatExams": "exámenes",
+    "whatBoth": "entregas y exámenes",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min"
+  },
+  "when": {
+    "today": "hoy a las {{time}}",
+    "tomorrow": "mañana a las {{time}}",
+    "yesterday": "ayer",
+    "day": "el {{day}} a las {{time}}"
+  },
+  "settingsCard": {
+    "hint": "Te resume el día, te avisa de entregas y exámenes, revisa tu plataforma y te prepara repasos, aunque cierres la ventana. En tu plataforma solo lee: nunca entrega, empieza exámenes, envía mensajes ni cambia nada.",
+    "style": "Estilo",
+    "styles": {
+      "quiet": "Discreta",
+      "balanced": "Equilibrada",
+      "attentive": "Muy atenta"
+    },
+    "styleDetail": {
+      "quiet": "Solo suena lo urgente. Lo demás te espera en Novedades.",
+      "balanced": "Te avisa de lo nuevo y de lo urgente, sin pasarse.",
+      "attentive": "Revisa más a menudo y te cuenta más cosas.",
+      "custom": "Con los números que elegiste a mano."
+    },
+    "quietHours": "Horas de silencio",
+    "quietHint": "Aula no programa nada y lo que no es urgente te espera hasta que terminen.",
+    "notifications": "Avisarme con notificaciones",
+    "notificationsHint": "Si no, todo queda solo en Novedades.",
+    "badge": "Lo no leído en el icono de Aula",
+    "openAtLogin": "Abrir Aula al iniciar sesión",
+    "openAtLoginHint": "Al cerrar la ventana, Aula sigue en la bandeja haciendo lo programado.",
+    "followups": "Que Aula se programe seguimientos",
+    "followupsHint": "«Esta noche miro si el profesor subió las diapositivas y te aviso». Gastan del mismo presupuesto.",
+    "manage": "Rutinas y automatizaciones"
+  }
+}

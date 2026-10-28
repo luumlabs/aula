@@ -1,0 +1,160 @@
+/* La marca de Aula animada solo con CSS (transform y opacity): ninguna marca cuesta JavaScript por fotograma.
+   Coordenadas en unidades del viewBox (24 × 24): el sol vive tras la puerta del arco de pincel (recorte), con el horizonte en
+   y = 20,5. El arco y el horizonte son trazos rellenos (pincel de grosor variable), así que su color va en `fill`.
+   Con «Reducir movimiento» las animaciones no corren (styles.css) y cada estado queda quieto en su postura. */
+.aula-mark .am-sun,
+.aula-mark .am-glow,
+.aula-mark .am-orbit,
+.aula-mark .am-ring {
+  transform-box: view-box;
+}
+.aula-mark .am-arch,
+.aula-mark .am-horizon {
+  transition: fill 0.35s ease;
+}
+.aula-mark .am-horizon {
+  opacity: 0.9;
+}
+
+/* El sol de la puerta: medio sol en el horizonte; al pasar el ratón asoma */
+.aula-mark .am-sun {
+  transform-origin: 12px 20.5px;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, fill 0.35s ease;
+}
+.aula-mark[data-hover='true']:hover .am-sun,
+[data-aula-hover]:hover .aula-mark[data-hover='true'] .am-sun {
+  transform: translateY(-1.5px);
+}
+
+/* La luz de la puerta (un velo plano del color del sol, recortado por la puerta) */
+.aula-mark .am-glow {
+  transform-origin: 12px 20.5px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+/* Pensando: el sol respira (sube y baja despacio) y la puerta se ilumina con él */
+.aula-mark[data-state='thinking'] .am-sun {
+  animation: am-breathe 2.6s ease-in-out infinite;
+}
+.aula-mark[data-state='thinking'] .am-glow {
+  opacity: 0.7;
+  animation: am-glow 2.6s ease-in-out infinite;
+}
+@keyframes am-breathe {
+  0%, 100% { transform: translateY(1px); }
+  50% { transform: translateY(-2.2px); }
+}
+@keyframes am-glow {
+  0%, 100% { opacity: 0.2; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/* Trabajando: el sol de la puerta se pone y uno pequeño cruza el arco: sale por la izquierda, pasa despacio por arriba y se pone a
+   la derecha volviéndose ladrillo (el atardecer); la puerta se ilumina mientras es de día y se apaga al anochecer. */
+.aula-mark .am-orbit {
+  transform-origin: 12px 21px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.aula-mark .am-dusk {
+  opacity: 0;
+}
+.aula-mark[data-state='working'] .am-sun {
+  transform: translateY(4.5px);
+  opacity: 0;
+}
+.aula-mark[data-state='working'] .am-orbit {
+  opacity: 1;
+  animation: am-orbit 3.6s linear infinite;
+}
+.aula-mark[data-state='working'] .am-dusk {
+  animation: am-dusk 3.6s linear infinite;
+}
+.aula-mark[data-state='working'] .am-glow {
+  opacity: 0.5;
+  animation: am-sky 3.6s linear infinite;
+}
+@keyframes am-orbit {
+  0% { transform: rotate(-54deg); opacity: 0; }
+  8% { opacity: 1; }
+  34% { transform: rotate(-14deg); }
+  66% { transform: rotate(14deg); }
+  92% { opacity: 1; }
+  100% { transform: rotate(54deg); opacity: 0; }
+}
+@keyframes am-dusk {
+  0%, 50% { opacity: 0; }
+  84%, 100% { opacity: 1; }
+}
+@keyframes am-sky {
+  0%, 100% { opacity: 0; }
+  40%, 60% { opacity: 0.9; }
+}
+
+/* Listo: el sol sube de un salto y suelta un anillo de luz que se apaga */
+.aula-mark .am-ring {
+  transform-origin: 12px 18px;
+  opacity: 0;
+}
+.aula-mark[data-state='done'] .am-sun {
+  animation: am-pop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.aula-mark[data-state='done'] .am-ring {
+  animation: am-ring 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) 0.28s;
+}
+@keyframes am-pop {
+  0% { transform: translateY(2.5px); }
+  45% { transform: translateY(-2.4px); }
+  100% { transform: translateY(0); }
+}
+@keyframes am-ring {
+  0% { opacity: 0.9; transform: scale(0.7); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+
+/* Espera tu respuesta: el sol asomado, latiendo muy despacio */
+.aula-mark[data-state='waiting'] .am-sun {
+  transform: translateY(-0.8px);
+  animation: am-wait 2.2s ease-in-out infinite;
+}
+@keyframes am-wait {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Viva (donde la marca es protagonista: vacíos, bienvenida) ──
+   En reposo el sol respira muy despacio, apenas medio píxel. */
+.aula-mark[data-alive][data-state='idle'] .am-sun {
+  animation: am-rest 6.5s ease-in-out infinite;
+}
+@keyframes am-rest {
+  0%, 100% { transform: translateY(0.35px); }
+  50% { transform: translateY(-0.55px); }
+}
+
+/* «Line boil»: tres dibujos del mismo gesto que se turnan cuatro veces por segundo, como un dibujo animado a mano. Sin
+   animación (calma, movimiento reducido) se ve el primero. */
+.aula-mark[data-boil] .am-boil {
+  opacity: 0;
+  animation: am-boil 0.75s steps(1, end) infinite;
+}
+.aula-mark[data-boil] .am-boil[data-v='0'] {
+  opacity: 1;
+}
+.aula-mark[data-boil] .am-boil[data-v='1'] {
+  animation-delay: -0.25s;
+}
+.aula-mark[data-boil] .am-boil[data-v='2'] {
+  animation-delay: -0.5s;
+}
+@keyframes am-boil {
+  0% { opacity: 1; }
+  33.333% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Lo vivo es adorno: quieto en calma y con la ventana sin ver (ambient.ts) */
+:root:is([data-ambient='calm'], [data-ambient='off']) .aula-mark:is([data-alive], [data-boil]) :is(.am-sun, .am-boil) {
+  animation-play-state: paused !important;
+}

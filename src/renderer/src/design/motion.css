@@ -1,0 +1,13 @@
+/* Bucles pequeños en CSS (solo transform y opacity: corren en el compositor, sin JavaScript por fotograma). */
+
+/* El punto «en vivo»: una onda que se expande y se apaga */
+.live-dot-pulse {
+  animation: live-dot-pulse 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+@keyframes live-dot-pulse {
+  from { transform: scale(1); opacity: 0.5; }
+  to { transform: scale(2.2); opacity: 0; }
+}
+.reduce-motion .live-dot-pulse {
+  display: none;
+}

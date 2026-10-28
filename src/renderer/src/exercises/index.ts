@@ -1,0 +1,10 @@
+// Ejercicios: un componente por tipo de respuesta, la vista común (`ExerciseView`) y su flujo (`useExercise`).
+export * from './types'
+export { ExerciseView, ExerciseActions, AnswerArea, type ExerciseViewProps } from './ExerciseView'
+export { useExercise, type ExerciseController, type ExerciseOptions, type ExerciseCallbacks } from './useExercise'
+export { gradeExercise, correctAnswer, gradeLang } from './grading'
+export { inputSummary, snapshotDraft, snapshotInput, restoreDraft, initialDraft, draftInput, finalCredit, hintsUsed, elapsedSeconds, initialRun, type RunState, type Draft } from './model'
+export { Tex, KeyCap, StatusWord } from './ui'
+export { HintList, SolutionPanel } from './Feedback'
+export { ExerciseCard } from './ExerciseCard'
+export { StaticBlocks } from './Blocks'

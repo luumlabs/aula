@@ -1,0 +1,583 @@
+{
+ "schema": 1,
+ "id": "exam-2-math112",
+ "title": "Exam #2 · MATH 101",
+ "subject": "Trigonometry",
+ "courseCode": "MATH 101",
+ "language": "en",
+ "icon": "trigonometry",
+ "hue": 0.6,
+ "created": "2026-01-05T12:00:00.000Z",
+ "updated": "2026-01-05T12:00:00.000Z",
+ "exam": {
+  "title": "Exam #2 — Trigonometry",
+  "durationMinutes": 75,
+  "totalPoints": 100,
+  "aids": "Graphing calculator permitted. No notes.",
+  "notes": "Covers chapters 3 and 4. Give exact answers unless a problem says to round: rationalize denominators and keep π in radian answers. The first problem is always on the unit circle."
+ },
+ "units": [
+  {
+   "id": "u1",
+   "title": "Angles and their measure",
+   "summary": "Reference angles, degrees and radians, arcs and sectors",
+   "skillIDs": [
+    "reference-angles",
+    "degree-radian-conversion",
+    "arc-length-sector-area"
+   ]
+  },
+  {
+   "id": "u2",
+   "title": "The six functions and the unit circle",
+   "summary": "Exact values, terminal points and inverse functions",
+   "skillIDs": [
+    "exact-trig-values",
+    "unit-circle-coordinates",
+    "inverse-trig-calculator"
+   ]
+  },
+  {
+   "id": "u3",
+   "title": "Graphs of sine and cosine",
+   "summary": "Key points, amplitude, period and phase shift",
+   "skillIDs": [
+    "sine-cosine-graphs",
+    "amplitude-period-phase"
+   ]
+  }
+ ],
+ "skills": [
+  {
+   "id": "reference-angles",
+   "unit": "u1",
+   "title": "Reference angles and degrees-minutes",
+   "summary": "Find the reference angle of any angle and switch between decimal degrees and degrees-minutes-seconds.",
+   "objectives": [
+    "Name the quadrant of an angle in standard position",
+    "Find the reference angle in each quadrant",
+    "Convert between decimal degrees and degrees-minutes-seconds"
+   ],
+   "prerequisites": [],
+   "weight": 10,
+   "minutes": 25,
+   "order": 0,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 12,
+    "exercises": 11,
+    "templates": 1,
+    "cards": 8,
+    "decks": 0
+   }
+  },
+  {
+   "id": "degree-radian-conversion",
+   "unit": "u1",
+   "title": "Exact degree–radian conversion",
+   "summary": "Convert between degrees and radians exactly, keeping π in the answer.",
+   "objectives": [
+    "Explain what one radian measures",
+    "Convert degrees to radians in simplest form",
+    "Convert radians to degrees"
+   ],
+   "prerequisites": [],
+   "weight": 10,
+   "minutes": 20,
+   "order": 1,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 11,
+    "exercises": 11,
+    "templates": 1,
+    "cards": 8,
+    "decks": 0
+   }
+  },
+  {
+   "id": "arc-length-sector-area",
+   "unit": "u1",
+   "title": "Arc length & sector area applications",
+   "summary": "Use s = rθ and A = ½r²θ to solve problems about wheels, sprinklers and pendulums.",
+   "objectives": [
+    "Find arc length and sector area with the angle in radians",
+    "Solve for the radius or the angle",
+    "Relate angular and linear speed"
+   ],
+   "prerequisites": [
+    "degree-radian-conversion"
+   ],
+   "weight": 14,
+   "minutes": 30,
+   "order": 2,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 10,
+    "exercises": 11,
+    "templates": 1,
+    "cards": 8,
+    "decks": 0
+   }
+  },
+  {
+   "id": "exact-trig-values",
+   "unit": "u2",
+   "title": "Exact values of the six trig functions",
+   "summary": "Combine reference angles and quadrant signs with the special-angle table to find exact values without a calculator.",
+   "objectives": [
+    "Recall the exact sine, cosine and tangent of 30°, 45° and 60°",
+    "Use the quadrant to choose the sign",
+    "Find csc, sec and cot exactly and rationalize"
+   ],
+   "prerequisites": [
+    "reference-angles",
+    "degree-radian-conversion"
+   ],
+   "weight": 20,
+   "minutes": 35,
+   "order": 3,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 19,
+    "exercises": 12,
+    "templates": 0,
+    "cards": 9,
+    "decks": 0
+   }
+  },
+  {
+   "id": "unit-circle-coordinates",
+   "unit": "u2",
+   "title": "Unit-circle coordinates and arc distance t",
+   "summary": "Find the terminal point P(t) on the unit circle for any real number t and read off sin t and cos t.",
+   "objectives": [
+    "Find terminal points for the special values of t",
+    "Use reference numbers and quadrant signs",
+    "Use x² + y² = 1 to find a missing coordinate"
+   ],
+   "prerequisites": [
+    "degree-radian-conversion",
+    "exact-trig-values"
+   ],
+   "weight": 15,
+   "minutes": 30,
+   "order": 4,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 14,
+    "exercises": 11,
+    "templates": 0,
+    "cards": 8,
+    "decks": 0
+   }
+  },
+  {
+   "id": "inverse-trig-calculator",
+   "unit": "u2",
+   "title": "Finding angles with a calculator",
+   "summary": "Use the inverse trig keys in the right mode and find every angle that solves the equation.",
+   "objectives": [
+    "Use sin⁻¹, cos⁻¹ and tan⁻¹ in degree and radian mode",
+    "Find all solutions in [0°, 360°)",
+    "Solve right-triangle angle problems"
+   ],
+   "prerequisites": [
+    "exact-trig-values"
+   ],
+   "weight": 8,
+   "minutes": 20,
+   "order": 5,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 10,
+    "exercises": 10,
+    "templates": 0,
+    "cards": 8,
+    "decks": 0
+   }
+  },
+  {
+   "id": "sine-cosine-graphs",
+   "unit": "u3",
+   "title": "Graphs of sine and cosine",
+   "summary": "Sketch y = sin x and y = cos x from their five key points and read period, range, zeros and symmetry.",
+   "objectives": [
+    "Sketch one period of sine and cosine",
+    "Read zeros, maxima and minima",
+    "Use even/odd symmetry"
+   ],
+   "prerequisites": [
+    "unit-circle-coordinates"
+   ],
+   "weight": 11,
+   "minutes": 25,
+   "order": 6,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 10,
+    "exercises": 10,
+    "templates": 0,
+    "cards": 8,
+    "decks": 0
+   }
+  },
+  {
+   "id": "amplitude-period-phase",
+   "unit": "u3",
+   "title": "Amplitude, period & phase shift",
+   "summary": "Read and build sinusoids y = A sin(B(x − C)) + D from their graph features.",
+   "objectives": [
+    "Read amplitude, period, phase shift and midline",
+    "Write an equation from its features",
+    "Model a periodic situation"
+   ],
+   "prerequisites": [
+    "sine-cosine-graphs"
+   ],
+   "weight": 12,
+   "minutes": 30,
+   "order": 7,
+   "status": "ready",
+   "counts": {
+    "lessonBlocks": 10,
+    "exercises": 11,
+    "templates": 1,
+    "cards": 8,
+    "decks": 0
+   }
+  }
+ ],
+ "blueprint": {
+  "durationMinutes": 75,
+  "totalPoints": 100,
+  "instructions": "Show your work. Exact answers unless told to round.",
+  "sections": [
+   {
+    "title": "Angles and reference angles",
+    "skillIDs": [
+     "reference-angles",
+     "degree-radian-conversion"
+    ],
+    "count": 3,
+    "minLevel": 1,
+    "maxLevel": 3,
+    "pointsEach": 6
+   },
+   {
+    "title": "Arc length and sector area applications",
+    "skillIDs": [
+     "arc-length-sector-area"
+    ],
+    "count": 2,
+    "minLevel": 1,
+    "maxLevel": 3,
+    "pointsEach": 8
+   },
+   {
+    "title": "Exact values and the unit circle",
+    "skillIDs": [
+     "exact-trig-values",
+     "unit-circle-coordinates",
+     "inverse-trig-calculator"
+    ],
+    "count": 6,
+    "minLevel": 1,
+    "maxLevel": 3,
+    "pointsEach": 7
+   },
+   {
+    "title": "Graphs of sine and cosine",
+    "skillIDs": [
+     "sine-cosine-graphs",
+     "amplitude-period-phase"
+    ],
+    "count": 4,
+    "minLevel": 1,
+    "maxLevel": 3,
+    "pointsEach": 6
+   }
+  ]
+ },
+ "glossary": [
+  {
+   "term": "Standard position",
+   "definition": "An angle whose vertex is at the origin and whose initial side lies on the positive x-axis.",
+   "aliases": [
+    "initial side"
+   ],
+   "skill": "reference-angles"
+  },
+  {
+   "term": "Terminal side",
+   "definition": "The ray where an angle in standard position stops.",
+   "aliases": [],
+   "skill": "reference-angles"
+  },
+  {
+   "term": "Reference angle",
+   "definition": "The acute angle θ′ between the terminal side of an angle and the x-axis.",
+   "aliases": [
+    "θ'"
+   ],
+   "skill": "reference-angles"
+  },
+  {
+   "term": "Coterminal angles",
+   "definition": "Angles that share a terminal side; they differ by a multiple of 360° (or 2π).",
+   "aliases": [
+    "coterminal"
+   ],
+   "skill": "reference-angles"
+  },
+  {
+   "term": "Minute",
+   "definition": "One sixtieth of a degree: 1′ = (1/60)°.",
+   "aliases": [
+    "arcminute"
+   ],
+   "skill": "reference-angles"
+  },
+  {
+   "term": "Radian",
+   "definition": "The central angle that cuts off an arc as long as the radius; π radians = 180°.",
+   "aliases": [
+    "rad"
+   ],
+   "skill": "degree-radian-conversion"
+  },
+  {
+   "term": "Arc length",
+   "definition": "The distance along a circle: s = rθ, with θ in radians.",
+   "aliases": [],
+   "skill": "arc-length-sector-area"
+  },
+  {
+   "term": "Sector",
+   "definition": "The region bounded by two radii and the arc between them; its area is ½r²θ.",
+   "aliases": [
+    "sector area"
+   ],
+   "skill": "arc-length-sector-area"
+  },
+  {
+   "term": "Angular speed",
+   "definition": "The angle turned per unit of time, ω = θ/t.",
+   "aliases": [
+    "ω"
+   ],
+   "skill": "arc-length-sector-area"
+  },
+  {
+   "term": "Linear speed",
+   "definition": "The distance traveled per unit of time by a point on a turning circle, v = rω.",
+   "aliases": [],
+   "skill": "arc-length-sector-area"
+  },
+  {
+   "term": "Unit circle",
+   "definition": "The circle x² + y² = 1, centered at the origin with radius 1.",
+   "aliases": [
+    "unit-circle"
+   ],
+   "skill": "unit-circle-coordinates"
+  },
+  {
+   "term": "Terminal point",
+   "definition": "The point P(t) reached by traveling a distance t along the unit circle from (1, 0).",
+   "aliases": [
+    "P(t)"
+   ],
+   "skill": "unit-circle-coordinates"
+  },
+  {
+   "term": "Reference number",
+   "definition": "The shortest distance along the unit circle from P(t) to the x-axis.",
+   "aliases": [],
+   "skill": "unit-circle-coordinates"
+  },
+  {
+   "term": "Exact value",
+   "definition": "A value written with integers, fractions, radicals and π, without rounding: −√3/2, not −0.866.",
+   "aliases": [],
+   "skill": "exact-trig-values"
+  },
+  {
+   "term": "Rationalize",
+   "definition": "Rewrite a fraction so the denominator has no radical: 1/√3 = √3/3.",
+   "aliases": [
+    "rationalizing"
+   ],
+   "skill": "exact-trig-values"
+  },
+  {
+   "term": "Reciprocal functions",
+   "definition": "csc θ = 1/sin θ, sec θ = 1/cos θ and cot θ = 1/tan θ.",
+   "aliases": [
+    "cosecant",
+    "secant",
+    "cotangent"
+   ],
+   "skill": "exact-trig-values"
+  },
+  {
+   "term": "ASTC",
+   "definition": "“All Students Take Calculus”: which functions are positive in Quadrants I, II, III and IV.",
+   "aliases": [
+    "All Students Take Calculus"
+   ],
+   "skill": "exact-trig-values"
+  },
+  {
+   "term": "Inverse sine",
+   "definition": "sin⁻¹ x, the angle in [−90°, 90°] whose sine is x.",
+   "aliases": [
+    "arcsin"
+   ],
+   "skill": "inverse-trig-calculator"
+  },
+  {
+   "term": "Period",
+   "definition": "The length of one complete cycle of a periodic function; 2π for sin x and cos x.",
+   "aliases": [],
+   "skill": "sine-cosine-graphs"
+  },
+  {
+   "term": "Amplitude",
+   "definition": "Half the distance between the maximum and the minimum of a sinusoid: |A|.",
+   "aliases": [],
+   "skill": "amplitude-period-phase"
+  },
+  {
+   "term": "Phase shift",
+   "definition": "The horizontal slide C of y = A sin(B(x − C)) + D; to the right when C > 0.",
+   "aliases": [
+    "horizontal shift"
+   ],
+   "skill": "amplitude-period-phase"
+  },
+  {
+   "term": "Midline",
+   "definition": "The horizontal line y = D halfway between the maximum and the minimum.",
+   "aliases": [],
+   "skill": "amplitude-period-phase"
+  }
+ ],
+ "formulaSheet": [
+  {
+   "title": "Angles",
+   "items": [
+    {
+     "name": "Degrees and radians",
+     "tex": "180^\\circ=\\pi\\ \\text{rad}",
+     "vars": []
+    },
+    {
+     "name": "Arc length",
+     "tex": "s=r\\theta",
+     "when": "$\\theta$ in radians.",
+     "vars": []
+    },
+    {
+     "name": "Sector area",
+     "tex": "A=\\tfrac12 r^2\\theta",
+     "when": "$\\theta$ in radians.",
+     "vars": []
+    },
+    {
+     "name": "Linear speed",
+     "tex": "v=r\\omega",
+     "vars": []
+    }
+   ]
+  },
+  {
+   "title": "The six functions",
+   "items": [
+    {
+     "name": "Unit circle",
+     "tex": "P(t)=(\\cos t,\\ \\sin t)",
+     "vars": []
+    },
+    {
+     "name": "Quotient",
+     "tex": "\\tan\\theta=\\dfrac{\\sin\\theta}{\\cos\\theta}",
+     "vars": []
+    },
+    {
+     "name": "Reciprocals",
+     "tex": "\\csc\\theta=\\dfrac{1}{\\sin\\theta}\\quad\\sec\\theta=\\dfrac{1}{\\cos\\theta}\\quad\\cot\\theta=\\dfrac{1}{\\tan\\theta}",
+     "vars": []
+    },
+    {
+     "name": "Pythagorean identity",
+     "tex": "\\sin^2\\theta+\\cos^2\\theta=1",
+     "vars": []
+    }
+   ]
+  },
+  {
+   "title": "Sinusoids",
+   "items": [
+    {
+     "name": "General form",
+     "tex": "y=A\\sin(B(x-C))+D",
+     "vars": [
+      {
+       "symbol": "|A|",
+       "meaning": "amplitude"
+      },
+      {
+       "symbol": "C",
+       "meaning": "phase shift"
+      },
+      {
+       "symbol": "D",
+       "meaning": "midline"
+      }
+     ]
+    },
+    {
+     "name": "Period",
+     "tex": "T=\\dfrac{2\\pi}{B}",
+     "vars": []
+    }
+   ]
+  }
+ ],
+ "sources": [
+  {
+   "id": "unit-3-notes",
+   "title": "Unit 3 lecture notes",
+   "kind": "pdf",
+   "addedAt": "2026-01-05T12:00:00.000Z",
+   "pages": 3,
+   "characters": 755,
+   "status": "ready",
+   "trust": "notes",
+   "warnings": []
+  },
+  {
+   "id": "exam-2-review",
+   "title": "Exam 2 review sheet",
+   "kind": "pdf",
+   "addedAt": "2026-01-05T12:00:00.000Z",
+   "pages": 2,
+   "characters": 461,
+   "status": "ready",
+   "trust": "official",
+   "warnings": []
+  },
+  {
+   "id": "textbook-4-2",
+   "title": "Textbook · Section 4.2 The unit circle",
+   "kind": "pdf",
+   "addedAt": "2026-01-05T12:00:00.000Z",
+   "pages": 2,
+   "characters": 399,
+   "status": "ready",
+   "trust": "book",
+   "warnings": []
+  }
+ ],
+ "generation": []
+}

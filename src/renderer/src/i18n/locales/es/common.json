@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Aula",
+    "tagline": "Tu compañera de estudio"
+  },
+  "nav": {
+    "home": "Hoy",
+    "calendar": "Calendario",
+    "chat": "Aula",
+    "tools": "Herramientas",
+    "documents": "Documentos",
+    "inbox": "Novedades",
+    "stats": "Estadísticas",
+    "settings": "Ajustes",
+    "courses": "Tus cursos",
+    "newCourse": "Nuevo curso con Aula",
+    "collapse": "Plegar la barra",
+    "expand": "Desplegar la barra",
+    "back": "Atrás",
+    "forward": "Adelante",
+    "noCourses": "Aún no tienes cursos",
+    "examToday": "Examen hoy",
+    "examTomorrow": "Examen mañana",
+    "examInDays_one": "Examen en {{count}} día",
+    "examInDays_other": "Examen en {{count}} días",
+    "sampleCourse": "Curso de ejemplo"
+  },
+  "search": {
+    "placeholder": "Buscar en Aula",
+    "hint": "Cursos, lecciones, herramientas, acciones",
+    "empty": "Nada por aquí. Prueba con otras palabras.",
+    "groups": {
+      "navigate": "Ir a",
+      "courses": "Cursos",
+      "tools": "Herramientas",
+      "actions": "Acciones"
+    }
+  },
+  "actions": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "done": "Hecho",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "retry": "Reintentar",
+    "continue": "Continuar",
+    "start": "Empezar",
+    "open": "Abrir",
+    "more": "Más",
+    "back": "Volver",
+    "next": "Siguiente",
+    "skip": "Saltar",
+    "copy": "Copiar",
+    "copied": "Copiado"
+  },
+  "time": {
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "inDays_one": "en {{count}} día",
+    "inDays_other": "en {{count}} días",
+    "daysAgo_one": "hace {{count}} día",
+    "daysAgo_other": "hace {{count}} días"
+  },
+  "greeting": {
+    "morning": "Buenos días",
+    "afternoon": "Buenas tardes",
+    "evening": "Buenas noches",
+    "withName": "{{greeting}}, {{name}}"
+  },
+  "errors": {
+    "generic": "Algo salió mal",
+    "retry": "Vuelve a intentarlo en un momento.",
+    "screen": "Esta pantalla no se pudo mostrar. Tus cursos y tu progreso están a salvo.",
+    "details": "Detalles técnicos"
+  },
+  "orb": {
+    "ask": "Pregúntale a Aula"
+  },
+  "approval": {
+    "action": {
+      "click": "Aula quiere pulsar «{{label}}»",
+      "navigate": "Aula quiere abrir «{{label}}»",
+      "download": "Aula quiere descargar «{{label}}»",
+      "submit": "Aula quiere enviar «{{label}}»"
+    },
+    "allow": "Permitir",
+    "deny": "No",
+    "timeLeft": "Tiempo para responder",
+    "autoDeny": "Si no respondes, no lo hará ({{seconds}} s)",
+    "more_one": "Y {{count}} petición más esperando",
+    "more_other": "Y {{count}} peticiones más esperando"
+  },
+  "sample": {
+    "tag": "Ejemplo",
+    "hint": "Viene con Aula para que veas cómo funciona. Puedes borrarlo cuando quieras."
+  }
+}

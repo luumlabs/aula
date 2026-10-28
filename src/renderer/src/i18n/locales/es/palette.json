@@ -1,0 +1,16 @@
+{
+  "inCourses": "En tus cursos",
+  "searching": "Buscando en tus cursos…",
+  "page": "p. {{page}}",
+  "kinds": {
+    "lesson": "Lección",
+    "exercise": "Ejercicio",
+    "glossary": "Glosario",
+    "formula": "Fórmula",
+    "material": "Material"
+  },
+  "actions": {
+    "importCourse": "Importar un curso (.aulapack)",
+    "memory": "Lo que Aula recuerda"
+  }
+}

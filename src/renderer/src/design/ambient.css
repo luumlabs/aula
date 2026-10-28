@@ -1,0 +1,31 @@
+/* Movimiento ambiental (ambient.ts). Una animación pausada no pide fotogramas: el compositor deja de trabajar.
+   Solo se pausan BUCLES (animaciones infinitas), nunca una entrada, una salida o la respuesta a una acción: esas terminan
+   solas y, pausadas a medias, dejarían algo invisible o a medio camino.
+   calm: la ventana se ve pero nadie la toca → los bucles decorativos se quedan donde estaban (sin saltos).
+   off: la ventana no se ve → todos los bucles quietos, también los que muestran que Aula trabaja (nadie los ve); al volver
+   siguen desde donde se quedaron. Los bucles de animaciones web (WAAPI, motion) los pausa ambient.ts. */
+
+/* bucles decorativos */
+:root:is([data-ambient='calm'], [data-ambient='off']) :is(
+  .glass-light__blob,
+  .live-dot-pulse:not([data-activity]),
+  .viz-flow,
+  .aula-mark[data-state='waiting'] .am-sun
+),
+:root:is([data-ambient='calm'], [data-ambient='off']) .blk-pulse::before,
+/* bucles que muestran algo que pasa (el chat pensando, un curso creándose, cargas): solo con la ventana sin ver */
+:root[data-ambient='off'] :is(
+  .live-dot-pulse,
+  .skeleton,
+  .aula-mark:is([data-state='thinking'], [data-state='working'], [data-state='waiting']) :is(.am-sun, .am-glow, .am-orbit, .am-dusk),
+  .chat-wave > span,
+  .chat-bar > i,
+  .chat-act > svg,
+  .chat-stop-ring,
+  .animate-spin,
+  .animate-pulse
+),
+:root[data-ambient='off'] .chat-act::after,
+:root[data-ambient='off'] .chat-caret *::after {
+  animation-play-state: paused !important;
+}

@@ -1,0 +1,12 @@
+# Keeps the GitHub Actions used by the workflows (pinned by commit SHA) up to date. npm dependencies are updated by hand.
+# While GitHub Actions is off for this repository nobody can run the workflows to test a new major version, so only
+# minor and patch updates are proposed; remove the `ignore` block once Actions is back.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

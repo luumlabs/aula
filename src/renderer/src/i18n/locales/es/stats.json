@@ -1,0 +1,167 @@
+{
+  "title": "Estadísticas",
+  "subtitleAll": "Últimas 12 semanas · todos tus cursos",
+  "subtitleOne": "Últimas 12 semanas · {{course}}",
+  "allCourses": "Todos los cursos",
+  "pickCourse": "Elige qué curso ver",
+  "loading": "Cargando tus estadísticas",
+  "summary": {
+    "study": "de estudio",
+    "activeDays": "{{active}} de {{total}}",
+    "activeDaysLabel": "días con estudio",
+    "accuracy": "de acierto",
+    "streak_one": "día de racha",
+    "streak_other": "días de racha",
+    "streakBest": "Racha de {{current}} días (tu mejor: {{best}})",
+    "streakIsBest": "Racha de {{current}} días, la mejor hasta ahora",
+    "streakOne": "Llevas 1 día: mañana empieza la racha",
+    "bestOnly": "Tu mejor racha: {{best}} días",
+    "exercises_one": "{{count}} ejercicio resuelto",
+    "exercises_other": "{{count}} ejercicios resueltos"
+  },
+  "heat": {
+    "title": "Constancia",
+    "detail": "Minutos de estudio de cada día",
+    "less": "Menos",
+    "more": "Más",
+    "cell": "{{date}}: {{minutes}}",
+    "cellExercises_one": "{{date}}: {{minutes}} · {{count}} ejercicio",
+    "cellExercises_other": "{{date}}: {{minutes}} · {{count}} ejercicios"
+  },
+  "rhythm": {
+    "title": "Tu ritmo",
+    "avg": "Promedio por día con estudio",
+    "bestDay": "Tu mejor día de la semana",
+    "bestWeek": "Tu semana más larga",
+    "weekOf": "{{minutes}} · semana del {{date}}",
+    "empty": "Cuando estudies, aquí verás tu promedio, tu mejor día y tu semana más larga.",
+    "byWeekday": "Minutos por día de la semana"
+  },
+  "levels": {
+    "title": "Dominio por semana",
+    "detail": "Temas en cada nivel, semana a semana",
+    "today": "Hoy",
+    "weekOf": "Semana del {{date}}",
+    "empty": "Aún sin dominio que mostrar",
+    "emptyBody": "A medida que practiques, los temas pasarán de «Sin ver» a «Dominado».",
+    "names": {
+      "unseen": "Sin ver",
+      "learning": "Empezando",
+      "practicing": "Practicando",
+      "solid": "Sólido",
+      "mastered": "Dominado"
+    }
+  },
+  "topics": {
+    "title": "Acierto por tema",
+    "detail": "Con los ejercicios de estas 12 semanas",
+    "exercises_one": "{{count}} ejercicio",
+    "exercises_other": "{{count}} ejercicios",
+    "empty": "Resuelve ejercicios y verás aquí en qué temas aciertas más y en cuáles menos.",
+    "showAll_one": "Ver {{count}} tema",
+    "showAll_other": "Ver los {{count}} temas",
+    "showLess": "Ver menos"
+  },
+  "score": {
+    "title": "Nota estimada",
+    "detail": "Con su intervalo: lo más probable, como mínimo y como máximo",
+    "expected": "de nota estimada",
+    "between": "entre {{low}} y {{high}}",
+    "covered": "{{percent}} del temario practicado",
+    "noEstimate": "Aún no hay nota estimada: practica algún tema y aparecerá aquí, con su intervalo.",
+    "needTwoDays": "La evolución aparecerá cuando tengas ejercicios en al menos dos días.",
+    "pass": "Aprobado",
+    "exam": "Examen",
+    "footnote": "Se reconstruye con tus ejercicios guardados; el último punto es tu estado de hoy (incluye las tarjetas).",
+    "open": "Ver «{{course}}»",
+    "labels": {
+      "notStarted": "Sin empezar",
+      "early": "Empezando",
+      "gettingThere": "Avanzando",
+      "almostReady": "Casi listo",
+      "ready": "Listo"
+    }
+  },
+  "empty": {
+    "noCourses": "Aún no hay nada que medir",
+    "noCoursesBody": "Crea tu primer curso y aquí verás tu constancia, tu acierto por tema y cómo sube tu nota estimada.",
+    "create": "Crear un curso con Aula",
+    "nothing": "Todavía no has estudiado",
+    "nothingBody": "Haz el plan de hoy y vuelve: verás tus minutos, tu racha y tu progreso tema a tema.",
+    "goToday": "Ir a Hoy"
+  },
+  "error": "No se pudieron calcular tus estadísticas.",
+  "achievements": {
+    "title": "Logros",
+    "count": "{{earned}} de {{total}}",
+    "done": "Conseguido",
+    "progress": "{{value}} de {{goal}}",
+    "unlocked": "¡Logro conseguido!",
+    "items": {
+      "firstAnswer": {
+        "name": "Primera respuesta",
+        "how": "Resuelve tu primer ejercicio."
+      },
+      "creator": {
+        "name": "Tu primer curso",
+        "how": "Crea un curso con Aula."
+      },
+      "streak3": {
+        "name": "Tres días seguidos",
+        "how": "Estudia tres días seguidos."
+      },
+      "streak7": {
+        "name": "Una semana seguida",
+        "how": "Estudia siete días seguidos."
+      },
+      "streak30": {
+        "name": "Un mes sin parar",
+        "how": "Estudia treinta días seguidos."
+      },
+      "hour1": {
+        "name": "Primera hora",
+        "how": "Suma una hora de estudio."
+      },
+      "hours10": {
+        "name": "Diez horas",
+        "how": "Suma diez horas de estudio."
+      },
+      "correct100": {
+        "name": "Cien aciertos",
+        "how": "Acierta cien ejercicios."
+      },
+      "correct1000": {
+        "name": "Mil aciertos",
+        "how": "Acierta mil ejercicios."
+      },
+      "cards100": {
+        "name": "Cien repasos",
+        "how": "Repasa cien tarjetas."
+      },
+      "cards1000": {
+        "name": "Mil repasos",
+        "how": "Repasa mil tarjetas."
+      },
+      "firstMastered": {
+        "name": "Primer tema dominado",
+        "how": "Domina un tema por completo."
+      },
+      "mastered10": {
+        "name": "Diez temas dominados",
+        "how": "Domina diez temas."
+      },
+      "mistakes10": {
+        "name": "Errores resueltos",
+        "how": "Resuelve diez errores de tu cuaderno."
+      },
+      "mockPassed": {
+        "name": "Simulacro aprobado",
+        "how": "Aprueba un simulacro."
+      },
+      "courseReady": {
+        "name": "Listo para el examen",
+        "how": "Llega a «Listo» en un curso."
+      }
+    }
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "title": "Statistics",
+  "subtitleAll": "Last 12 weeks · all your courses",
+  "subtitleOne": "Last 12 weeks · {{course}}",
+  "allCourses": "All courses",
+  "pickCourse": "Choose a course",
+  "loading": "Loading your stats",
+  "summary": {
+    "study": "of study",
+    "activeDays": "{{active}} of {{total}}",
+    "activeDaysLabel": "days with study",
+    "accuracy": "correct",
+    "streak_one": "day streak",
+    "streak_other": "day streak",
+    "streakBest": "{{current}}-day streak (your best: {{best}})",
+    "streakIsBest": "{{current}}-day streak, your best so far",
+    "streakOne": "1 day in: come back tomorrow to start a streak",
+    "bestOnly": "Your best streak: {{best}} days",
+    "exercises_one": "{{count}} exercise solved",
+    "exercises_other": "{{count}} exercises solved"
+  },
+  "heat": {
+    "title": "Consistency",
+    "detail": "Minutes of study each day",
+    "less": "Less",
+    "more": "More",
+    "cell": "{{date}}: {{minutes}}",
+    "cellExercises_one": "{{date}}: {{minutes}} · {{count}} exercise",
+    "cellExercises_other": "{{date}}: {{minutes}} · {{count}} exercises"
+  },
+  "rhythm": {
+    "title": "Your rhythm",
+    "avg": "Average per study day",
+    "bestDay": "Your best day of the week",
+    "bestWeek": "Your longest week",
+    "weekOf": "{{minutes}} · week of {{date}}",
+    "empty": "Once you study, you’ll see your average, your best day and your longest week here.",
+    "byWeekday": "Minutes by day of the week"
+  },
+  "levels": {
+    "title": "Mastery by week",
+    "detail": "Topics at each level, week by week",
+    "today": "Today",
+    "weekOf": "Week of {{date}}",
+    "empty": "No mastery to show yet",
+    "emptyBody": "As you practice, topics will move from “Not seen” to “Mastered”.",
+    "names": {
+      "unseen": "Not seen",
+      "learning": "Learning",
+      "practicing": "Practicing",
+      "solid": "Solid",
+      "mastered": "Mastered"
+    }
+  },
+  "topics": {
+    "title": "Accuracy by topic",
+    "detail": "From your exercises over the last 12 weeks",
+    "exercises_one": "{{count}} exercise",
+    "exercises_other": "{{count}} exercises",
+    "empty": "Solve exercises and you’ll see here which topics you get right most and least.",
+    "showAll_one": "Show {{count}} topic",
+    "showAll_other": "Show all {{count}} topics",
+    "showLess": "Show less"
+  },
+  "score": {
+    "title": "Estimated grade",
+    "detail": "With its range: most likely, at least and at most",
+    "expected": "estimated grade",
+    "between": "between {{low}} and {{high}}",
+    "covered": "{{percent}} of the syllabus practiced",
+    "noEstimate": "No estimate yet: practice any topic and it will show up here, with its range.",
+    "needTwoDays": "The trend will appear once you have exercises on at least two days.",
+    "pass": "Pass",
+    "exam": "Exam",
+    "footnote": "Rebuilt from your saved exercises; the last point is where you are today (flashcards included).",
+    "open": "Open “{{course}}”",
+    "labels": {
+      "notStarted": "Not started",
+      "early": "Getting started",
+      "gettingThere": "Getting there",
+      "almostReady": "Almost ready",
+      "ready": "Ready"
+    }
+  },
+  "empty": {
+    "noCourses": "Nothing to measure yet",
+    "noCoursesBody": "Create your first course and you’ll see your consistency, your accuracy by topic and how your estimated grade rises.",
+    "create": "Create a course with Aula",
+    "nothing": "You haven’t studied yet",
+    "nothingBody": "Do today’s plan and come back: you’ll see your minutes, your streak and your progress topic by topic.",
+    "goToday": "Go to Today"
+  },
+  "error": "Your stats couldn’t be calculated.",
+  "achievements": {
+    "title": "Achievements",
+    "count": "{{earned}} of {{total}}",
+    "done": "Earned",
+    "progress": "{{value}} of {{goal}}",
+    "unlocked": "Achievement unlocked!",
+    "items": {
+      "firstAnswer": {
+        "name": "First answer",
+        "how": "Answer your first exercise."
+      },
+      "creator": {
+        "name": "Your first course",
+        "how": "Create a course with Aula."
+      },
+      "streak3": {
+        "name": "Three days in a row",
+        "how": "Study three days in a row."
+      },
+      "streak7": {
+        "name": "A week in a row",
+        "how": "Study seven days in a row."
+      },
+      "streak30": {
+        "name": "A month nonstop",
+        "how": "Study thirty days in a row."
+      },
+      "hour1": {
+        "name": "First hour",
+        "how": "Study for an hour in total."
+      },
+      "hours10": {
+        "name": "Ten hours",
+        "how": "Study for ten hours in total."
+      },
+      "correct100": {
+        "name": "A hundred right",
+        "how": "Get a hundred exercises right."
+      },
+      "correct1000": {
+        "name": "A thousand right",
+        "how": "Get a thousand exercises right."
+      },
+      "cards100": {
+        "name": "A hundred reviews",
+        "how": "Review a hundred flashcards."
+      },
+      "cards1000": {
+        "name": "A thousand reviews",
+        "how": "Review a thousand flashcards."
+      },
+      "firstMastered": {
+        "name": "First topic mastered",
+        "how": "Master a topic completely."
+      },
+      "mastered10": {
+        "name": "Ten topics mastered",
+        "how": "Master ten topics."
+      },
+      "mistakes10": {
+        "name": "Mistakes fixed",
+        "how": "Fix ten mistakes from your notebook."
+      },
+      "mockPassed": {
+        "name": "Mock exam passed",
+        "how": "Pass a mock exam."
+      },
+      "courseReady": {
+        "name": "Ready for the exam",
+        "how": "Reach “Ready” in a course."
+      }
+    }
+  }
+}

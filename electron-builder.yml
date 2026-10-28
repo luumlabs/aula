@@ -1,0 +1,121 @@
+# Empaquetado de Aula (electron-builder). `npm run dist:mac|win|linux`.
+# Firma: en macOS, si hay certificado (CSC_LINK/CSC_KEY_PASSWORD o uno «Developer ID» en el llavero) se firma con él y,
+# con APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID, se notariza; si no, firma ad hoc. Ver docs/PUBLISHING.md.
+appId: com.luumlabs.aula
+productName: Aula
+copyright: Copyright © 2026 Luum Labs
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - resources/**
+  - package.json
+  - "!**/*.map"
+  - "!**/node_modules/**/{test,tests,__tests__,docs,example,examples}/**"
+  # fuera los README/CHANGELOG de las dependencias, pero NO sus LICENSE*.md (avisos de licencia obligatorios)
+  - "!**/node_modules/**/{README,Readme,readme,CHANGELOG,Changelog,changelog,HISTORY,History,history,CONTRIBUTING,contributing,CODE_OF_CONDUCT,SECURITY,MIGRATION,UPGRADING}*.{md,markdown}"
+  # el resumen de licencias va aparte, en Resources (extraResources, abajo); out/.licenses son sus piezas
+  - "!out/.licenses/**"
+  # @napi-rs/canvas es nativo (uno por sistema y arquitectura): rompe la app universal de macOS y faltaría en los
+  # instaladores compilados en otro sistema. pdf.js lee el texto sin él (src/main/services/ingest/extract/pdf.ts).
+  - "!**/node_modules/@napi-rs/**"
+  # lo que las dependencias traen y Aula no usa (J4-9): tipos de TypeScript; de pdf.js solo hace falta legacy/build
+  # (pdf.mjs y pdf.worker.mjs), cmaps, standard_fonts, iccs y wasm (la interfaz lleva su propio pdf.js, ya empaquetado);
+  # de docx, la versión para Node (los .cjs; fuera las de navegador); de tesseract.js-core, solo los núcleos LSTM
+  # (Aula usa OEM 1 = LSTM_ONLY: relaxedsimd/simd/básico según la máquina) y sin sus copias en base64 (*.wasm.js)
+  - "!**/node_modules/**/*.d.{ts,cts,mts}"
+  - "!**/node_modules/pdfjs-dist/{build,web,image_decoders,types}/**"
+  - "!**/node_modules/pdfjs-dist/legacy/{web,image_decoders}/**"
+  - "!**/node_modules/pdfjs-dist/legacy/build/{*.min.mjs,pdf.sandbox*}"
+  - "!**/node_modules/docx/dist/*.{iife.js,mjs}"
+  - "!**/node_modules/tesseract.js-core/*.wasm.js"
+  - "!**/node_modules/tesseract.js-core/tesseract-core{,-simd,-relaxedsimd}.wasm"
+  - "!**/node_modules/tesseract.js-core/tesseract-core-{simd,relaxedsimd}.js"
+# avisos legales legibles fuera del asar (Aula.app/Contents/Resources, o resources/ en Windows y Linux): la licencia
+# de Aula y sus términos del §7 (NOTICE.md), los avisos de terceros y el texto de la licencia de cada dependencia que va dentro (lo genera
+# scripts/build/third-party-licenses.ts al compilar)
+extraResources:
+  - { from: LICENSE.md, to: LICENSE.md }
+  - { from: NOTICE.md, to: NOTICE.md }
+  - { from: THIRD_PARTY_NOTICES.md, to: THIRD_PARTY_NOTICES.md }
+  - { from: out/THIRD_PARTY_LICENSES.txt, to: THIRD_PARTY_LICENSES.txt }
+asarUnpack:
+  - resources/**
+  # el puente MCP lo lanzan los agentes de terminal (claude, codex) como proceso aparte: fuera del asar con sus trozos
+  - out/main/aula-mcp.js
+  - out/main/ingest-worker.js
+  - out/main/chunks/**
+# Fusibles de Electron: sin NODE_OPTIONS ni --inspect, la app solo se carga de su app.asar verificado y las cookies
+# (sesiones de las plataformas) se cifran en disco con la clave del sistema. runAsNode sigue encendido: el puente MCP
+# que lanzan los agentes de terminal lo necesita (ELECTRON_RUN_AS_NODE). La interfaz se sirve por app://aula (no por
+# file://), así que file:// no tiene privilegios extra: una página no puede leer archivos del disco con fetch('file://…').
+electronFuses:
+  runAsNode: true
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
+mac:
+  category: public.app-category.education
+  # icono: lo genera `npx electron scripts/dev/icon/build-icons.mjs` (icns con dibujo propio a 16/32 px, .ico y build/icons)
+  icon: build/icon.icns
+  # Sin certificado Developer ID: identity "-" y scripts/build/mac-sign.cjs firma con el certificado propio y estable
+  # «Aula Local Signing» (~/.aula-signing/) si está, o ad hoc si no (mismo requisito designado en todas las versiones: macOS
+  # no vuelve a pedir el llavero tras actualizar; A1-P1-5). Sin «hardened runtime» (sin certificado de Apple, la validación
+  # de bibliotecas podría impedir que la app arranque). Con Developer ID: quitar `identity` y `sign`, hardenedRuntime: true.
+  identity: "-"
+  sign: scripts/build/mac-sign.cjs
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # el .zip (lo que descargan las actualizaciones) se llama como el .dmg: Aula-<v>-mac.zip
+  artifactName: Aula-${version}-mac.${ext}
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+dmg:
+  sign: false
+  artifactName: Aula-${version}-mac.${ext}
+  contents:
+    - { x: 150, y: 190 }
+    - { x: 390, y: 190, type: link, path: /Applications }
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  artifactName: Aula-${version}-win-${arch}.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+  artifactName: Aula-Setup-${version}.${ext}
+linux:
+  icon: build/icons
+  category: Education
+  synopsis: Your study companion
+  description: Turns your notes, slides and past exams, or any topic, into an interactive course and studies it with you.
+  # la .deb necesita un responsable con correo (sin él, electron-builder no la genera): la dirección noreply de GitHub
+  maintainer: Luum Labs <253840303+luumlabs@users.noreply.github.com>
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64]
+  artifactName: Aula-${version}-linux-${arch}.${ext}
+publish:
+  provider: github
+  owner: luumlabs
+  repo: aula
+  # borrador: nadie lo ve (ni se ofrece como actualización) hasta que se publica a mano en GitHub tras probarlo
+  releaseType: draft
+# título y notas de la versión (inglés y español); al publicar otra versión, apuntar a sus notas
+releaseInfo:
+  releaseName: Aula 0.1
+  releaseNotesFile: docs/release-notes/0.1.0.md

@@ -1,0 +1,830 @@
+{
+ "id": "arc-length-sector-area",
+ "title": "Arc length & sector area applications",
+ "summary": "Use s = rθ and A = ½r²θ to solve problems about wheels, sprinklers and pendulums.",
+ "objectives": [
+  "Find arc length and sector area with the angle in radians",
+  "Solve for the radius or the angle",
+  "Relate angular and linear speed"
+ ],
+ "prerequisites": [
+  "degree-radian-conversion"
+ ],
+ "lesson": [
+  {
+   "id": "als-b01",
+   "type": "text",
+   "md": "# Arc length and sector area\n\nWith the angle in **radians**, the length of an arc and the area of a slice of a circle come from two short formulas. They only work in radians, which is the main reason radians exist."
+  },
+  {
+   "id": "als-b02",
+   "type": "formulas",
+   "title": "Formulas for a circle of radius $r$ (angles in radians)",
+   "items": [
+    {
+     "name": "Arc length",
+     "tex": "s=r\\theta",
+     "when": "Distance along the circle.",
+     "vars": [
+      {
+       "symbol": "s",
+       "meaning": "arc length"
+      },
+      {
+       "symbol": "r",
+       "meaning": "radius"
+      },
+      {
+       "symbol": "\\theta",
+       "meaning": "central angle",
+       "unit": "rad"
+      }
+     ]
+    },
+    {
+     "name": "Sector area",
+     "tex": "A=\\tfrac12 r^2\\theta",
+     "when": "The area of the slice.",
+     "vars": []
+    },
+    {
+     "name": "Angular speed",
+     "tex": "\\omega=\\dfrac{\\theta}{t}",
+     "when": "Radians turned per unit of time.",
+     "vars": []
+    },
+    {
+     "name": "Linear speed",
+     "tex": "v=r\\omega",
+     "when": "Speed of a point on the rim.",
+     "vars": []
+    }
+   ]
+  },
+  {
+   "id": "als-b03",
+   "type": "predict",
+   "question": "A pizza has radius $8$ in. If the radius doubles to $16$ in and the slice angle stays the same, the crust along the edge of the slice…",
+   "options": [
+    {
+     "md": "doubles",
+     "correct": true,
+     "why": "$s=r\\theta$ is proportional to $r$."
+    },
+    {
+     "md": "is multiplied by $4$",
+     "correct": false,
+     "why": "That is what happens to the **area**, $\\tfrac12r^2\\theta$."
+    },
+    {
+     "md": "stays the same",
+     "correct": false,
+     "why": "The angle is the same, but the arc is farther from the center."
+    }
+   ],
+   "explanation": "Arc length grows like $r$; sector area grows like $r^2$."
+  },
+  {
+   "id": "als-b04",
+   "type": "plot",
+   "title": "A sector with central angle $\\theta$",
+   "xMin": -1.35,
+   "xMax": 1.35,
+   "yMin": -1.15,
+   "yMax": 1.15,
+   "equalAspect": true,
+   "grid": false,
+   "axes": false,
+   "parametric": [
+    {
+     "x": "cos(t)",
+     "y": "sin(t)",
+     "tMin": 0,
+     "tMax": 6.2832,
+     "color": "gray",
+     "dashed": true
+    },
+    {
+     "x": "cos(t)",
+     "y": "sin(t)",
+     "tMin": 0,
+     "tMax": 1.2,
+     "color": "orange"
+    },
+    {
+     "x": "0.25*cos(t)",
+     "y": "0.25*sin(t)",
+     "tMin": 0,
+     "tMax": 1.2,
+     "color": "accent"
+    }
+   ],
+   "lines": [
+    {
+     "kind": "segment",
+     "x1": "0",
+     "y1": "0",
+     "x2": "1",
+     "y2": "0",
+     "color": "accent",
+     "dashed": false
+    },
+    {
+     "kind": "segment",
+     "x1": "0",
+     "y1": "0",
+     "x2": "cos(1.2)",
+     "y2": "sin(1.2)",
+     "color": "accent",
+     "dashed": false
+    }
+   ],
+   "labels": [
+    {
+     "x": "0.62",
+     "y": "0.08",
+     "tex": "$r$"
+    },
+    {
+     "x": "0.36",
+     "y": "0.2",
+     "tex": "$\\theta$",
+     "color": "accent"
+    },
+    {
+     "x": "1.02",
+     "y": "0.62",
+     "tex": "$s=r\\theta$",
+     "color": "orange",
+     "anchor": "left"
+    }
+   ],
+   "caption": "The arc and the two radii enclose the sector; the arc length is $s=r\\theta$."
+  },
+  {
+   "id": "als-b05",
+   "type": "example",
+   "title": "A lawn sprinkler",
+   "problem": "A sprinkler sprays water $20$ m out and turns through $135^\\circ$. What area does it water?",
+   "steps": [
+    {
+     "md": "Convert to radians: $135^\\circ=\\dfrac{3\\pi}{4}$.",
+     "note": "The formula needs radians: plugging in $135$ makes the area about $57$ times too big."
+    },
+    {
+     "md": "$A=\\tfrac12 r^2\\theta=\\tfrac12(20)^2\\cdot\\dfrac{3\\pi}{4}$."
+    },
+    {
+     "md": "$A=150\\pi\\approx471.2\\ \\text{m}^2$."
+    }
+   ],
+   "answer": "$150\\pi\\approx 471\\ \\text{m}^2$"
+  },
+  {
+   "id": "als-b06",
+   "type": "example",
+   "title": "How far does a bike go?",
+   "problem": "A bicycle wheel has radius $33$ cm and turns $4$ times. How far does the bike move?",
+   "steps": [
+    {
+     "md": "Each revolution is $2\\pi$ radians, so $\\theta=4\\cdot2\\pi=8\\pi$."
+    },
+    {
+     "md": "$s=r\\theta=33\\cdot8\\pi=264\\pi$ cm."
+    },
+    {
+     "md": "$264\\pi\\approx829$ cm, a little more than $8$ m."
+    }
+   ],
+   "answer": "$264\\pi\\approx829$ cm"
+  },
+  {
+   "id": "als-b07",
+   "type": "callout",
+   "kind": "examTip",
+   "md": "If the problem gives degrees, convert first. If it asks for an exact answer, leave $\\pi$ in it; otherwise round only at the very end."
+  },
+  {
+   "id": "als-b08",
+   "type": "spot",
+   "intro": "Find the arc length on a circle of radius $6$ cm with a central angle of $40^\\circ$.",
+   "lines": [
+    "$s=r\\theta$",
+    "$s=6\\cdot40$",
+    "$s=240$ cm"
+   ],
+   "wrongIndex": 1,
+   "explanation": "The angle must be in radians: $40^\\circ=\\frac{2\\pi}{9}$, so $s=6\\cdot\\frac{2\\pi}{9}=\\frac{4\\pi}{3}\\approx4.19$ cm."
+  },
+  {
+   "id": "als-b09",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "als-e1",
+    "als-e2",
+    "als-e3",
+    "als-e5"
+   ]
+  },
+  {
+   "id": "als-b10",
+   "type": "recap",
+   "points": [
+    "$s=r\\theta$ and $A=\\frac12r^2\\theta$, with $\\theta$ in radians.",
+    "One revolution is $2\\pi$ radians.",
+    "Linear speed $v=r\\omega$ connects turning and moving."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "als-e1",
+   "skill": "arc-length-sector-area",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "als-e1-q",
+     "type": "text",
+     "md": "Find the length of the arc cut off by a central angle of $\\dfrac{\\pi}{3}$ on a circle of radius $9$ cm. Give the exact value."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "3*pi",
+    "prefix": "$s =$",
+    "suffix": "cm"
+   },
+   "hints": [
+    "$s=r\\theta$."
+   ],
+   "solution": [
+    {
+     "id": "als-e1-s",
+     "type": "text",
+     "md": "$s=9\\cdot\\dfrac{\\pi}{3}=3\\pi$ cm."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "3",
+     "why": "Keep $\\pi$: $9\\cdot\\frac{\\pi}{3}=3\\pi$."
+    },
+    {
+     "input": "27/pi",
+     "why": "Multiply $r$ by $\\theta$; don't divide."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e2",
+   "skill": "arc-length-sector-area",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "als-e2-q",
+     "type": "text",
+     "md": "Find the area of a sector with radius $4$ m and central angle $\\dfrac{\\pi}{2}$. Give the exact value."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "4*pi",
+    "prefix": "$A =$",
+    "suffix": "m²"
+   },
+   "hints": [
+    "$A=\\frac12r^2\\theta$."
+   ],
+   "solution": [
+    {
+     "id": "als-e2-s",
+     "type": "text",
+     "md": "$A=\\tfrac12\\cdot16\\cdot\\dfrac{\\pi}{2}=4\\pi\\ \\text{m}^2$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "2*pi",
+     "why": "That is the arc length, $r\\theta$. The area is $\\tfrac12r^2\\theta=4\\pi$."
+    },
+    {
+     "input": "8*pi",
+     "why": "Don't forget the $\\tfrac12$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e3",
+   "skill": "arc-length-sector-area",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "als-e3-q",
+     "type": "text",
+     "md": "A circle has radius $6$ cm. Find the arc length for a central angle of $40^\\circ$, rounded to two decimals."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "4.19",
+    "prefix": "$s \\approx$",
+    "suffix": "cm",
+    "absTol": 0.006
+   },
+   "hints": [
+    "Convert $40^\\circ$ to radians first."
+   ],
+   "solution": [
+    {
+     "id": "als-e3-s",
+     "type": "text",
+     "md": "$40^\\circ=\\frac{2\\pi}{9}$, so $s=6\\cdot\\frac{2\\pi}{9}=\\frac{4\\pi}{3}\\approx4.19$ cm."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "240",
+     "why": "The angle must be in radians: $40^\\circ=\\frac{2\\pi}{9}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e4",
+   "skill": "arc-length-sector-area",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "als-e4-q",
+     "type": "text",
+     "md": "A sprinkler sprays water $20$ m out and turns through $135^\\circ$. What area does it water, to the nearest square meter?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "471",
+    "prefix": "$A \\approx$",
+    "suffix": "m²",
+    "absTol": 0.6
+   },
+   "hints": [
+    "Convert $135^\\circ$ to radians.",
+    "$A=\\frac12 r^2\\theta$."
+   ],
+   "solution": [
+    {
+     "id": "als-e4-s",
+     "type": "text",
+     "md": "$A=\\tfrac12(20)^2\\cdot\\frac{3\\pi}{4}=150\\pi\\approx471\\ \\text{m}^2$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "27000",
+     "why": "You used $135$ as the angle. In radians it is $\\frac{3\\pi}{4}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e5",
+   "skill": "arc-length-sector-area",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "als-e5-q",
+     "type": "text",
+     "md": "An arc of length $15$ cm subtends a central angle of $2.5$ radians. Find the radius."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "6",
+    "prefix": "$r =$",
+    "suffix": "cm"
+   },
+   "hints": [
+    "Solve $s=r\\theta$ for $r$."
+   ],
+   "solution": [
+    {
+     "id": "als-e5-s",
+     "type": "text",
+     "md": "$r=\\dfrac{s}{\\theta}=\\dfrac{15}{2.5}=6$ cm."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "37.5",
+     "why": "Divide, don't multiply: $r=\\frac{s}{\\theta}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e6",
+   "skill": "arc-length-sector-area",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "als-e6-q",
+     "type": "text",
+     "md": "A bicycle wheel with radius $33$ cm makes $4$ revolutions. How far does the bicycle travel, to the nearest centimeter?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "829",
+    "suffix": "cm",
+    "absTol": 0.6
+   },
+   "hints": [
+    "Four revolutions are $8\\pi$ radians."
+   ],
+   "solution": [
+    {
+     "id": "als-e6-s",
+     "type": "text",
+     "md": "$s=33\\cdot8\\pi=264\\pi\\approx829$ cm."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "132",
+     "why": "You used $4$ as the angle. Four revolutions are $4\\cdot2\\pi=8\\pi$ radians."
+    },
+    {
+     "input": "415",
+     "why": "One revolution is $2\\pi$, not $\\pi$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e7",
+   "skill": "arc-length-sector-area",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "als-e7-q",
+     "type": "text",
+     "md": "A sector of a circle of radius $4$ cm has area $24\\ \\text{cm}^2$. Find its central angle in radians."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "3",
+    "prefix": "$\\theta =$",
+    "suffix": "rad"
+   },
+   "hints": [
+    "$A=\\frac12r^2\\theta$, so $\\theta=\\frac{2A}{r^2}$."
+   ],
+   "solution": [
+    {
+     "id": "als-e7-s",
+     "type": "text",
+     "md": "$\\theta=\\dfrac{2\\cdot24}{16}=3$ rad."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "1.5",
+     "why": "Don't forget the $\\tfrac12$: $\\theta=\\frac{2A}{r^2}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e8",
+   "skill": "arc-length-sector-area",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "als-e8-q",
+     "type": "text",
+     "md": "A Ferris wheel of radius $25$ m turns at $\\dfrac{\\pi}{10}$ radians per minute. Find the linear speed of a car, in meters per minute. Give the exact value."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "5*pi/2",
+    "prefix": "$v =$",
+    "suffix": "m/min"
+   },
+   "hints": [
+    "$v=r\\omega$."
+   ],
+   "solution": [
+    {
+     "id": "als-e8-s",
+     "type": "text",
+     "md": "$v=25\\cdot\\dfrac{\\pi}{10}=\\dfrac{5\\pi}{2}\\approx7.85$ m/min."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "250/pi",
+     "why": "Multiply $r$ by $\\omega$: $v=r\\omega$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e9",
+   "skill": "arc-length-sector-area",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "als-e9-q",
+     "type": "text",
+     "md": "Which formula gives the area of a sector with central angle $\\theta$ in radians?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$\\tfrac12 r^2\\theta$",
+      "correct": true
+     },
+     {
+      "id": "b",
+      "md": "$r\\theta$",
+      "correct": false,
+      "why": "That is the arc length."
+     },
+     {
+      "id": "c",
+      "md": "$\\pi r^2\\theta$",
+      "correct": false,
+      "why": "Too big by a factor of $2\\pi$: a full turn ($\\theta=2\\pi$) must give $\\pi r^2$."
+     },
+     {
+      "id": "d",
+      "md": "$\\dfrac{\\theta}{360}\\pi r^2$",
+      "correct": false,
+      "why": "That version is for $\\theta$ in degrees."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [],
+   "solution": [],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e10",
+   "skill": "arc-length-sector-area",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "als-e10-q",
+     "type": "text",
+     "md": "True or false: $s=r\\theta$ works with $\\theta$ in degrees."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": false
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "als-e10-s",
+     "type": "text",
+     "md": "False. $s=r\\theta$ needs $\\theta$ in radians; in degrees the arc length is $\\frac{\\theta}{360}\\cdot2\\pi r$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "als-e11",
+   "skill": "arc-length-sector-area",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "als-e11-q",
+     "type": "text",
+     "md": "A pendulum $50$ cm long swings through an angle of $24^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "multi",
+    "parts": [
+     {
+      "label": "a",
+      "prompt": [
+       {
+        "id": "pa",
+        "type": "text",
+        "md": "Find the length of the arc traced by its tip, to the nearest tenth of a centimeter."
+       }
+      ],
+      "answer": {
+       "kind": "numeric",
+       "value": "20.9",
+       "prefix": "$s \\approx$",
+       "suffix": "cm",
+       "absTol": 0.06
+      },
+      "points": 1
+     },
+     {
+      "label": "b",
+      "prompt": [
+       {
+        "id": "pb",
+        "type": "text",
+        "md": "Find the area it sweeps, to the nearest square centimeter."
+       }
+      ],
+      "answer": {
+       "kind": "numeric",
+       "value": "524",
+       "prefix": "$A \\approx$",
+       "suffix": "cm²",
+       "absTol": 0.6
+      },
+      "points": 1
+     }
+    ]
+   },
+   "hints": [
+    "$24^\\circ=\\frac{2\\pi}{15}$."
+   ],
+   "solution": [
+    {
+     "id": "als-e11-s",
+     "type": "text",
+     "md": "$s=50\\cdot\\frac{2\\pi}{15}=\\frac{20\\pi}{3}\\approx20.9$ cm and $A=\\tfrac12\\cdot50^2\\cdot\\frac{2\\pi}{15}=\\frac{500\\pi}{3}\\approx524\\ \\text{cm}^2$."
+    }
+   ],
+   "wrongs": [],
+   "points": 2,
+   "tags": []
+  }
+ ],
+ "templates": [
+  {
+   "id": "als-t1",
+   "skill": "arc-length-sector-area",
+   "level": 2,
+   "vars": [
+    {
+     "name": "r",
+     "kind": "int",
+     "min": 2,
+     "max": 12
+    },
+    {
+     "name": "k",
+     "kind": "int",
+     "min": 1,
+     "max": 5
+    }
+   ],
+   "constraints": [],
+   "prompt": [
+    {
+     "id": "als-t1-q",
+     "type": "text",
+     "md": "Find the exact length of the arc cut off by a central angle of ${{30*k}}^\\circ$ on a circle of radius ${{r}}$ cm."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "r*k*pi/6",
+    "prefix": "$s =$",
+    "suffix": "cm"
+   },
+   "hints": [
+    "Convert the angle to radians, then use $s=r\\theta$."
+   ],
+   "solution": [
+    {
+     "id": "als-t1-s",
+     "type": "text",
+     "md": "${{30*k}}^\\circ={{tex:k*pi/6}}$, so $s={{r}}\\cdot{{tex:k*pi/6}}={{tex:r*k*pi/6}}$ cm."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "30*r*k",
+     "why": "Convert the angle to radians before using $s=r\\theta$."
+    }
+   ],
+   "points": 1,
+   "tags": [
+    "arc length"
+   ]
+  }
+ ],
+ "cards": [
+  {
+   "id": "als-c1",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Arc length formula",
+   "back": "$s=r\\theta$ ($\\theta$ in radians)",
+   "tags": []
+  },
+  {
+   "id": "als-c2",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Sector area formula",
+   "back": "$A=\\tfrac12 r^2\\theta$ ($\\theta$ in radians)",
+   "tags": []
+  },
+  {
+   "id": "als-c3",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Linear speed of a point on the rim",
+   "back": "$v=r\\omega$",
+   "tags": []
+  },
+  {
+   "id": "als-c4",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Angular speed",
+   "back": "$\\omega=\\dfrac{\\theta}{t}$: radians per unit of time.",
+   "tags": []
+  },
+  {
+   "id": "als-c5",
+   "skill": "arc-length-sector-area",
+   "kind": "cloze",
+   "front": "One revolution is {{c1::$2\\pi$}} radians.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "als-c6",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Doubling the radius does what to arc length and sector area?",
+   "back": "Arc length doubles; sector area is multiplied by $4$.",
+   "tags": []
+  },
+  {
+   "id": "als-c7",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Why must $\\theta$ be in radians in $s=r\\theta$?",
+   "back": "Because a radian is defined by arc length $=$ radius; degrees would need a $\\frac{\\pi}{180}$ factor.",
+   "tags": []
+  },
+  {
+   "id": "als-c8",
+   "skill": "arc-length-sector-area",
+   "kind": "basic",
+   "front": "Arc length for $\\theta=\\frac{\\pi}{3}$, $r=9$",
+   "back": "$3\\pi$",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Using degrees in s = rθ",
+   "wrong": "$s=6\\cdot40=240$",
+   "right": "$s=6\\cdot\\frac{2\\pi}{9}=\\frac{4\\pi}{3}$",
+   "why": "The formula assumes radians."
+  },
+  {
+   "title": "Forgetting the one half",
+   "wrong": "$A=r^2\\theta$",
+   "right": "$A=\\tfrac12r^2\\theta$",
+   "why": "A full turn must give $\\pi r^2$: $\\tfrac12r^2(2\\pi)=\\pi r^2$."
+  }
+ ],
+ "sources": [
+  {
+   "source": "unit-3-notes",
+   "page": 4
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

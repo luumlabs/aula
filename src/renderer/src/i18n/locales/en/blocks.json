@@ -1,0 +1,132 @@
+{
+  "callout": {
+    "note": "Note",
+    "tip": "Tip",
+    "warning": "Watch out",
+    "definition": "Definition",
+    "theorem": "Theorem",
+    "remember": "Remember",
+    "example": "Example",
+    "examTip": "For the exam",
+    "mistake": "Common mistake",
+    "question": "Ask yourself",
+    "source": "From your materials"
+  },
+  "source": {
+    "page": "p. {{page}}",
+    "pages": "pp. {{from}}–{{to}}",
+    "yours": "From your materials",
+    "open": "Open this material"
+  },
+  "recap": {
+    "title": "Key points"
+  },
+  "example": {
+    "eyebrow": "Worked example",
+    "progress": "Step {{shown}} of {{total}}",
+    "result": "Result",
+    "first": "Show the first step",
+    "next": "Next step",
+    "all": "Show full solution",
+    "hide": "Hide the steps"
+  },
+  "formulas": {
+    "copy": "Copy LaTeX",
+    "when": "When to use it:"
+  },
+  "code": {
+    "copy": "Copy code",
+    "copied": "Copied",
+    "copyFailed": "Couldn’t copy",
+    "code": "Code",
+    "output": "Output"
+  },
+  "predict": {
+    "eyebrow": "Think before you read on",
+    "hint": "Pick an answer — then I’ll explain why.",
+    "right": "Well reasoned!",
+    "wrong": "Close. The right one was {{letter}}.",
+    "wrongNoAnswer": "Not that one."
+  },
+  "spot": {
+    "eyebrow": "Spot the mistake",
+    "lines_one": "{{count}} line",
+    "lines_other": "{{count}} lines",
+    "here": "The mistake is here",
+    "hint": "Tap the line with the mistake.",
+    "right": "That’s it — you found it.",
+    "wrong": "Not that one: the mistake is on line {{line}}.",
+    "wrongNoLine": "Not that one."
+  },
+  "common": {
+    "retry": "Try again",
+    "close": "Close"
+  },
+  "tryit": {
+    "title": "Try it",
+    "count_one": "{{count}} exercise",
+    "count_other": "{{count}} exercises",
+    "inLesson": "solved inside the lesson",
+    "start": "Start"
+  },
+  "image": {
+    "image": "Image",
+    "zoom": "Enlarge: {{alt}}",
+    "missing": "This image isn’t available in this course.",
+    "point": "Point {{n}}: {{label}}"
+  },
+  "numberline": {
+    "label": "Number line"
+  },
+  "plot": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "reset": "Back to the initial view",
+    "wheelHint": "{{mod}} + scroll to zoom · drag to move",
+    "summary": "Graph {{title}}: {{curves}}. x from {{x0}} to {{x1}}; y from {{y0}} to {{y1}}."
+  },
+  "explore": {
+    "eyebrow": "Explore",
+    "reset": "Reset",
+    "try": "Try this"
+  },
+  "chart": {
+    "empty": "This chart has no data.",
+    "other": "Other",
+    "total": "Total"
+  },
+  "timeline": {
+    "bc": "{{n}} BC",
+    "ma": "{{n}} Ma",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "asScale": "Show to scale",
+    "asList": "Show as a list",
+    "undated": "Not on the scale (no date): {{list}}",
+    "hint": "Tap an event to see what happened."
+  },
+  "unknown": {
+    "title": "This content can’t be shown",
+    "tooDeep": "It was nested too many times.",
+    "damaged": "This block is damaged and can’t be read. The rest of the lesson is fine.",
+    "newer": "It’s a kind of content (“{{type}}”) this version of Aula doesn’t know. The rest of the lesson is fine.",
+    "failed": "Something went wrong drawing it. The rest of the lesson is fine."
+  },
+  "preview": {
+    "title": "Lesson blocks",
+    "subtitle": "Every block type, from the sample course and hand-written samples.",
+    "mode": {
+      "lesson": "Lesson",
+      "chat": "Chat",
+      "print": "Print"
+    },
+    "section": "Section",
+    "samples": "Samples of every type",
+    "all": "Everything",
+    "blocks_one": "{{count}} block",
+    "blocks_other": "{{count}} blocks",
+    "tryit_one": "Would open {{count}} exercise",
+    "tryit_other": "Would open {{count}} exercises",
+    "source": "Would open the material on page {{page}}"
+  }
+}

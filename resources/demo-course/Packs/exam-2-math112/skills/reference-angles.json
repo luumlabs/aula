@@ -1,0 +1,833 @@
+{
+ "id": "reference-angles",
+ "title": "Reference angles and degrees-minutes",
+ "summary": "Find the reference angle of any angle and switch between decimal degrees and degrees-minutes-seconds.",
+ "objectives": [
+  "Name the quadrant of an angle in standard position",
+  "Find the reference angle in each quadrant",
+  "Convert between decimal degrees and degrees-minutes-seconds"
+ ],
+ "prerequisites": [],
+ "lesson": [
+  {
+   "id": "ra-b01",
+   "type": "text",
+   "md": "# Reference angles\n\nAn angle in **standard position** starts on the positive $x$-axis and turns counterclockwise (positive) or clockwise (negative). Where it stops, its **terminal side**, decides almost everything about its trig values. The **reference angle** $\\theta'$ is the acute angle between the terminal side and the **$x$-axis**, never the $y$-axis."
+  },
+  {
+   "id": "ra-b02",
+   "type": "predict",
+   "question": "What is the reference angle of $150^\\circ$?",
+   "options": [
+    {
+     "md": "$30^\\circ$",
+     "correct": true,
+     "why": "$180^\\circ-150^\\circ=30^\\circ$: measure to the nearest part of the $x$-axis."
+    },
+    {
+     "md": "$60^\\circ$",
+     "correct": false,
+     "why": "That is the angle to the $y$-axis. Reference angles are always measured to the $x$-axis."
+    },
+    {
+     "md": "$150^\\circ$",
+     "correct": false,
+     "why": "A reference angle is always acute, between $0^\\circ$ and $90^\\circ$."
+    }
+   ],
+   "explanation": "The picture below shows why: the terminal side of $150^\\circ$ is $30^\\circ$ short of the negative $x$-axis."
+  },
+  {
+   "id": "ra-b03",
+   "type": "plot",
+   "title": "$150^\\circ$ and its reference angle",
+   "xMin": -1.5,
+   "xMax": 1.5,
+   "yMin": -0.45,
+   "yMax": 1.25,
+   "equalAspect": true,
+   "grid": false,
+   "xTickStep": 0.5,
+   "yTickStep": 0.5,
+   "parametric": [
+    {
+     "x": "cos(t)",
+     "y": "sin(t)",
+     "tMin": 0,
+     "tMax": 6.2832,
+     "color": "gray"
+    },
+    {
+     "x": "0.22*cos(t)",
+     "y": "0.22*sin(t)",
+     "tMin": 0,
+     "tMax": 2.618,
+     "color": "accent"
+    },
+    {
+     "x": "0.42*cos(t)",
+     "y": "0.42*sin(t)",
+     "tMin": 2.618,
+     "tMax": 3.1416,
+     "color": "orange"
+    }
+   ],
+   "lines": [
+    {
+     "kind": "segment",
+     "x1": "0",
+     "y1": "0",
+     "x2": "-sqrt(3)/2",
+     "y2": "1/2",
+     "color": "accent",
+     "dashed": false
+    },
+    {
+     "kind": "segment",
+     "x1": "0",
+     "y1": "0",
+     "x2": "-1",
+     "y2": "0",
+     "color": "orange",
+     "dashed": false
+    }
+   ],
+   "labels": [
+    {
+     "x": "0.32",
+     "y": "0.24",
+     "tex": "$\\theta=150^\\circ$",
+     "color": "accent"
+    },
+    {
+     "x": "-0.62",
+     "y": "0.12",
+     "tex": "$\\theta'=30^\\circ$",
+     "color": "orange"
+    }
+   ],
+   "caption": "The terminal side stops in Quadrant II, $30^\\circ$ above the negative $x$-axis."
+  },
+  {
+   "id": "ra-b04",
+   "type": "table",
+   "headers": [
+    "Quadrant",
+    "Angle $\\theta$",
+    "Reference angle $\\theta'$",
+    "Example"
+   ],
+   "rows": [
+    [
+     "I",
+     "$0^\\circ<\\theta<90^\\circ$",
+     "$\\theta'=\\theta$",
+     "$40^\\circ\\to 40^\\circ$"
+    ],
+    [
+     "II",
+     "$90^\\circ<\\theta<180^\\circ$",
+     "$\\theta'=180^\\circ-\\theta$",
+     "$150^\\circ\\to 30^\\circ$"
+    ],
+    [
+     "III",
+     "$180^\\circ<\\theta<270^\\circ$",
+     "$\\theta'=\\theta-180^\\circ$",
+     "$225^\\circ\\to 45^\\circ$"
+    ],
+    [
+     "IV",
+     "$270^\\circ<\\theta<360^\\circ$",
+     "$\\theta'=360^\\circ-\\theta$",
+     "$305^\\circ 40'\\to 54^\\circ 20'$"
+    ]
+   ],
+   "caption": "Reference angle by quadrant",
+   "firstColumnIsHeader": true
+  },
+  {
+   "id": "ra-b05",
+   "type": "callout",
+   "kind": "tip",
+   "title": "Coterminal first",
+   "md": "If the angle is negative or larger than $360^\\circ$, add or subtract $360^\\circ$ until it lands in $[0^\\circ, 360^\\circ)$; that **coterminal** angle has the same terminal side. Then use the table: $-210^\\circ+360^\\circ=150^\\circ$, so the reference angle is $30^\\circ$."
+  },
+  {
+   "id": "ra-b06",
+   "type": "example",
+   "title": "Reference angle of $305^\\circ 40'$",
+   "problem": "Find the reference angle of $305^\\circ 40'$.",
+   "steps": [
+    {
+     "md": "The angle is between $270^\\circ$ and $360^\\circ$, so the terminal side is in **Quadrant IV**."
+    },
+    {
+     "md": "Use $\\theta'=360^\\circ-\\theta$."
+    },
+    {
+     "md": "Borrow one degree so the minutes can be subtracted: $360^\\circ=359^\\circ 60'$.",
+     "note": "Minutes go up to $60$, not $100$."
+    },
+    {
+     "md": "$359^\\circ 60'-305^\\circ 40'=54^\\circ 20'$."
+    }
+   ],
+   "answer": "$54^\\circ 20'$"
+  },
+  {
+   "id": "ra-b07",
+   "type": "text",
+   "md": "## Degrees, minutes and seconds\n\nOne degree splits into $60$ minutes and one minute into $60$ seconds: $1^\\circ=60'$ and $1'=60''$. To go from minutes to decimal degrees, **divide by 60**; to go back, **multiply the decimal part by 60**."
+  },
+  {
+   "id": "ra-b08",
+   "type": "math",
+   "tex": "35^\\circ 15' = 35^\\circ+(\\tfrac{15}{60})^\\circ = 35.25^\\circ",
+   "label": "Minutes to decimal degrees"
+  },
+  {
+   "id": "ra-b09",
+   "type": "example",
+   "title": "$72.41^\\circ$ in degrees and minutes",
+   "problem": "Convert $72.41^\\circ$ to degrees and minutes, to the nearest minute.",
+   "steps": [
+    {
+     "md": "Keep the whole degrees: $72^\\circ$."
+    },
+    {
+     "md": "Multiply the decimal part by $60$: $0.41\\times 60=24.6'$."
+    },
+    {
+     "md": "Round to the nearest minute: $24.6'\\approx 25'$."
+    }
+   ],
+   "answer": "$72^\\circ 25'$"
+  },
+  {
+   "id": "ra-b10",
+   "type": "spot",
+   "intro": "A classmate converted $48^\\circ 30'$ to decimal degrees. Which line has the mistake?",
+   "lines": [
+    "$48^\\circ 30'=48^\\circ+30'$",
+    "$30'=\\tfrac{30}{100}^\\circ=0.30^\\circ$",
+    "$48^\\circ 30'=48.30^\\circ$"
+   ],
+   "wrongIndex": 1,
+   "explanation": "A degree has $60$ minutes, not $100$: $30'=\\tfrac{30}{60}^\\circ=0.5^\\circ$, so $48^\\circ 30'=48.5^\\circ$."
+  },
+  {
+   "id": "ra-b11",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "ra-e1",
+    "ra-e2",
+    "ra-e4",
+    "ra-e6"
+   ]
+  },
+  {
+   "id": "ra-b12",
+   "type": "recap",
+   "points": [
+    "The reference angle is the acute angle to the **$x$-axis**.",
+    "QII: $180^\\circ-\\theta$ · QIII: $\\theta-180^\\circ$ · QIV: $360^\\circ-\\theta$.",
+    "Make the angle coterminal in $[0^\\circ,360^\\circ)$ first.",
+    "$1^\\circ=60'$: divide minutes by $60$, multiply decimals by $60$."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "ra-e1",
+   "skill": "reference-angles",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "ra-e1-q",
+     "type": "text",
+     "md": "Find the reference angle of $225^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "45",
+    "prefix": "$\\theta' =$",
+    "suffix": "°"
+   },
+   "hints": [
+    "Which quadrant is $225^\\circ$ in?",
+    "In Quadrant III, $\\theta'=\\theta-180^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e1-s",
+     "type": "text",
+     "md": "$225^\\circ$ is in Quadrant III, so $\\theta'=225^\\circ-180^\\circ=45^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "135",
+     "why": "You used the Quadrant IV rule, $360^\\circ-\\theta$. $225^\\circ$ is in Quadrant III: $\\theta'=225^\\circ-180^\\circ=45^\\circ$."
+    },
+    {
+     "input": "-45",
+     "why": "A reference angle is always positive: it is a distance to the $x$-axis."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e2",
+   "skill": "reference-angles",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "ra-e2-q",
+     "type": "text",
+     "md": "Find the reference angle of $150^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "30",
+    "prefix": "$\\theta' =$",
+    "suffix": "°"
+   },
+   "hints": [
+    "$150^\\circ$ is in Quadrant II."
+   ],
+   "solution": [
+    {
+     "id": "ra-e2-s",
+     "type": "text",
+     "md": "$\\theta'=180^\\circ-150^\\circ=30^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "60",
+     "why": "That is the angle to the $y$-axis. Measure to the $x$-axis: $180^\\circ-150^\\circ=30^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e3",
+   "skill": "reference-angles",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ra-e3-q",
+     "type": "text",
+     "md": "In which quadrant does the terminal side of $-200^\\circ$ lie?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "Quadrant I",
+      "correct": false,
+      "why": "Turning clockwise, $-90^\\circ$ is already past Quadrant IV and $-200^\\circ$ goes further."
+     },
+     {
+      "id": "b",
+      "md": "Quadrant II",
+      "correct": true,
+      "why": "$-200^\\circ+360^\\circ=160^\\circ$, which is in Quadrant II."
+     },
+     {
+      "id": "c",
+      "md": "Quadrant III",
+      "correct": false,
+      "why": "Turning $200^\\circ$ clockwise passes the negative $x$-axis at $-180^\\circ$ and stops $20^\\circ$ above it, in Quadrant II."
+     },
+     {
+      "id": "d",
+      "md": "Quadrant IV",
+      "correct": false,
+      "why": "Quadrant IV holds the angles between $-90^\\circ$ and $0^\\circ$."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [
+    "Add $360^\\circ$ to get a coterminal angle between $0^\\circ$ and $360^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e3-s",
+     "type": "text",
+     "md": "$-200^\\circ+360^\\circ=160^\\circ$: Quadrant II."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e4",
+   "skill": "reference-angles",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ra-e4-q",
+     "type": "text",
+     "md": "Find the reference angle of $-210^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "30",
+    "prefix": "$\\theta' =$",
+    "suffix": "°"
+   },
+   "hints": [
+    "Find a coterminal angle in $[0^\\circ,360^\\circ)$ first."
+   ],
+   "solution": [
+    {
+     "id": "ra-e4-s",
+     "type": "text",
+     "md": "$-210^\\circ+360^\\circ=150^\\circ$, in Quadrant II, so $\\theta'=180^\\circ-150^\\circ=30^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "210",
+     "why": "Make the angle coterminal first: $-210^\\circ+360^\\circ=150^\\circ$, so $\\theta'=30^\\circ$."
+    },
+    {
+     "input": "-30",
+     "why": "A reference angle is always positive."
+    },
+    {
+     "input": "150",
+     "why": "$150^\\circ$ is the coterminal angle; its reference angle is $180^\\circ-150^\\circ=30^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e5",
+   "skill": "reference-angles",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ra-e5-q",
+     "type": "text",
+     "md": "Name the reference angle for $305^\\circ 40'$. Answer in degrees and minutes."
+    }
+   ],
+   "answer": {
+    "kind": "short",
+    "accepted": [
+     "54° 20'",
+     "54°20'",
+     "54 20",
+     "54° 20′",
+     "54 deg 20 min"
+    ],
+    "placeholder": "e.g. 12° 34'"
+   },
+   "hints": [
+    "$305^\\circ 40'$ is in Quadrant IV: use $360^\\circ-\\theta$.",
+    "Write $360^\\circ$ as $359^\\circ 60'$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e5-s",
+     "type": "text",
+     "md": "$360^\\circ-305^\\circ 40'=359^\\circ 60'-305^\\circ 40'=54^\\circ 20'$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "55° 40'",
+     "why": "Borrow correctly: $360^\\circ=359^\\circ 60'$, so the minutes are $60'-40'=20'$ and the degrees $359^\\circ-305^\\circ=54^\\circ$."
+    },
+    {
+     "input": "125° 40'",
+     "why": "That is $\\theta-180^\\circ$, the Quadrant III rule. $305^\\circ 40'$ is in Quadrant IV."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e6",
+   "skill": "reference-angles",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "ra-e6-q",
+     "type": "text",
+     "md": "Convert $35^\\circ 15'$ to decimal degrees."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "35.25",
+    "suffix": "°"
+   },
+   "hints": [
+    "How many minutes are in one degree?"
+   ],
+   "solution": [
+    {
+     "id": "ra-e6-s",
+     "type": "text",
+     "md": "$15'=\\tfrac{15}{60}^\\circ=0.25^\\circ$, so $35^\\circ 15'=35.25^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "35.15",
+     "why": "Minutes are sixtieths of a degree, not hundredths: $15'=\\tfrac{15}{60}^\\circ=0.25^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e7",
+   "skill": "reference-angles",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ra-e7-q",
+     "type": "text",
+     "md": "Convert $72.41^\\circ$ to degrees and minutes, rounded to the nearest minute."
+    }
+   ],
+   "answer": {
+    "kind": "short",
+    "accepted": [
+     "72° 25'",
+     "72°25'",
+     "72 25",
+     "72° 25′"
+    ],
+    "placeholder": "e.g. 12° 34'"
+   },
+   "hints": [
+    "Multiply the decimal part by $60$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e7-s",
+     "type": "text",
+     "md": "$0.41\\times60=24.6'\\approx25'$, so $72.41^\\circ\\approx72^\\circ 25'$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "72° 41'",
+     "why": "The decimal part is a fraction of a degree, not a number of minutes: $0.41\\times 60=24.6'\\approx 25'$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e8",
+   "skill": "reference-angles",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "ra-e8-q",
+     "type": "text",
+     "md": "Find the reference angle of $1000^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "80",
+    "prefix": "$\\theta' =$",
+    "suffix": "°"
+   },
+   "hints": [
+    "Subtract $360^\\circ$ as many times as needed.",
+    "$1000^\\circ-720^\\circ=280^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e8-s",
+     "type": "text",
+     "md": "$1000^\\circ-2\\cdot360^\\circ=280^\\circ$, in Quadrant IV, so $\\theta'=360^\\circ-280^\\circ=80^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "100",
+     "why": "$280^\\circ$ is in Quadrant IV, so use $360^\\circ-280^\\circ=80^\\circ$, not $280^\\circ-180^\\circ$."
+    },
+    {
+     "input": "280",
+     "why": "$280^\\circ$ is the coterminal angle, not the reference angle."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e9",
+   "skill": "reference-angles",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "ra-e9-q",
+     "type": "text",
+     "md": "Match each angle with its reference angle."
+    }
+   ],
+   "answer": {
+    "kind": "matching",
+    "pairs": [
+     {
+      "left": "$135^\\circ$",
+      "right": "$45^\\circ$"
+     },
+     {
+      "left": "$240^\\circ$",
+      "right": "$60^\\circ$"
+     },
+     {
+      "left": "$330^\\circ$",
+      "right": "$30^\\circ$"
+     },
+     {
+      "left": "$-100^\\circ$",
+      "right": "$80^\\circ$"
+     }
+    ],
+    "extraRights": [
+     "$10^\\circ$"
+    ]
+   },
+   "hints": [
+    "$-100^\\circ$ is coterminal with $260^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e9-s",
+     "type": "text",
+     "md": "$135^\\circ\\to45^\\circ$, $240^\\circ\\to60^\\circ$, $330^\\circ\\to30^\\circ$, $-100^\\circ\\equiv260^\\circ\\to80^\\circ$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e10",
+   "skill": "reference-angles",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "ra-e10-q",
+     "type": "text",
+     "md": "True or false: the reference angle of $300^\\circ$ is $60^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": true
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "ra-e10-s",
+     "type": "text",
+     "md": "$300^\\circ$ is in Quadrant IV, so $\\theta'=360^\\circ-300^\\circ=60^\\circ$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "ra-e11",
+   "skill": "reference-angles",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "ra-e11-q",
+     "type": "text",
+     "md": "Convert $14^\\circ 24' 36''$ to decimal degrees."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "14.41",
+    "suffix": "°",
+    "absTol": 0.0005
+   },
+   "hints": [
+    "Divide the minutes by $60$ and the seconds by $3600$."
+   ],
+   "solution": [
+    {
+     "id": "ra-e11-s",
+     "type": "text",
+     "md": "$14+\\tfrac{24}{60}+\\tfrac{36}{3600}=14+0.4+0.01=14.41^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "14.2436",
+     "why": "Minutes and seconds are not decimal digits: $24'=0.4^\\circ$ and $36''=0.01^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [
+  {
+   "id": "ra-t1",
+   "skill": "reference-angles",
+   "level": 2,
+   "vars": [
+    {
+     "name": "a",
+     "kind": "int",
+     "min": 191,
+     "max": 259
+    }
+   ],
+   "constraints": [],
+   "prompt": [
+    {
+     "id": "ra-t1-q",
+     "type": "text",
+     "md": "Find the reference angle of ${{a}}^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "a-180",
+    "prefix": "$\\theta' =$",
+    "suffix": "°"
+   },
+   "hints": [
+    "${{a}}^\\circ$ is in Quadrant III."
+   ],
+   "solution": [
+    {
+     "id": "ra-t1-s",
+     "type": "text",
+     "md": "Quadrant III: $\\theta'={{a}}^\\circ-180^\\circ={{a-180}}^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "360-a",
+     "why": "That is the Quadrant IV rule. In Quadrant III subtract $180^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": [
+    "reference angle"
+   ]
+  }
+ ],
+ "cards": [
+  {
+   "id": "ra-c1",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "What is a reference angle?",
+   "back": "The acute angle ($0^\\circ$ to $90^\\circ$) between the terminal side and the **$x$-axis**.",
+   "tags": []
+  },
+  {
+   "id": "ra-c2",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "Reference angle in Quadrant II",
+   "back": "$\\theta'=180^\\circ-\\theta$",
+   "tags": []
+  },
+  {
+   "id": "ra-c3",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "Reference angle in Quadrant III",
+   "back": "$\\theta'=\\theta-180^\\circ$",
+   "tags": []
+  },
+  {
+   "id": "ra-c4",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "Reference angle in Quadrant IV",
+   "back": "$\\theta'=360^\\circ-\\theta$",
+   "tags": []
+  },
+  {
+   "id": "ra-c5",
+   "skill": "reference-angles",
+   "kind": "cloze",
+   "front": "One degree has {{c1::60}} minutes and one minute has {{c2::60}} seconds.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "ra-c6",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "Minutes to decimal degrees",
+   "back": "Divide the minutes by $60$ (and the seconds by $3600$), then add.",
+   "tags": []
+  },
+  {
+   "id": "ra-c7",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "Reference angle of $-210^\\circ$",
+   "back": "$30^\\circ$ (it is coterminal with $150^\\circ$).",
+   "tags": []
+  },
+  {
+   "id": "ra-c8",
+   "skill": "reference-angles",
+   "kind": "basic",
+   "front": "When are two angles coterminal?",
+   "back": "When they differ by a multiple of $360^\\circ$: they share the same terminal side.",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Measuring to the y-axis",
+   "wrong": "$\\theta'(150^\\circ)=150^\\circ-90^\\circ=60^\\circ$",
+   "right": "$\\theta'(150^\\circ)=180^\\circ-150^\\circ=30^\\circ$",
+   "why": "Reference angles are always measured to the nearest part of the $x$-axis."
+  },
+  {
+   "title": "Minutes as hundredths",
+   "wrong": "$35^\\circ 15'=35.15^\\circ$",
+   "right": "$35^\\circ 15'=35.25^\\circ$",
+   "why": "A degree has $60$ minutes, so $15'$ is $\\tfrac{15}{60}=0.25$ of a degree."
+  }
+ ],
+ "sources": [
+  {
+   "source": "unit-3-notes",
+   "page": 3
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

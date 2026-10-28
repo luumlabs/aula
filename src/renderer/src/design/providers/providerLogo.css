@@ -1,0 +1,61 @@
+/* Logos de IA: tinta en reposo; el color de la marca (--pl-c, aclarado en oscuro) en el que está en uso o al pasar el ratón.
+   Solo se animan color y transform del glifo (pequeño), nada de filtros. Con «Reducir movimiento» el glifo no se mueve. */
+.provider-logo {
+  --pl-brand: var(--pl-c);
+  --pl-ink: var(--text2);
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--pl-ink);
+  transition: color 0.22s ease, background-color 0.22s ease;
+}
+.dark .provider-logo {
+  /* el mismo tono, más claro: los azules y morados de marca se leen sobre el papel oscuro */
+  --pl-brand: color-mix(in oklab, var(--pl-c) 84%, white);
+}
+.provider-logo__glyph {
+  display: block;
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* cuándo se ve el color de la marca */
+.provider-logo[data-tone='brand'],
+.provider-logo[data-tone='auto'][data-active],
+.group:hover .provider-logo[data-tone='auto'],
+[data-logo-hover]:hover .provider-logo[data-tone='auto'] {
+  color: var(--pl-brand);
+}
+/* las marcas negras «se encienden» pasando de la tinta suave a la tinta plena */
+.provider-logo:not([data-colored])[data-active],
+.group:hover .provider-logo:not([data-colored])[data-tone='auto'],
+[data-logo-hover]:hover .provider-logo:not([data-colored])[data-tone='auto'] {
+  color: var(--text);
+}
+
+/* al pasar el ratón el glifo se asoma un poco (como el sol del AulaMark) */
+.group:hover .provider-logo[data-tone='auto'] .provider-logo__glyph,
+[data-logo-hover]:hover .provider-logo[data-tone='auto'] .provider-logo__glyph {
+  transform: translateY(-1px) scale(1.06);
+}
+
+/* loseta: la misma que las filas de Ajustes; en uso se aclara a la superficie (el logo en su color sobre papel limpio) */
+.provider-logo--tile {
+  border-radius: 28%;
+  background: var(--tile);
+}
+.provider-logo--tile[data-active] {
+  background: var(--surface);
+  box-shadow: 0 0 0 0.5px var(--line), 0 1px 2px rgba(60, 40, 20, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .provider-logo__glyph {
+    transform: none !important;
+  }
+}
+.reduce-motion .provider-logo__glyph {
+  transform: none !important;
+}
+.dark .provider-logo[data-logo='aula'] {
+  --pl-brand: var(--accent);
+}

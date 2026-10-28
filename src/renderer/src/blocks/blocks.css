@@ -1,0 +1,117 @@
+/* Bloques de lección: paleta de datos validada (ChartPalette.swift), lectura, código y los detalles animados.
+   Sin violeta (decisión del dueño): ciruela e índigo pasaron a sepia y oliva; --viz-plum/--viz-indigo quedan como alias. */
+
+:root {
+  --viz-blue: #2f67a9;
+  --viz-terracotta: #bf5630;
+  --viz-teal: #029791;
+  --viz-amber: #b77610;
+  --viz-brown: #7d613c;
+  --viz-green: #37844c;
+  --viz-olive: #5d6825;
+  --viz-rose: #b64b65;
+  --viz-red: #b23a3a;
+  --viz-neutral: #8a847c;
+  --viz-plum: var(--viz-rose);
+  --viz-indigo: var(--viz-blue);
+  /* código: tonos de los cursos, sobrios */
+  --code-keyword: #9c4527;
+  --code-string: #5d6825;
+  --code-number: #395d88;
+  --code-title: #1f6a6e;
+  --code-builtin: #7d613c;
+  --code-comment: #8f8c87;
+}
+.dark {
+  --viz-blue: #4b7ccd;
+  --viz-terracotta: #d17052;
+  --viz-teal: #18a7a1;
+  --viz-amber: #c2832d;
+  --viz-brown: #d4b88e;
+  --viz-green: #579f68;
+  --viz-olive: #b7c46e;
+  --viz-rose: #c66177;
+  --viz-red: #e0726b;
+  --viz-neutral: #a39c93;
+  --code-keyword: #ef9c7b;
+  --code-string: #b7c46e;
+  --code-number: #93b5e0;
+  --code-title: #74c6c6;
+  --code-builtin: #d4b88e;
+  --code-comment: #8a857f;
+}
+
+/* Lectura: serif 18/28 en la lección, cuerpo 15/22 en el chat */
+.blk-prose.aula-rich { color: var(--text); }
+.blk-prose.aula-rich p { margin: 0 0 0.75em; }
+.blk-prose.aula-rich p:last-child { margin-bottom: 0; }
+.blk-prose.aula-rich li::marker { color: var(--text3); }
+.blk-prose.aula-rich strong { color: var(--text); }
+.blk-prose.aula-rich em { font-style: italic; }
+.blk-prose.aula-rich blockquote { border-left: 3px solid var(--line-strong); padding-left: 14px; color: var(--text2); margin: 0.6em 0; }
+.blk-prose.aula-rich a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
+.blk-reading .katex { font-size: 1.02em; }
+.blk-reading .katex-display { margin: 0.9em 0; }
+.blk-reading.aula-rich code { font-size: 0.82em; }
+
+/* Fórmula en pantalla */
+.blk-math .katex-display { margin: 0; padding: 4px 0; overflow-x: auto; overflow-y: hidden; }
+.blk-math .katex { font-size: 1.28em; }
+.blk-math-compact .katex { font-size: 1.12em; }
+.blk-formula .katex-display { margin: 0; padding: 2px 0; overflow-x: auto; overflow-y: hidden; }
+.blk-formula .katex { font-size: 1.16em; }
+.blk-inline-math .katex { font-size: 1em; }
+
+/* Etiquetas sobre figuras (KaTeX en línea, sin saltos) */
+.blk-fig-label { white-space: nowrap; line-height: 1; }
+.blk-fig-label .katex { font-size: 1em; }
+
+/* Código */
+.blk-code { tab-size: 2; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; }
+.blk-code .hljs-keyword, .blk-code .hljs-selector-tag, .blk-code .hljs-literal, .blk-code .hljs-meta .hljs-keyword { color: var(--code-keyword); font-weight: 500; }
+.blk-code .hljs-string, .blk-code .hljs-regexp, .blk-code .hljs-template-string, .blk-code .hljs-attr-value, .blk-code .hljs-symbol { color: var(--code-string); }
+.blk-code .hljs-number, .blk-code .hljs-variable.constant_ { color: var(--code-number); }
+.blk-code .hljs-title, .blk-code .hljs-title.function_, .blk-code .hljs-section, .blk-code .hljs-selector-class { color: var(--code-title); }
+.blk-code .hljs-built_in, .blk-code .hljs-type, .blk-code .hljs-attr, .blk-code .hljs-attribute, .blk-code .hljs-tag .hljs-name, .blk-code .hljs-name { color: var(--code-builtin); }
+.blk-code .hljs-comment, .blk-code .hljs-quote { color: var(--code-comment); font-style: italic; }
+.blk-code .hljs-meta, .blk-code .hljs-params { color: var(--text2); }
+.blk-code .hljs-deletion { color: var(--danger); }
+.blk-code .hljs-addition { color: var(--success); }
+
+/* Puntos de interés de una imagen: laten despacio */
+@keyframes blk-pulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  70% { transform: scale(2.1); opacity: 0; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+.blk-pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: blk-pulse 2.6s cubic-bezier(0.2, 0.7, 0.2, 1) infinite;
+  z-index: -1;
+}
+.reduce-motion .blk-pulse::before, .blk-static .blk-pulse::before { display: none; }
+
+/* Deslizadores de «Explora»: el relleno del valor en la tinta del bloque */
+.blk-range { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 999px; outline: none; background: var(--fill3); }
+.blk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 0.5px solid var(--line);
+  box-shadow: var(--e2);
+  transition: transform 0.15s;
+}
+.blk-range:active::-webkit-slider-thumb { transform: scale(1.12); }
+.blk-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-wash), var(--e2); }
+
+/* Tablas */
+.blk-table td .katex, .blk-table th .katex { font-size: 1em; }
+
+/* Impresión: nada se mueve */
+.blk-static *, .blk-static *::before, .blk-static *::after { animation: none !important; transition: none !important; }

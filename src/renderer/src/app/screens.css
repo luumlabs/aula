@@ -1,0 +1,57 @@
+/* Cambio de pantalla sin página vacía: la nueva entra encima (opacidad y un poco de subida) mientras la anterior se desvanece
+   debajo. Solo transform y opacity (compositor). `backwards`: al terminar no queda ningún estilo (ni capa de composición). */
+.screen-enter {
+  animation: screen-enter 240ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+.screen-leave {
+  animation: screen-leave 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes screen-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes screen-leave {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Otra pestaña dentro de una pantalla (curso): entra al momento, sin esperar a que se vaya la anterior. */
+.tab-enter {
+  animation: screen-enter 200ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+/* El indicador de carga solo aparece si de verdad tarda (casi nunca: el código de las pantallas se precarga). */
+.screen-fallback {
+  animation: screen-fallback 200ms ease-out 260ms backwards;
+}
+@keyframes screen-fallback {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Movimiento reducido (ajuste de Aula o del sistema, ver ThemeProvider): el cambio es inmediato, sin fundidos. */
+.reduce-motion .screen-enter,
+.reduce-motion .tab-enter,
+.reduce-motion .screen-fallback {
+  animation: none;
+}
+.reduce-motion .screen-leave {
+  animation: none;
+}
+/* …y la que se va desaparece cuando la nueva ya está pintada (App.tsx pone data-entered), nunca antes: sin fotograma vacío */
+.reduce-motion [data-screens][data-entered] .screen-leave {
+  opacity: 0;
+}
+
+/* Con la ventana sin ver (ambient.css pausa TODAS las animaciones con data-ambient="off"), una entrada pausada se quedaría en
+   opacidad 0 (relleno «backwards»): la pantalla en blanco. El cambio de pantalla no es adorno: sin ventana a la vista se hace
+   sin animación (más específico que la regla de ambient.css). */
+:root[data-ambient='off'] .screen-enter,
+:root[data-ambient='off'] .tab-enter,
+:root[data-ambient='off'] .screen-fallback {
+  animation: none !important;
+}
+:root[data-ambient='off'] .screen-leave {
+  animation: none !important;
+  opacity: 0;
+}

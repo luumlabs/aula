@@ -1,0 +1,539 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/newsreader';
+@import 'katex/dist/katex.min.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+/* Ventanas bajas (portátiles pequeños): lo flotante pasa a ocupar su sitio */
+@custom-variant short (@media (max-height: 760px));
+
+/* ───────────── «Papel y luz»: los valores exactos de la app original (su REDESIGN §4.3) ─────────────
+   Papel cálido donde se lee, vidrio solo en el cromo, una sola luz (el ladrillo) y el sol únicamente cuando Aula trabaja. */
+:root {
+  color-scheme: light;
+  --canvas: #f3f0e9;
+  --paper: #fcfaf5;
+  --surface: #fffdf9;
+  --raised: #ffffff;
+  --sunken: #f6f3ed;
+  --field: #ffffff;
+  --bubble: #efebe4;
+  --tile: #ebe7e0;
+
+  --text: #201e1a;
+  --text2: #585550;
+  --text3: #6c6862; /* más claro que text2 para que se distingan (≥ 4,5:1 sobre papel, pozos y burbujas) */
+  --text-disabled: #8f8c87;
+  --line: rgba(32, 30, 26, 0.11);
+  --line-soft: rgba(32, 30, 26, 0.065);
+  --line-strong: #847f7a;
+  --fill1: rgba(32, 30, 26, 0.04);
+  --fill2: rgba(32, 30, 26, 0.065);
+  --fill3: rgba(32, 30, 26, 0.1);
+  --fill4: rgba(32, 30, 26, 0.15);
+  --selected: rgba(32, 30, 26, 0.075);
+
+  --accent: #b4502f;
+  --on-accent: #ffffff;
+  --accent-hover: #a9472a;
+  --accent-pressed: #9c4126;
+  --accent-text: #9c4527;
+  --accent-wash: rgba(180, 80, 47, 0.12);
+  --accent-line: rgba(156, 69, 39, 0.32);
+  --focus: #a34a2b;
+
+  --sun: #b97a12;
+  --sun-glow: rgba(239, 181, 93, 0.24);
+
+  --success: #1c7143;
+  --warning: #8a5a00;
+  --danger: #a91f35;
+  --danger-fill: #c52c2a;
+  --info: #1e65aa;
+  --success-soft: rgba(28, 113, 67, 0.09);
+  --warning-soft: rgba(138, 90, 0, 0.09);
+  --danger-soft: rgba(169, 31, 53, 0.08);
+  --info-soft: rgba(30, 101, 170, 0.08);
+
+  --sidebar: rgba(236, 232, 225, 0.74);
+  --bar: rgba(252, 250, 245, 0.9);
+  --menu: rgba(255, 253, 249, 0.97);
+
+  --shadow-color: 56, 40, 22;
+  --e1: 0 1px 0.5px rgba(var(--shadow-color), 0.05), 0 1px 3px rgba(var(--shadow-color), 0.06);
+  --e2: 0 1px 2px rgba(var(--shadow-color), 0.06), 0 6px 12px rgba(var(--shadow-color), 0.11);
+  --e3: 0 2px 6px rgba(var(--shadow-color), 0.08), 0 16px 28px rgba(var(--shadow-color), 0.2);
+  --e4: 0 4px 12px rgba(var(--shadow-color), 0.1), 0 32px 60px rgba(var(--shadow-color), 0.3);
+  --accent-halo: 0 1px 2px rgba(156, 65, 38, 0.18), 0 4px 8px rgba(156, 65, 38, 0.3);
+
+  /* Gráficas (ChartPalette de la app original): calor en ladrillo opaco y dominio en un solo tono, de neutro a intenso */
+  --heat-0: var(--fill2);
+  --heat-1: #f6cdbf;
+  --heat-2: #e7a18a;
+  --heat-3: #d27558;
+  --heat-4: #b44e30;
+  /* dominio: la misma luz (ladrillo) de neutro a intenso */
+  --level-0: #e6e2dd;
+  --level-1: #f2c9b8;
+  --level-2: #e19a7d;
+  --level-3: #c86a49;
+  --level-4: #9c4126;
+  --chart-grid: rgba(32, 30, 26, 0.08);
+  --chart-label: #77736e;
+}
+
+.dark {
+  color-scheme: dark;
+  --canvas: #110f0c;
+  --paper: #181613;
+  --surface: #1f1d1a;
+  --raised: #262421;
+  --sunken: #13110e;
+  --field: #13110e;
+  --bubble: #282623;
+  --tile: #2b2826;
+
+  --text: #f0eae3;
+  --text2: #c2bdb7;
+  --text3: #a7a29c;
+  --text-disabled: #6e6a65;
+  --line: rgba(240, 234, 227, 0.11);
+  --line-soft: rgba(240, 234, 227, 0.065);
+  --line-strong: #78746e;
+  --fill1: rgba(240, 234, 227, 0.05);
+  --fill2: rgba(240, 234, 227, 0.08);
+  --fill3: rgba(240, 234, 227, 0.12);
+  --fill4: rgba(240, 234, 227, 0.17);
+  --selected: rgba(240, 234, 227, 0.12);
+
+  --accent: #ea9a6c;
+  --on-accent: #2b1206;
+  --accent-hover: #efa57b;
+  --accent-pressed: #de8b5e;
+  --accent-text: #ef9c7b;
+  --accent-wash: rgba(234, 154, 108, 0.14);
+  --accent-line: rgba(239, 156, 123, 0.34);
+  --focus: #ef9c7b;
+
+  --sun: #f2c275;
+  --sun-glow: rgba(242, 194, 117, 0.14);
+
+  --success: #81d39f;
+  --warning: #e8b04b;
+  --danger: #fa8095;
+  --danger-fill: #cc2827;
+  --info: #85bcf5;
+  --success-soft: rgba(129, 211, 159, 0.12);
+  --warning-soft: rgba(232, 176, 75, 0.12);
+  --danger-soft: rgba(250, 128, 149, 0.12);
+  --info-soft: rgba(133, 188, 245, 0.12);
+
+  --sidebar: rgba(34, 31, 28, 0.66);
+  --bar: rgba(24, 22, 19, 0.88);
+  --menu: rgba(38, 36, 33, 0.97);
+
+  --shadow-color: 0, 0, 0;
+  --e1: 0 1px 0.5px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.24);
+  --e2: 0 1px 2px rgba(0, 0, 0, 0.36), 0 6px 12px rgba(0, 0, 0, 0.42);
+  --e3: 0 2px 6px rgba(0, 0, 0, 0.42), 0 16px 28px rgba(0, 0, 0, 0.58);
+  --e4: 0 4px 12px rgba(0, 0, 0, 0.48), 0 32px 60px rgba(0, 0, 0, 0.7);
+  --accent-halo: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(234, 154, 108, 0.18);
+
+  --heat-0: var(--fill2);
+  --heat-1: #6b3c2e;
+  --heat-2: #99533d;
+  --heat-3: #cc6c4e;
+  --heat-4: #f29676;
+  --level-0: #3a3733;
+  --level-1: #5e3628;
+  --level-2: #8f4d38;
+  --level-3: #c7694b;
+  --level-4: #f29676;
+  --chart-grid: rgba(240, 234, 227, 0.08);
+  --chart-label: #9a958f;
+}
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Noto Sans', 'PingFang SC', 'Hiragino Sans', 'Noto Sans CJK SC', 'Noto Sans Arabic', 'Noto Sans Devanagari', sans-serif;
+  --font-serif: ui-serif, 'New York', 'Newsreader Variable', 'Iowan Old Style', 'Charter', Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-field: var(--field);
+  --color-bubble: var(--bubble);
+  --color-tile: var(--tile);
+  --color-text: var(--text);
+  --color-text2: var(--text2);
+  --color-text3: var(--text3);
+  --color-disabled: var(--text-disabled);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-fill1: var(--fill1);
+  --color-fill2: var(--fill2);
+  --color-fill3: var(--fill3);
+  --color-fill4: var(--fill4);
+  --color-selected: var(--selected);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-pressed: var(--accent-pressed);
+  --color-accent-text: var(--accent-text);
+  --color-accent-wash: var(--accent-wash);
+  --color-accent-line: var(--accent-line);
+  --color-sun: var(--sun);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-fill: var(--danger-fill);
+  --color-info: var(--info);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-info-soft: var(--info-soft);
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-btn-sm: 8px;
+  --radius-btn: 10px;
+  --radius-row: 14px;
+  --radius-group: 18px;
+  --radius-sheet: 24px;
+
+  --shadow-e1: var(--e1);
+  --shadow-e2: var(--e2);
+  --shadow-e3: var(--e3);
+  --shadow-e4: var(--e4);
+  --shadow-halo: var(--accent-halo);
+}
+
+/* ───────────── Base ───────────── */
+html,
+body,
+#root {
+  height: 100%;
+  /* `clip` (no `hidden`): ni un scrollIntoView puede desplazar la ventana entera y esconder la barra lateral */
+  overflow: clip;
+}
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+}
+/* En macOS la ventana es translúcida (vibrancy): el lienzo deja ver el vidrio del sistema bajo la barra lateral. */
+html.vibrant body {
+  background: transparent;
+}
+::selection {
+  background: var(--accent-wash);
+}
+input,
+textarea,
+[contenteditable='true'],
+.selectable {
+  user-select: text;
+}
+button {
+  cursor: default;
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* El anillo sigue la forma de lo enfocado: el radio de 10 px solo para lo que no tiene uno propio (en la capa base, así
+   cualquier `rounded-*` gana y una tarjeta o una píldora no cambian de forma al enfocarlas: A4-P2-10). */
+@layer base {
+  :focus-visible {
+    border-radius: 10px;
+  }
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* En la capa base: así `no-scrollbar` (utilidad) gana de verdad (A4-P2-17: las pestañas del curso enseñaban la barra). */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--fill4) transparent;
+  }
+}
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fill4);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ───────────── Escala tipográfica (14 estilos con nombre) ───────────── */
+@utility t-display {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  line-height: 44px;
+  font-weight: 400;
+  letter-spacing: -0.022em;
+}
+@utility t-title1 {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+}
+@utility t-title2 {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+@utility t-headline {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+@utility t-body {
+  font-size: 15px;
+  line-height: 22px;
+}
+@utility t-callout {
+  font-size: 14px;
+  line-height: 20px;
+}
+@utility t-ui {
+  font-size: 13px;
+  line-height: 18px;
+}
+@utility t-footnote {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text2);
+}
+@utility t-caption {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--text3);
+}
+@utility t-eyebrow {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+@utility t-reading {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 28px;
+}
+@utility t-number {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+}
+@utility t-number-inline {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+@utility t-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────── Superficies ───────────── */
+@utility list-group {
+  background: var(--surface);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius-group);
+  box-shadow: var(--e1);
+}
+@utility material-sidebar {
+  background: var(--sidebar);
+  backdrop-filter: blur(30px) saturate(150%);
+}
+@utility material-bar {
+  background: var(--bar);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+@utility material-menu {
+  background: var(--menu);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 0.5px solid var(--line);
+  box-shadow: var(--e3);
+}
+
+/* Animaciones CSS mínimas (las demás con motion) */
+@keyframes aula-spin { to { transform: rotate(360deg); } }
+@keyframes aula-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--fill1) 25%, var(--fill2) 50%, var(--fill1) 75%);
+  background-size: 200% 100%;
+  animation: aula-shimmer 1.8s linear infinite;
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* Deslizador */
+.aula-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  outline: none;
+}
+.aula-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 0.5px solid var(--line);
+  box-shadow: var(--e2);
+}
+/* el deslizador no lleva contorno: el foco se ve en el tirador (A4-P2-12) */
+.aula-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-wash), 0 0 0 1.5px var(--focus), var(--e2);
+}
+
+/* Paleta de comandos */
+.aula-cmd-group [cmdk-group-heading] {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+/* KaTeX */
+.katex { font-size: 1.05em; }
+.katex-display { margin: 0.6em 0; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+
+/* Animaciones de píxeles (CSS: miles de píxeles sin coste de JS) */
+@keyframes px-drop {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes px-in {
+  from { opacity: 0; transform: scale(0.2); }
+  to { opacity: 1; transform: none; }
+}
+.px-drop {
+  animation: px-drop 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.px-dissolve rect {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: px-in 0.18s ease-out both;
+}
+
+/* Texto enriquecido (Markdown + fórmulas) */
+.aula-rich p { margin: 0 0 0.7em; }
+.aula-rich p:last-child { margin-bottom: 0; }
+.aula-rich h1, .aula-rich h2, .aula-rich h3 { font-family: var(--font-serif); font-weight: 500; margin: 0.9em 0 0.35em; }
+.aula-rich h1 { font-size: 24px; line-height: 30px; }
+.aula-rich h2 { font-size: 20px; line-height: 26px; }
+.aula-rich h3 { font-size: 17px; line-height: 24px; }
+.aula-rich ul, .aula-rich ol { margin: 0.3em 0 0.7em; padding-left: 1.3em; }
+.aula-rich ul { list-style: disc; }
+.aula-rich ol { list-style: decimal; }
+.aula-rich li { margin: 0.15em 0; }
+.aula-rich strong { font-weight: 600; }
+.aula-rich code { font-family: var(--font-mono); font-size: 0.92em; background: var(--sunken); padding: 1px 5px; border-radius: 5px; }
+.aula-rich table { border-collapse: collapse; margin: 0.6em 0; }
+.aula-rich th, .aula-rich td { border-bottom: 0.5px solid var(--line); padding: 6px 10px; text-align: left; }
+.aula-rich-inline .katex { font-size: 1em; }
+
+.aula-formula .katex-display { margin: 0; padding: 2px 0; overflow: visible; }
+
+/* Desplazamiento sin barra visible (pestañas que se deslizan en ventanas estrechas) */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Las pantallas reservan el hueco de la barra de desplazamiento: al cambiar de pestaña nada salta 10 px */
+main .flex-1.overflow-y-auto {
+  scrollbar-gutter: stable;
+}
+
+/* Fecha y hora nativas (Crear curso, Nuevo evento, Ajustes): el icono del sistema, discreto y con la tinta de la app; las
+   cifras tabulares. El campo en sí ya lleva el aspecto de TextField. */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'] {
+  font-variant-numeric: tabular-nums;
+}
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+input[type='date']::-webkit-calendar-picker-indicator:hover,
+input[type='time']::-webkit-calendar-picker-indicator:hover,
+input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.85;
+  background-color: var(--fill2);
+}
+input[type='date']::-webkit-datetime-edit-fields-wrapper,
+input[type='time']::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+input[type='date']::-webkit-datetime-edit-text,
+input[type='time']::-webkit-datetime-edit-text {
+  color: var(--text3);
+}

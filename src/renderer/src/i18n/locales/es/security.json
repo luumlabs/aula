@@ -1,0 +1,17 @@
+{
+  "keychain": {
+    "title": "Aula no puede abrir el llavero",
+    "open": "Ver qué pasa",
+    "why": {
+      "decrypt": "El sistema no dejó a Aula leer tus claves y sesiones guardadas: quizá pulsaste «Denegar» en el aviso del llavero, el llavero está bloqueado o todavía no se ha abierto.",
+      "corrupt": "El archivo donde Aula guarda tus claves y sesiones parece dañado y no se puede leer.",
+      "io": "Aula no pudo leer el archivo donde guarda tus claves y sesiones."
+    },
+    "safe": "No se ha perdido nada: mientras tanto Aula no guarda ni borra claves ni sesiones, y el archivo sigue intacto.",
+    "howRetry": "Pulsa «Reintentar» y, si el sistema te pregunta, permite que Aula use el llavero (en macOS, «Permitir siempre»).",
+    "howReset": "«Empezar de cero» aparta el archivo (no lo borra) para que puedas volver a pegar tus claves e iniciar sesión en tus plataformas.",
+    "retry": "Reintentar",
+    "reset": "Empezar de cero",
+    "stillLocked": "Sigue sin poder abrirlo. Desbloquea el llavero del sistema y vuelve a intentarlo."
+  }
+}

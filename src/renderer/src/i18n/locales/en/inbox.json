@@ -1,0 +1,311 @@
+{
+  "title": "Inbox",
+  "subtitle": {
+    "unread_one": "{{count}} unread",
+    "unread_other": "{{count}} unread",
+    "allRead": "All caught up",
+    "what": "What Aula did for you while you weren’t looking"
+  },
+  "tabs": {
+    "inbox": "Inbox",
+    "automations": "Automations"
+  },
+  "views": {
+    "open": "Open",
+    "snoozed": "Snoozed",
+    "archived": "Archived"
+  },
+  "filters": {
+    "all": "All",
+    "unread": "Unread",
+    "label": "Filter by type"
+  },
+  "kinds": {
+    "platform": "Platform",
+    "reminder": "Reminder",
+    "summary": "Summary",
+    "offer": "Exam to prepare for",
+    "followup": "Follow-up",
+    "automation": "Automation",
+    "system": "Aula",
+    "problem": "Needs you",
+    "digest": "Notification summary"
+  },
+  "sections": {
+    "snoozedBack": "Back from snooze",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "week": "This week",
+    "earlier": "Earlier",
+    "unread_one": "{{count}} unread",
+    "unread_other": "{{count}} unread"
+  },
+  "actions": {
+    "markAllRead": "Mark all as read",
+    "markRead": "Mark as read",
+    "markUnread": "Mark as unread",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "snooze": "Snooze",
+    "unsnooze": "Remove snooze",
+    "reply": "Reply",
+    "openAutomation": "See the automation",
+    "openRoutine": "See the routine",
+    "why": "Why am I seeing this?",
+    "clearRead": "Archive read items",
+    "search": "Search Inbox",
+    "groupByDay": "Group by day",
+    "groupByKind": "Group by type",
+    "more": "More options",
+    "pauseThis": "Pause this automation",
+    "pauseRoutine": "Pause this routine",
+    "settings": "Notifications and style…"
+  },
+  "snooze": {
+    "oneHour": "1 hour",
+    "thisEvening": "This evening",
+    "tomorrow": "Tomorrow",
+    "weekend": "This weekend",
+    "nextWeek": "Next week"
+  },
+  "badges": {
+    "dueSoon": "Due soon",
+    "resurfaced": "Snoozed",
+    "back": "Back {{when}}"
+  },
+  "why": {
+    "platform": "Checking your platform turned up something new.",
+    "platformNamed": "Your automation “{{name}}” found something new on your platform.",
+    "reminder": "Aula reminds you before each deadline and exam in your calendar.",
+    "summary": "It’s your “Aula always on” summary: what you have today and what’s coming.",
+    "offer": "An exam is coming up and you don’t have a course for it yet.",
+    "followup": "Aula scheduled this follow-up during a conversation to let you know when there was news.",
+    "automation": "It’s the result of one of your automations.",
+    "automationNamed": "It’s the result of your automation “{{name}}”.",
+    "problem": "Something went wrong and needs you: failures are always reported.",
+    "system": "It’s a note from Aula about how its own work is going."
+  },
+  "empty": {
+    "title": "Nothing pending",
+    "body": "When Aula does something for you (the morning summary, a reminder, what’s new on your platform), you’ll see it here.",
+    "filteredTitle": "Nothing here",
+    "filteredBody": "Try another filter or clear the search.",
+    "snoozedTitle": "Nothing snoozed",
+    "snoozedBody": "What you snooze comes back on its own, unread and at the top, when you choose.",
+    "archivedTitle": "The archive is empty",
+    "archivedBody": "What you archive stays here in case you need it again.",
+    "showAll": "Show all"
+  },
+  "detail": {
+    "onlyHere": "This message is only in your Inbox.",
+    "replyPrompt": "About “{{title}}”: "
+  },
+  "error": {
+    "title": "Couldn’t open the Inbox",
+    "retry": "Retry"
+  },
+  "proactive": {
+    "title": "Aula always on",
+    "off": "Off",
+    "on": "On",
+    "paused": "Paused",
+    "pausedUntil": "Paused until {{when}}",
+    "working": "Checking now",
+    "next": "Next: {{what}} · {{when}}",
+    "nothing": "Nothing scheduled",
+    "offer": "Every morning it summarizes your day, reminds you before deadlines and exams and checks your platform, even with the window closed. On your platform it only reads.",
+    "activate": "Turn on",
+    "resume": "Resume",
+    "pause": "Pause",
+    "pauseHour": "1 hour",
+    "pauseTomorrow": "Until tomorrow",
+    "pauseWeek": "One week",
+    "routines": "Routines",
+    "light": "While Aula is open",
+    "lightHint": "Reminders and exam-prep offers are free: they arrive while Aula is open, even with this mode off.",
+    "usage": "Today’s usage",
+    "runsLeft_one": "Enough left today for one more check.",
+    "runsLeft_other": "Enough left today for about {{count}} more checks.",
+    "exhausted": "Today’s budget is used up. Urgent items still come through from a reserve; the rest resumes tomorrow.",
+    "upNext": "Coming up",
+    "upNextEmpty": "When you turn on “Aula always on”, this is where you’ll see what it will do and when."
+  },
+  "routines": {
+    "morningBrief": "Morning summary",
+    "platformCheck": "Platform check",
+    "deadlineReminders": "Deadlines and exams",
+    "examOffers": "Exam prep offers",
+    "weeklySummary": "Weekly summary",
+    "morningBriefDetail": "Your classes, what’s due soon and what to study today.",
+    "platformCheckDetail": "What’s new on your platform, with a quick review.",
+    "deadlineRemindersDetail": "Reminds you before each deadline and exam.",
+    "examOffersDetail": "If an exam is coming up and you don’t have a course for it, offers to help you prepare.",
+    "weeklySummaryDetail": "How your week went and what’s coming.",
+    "examOffersWhen_one": "≤ {{count}} day",
+    "examOffersWhen_other": "≤ {{count}} days"
+  },
+  "health": {
+    "paused": "Paused",
+    "pausedDetail": "It doesn’t check anything until you resume it.",
+    "pausedUntilDetail": "It resumes on its own {{when}}.",
+    "noAI": "Aula needs an AI",
+    "noAIDetail": "Reminders keep coming; to check your platform and summarize, choose one in Settings.",
+    "signIn": "The {{site}} session expired",
+    "signInDetail": "Aula never signs in on its own: do it yourself and check again.",
+    "aiUnavailable": "Your AI isn’t responding",
+    "aiUnavailableDetail": "{{reason}}. Aula tries again {{when}}; reminders keep coming.",
+    "budget": "Paused by today’s budget",
+    "budgetDetail": "Urgent things keep coming; the rest comes back {{when}}.",
+    "failing": "“{{title}}” keeps failing",
+    "fixSignIn": "Sign in",
+    "fixAI": "Choose in Settings",
+    "fixRetry": "Try again",
+    "fixBudget": "Adjust"
+  },
+  "automations": {
+    "yours": "Your automations",
+    "new": "New automation",
+    "count_one": "{{count}} automation",
+    "count_other": "{{count}} automations",
+    "overviewTitle": "Aula works for you while you’re away",
+    "overviewBody": "Ask it to watch your platform, remind you of dates or prepare a summary at the time you want. It only reads: it never submits, sends or changes anything, and whatever it finds waits for you in your Inbox.",
+    "examples": [
+      "Check Canvas every day at 8:00 and tell me if there’s anything new",
+      "Check three times a day whether the new semester assignments are up and tell me when they appear",
+      "Remind me of every deadline 24 h and 2 h before",
+      "On Fridays at 18:00 tell me what I have pending for next week"
+    ],
+    "fromAula": "by Aula",
+    "completed": "Finished",
+    "paused": "Paused",
+    "nextRun": "Next time: {{when}}",
+    "lastRun": "Last: {{when}}",
+    "running": "Checking now…",
+    "runNow": "Run now",
+    "edit": "Edit…",
+    "recent": "Latest activity",
+    "history": "History",
+    "delete": "Delete…",
+    "deleteTitle": "Delete “{{title}}”?",
+    "deleteBody": "Its history is deleted too.",
+    "deleteConfirm": "Delete",
+    "noRuns": "It hasn’t run yet.",
+    "started": "Running: the result will arrive in your Inbox.",
+    "skipped": "Skipped (read-only): {{what}}",
+    "created": "Prepared: {{what}}",
+    "tokens_one": "{{count}} token",
+    "tokens_other": "{{count}} tokens",
+    "outcomes": {
+      "news": "Something new",
+      "conditionMet": "Found",
+      "nothingNew": "Nothing new",
+      "done": "Done",
+      "needsSignIn": "Sign in",
+      "failed": "Failed",
+      "budget": "Waited for budget",
+      "missed": "Didn’t run (computer asleep)",
+      "skipped": "Skipped"
+    },
+    "triggers": {
+      "catchUp": "catch-up",
+      "manual": "manual",
+      "retry": "retry"
+    }
+  },
+  "editor": {
+    "newTitle": "New automation",
+    "editTitle": "Edit automation",
+    "subtitle": "Aula will do it on its own at the right time and leave the result in your Inbox.",
+    "name": "Name",
+    "namePlaceholder": "Check Canvas",
+    "what": "What should I do?",
+    "whatPlaceholder": "Check my Canvas notifications and tell me if anything new arrived (assignments, announcements, grades).",
+    "when": "When?",
+    "kinds": {
+      "daily": "At set times",
+      "interval": "Every few hours",
+      "once": "Once",
+      "beforeEvents": "Before deadlines"
+    },
+    "addTime": "Another time",
+    "removeTime": "Remove this time",
+    "every": "Every",
+    "hours": "h",
+    "from": "from",
+    "to": "to",
+    "eventKinds": {
+      "assignment": "Deadlines",
+      "exam": "Exams",
+      "quiz": "Quizzes"
+    },
+    "where": "Where does it look?",
+    "capabilities": {
+      "platform": "Your platform",
+      "calendar": "Calendar",
+      "courses": "Your courses",
+      "web": "The web",
+      "study": "Prepare reviews"
+    },
+    "notify": "Notifications",
+    "notifyPolicies": {
+      "news": "Only if there’s something new",
+      "always": "Always",
+      "chatOnly": "No notification"
+    },
+    "untilFound": "When it finds it, tell me and stop looking",
+    "firstRun": "First time: {{when}}",
+    "safety": "On your platform it only reads: it never submits, sends, starts exams or changes anything, and never signs in on its own.",
+    "create": "Schedule",
+    "save": "Save",
+    "needsWhat": "Write what Aula should do.",
+    "invalidSchedule": "The schedule isn’t complete."
+  },
+  "schedule": {
+    "everyDay": "every day",
+    "weekdays": "Monday to Friday",
+    "weekend": "on weekends",
+    "dailyAt": "{{days}} at {{times}}",
+    "every": "Every {{hours}} h, from {{from}} to {{to}}",
+    "once": "Once: {{when}}",
+    "onceEmpty": "Once",
+    "before": "{{hours}} before {{what}}",
+    "whatAssign": "deadlines",
+    "whatExams": "exams",
+    "whatBoth": "deadlines and exams",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min"
+  },
+  "when": {
+    "today": "today at {{time}}",
+    "tomorrow": "tomorrow at {{time}}",
+    "yesterday": "yesterday",
+    "day": "{{day}} at {{time}}"
+  },
+  "settingsCard": {
+    "hint": "Summarizes your day, reminds you of deadlines and exams, checks your platform and prepares reviews, even with the window closed. On your platform it only reads: it never submits, starts exams, sends messages or changes anything.",
+    "style": "Style",
+    "styles": {
+      "quiet": "Quiet",
+      "balanced": "Balanced",
+      "attentive": "Attentive"
+    },
+    "styleDetail": {
+      "quiet": "Only urgent things make a sound. The rest waits in your Inbox.",
+      "balanced": "Tells you about new and urgent things, without overdoing it.",
+      "attentive": "Checks more often and tells you more.",
+      "custom": "With the numbers you chose by hand."
+    },
+    "quietHours": "Quiet hours",
+    "quietHint": "Aula schedules nothing, and anything not urgent waits until they end.",
+    "notifications": "Notify me",
+    "notificationsHint": "Otherwise everything stays in your Inbox.",
+    "badge": "Unread count on Aula’s icon",
+    "openAtLogin": "Open Aula at login",
+    "openAtLoginHint": "When you close the window, Aula stays in the tray doing what’s scheduled.",
+    "followups": "Let Aula schedule follow-ups",
+    "followupsHint": "“Tonight I’ll check whether the teacher posted the slides and tell you.” They use the same budget.",
+    "manage": "Routines and automations"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "hello": "Hola, soy Aula",
+  "helloBody": "Dame tus apuntes, tus diapositivas o solo un tema, y lo convierto en un curso para tu examen. Después lo estudiamos juntos.",
+  "name": "¿Cómo te llamas?",
+  "namePlaceholder": "Tu nombre (opcional)",
+  "start": "Empezar",
+  "aiTitle": "Elige tu IA",
+  "aiBody": "Ya he mirado qué tienes en este ordenador. Si dudas, deja la que marco: puedes cambiarla cuando quieras.",
+  "later": "Lo haré después",
+  "continue": "Continuar",
+  "platformTitle": "¿Usas una plataforma de estudio?",
+  "platformBody": "Canvas, Moodle, Classroom, Blackboard… Entra una vez y Aula traerá tus fechas y materiales. Es opcional.",
+  "platformSkip": "No uso ninguna",
+  "doneTitle": "Todo listo",
+  "doneBody": "Empieza con un curso nuevo o mira el de ejemplo para ver cómo es.",
+  "create": "Crear mi primer curso",
+  "explore": "Ver el curso de ejemplo",
+  "step": "Paso {{n}} de {{total}}"
+}

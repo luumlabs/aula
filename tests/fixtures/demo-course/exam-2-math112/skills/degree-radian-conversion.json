@@ -1,0 +1,754 @@
+{
+ "id": "degree-radian-conversion",
+ "title": "Exact degree–radian conversion",
+ "summary": "Convert between degrees and radians exactly, keeping π in the answer.",
+ "objectives": [
+  "Explain what one radian measures",
+  "Convert degrees to radians in simplest form",
+  "Convert radians to degrees"
+ ],
+ "prerequisites": [],
+ "lesson": [
+  {
+   "id": "drc-b01",
+   "type": "text",
+   "md": "# Degrees and radians\n\nA **radian** is the central angle that cuts off an arc **as long as the radius**. A full turn is a whole circumference, $2\\pi r$, so it contains $2\\pi$ radians. That gives the one conversion you need: $360^\\circ=2\\pi$, or more simply $180^\\circ=\\pi$."
+  },
+  {
+   "id": "drc-b02",
+   "type": "math",
+   "tex": "180^\\circ=\\pi\\ \\text{rad}\\qquad 1^\\circ=\\frac{\\pi}{180}\\ \\text{rad}\\qquad 1\\ \\text{rad}=\\frac{180^\\circ}{\\pi}\\approx 57.3^\\circ",
+   "label": "The one conversion you need"
+  },
+  {
+   "id": "drc-b03",
+   "type": "numberline",
+   "min": 0,
+   "max": 6.2832,
+   "pi": true,
+   "points": [
+    {
+     "value": "pi/6",
+     "label": "30°"
+    },
+    {
+     "value": "pi/2",
+     "label": "90°"
+    },
+    {
+     "value": "pi",
+     "label": "180°"
+    },
+    {
+     "value": "3*pi/2",
+     "label": "270°"
+    },
+    {
+     "value": "2*pi",
+     "label": "360°"
+    }
+   ],
+   "caption": "Radians on a number line: $\\pi$ is half a turn."
+  },
+  {
+   "id": "drc-b04",
+   "type": "predict",
+   "question": "Without a calculator: is $3$ radians more or less than $180^\\circ$?",
+   "options": [
+    {
+     "md": "More",
+     "correct": false,
+     "why": "$180^\\circ$ is $\\pi\\approx3.14$ radians, which is a bit **more** than $3$."
+    },
+    {
+     "md": "Less",
+     "correct": true,
+     "why": "$\\pi\\approx 3.14>3$, so $3$ radians is a little less than $180^\\circ$: about $172^\\circ$."
+    },
+    {
+     "md": "Exactly $180^\\circ$",
+     "correct": false,
+     "why": "That would be $\\pi$ radians, not $3$."
+    }
+   ]
+  },
+  {
+   "id": "drc-b05",
+   "type": "steps",
+   "title": "Degrees to radians, exactly",
+   "steps": [
+    {
+     "title": "Multiply",
+     "md": "Multiply by $\\dfrac{\\pi}{180^\\circ}$ so the degrees cancel."
+    },
+    {
+     "title": "Simplify",
+     "md": "Reduce the fraction and keep $\\pi$ as a symbol."
+    },
+    {
+     "title": "Check",
+     "md": "Sanity check with a known angle: $90^\\circ$ must give $\\dfrac{\\pi}{2}$."
+    }
+   ]
+  },
+  {
+   "id": "drc-b06",
+   "type": "example",
+   "title": "$225^\\circ$ in radians",
+   "problem": "Convert $225^\\circ$ to radians. Give an exact answer.",
+   "steps": [
+    {
+     "md": "Multiply: $225^\\circ\\cdot\\dfrac{\\pi}{180^\\circ}=\\dfrac{225\\pi}{180}$."
+    },
+    {
+     "md": "Divide numerator and denominator by $45$: $\\dfrac{225}{180}=\\dfrac{5}{4}$.",
+     "note": "Leave $\\pi$ in the answer: $3.93$ is an approximation, not the exact value."
+    },
+    {
+     "md": "So $225^\\circ=\\dfrac{5\\pi}{4}$."
+    }
+   ],
+   "answer": "$\\dfrac{5\\pi}{4}$"
+  },
+  {
+   "id": "drc-b07",
+   "type": "example",
+   "title": "$\\dfrac{7\\pi}{6}$ in degrees",
+   "problem": "Convert $\\dfrac{7\\pi}{6}$ to degrees.",
+   "steps": [
+    {
+     "md": "Replace $\\pi$ with $180^\\circ$: $\\dfrac{7\\cdot180^\\circ}{6}$."
+    },
+    {
+     "md": "$=7\\cdot30^\\circ=210^\\circ$."
+    }
+   ],
+   "answer": "$210^\\circ$"
+  },
+  {
+   "id": "drc-b08",
+   "type": "table",
+   "headers": [
+    "Degrees",
+    "$0^\\circ$",
+    "$30^\\circ$",
+    "$45^\\circ$",
+    "$60^\\circ$",
+    "$90^\\circ$",
+    "$180^\\circ$",
+    "$270^\\circ$",
+    "$360^\\circ$"
+   ],
+   "rows": [
+    [
+     "Radians",
+     "$0$",
+     "$\\frac{\\pi}{6}$",
+     "$\\frac{\\pi}{4}$",
+     "$\\frac{\\pi}{3}$",
+     "$\\frac{\\pi}{2}$",
+     "$\\pi$",
+     "$\\frac{3\\pi}{2}$",
+     "$2\\pi$"
+    ]
+   ],
+   "caption": "Special angles in both units",
+   "firstColumnIsHeader": true
+  },
+  {
+   "id": "drc-b09",
+   "type": "callout",
+   "kind": "mistake",
+   "md": "Multiplying by the wrong fraction. Going from degrees to radians the degrees must cancel, so multiply by $\\dfrac{\\pi}{180^\\circ}$, not by $\\dfrac{180^\\circ}{\\pi}$."
+  },
+  {
+   "id": "drc-b10",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "drc-e1",
+    "drc-e2",
+    "drc-e3",
+    "drc-e5"
+   ]
+  },
+  {
+   "id": "drc-b11",
+   "type": "recap",
+   "points": [
+    "A radian cuts off an arc as long as the radius.",
+    "$180^\\circ=\\pi$: multiply by $\\frac{\\pi}{180}$ or by $\\frac{180}{\\pi}$.",
+    "Exact answers keep $\\pi$ and use reduced fractions."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "drc-e1",
+   "skill": "degree-radian-conversion",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "drc-e1-q",
+     "type": "text",
+     "md": "Convert $150^\\circ$ to radians. Give an exact answer."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "5*pi/6",
+    "prefix": "$150^\\circ =$"
+   },
+   "hints": [
+    "Multiply by $\\frac{\\pi}{180}$ and reduce."
+   ],
+   "solution": [
+    {
+     "id": "drc-e1-s",
+     "type": "text",
+     "md": "$150\\cdot\\dfrac{\\pi}{180}=\\dfrac{5\\pi}{6}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "5/6",
+     "why": "You dropped $\\pi$: $150^\\circ=\\frac{5}{6}\\pi$ radians."
+    },
+    {
+     "input": "27000/pi",
+     "why": "You multiplied by $\\frac{180}{\\pi}$. To get radians, multiply by $\\frac{\\pi}{180}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e2",
+   "skill": "degree-radian-conversion",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "drc-e2-q",
+     "type": "text",
+     "md": "Convert $\\dfrac{3\\pi}{4}$ to degrees."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "135",
+    "suffix": "°"
+   },
+   "hints": [
+    "Replace $\\pi$ with $180^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "drc-e2-s",
+     "type": "text",
+     "md": "$\\dfrac{3\\cdot180^\\circ}{4}=135^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "45",
+     "why": "That is $\\frac{\\pi}{4}$. Multiply by $3$: $\\frac{3\\cdot180^\\circ}{4}=135^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e3",
+   "skill": "degree-radian-conversion",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "drc-e3-q",
+     "type": "text",
+     "md": "Convert $-120^\\circ$ to radians. Give an exact answer."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-2*pi/3",
+    "prefix": "$-120^\\circ =$"
+   },
+   "hints": [
+    "The sign does not change when you change units."
+   ],
+   "solution": [
+    {
+     "id": "drc-e3-s",
+     "type": "text",
+     "md": "$-120\\cdot\\dfrac{\\pi}{180}=-\\dfrac{2\\pi}{3}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "2*pi/3",
+     "why": "Keep the sign: a clockwise angle is negative in radians too."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e4",
+   "skill": "degree-radian-conversion",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "drc-e4-q",
+     "type": "text",
+     "md": "Convert $\\dfrac{11\\pi}{6}$ to degrees."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "330",
+    "suffix": "°"
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "drc-e4-s",
+     "type": "text",
+     "md": "$\\dfrac{11\\cdot180^\\circ}{6}=11\\cdot30^\\circ=330^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "30",
+     "why": "That is $\\frac{\\pi}{6}$; there are $11$ of them: $330^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e5",
+   "skill": "degree-radian-conversion",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "drc-e5-q",
+     "type": "text",
+     "md": "Convert $315^\\circ$ to radians. Give an exact answer."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "7*pi/4",
+    "prefix": "$315^\\circ =$"
+   },
+   "hints": [
+    "$315=45\\cdot7$ and $180=45\\cdot4$."
+   ],
+   "solution": [
+    {
+     "id": "drc-e5-s",
+     "type": "text",
+     "md": "$315\\cdot\\dfrac{\\pi}{180}=\\dfrac{7\\pi}{4}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "7/4",
+     "why": "You dropped $\\pi$: the answer is $\\frac{7\\pi}{4}$."
+    },
+    {
+     "input": "4*pi/7",
+     "why": "The fraction is upside down: $\\frac{315}{180}=\\frac74$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e6",
+   "skill": "degree-radian-conversion",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "drc-e6-q",
+     "type": "text",
+     "md": "Convert $2.5$ radians to degrees. Round to the nearest tenth of a degree."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "143.2",
+    "suffix": "°",
+    "absTol": 0.05
+   },
+   "hints": [
+    "Multiply by $\\frac{180}{\\pi}$."
+   ],
+   "solution": [
+    {
+     "id": "drc-e6-s",
+     "type": "text",
+     "md": "$2.5\\cdot\\dfrac{180^\\circ}{\\pi}\\approx143.2^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "0.0436",
+     "why": "You multiplied by $\\frac{\\pi}{180}$; to get degrees multiply by $\\frac{180}{\\pi}$."
+    },
+    {
+     "input": "450",
+     "why": "You replaced $\\pi$ by $180$, but there is no $\\pi$ here: $2.5$ rad $=2.5\\cdot\\frac{180^\\circ}{\\pi}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e7",
+   "skill": "degree-radian-conversion",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "drc-e7-q",
+     "type": "text",
+     "md": "Which angle is the largest?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$\\dfrac{5\\pi}{6}$",
+      "correct": true,
+      "why": "$\\frac{5\\pi}{6}=150^\\circ$, the largest of the four."
+     },
+     {
+      "id": "b",
+      "md": "$2.5$ rad",
+      "correct": false,
+      "why": "$2.5$ rad $\\approx143.2^\\circ$."
+     },
+     {
+      "id": "c",
+      "md": "$145^\\circ$",
+      "correct": false,
+      "why": "$145^\\circ<150^\\circ=\\frac{5\\pi}{6}$."
+     },
+     {
+      "id": "d",
+      "md": "$\\dfrac{3\\pi}{4}$",
+      "correct": false,
+      "why": "$\\frac{3\\pi}{4}=135^\\circ$."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [
+    "Convert everything to degrees."
+   ],
+   "solution": [
+    {
+     "id": "drc-e7-s",
+     "type": "text",
+     "md": "$\\frac{5\\pi}{6}=150^\\circ$, $2.5\\text{ rad}\\approx143.2^\\circ$, $\\frac{3\\pi}{4}=135^\\circ$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e8",
+   "skill": "degree-radian-conversion",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "drc-e8-q",
+     "type": "text",
+     "md": "Complete: $180^\\circ$ is [[1]] radians, so $90^\\circ$ is [[2]] radians."
+    }
+   ],
+   "answer": {
+    "kind": "cloze",
+    "text": "",
+    "blanks": [
+     {
+      "accepted": [
+       "π",
+       "pi"
+      ]
+     },
+     {
+      "accepted": [
+       "π/2",
+       "pi/2",
+       "½π"
+      ]
+     }
+    ]
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "drc-e8-s",
+     "type": "text",
+     "md": "$180^\\circ=\\pi$ and half of it, $90^\\circ$, is $\\frac{\\pi}{2}$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e9",
+   "skill": "degree-radian-conversion",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "drc-e9-q",
+     "type": "text",
+     "md": "Match each angle in degrees with its radian measure."
+    }
+   ],
+   "answer": {
+    "kind": "matching",
+    "pairs": [
+     {
+      "left": "$210^\\circ$",
+      "right": "$\\frac{7\\pi}{6}$"
+     },
+     {
+      "left": "$240^\\circ$",
+      "right": "$\\frac{4\\pi}{3}$"
+     },
+     {
+      "left": "$300^\\circ$",
+      "right": "$\\frac{5\\pi}{3}$"
+     },
+     {
+      "left": "$135^\\circ$",
+      "right": "$\\frac{3\\pi}{4}$"
+     }
+    ],
+    "extraRights": [
+     "$\\frac{5\\pi}{4}$"
+    ]
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "drc-e9-s",
+     "type": "text",
+     "md": "$210=7\\cdot30$, $240=4\\cdot60$, $300=5\\cdot60$, $135=3\\cdot45$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e10",
+   "skill": "degree-radian-conversion",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "drc-e10-q",
+     "type": "text",
+     "md": "True or false: $1$ radian is larger than $1^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": true
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "drc-e10-s",
+     "type": "text",
+     "md": "$1$ rad $\\approx57.3^\\circ$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "drc-e11",
+   "skill": "degree-radian-conversion",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "drc-e11-q",
+     "type": "text",
+     "md": "A wheel turns through $\\dfrac{17\\pi}{12}$ radians. How many degrees is that?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "255",
+    "suffix": "°"
+   },
+   "hints": [
+    "$\\frac{\\pi}{12}=15^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "drc-e11-s",
+     "type": "text",
+     "md": "$\\dfrac{17\\cdot180^\\circ}{12}=17\\cdot15^\\circ=255^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "17",
+     "why": "$\\frac{\\pi}{12}$ is $15^\\circ$, so multiply: $17\\cdot15^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [
+  {
+   "id": "drc-t1",
+   "skill": "degree-radian-conversion",
+   "level": 2,
+   "vars": [
+    {
+     "name": "k",
+     "kind": "int",
+     "min": 1,
+     "max": 11
+    }
+   ],
+   "constraints": [
+    "k != 6"
+   ],
+   "prompt": [
+    {
+     "id": "drc-t1-q",
+     "type": "text",
+     "md": "Convert ${{30*k}}^\\circ$ to radians. Give an exact answer."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "k*pi/6"
+   },
+   "hints": [
+    "Multiply by $\\frac{\\pi}{180}$ and reduce."
+   ],
+   "solution": [
+    {
+     "id": "drc-t1-s",
+     "type": "text",
+     "md": "${{30*k}}\\cdot\\dfrac{\\pi}{180}={{tex:k*pi/6}}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "k/6",
+     "why": "Keep $\\pi$ in the exact answer."
+    }
+   ],
+   "points": 1,
+   "tags": [
+    "radians"
+   ]
+  }
+ ],
+ "cards": [
+  {
+   "id": "drc-c1",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "What is one radian?",
+   "back": "The central angle that cuts off an arc as long as the radius (about $57.3^\\circ$).",
+   "tags": []
+  },
+  {
+   "id": "drc-c2",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "Degrees → radians",
+   "back": "Multiply by $\\dfrac{\\pi}{180^\\circ}$.",
+   "tags": []
+  },
+  {
+   "id": "drc-c3",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "Radians → degrees",
+   "back": "Multiply by $\\dfrac{180^\\circ}{\\pi}$ (or replace $\\pi$ with $180^\\circ$).",
+   "tags": []
+  },
+  {
+   "id": "drc-c4",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "$30^\\circ$, $45^\\circ$, $60^\\circ$ in radians",
+   "back": "$\\frac{\\pi}{6}$, $\\frac{\\pi}{4}$, $\\frac{\\pi}{3}$",
+   "tags": []
+  },
+  {
+   "id": "drc-c5",
+   "skill": "degree-radian-conversion",
+   "kind": "cloze",
+   "front": "A full turn is {{c1::$2\\pi$}} radians.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "drc-c6",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "$\\dfrac{5\\pi}{4}$ in degrees",
+   "back": "$225^\\circ$",
+   "tags": []
+  },
+  {
+   "id": "drc-c7",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "$300^\\circ$ in radians",
+   "back": "$\\dfrac{5\\pi}{3}$",
+   "tags": []
+  },
+  {
+   "id": "drc-c8",
+   "skill": "degree-radian-conversion",
+   "kind": "basic",
+   "front": "Is $3$ rad more or less than $180^\\circ$?",
+   "back": "Less: $\\pi\\approx3.14>3$.",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Upside-down conversion factor",
+   "wrong": "$150^\\circ\\cdot\\frac{180}{\\pi}$",
+   "right": "$150^\\circ\\cdot\\frac{\\pi}{180}=\\frac{5\\pi}{6}$",
+   "why": "The degrees must cancel, so $^\\circ$ goes in the denominator."
+  },
+  {
+   "title": "Rounding too early",
+   "wrong": "$225^\\circ\\approx3.93$",
+   "right": "$225^\\circ=\\frac{5\\pi}{4}$",
+   "why": "Exact answers keep $\\pi$; only round when the problem asks for it."
+  }
+ ],
+ "sources": [
+  {
+   "source": "textbook-4-2",
+   "page": 1
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

@@ -1,0 +1,53 @@
+{
+  "notice": {
+    "ready": "Version {{version}} ready",
+    "restart": "Restart to update",
+    "manual": "Version {{version}} not installed",
+    "why": "See why",
+    "download": "Version {{version}} is out",
+    "how": "How to install it",
+    "dismiss": "Don’t remind me about this version"
+  },
+  "status": {
+    "checking": "Looking for a new version…",
+    "upToDate": "You’re up to date.",
+    "downloading": "Downloading version {{version}}… {{percent}}%",
+    "verifying": "Checking version {{version}}…",
+    "ready": "Version {{version}} is ready: it installs when you restart (or the next time you quit Aula).",
+    "updatedFrom": "Aula was updated from version {{from}}."
+  },
+  "available": {
+    "translocated": "A new version is out ({{version}}). For Aula to update itself, move it to the Applications folder and open it from there.",
+    "readOnly": "A new version is out ({{version}}), but Aula can’t write to the folder it’s in. To let it update itself, move it to a folder you can write to, or ask whoever manages this computer to install the new version.",
+    "failedBefore": "Version {{version}} couldn’t install itself. Download it from the website or try again.",
+    "package": "A new version is out ({{version}}). Since you installed Aula from a package (.deb), it doesn’t update itself: download the new package and install it the same way as the first one."
+  },
+  "error": {
+    "offline": "No connection: couldn’t check right now. Aula will try again later.",
+    "unavailable": "No published version was found to download. Aula will try again later.",
+    "corrupt": "The download of version {{version}} arrived damaged and was discarded. Your version is unchanged.",
+    "signature": "Aula couldn’t confirm that version {{version}} is genuine, so it didn’t install it. Your version is unchanged. Don’t download it by hand unless the project announces it.",
+    "permission": "Aula isn’t allowed to update itself in this folder. Download the new version and install it by hand.",
+    "disk": "There’s no disk space left for the new version. Free up some space and check again.",
+    "install": "Version {{version}} couldn’t be installed. You’re still on {{current}}, which works as always.",
+    "unknown": "Couldn’t update right now. Aula will try again later.",
+    "offlineDownload": "The connection dropped while downloading version {{version}}. Aula will try again later.",
+    "system": "Version {{version}} needs a newer version of macOS than this Mac has, so it wasn’t installed. You’re still on {{current}}."
+  },
+  "unsupported": {
+    "dev": "This is a development copy: it doesn’t update itself.",
+    "package": "This copy of Aula doesn’t update itself. New versions are on the project’s website.",
+    "other": "This copy doesn’t update itself."
+  },
+  "actions": {
+    "check": "Check for updates",
+    "restart": "Restart and update",
+    "download": "Download",
+    "retry": "Try again",
+    "notes": "What’s new"
+  },
+  "notes": {
+    "title": "What’s new in version {{version}}",
+    "close": "Close"
+  }
+}

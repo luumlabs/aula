@@ -1,0 +1,17 @@
+{
+  "keychain": {
+    "title": "Aula can’t open the keychain",
+    "open": "See what’s going on",
+    "why": {
+      "decrypt": "Your system didn’t let Aula read your saved keys and sessions: maybe you clicked “Deny” on the keychain prompt, the keychain is locked or it hasn’t been unlocked yet.",
+      "corrupt": "The file where Aula keeps your keys and sessions looks damaged and can’t be read.",
+      "io": "Aula couldn’t read the file where it keeps your keys and sessions."
+    },
+    "safe": "Nothing has been lost: in the meantime Aula won’t save or remove keys or sessions, and the file stays untouched.",
+    "howRetry": "Click “Try again” and, if your system asks, let Aula use the keychain (on macOS, “Always Allow”).",
+    "howReset": "“Start over” moves the file aside (it isn’t deleted) so you can paste your keys and sign in to your platforms again.",
+    "retry": "Try again",
+    "reset": "Start over",
+    "stillLocked": "Still can’t open it. Unlock your system keychain and try again."
+  }
+}

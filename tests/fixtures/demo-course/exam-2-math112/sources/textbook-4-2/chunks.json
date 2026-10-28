@@ -1,0 +1,16 @@
+[
+ {
+  "id": "1bf2a3ff4ef65ea5",
+  "ordinal": 0,
+  "page": 1,
+  "sourceID": "textbook-4-2",
+  "text": "Definition. Let t be a real number and let P = (x, y) be the point on the unit circle that corresponds to t. Then sin t = y, cos t = x and tan t = y/x for x ≠ 0. The arc length from (1, 0) to P equals t because the radius is 1."
+ },
+ {
+  "id": "08ac4bb5b5f0bd8c",
+  "ordinal": 1,
+  "page": 2,
+  "sourceID": "textbook-4-2",
+  "text": "Example 3. Find the exact values of sin t and cos t when t = 5π/6. The terminal point is in Quadrant II with reference number π/6, so sin(5π/6) = 1/2 and cos(5π/6) = −√3/2."
+ }
+]

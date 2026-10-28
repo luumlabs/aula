@@ -1,0 +1,89 @@
+{
+  "draft": {
+    "discard": "Discard draft",
+    "discardTitle": "Discard this draft?",
+    "discardBody": "The title, notes and materials Aula already read for this course will be deleted.",
+    "discardConfirm": "Discard",
+    "keep": "Keep the draft",
+    "replaceTitle": "You have a course halfway set up",
+    "replaceBody": "You’d already started setting up “{{title}}”. Discard it and set up this one instead?",
+    "replaceBodyUntitled": "You’d already started setting up another course. Discard it and set up this one instead?",
+    "replaceConfirm": "Discard and start this one"
+  },
+  "title": "New course",
+  "heading": "What do you want to study?",
+  "subheading": "Type the subject or the exam. Your notes make it better, but they’re optional.",
+  "titlePlaceholder": "Calculus I · Midterm 2, English B2, Art history…",
+  "examDate": "Exam date",
+  "level": "Level",
+  "levels": {
+    "school": "Middle school",
+    "highschool": "High school",
+    "university": "University",
+    "official": "Civil service exams",
+    "language": "Languages",
+    "hobby": "For fun"
+  },
+  "materials": "Your materials",
+  "materialsHint": "Drop PDFs, Word, PowerPoint, photos of notes or the whiteboard, past exams…",
+  "drop": "Drop your files here",
+  "browse": "Choose files",
+  "pasteText": "Paste text",
+  "addLink": "Add link",
+  "add": "Add",
+  "addText": "Add this text to your materials",
+  "addLinkNow": "Add this link to your materials",
+  "linkPlaceholder": "https://…",
+  "textPlaceholder": "Paste notes or what the teacher said…",
+  "official": "Official (from the teacher)",
+  "pages_one": "{{count}} page",
+  "pages_other": "{{count}} pages",
+  "reading": "Reading…",
+  "fromPlatform": "Find my materials on {{platform}}",
+  "fromPlatformHint": "Aula uses your signed-in session, only reads, and brings back what the exam covers.",
+  "more": "More details (optional)",
+  "topics": "What the exam covers",
+  "topicsPlaceholder": "Units 3 and 4: trig identities, equations…",
+  "examNotes": "Exam format",
+  "examNotesPlaceholder": "100 points, calculator allowed, show your work…",
+  "lessonMode": "How lessons should work",
+  "lessonModes": {
+    "stepByStep": {
+      "title": "Step by step",
+      "body": "Explains, then checks you’ve got it before moving on."
+    },
+    "explore": {
+      "title": "Explore",
+      "body": "Go at your own pace; questions are optional."
+    },
+    "read": {
+      "title": "Just read",
+      "body": "A lesson to read, with no questions in the way."
+    }
+  },
+  "courseLanguage": "Course language",
+  "depth": "Course size",
+  "depths": {
+    "quick": {
+      "title": "Quick",
+      "body": "The essentials. If the exam is tomorrow."
+    },
+    "standard": {
+      "title": "Standard",
+      "body": "Full course with practice, flashcards and verification."
+    },
+    "deep": {
+      "title": "In depth",
+      "body": "More topics, exercises and slides. Takes longer."
+    }
+  },
+  "web": "Search the web if something’s missing",
+  "verify": "Verify answers with another AI",
+  "create": "Create course",
+  "creating": "Getting ready…",
+  "needTitle": "Type what you want to study",
+  "noAI": "Creating courses needs an AI",
+  "noAIBody": "Pick one in Settings: Aula detects what you already have.",
+  "chooseAI": "Choose an AI",
+  "removed": "Material removed"
+}

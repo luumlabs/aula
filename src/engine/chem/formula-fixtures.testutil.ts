@@ -1,0 +1,41 @@
+// Fórmulas válidas e inválidas de la app Swift anterior: Tests/ChemKitTests/FormulaParserTests.swift (las usan varias pruebas).
+
+/** (entrada, fórmula de Hill esperada, carga esperada) */
+export const VALID: readonly (readonly [string, string, number])[] = [
+  ["H2O", "H2O", 0], ["H2O2", "H2O2", 0], ["NaCl", "ClNa", 0], ["Ca(OH)2", "CaH2O2", 0], ["Al2(SO4)3", "Al2O12S3", 0],
+  ["CuSO4·5H2O", "CuH10O9S", 0], ["CuSO4.5H2O", "CuH10O9S", 0], ["CuSO4*5H2O", "CuH10O9S", 0], ["CuSO4 · 5H2O", "CuH10O9S", 0],
+  ["CuSO4•5H2O", "CuH10O9S", 0], ["CuSO₄·5H₂O", "CuH10O9S", 0], ["[Fe(CN)6]3-", "C6FeN6", -3], ["K4[Fe(CN)6]", "C6FeK4N6", 0],
+  ["SO4^2-", "O4S", -2], ["SO4 2-", "O4S", -2], ["SO₄²⁻", "O4S", -2], ["Fe3+", "Fe", 3], ["Fe^{3+}", "Fe", 3], ["Fe^3+", "Fe", 3],
+  ["Fe+3", "Fe", 3], ["Fe+++", "Fe", 3], ["Fe +3", "Fe", 3], ["Fe²⁺", "Fe", 2], ["NH4+", "H4N", 1], ["NH4 +", "H4N", 1],
+  ["NH₄⁺", "H4N", 1], ["H+", "H", 1], ["H3O+", "H3O", 1], ["Na^{+}", "Na", 1], ["Cl-", "Cl", -1], ["Cl^-", "Cl", -1],
+  ["OH-", "HO", -1], ["OH^{-}", "HO", -1], ["Cr2O7^2-", "Cr2O7", -2], ["Cr2O72-", "Cr2O7", -2], ["MnO4-", "MnO4", -1],
+  ["MnO42-", "MnO4", -2], ["PO4^3-", "O4P", -3], ["PO43-", "O4P", -3], ["HPO42-", "HO4P", -2], ["H2PO4-", "H2O4P", -1],
+  ["CO32-", "CO3", -2], ["HCO3-", "CHO3", -1], ["C2H3O2-", "C2H3O2", -1], ["CH3COO-", "C2H3O2", -1], ["NO3-", "NO3", -1],
+  ["NO2-", "NO2", -1], ["NO2+", "NO2", 1], ["O2-", "O", -2], ["S2-", "S", -2], ["N3-", "N", -3], ["I3-", "I3", -1], ["Br3-", "Br3", -1],
+  ["H2+", "H2", 1], ["Hg2^2+", "Hg2", 2], ["Hg22+", "Hg2", 2], ["Hg2+", "Hg", 2], ["[Cu(NH3)4]2+", "CuH12N4", 2],
+  ["Cu(NH3)42+", "CuH12N4", 2], ["Ag(NH3)2+", "AgH6N2", 1], ["[Ag(NH3)2]+", "AgH6N2", 1], ["Al(OH)4-", "AlH4O4", -1],
+  ["Fe(H2O)63+", "FeH12O6", 3], ["C60", "C60", 0], ["C60-", "C60", -1], ["S8", "S8", 0], ["P4O10", "O10P4", 0],
+  ["Mg3(PO4)2", "Mg3O8P2", 0], ["(NH4)2SO4", "H8N2O4S", 0], ["NH4NO3", "H4N2O3", 0], ["Na2CO3·10H2O", "CH20Na2O13", 0],
+  ["CaSO4·2H2O", "CaH4O6S", 0], ["C2H5OH", "C2H6O", 0], ["CH3CH2CH2CH3", "C4H10", 0], ["C12H22O11", "C12H22O11", 0],
+  ["K2Cr2O7", "Cr2K2O7", 0], ["KMnO4", "KMnO4", 0], ["Fe2(SO4)3", "Fe2O12S3", 0], ["Ca3(PO4)2", "Ca3O8P2", 0],
+  ["Ba(NO3)2", "BaN2O6", 0], ["Pb(NO3)2", "N2O6Pb", 0], ["(CH3)3COH", "C4H10O", 0], ["CH3(CH2)4CH3", "C6H14", 0],
+  ["Co(NH3)6Cl3", "Cl3CoH18N6", 0], ["[Co(NH3)6]Cl3", "Cl3CoH18N6", 0], ["D2O", "D2O", 0], ["T2O", "T2O", 0],
+  ["^{14}CO2", "^{14}CO2", 0], ["¹⁴CO₂", "^{14}CO2", 0], ["^13CH4", "^{13}CH4", 0], ["CH3D", "CH3D", 0], ["H2^{18}O", "H2^{18}O", 0],
+  ["{}^{14}C", "^{14}C", 0], ["Fe(CO)5", "C5FeO5", 0], ["Ni(CO)4", "C4NiO4", 0], ["UO2^2+", "O2U", 2], ["NaHCO3", "CHNaO3", 0],
+  ["Ca(HCO3)2", "C2H2CaO6", 0], ["Al2O3", "Al2O3", 0], ["SiO2", "O2Si", 0], ["XeF4", "F4Xe", 0], ["Og", "Og", 0],
+  ["HCl", "ClH", 0], ["C6H5COOH", "C7H6O2", 0], ["HSO4-", "HO4S", -1], ["NaOH", "HNaO", 0], ["LiAlH4", "AlH4Li", 0],
+  ["B2H6", "B2H6", 0], ["H", "H", 0], ["O3", "O3", 0], ["Hg", "Hg", 0], ["  H2O  ", "H2O", 0], ["H2O\n", "H2O", 0],
+  ["ClO4-", "ClO4", -1], ["S2O3^2-", "O3S2", -2], ["C2O4^2-", "C2O4", -2], ["O2^2-", "O2", -2], ["O22-", "O2", -2],
+  ["O2^-", "O2", -1], ["N3^-", "N3", -1], ["Mo7O246-", "Mo7O24", -6], ["SO4-2", "O4S", -2], ["{H2O}", "H2O", 0],
+  ["(((H)))", "H", 0], ["\\mathrm{H_2O}", "H2O", 0], ["H_2O", "H2O", 0], ["H_{2}SO_{4}", "H2O4S", 0], ["$H_2O$", "H2O", 0],
+  ["\\ce{H2SO4}", "H2O4S", 0], ["\\ce{SO4^2-}", "O4S", -2], ["\\mathrm{Fe_{2}(SO_{4})_{3}}", "Fe2O12S3", 0],
+  ["\\mathrm{CuSO_4\\cdot 5H_2O}", "CuH10O9S", 0], ["\\mathrm{[Fe(CN)_6]^{3-}}", "C6FeN6", -3], ["\\text{NaCl}", "ClNa", 0],
+  ["CH3COOH", "C2H4O2", 0], ["C6H12O6", "C6H12O6", 0], ["Fe(s)", "Fe", 0], ["CO2(g)", "CO2", 0], ["NaCl(aq)", "ClNa", 0],
+  ["NaCl(ac)", "ClNa", 0], ["Fe3+(aq)", "Fe", 3], ["SO4^2-(aq)", "O4S", -2], ["H2O (l)", "H2O", 0],
+]
+export const INVALID: readonly string[] = [
+  "", " ", "Xy", "co", "h2o", "nacl", "NACL", "CL2", "Ca(OH", "Ca(OH]2", "H2O)", "()", "[]", "H0", "H99999999", "2", "2-", "+", "-",
+  "Na+Cl", "H 2 O", "€", "H2O☃", "😀", "H2O😀", "Fe3++", "Fe3-+", "SO4^2", "SO4^^2-", "H2O·", "·H2O", "(H2O", "[Fe(CN)6", "0H2",
+  "^{1}C", "^{999}C", "Q", "J2", "H2O)(", "\\foo{H2O}", "H2O^{abc}", "Fe^{3+}^{2+}", "CuSO4·½H2O", "123abc", "Cl2O7)", "Uue",
+  "CO2 + H2O", "H2O(aq", "Fe^{30+}", "(H2O)0", "C1000000000", "x", "Hco", "\u{0000}", "H\tO\u{1}", "((H)2]", "^C",
+]

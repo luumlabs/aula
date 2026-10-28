@@ -1,0 +1,835 @@
+{
+ "id": "amplitude-period-phase",
+ "title": "Amplitude, period & phase shift",
+ "summary": "Read and build sinusoids y = A sin(B(x − C)) + D from their graph features.",
+ "objectives": [
+  "Read amplitude, period, phase shift and midline",
+  "Write an equation from its features",
+  "Model a periodic situation"
+ ],
+ "prerequisites": [
+  "sine-cosine-graphs"
+ ],
+ "lesson": [
+  {
+   "id": "app-b01",
+   "type": "text",
+   "md": "# Amplitude, period and phase shift\n\nEvery sinusoid $y=A\\sin(B(x-C))+D$ is the basic sine wave stretched and slid around. Each letter does one job, and reading them off correctly is most of the work on the exam."
+  },
+  {
+   "id": "app-b02",
+   "type": "explore",
+   "title": "Play with $a$, $b$, $c$ and $d$",
+   "plot": {
+    "xMin": -3.1416,
+    "xMax": 6.2832,
+    "yMin": -4,
+    "yMax": 4,
+    "xPi": true,
+    "curves": [
+     {
+      "expr": "a*sin(b*(x-c))+d",
+      "label": "y = a sin(b(x − c)) + d",
+      "color": "accent"
+     },
+     {
+      "expr": "sin(x)",
+      "label": "y = sin x",
+      "color": "gray",
+      "dashed": true
+     }
+    ]
+   },
+   "params": [
+    {
+     "name": "a",
+     "label": "Amplitude a",
+     "min": -3,
+     "max": 3,
+     "step": 0.5,
+     "value": 2
+    },
+    {
+     "name": "b",
+     "label": "b (period 2π/b)",
+     "min": 0.5,
+     "max": 4,
+     "step": 0.5,
+     "value": 2
+    },
+    {
+     "name": "c",
+     "label": "Phase shift c",
+     "min": -3.1416,
+     "max": 3.1416,
+     "step": 0.2618,
+     "value": 0.7854
+    },
+    {
+     "name": "d",
+     "label": "Vertical shift d",
+     "min": -2,
+     "max": 2,
+     "step": 0.5,
+     "value": 0
+    }
+   ],
+   "prompts": [
+    "What happens when $a$ becomes negative?",
+    "Double $b$: what happens to the period?",
+    "Which way does the wave move when $c$ grows?"
+   ]
+  },
+  {
+   "id": "app-b03",
+   "type": "table",
+   "headers": [
+    "Parameter",
+    "What it changes",
+    "How to read it"
+   ],
+   "rows": [
+    [
+     "$A$",
+     "Amplitude: the height above the midline",
+     "$|A|$"
+    ],
+    [
+     "$B$",
+     "Period: the length of one cycle",
+     "$\\dfrac{2\\pi}{B}$"
+    ],
+    [
+     "$C$",
+     "Phase shift: horizontal slide",
+     "right if $C>0$"
+    ],
+    [
+     "$D$",
+     "Vertical shift: the midline",
+     "$y=D$"
+    ]
+   ],
+   "caption": "$y=A\\sin(B(x-C))+D$"
+  },
+  {
+   "id": "app-b04",
+   "type": "predict",
+   "question": "What is the period of $y=3\\sin(4x)$?",
+   "options": [
+    {
+     "md": "$\\dfrac{\\pi}{2}$",
+     "correct": true,
+     "why": "$\\frac{2\\pi}{4}=\\frac{\\pi}{2}$: the wave repeats four times as often."
+    },
+    {
+     "md": "$3$",
+     "correct": false,
+     "why": "$3$ is the amplitude."
+    },
+    {
+     "md": "$8\\pi$",
+     "correct": false,
+     "why": "Divide $2\\pi$ by $B$; don't multiply."
+    }
+   ]
+  },
+  {
+   "id": "app-b05",
+   "type": "example",
+   "title": "Reading $y=2\\sin(2x-\\frac{\\pi}{2})+1$",
+   "problem": "Find the amplitude, period, phase shift and midline.",
+   "steps": [
+    {
+     "md": "Factor $B$ out: $2x-\\frac{\\pi}{2}=2(x-\\frac{\\pi}{4})$, so $B=2$ and $C=\\frac{\\pi}{4}$.",
+     "note": "Without factoring you would read a shift of $\\frac{\\pi}{2}$, the most common mistake here."
+    },
+    {
+     "md": "Amplitude $|A|=2$; period $\\frac{2\\pi}{2}=\\pi$."
+    },
+    {
+     "md": "Phase shift $\\frac{\\pi}{4}$ to the right; midline $y=1$."
+    },
+    {
+     "md": "One cycle runs from $x=\\frac{\\pi}{4}$ to $x=\\frac{5\\pi}{4}$, and the range is $[-1,3]$."
+    }
+   ],
+   "answer": "Amplitude $2$, period $\\pi$, shift $\\frac{\\pi}{4}$ right, midline $y=1$"
+  },
+  {
+   "id": "app-b06",
+   "type": "plot",
+   "title": "$y=2\\sin(2x-\\frac{\\pi}{2})+1$",
+   "xMin": 0,
+   "xMax": 6.2832,
+   "yMin": -1.6,
+   "yMax": 3.6,
+   "xPi": true,
+   "curves": [
+    {
+     "expr": "2*sin(2*x-pi/2)+1",
+     "label": "y",
+     "color": "accent"
+    }
+   ],
+   "lines": [
+    {
+     "kind": "horizontal",
+     "y": "1",
+     "color": "gray",
+     "label": "midline y = 1"
+    }
+   ],
+   "points": [
+    {
+     "x": "pi/4",
+     "y": "1",
+     "label": "start",
+     "color": "orange"
+    },
+    {
+     "x": "5*pi/4",
+     "y": "1",
+     "label": "end",
+     "color": "orange"
+    },
+    {
+     "x": "pi/2",
+     "y": "3",
+     "label": "max",
+     "color": "accent"
+    }
+   ],
+   "caption": "One cycle starts at $x=\\frac{\\pi}{4}$, on the midline, going up."
+  },
+  {
+   "id": "app-b07",
+   "type": "callout",
+   "kind": "mistake",
+   "md": "Reading the phase shift before factoring. In $\\sin(2x-\\pi)$ the shift is $\\frac{\\pi}{2}$, not $\\pi$: write it as $\\sin(2(x-\\frac{\\pi}{2}))$ first."
+  },
+  {
+   "id": "app-b08",
+   "type": "spot",
+   "intro": "Find the phase shift of $y=\\cos(3x+\\pi)$.",
+   "lines": [
+    "$3x+\\pi=3(x+\\frac{\\pi}{3})$",
+    "So $C=-\\frac{\\pi}{3}$.",
+    "The graph moves $\\frac{\\pi}{3}$ to the right."
+   ],
+   "wrongIndex": 2,
+   "explanation": "$C<0$ means a shift to the **left**: $\\frac{\\pi}{3}$ units left."
+  },
+  {
+   "id": "app-b09",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "app-e1",
+    "app-e2",
+    "app-e3",
+    "app-e4"
+   ]
+  },
+  {
+   "id": "app-b10",
+   "type": "recap",
+   "points": [
+    "Amplitude $|A|$, period $\\frac{2\\pi}{B}$, midline $y=D$.",
+    "Factor $B$ before reading the phase shift.",
+    "$x-C$ moves right; $x+C$ moves left."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "app-e1",
+   "skill": "amplitude-period-phase",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "app-e1-q",
+     "type": "text",
+     "md": "What is the amplitude of $y=-4\\cos(3x)$?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "4"
+   },
+   "hints": [
+    "Amplitude is a distance."
+   ],
+   "solution": [
+    {
+     "id": "app-e1-s",
+     "type": "text",
+     "md": "$|A|=|-4|=4$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-4",
+     "why": "The amplitude is $|A|$; the minus sign only reflects the graph."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e2",
+   "skill": "amplitude-period-phase",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "app-e2-q",
+     "type": "text",
+     "md": "What is the period of $y=\\sin(4x)$?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "pi/2"
+   },
+   "hints": [
+    "Period $=\\frac{2\\pi}{B}$."
+   ],
+   "solution": [
+    {
+     "id": "app-e2-s",
+     "type": "text",
+     "md": "$\\frac{2\\pi}{4}=\\frac{\\pi}{2}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "8*pi",
+     "why": "Divide $2\\pi$ by $B$; don't multiply."
+    },
+    {
+     "input": "4",
+     "why": "$B$ is not the period: the period is $\\frac{2\\pi}{B}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e3",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "app-e3-q",
+     "type": "text",
+     "md": "Find the phase shift of $y=\\cos(2x-\\dfrac{\\pi}{3})$ (positive means to the right)."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "pi/6"
+   },
+   "hints": [
+    "Factor out the $2$."
+   ],
+   "solution": [
+    {
+     "id": "app-e3-s",
+     "type": "text",
+     "md": "$2x-\\frac{\\pi}{3}=2(x-\\frac{\\pi}{6})$: a shift of $\\frac{\\pi}{6}$ to the right."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "pi/3",
+     "why": "Factor first: $2x-\\frac{\\pi}{3}=2(x-\\frac{\\pi}{6})$, so the shift is $\\frac{\\pi}{6}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e4",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "app-e4-q",
+     "type": "text",
+     "md": "What is the midline of $y=3\\sin x-2$? Write the value of $y$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-2",
+    "prefix": "$y =$"
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "app-e4-s",
+     "type": "text",
+     "md": "The vertical shift is $D=-2$: midline $y=-2$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "3",
+     "why": "$3$ is the amplitude. The midline is set by the constant added at the end."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e5",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "app-e5-q",
+     "type": "text",
+     "md": "Find the range of $y=2\\sin(2x-\\dfrac{\\pi}{2})+1$."
+    }
+   ],
+   "answer": {
+    "kind": "interval",
+    "expected": "[-1, 3]"
+   },
+   "hints": [
+    "Midline $\\pm$ amplitude."
+   ],
+   "solution": [
+    {
+     "id": "app-e5-s",
+     "type": "text",
+     "md": "Midline $1$, amplitude $2$: the range is $[1-2,\\,1+2]=[-1,3]$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "[-2, 2]",
+     "why": "Don't forget the vertical shift of $1$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e6",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "app-e6-q",
+     "type": "text",
+     "md": "Write an equation of the form $y=A\\sin(Bx)$ with $A>0$, amplitude $3$ and period $\\pi$."
+    }
+   ],
+   "answer": {
+    "kind": "expression",
+    "expected": "3*sin(2*x)",
+    "variables": [
+     "x"
+    ],
+    "prefix": "$y =$"
+   },
+   "hints": [
+    "$B=\\frac{2\\pi}{\\text{period}}$."
+   ],
+   "solution": [
+    {
+     "id": "app-e6-s",
+     "type": "text",
+     "md": "$A=3$ and $B=\\frac{2\\pi}{\\pi}=2$: $y=3\\sin(2x)$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "3*sin(pi*x)",
+     "why": "$B$ is not the period: $B=\\frac{2\\pi}{\\pi}=2$."
+    },
+    {
+     "input": "3*sin(x/2)",
+     "why": "That has period $4\\pi$. Use $B=\\frac{2\\pi}{\\pi}=2$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e7",
+   "skill": "amplitude-period-phase",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "app-e7-q",
+     "type": "text",
+     "md": "Which equation has amplitude $2$, period $4\\pi$ and is shifted up $1$?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$y=2\\sin(\\dfrac{x}{2})+1$",
+      "correct": true,
+      "why": "$B=\\frac12$ gives period $\\frac{2\\pi}{1/2}=4\\pi$."
+     },
+     {
+      "id": "b",
+      "md": "$y=2\\sin(2x)+1$",
+      "correct": false,
+      "why": "Period $\\frac{2\\pi}{2}=\\pi$."
+     },
+     {
+      "id": "c",
+      "md": "$y=\\sin(\\dfrac{x}{2})+2$",
+      "correct": false,
+      "why": "Amplitude $1$, shifted up $2$."
+     },
+     {
+      "id": "d",
+      "md": "$y=2\\sin(\\dfrac{x}{2}+1)$",
+      "correct": false,
+      "why": "The $+1$ inside shifts the graph sideways, not up."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [],
+   "solution": [],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e8",
+   "skill": "amplitude-period-phase",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "app-e8-q",
+     "type": "text",
+     "md": "For $y=-3\\cos(\\dfrac{\\pi}{2}x)+4$:"
+    }
+   ],
+   "answer": {
+    "kind": "multi",
+    "parts": [
+     {
+      "label": "a",
+      "prompt": [
+       {
+        "id": "pa",
+        "type": "text",
+        "md": "Find the amplitude."
+       }
+      ],
+      "answer": {
+       "kind": "numeric",
+       "value": "3"
+      },
+      "points": 1
+     },
+     {
+      "label": "b",
+      "prompt": [
+       {
+        "id": "pb",
+        "type": "text",
+        "md": "Find the period."
+       }
+      ],
+      "answer": {
+       "kind": "numeric",
+       "value": "4"
+      },
+      "points": 1
+     },
+     {
+      "label": "c",
+      "prompt": [
+       {
+        "id": "pc",
+        "type": "text",
+        "md": "Find the maximum value of $y$."
+       }
+      ],
+      "answer": {
+       "kind": "numeric",
+       "value": "7"
+      },
+      "points": 1
+     }
+    ]
+   },
+   "hints": [
+    "Period $=\\frac{2\\pi}{\\pi/2}$."
+   ],
+   "solution": [
+    {
+     "id": "app-e8-s",
+     "type": "text",
+     "md": "Amplitude $3$, period $\\frac{2\\pi}{\\pi/2}=4$, maximum $4+3=7$."
+    }
+   ],
+   "wrongs": [],
+   "points": 2,
+   "tags": []
+  },
+  {
+   "id": "app-e9",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "app-e9-q",
+     "type": "text",
+     "md": "True or false: the graph of $y=\\sin(x+\\pi)$ is the graph of $y=\\sin x$ shifted $\\pi$ units to the right."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": false
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "app-e9-s",
+     "type": "text",
+     "md": "False: $x+\\pi=x-(-\\pi)$, so the shift is $\\pi$ to the **left** (for this function the result looks the same as $-\\sin x$)."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e10",
+   "skill": "amplitude-period-phase",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "app-e10-q",
+     "type": "text",
+     "md": "A Ferris wheel's height is $h(t)=-20\\cos(\\dfrac{\\pi}{4}t)+25$ meters after $t$ minutes. What is the height after $2$ minutes?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "25",
+    "prefix": "$h(2) =$",
+    "suffix": "m"
+   },
+   "hints": [
+    "$\\frac{\\pi}{4}\\cdot2=\\frac{\\pi}{2}$."
+   ],
+   "solution": [
+    {
+     "id": "app-e10-s",
+     "type": "text",
+     "md": "$h(2)=-20\\cos\\frac{\\pi}{2}+25=0+25=25$ m."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "5",
+     "why": "$\\cos\\frac{\\pi}{2}=0$, not $1$."
+    },
+    {
+     "input": "45",
+     "why": "$\\cos\\frac{\\pi}{2}=0$, not $-1$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "app-e11",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "app-e11-q",
+     "type": "text",
+     "md": "Match each function with its period."
+    }
+   ],
+   "answer": {
+    "kind": "matching",
+    "pairs": [
+     {
+      "left": "$y=\\sin(2x)$",
+      "right": "$\\pi$"
+     },
+     {
+      "left": "$y=\\sin(\\frac{x}{2})$",
+      "right": "$4\\pi$"
+     },
+     {
+      "left": "$y=\\cos(\\pi x)$",
+      "right": "$2$"
+     },
+     {
+      "left": "$y=\\cos(3x)$",
+      "right": "$\\frac{2\\pi}{3}$"
+     }
+    ],
+    "extraRights": [
+     "$6\\pi$"
+    ]
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "app-e11-s",
+     "type": "text",
+     "md": "Period $=\\frac{2\\pi}{B}$ in every case."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [
+  {
+   "id": "app-t1",
+   "skill": "amplitude-period-phase",
+   "level": 2,
+   "vars": [
+    {
+     "name": "b",
+     "kind": "int",
+     "min": 2,
+     "max": 8
+    }
+   ],
+   "constraints": [],
+   "prompt": [
+    {
+     "id": "app-t1-q",
+     "type": "text",
+     "md": "What is the period of $y=\\sin({{b}}x)$?"
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "2*pi/b"
+   },
+   "hints": [
+    "Period $=\\frac{2\\pi}{B}$."
+   ],
+   "solution": [
+    {
+     "id": "app-t1-s",
+     "type": "text",
+     "md": "$\\frac{2\\pi}{{{b}}}={{tex:2*pi/b}}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "2*pi*b",
+     "why": "Divide $2\\pi$ by $B$; don't multiply."
+    }
+   ],
+   "points": 1,
+   "tags": [
+    "period"
+   ]
+  }
+ ],
+ "cards": [
+  {
+   "id": "app-c1",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "Amplitude of $y=A\\sin(B(x-C))+D$",
+   "back": "$|A|$",
+   "tags": []
+  },
+  {
+   "id": "app-c2",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "Period of $y=A\\sin(B(x-C))+D$",
+   "back": "$\\dfrac{2\\pi}{B}$",
+   "tags": []
+  },
+  {
+   "id": "app-c3",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "Phase shift of $y=\\sin(Bx-K)$",
+   "back": "$\\dfrac{K}{B}$ to the right (factor $B$ first).",
+   "tags": []
+  },
+  {
+   "id": "app-c4",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "Midline of $y=A\\sin(Bx)+D$",
+   "back": "$y=D$",
+   "tags": []
+  },
+  {
+   "id": "app-c5",
+   "skill": "amplitude-period-phase",
+   "kind": "cloze",
+   "front": "In $y=\\cos(x+\\frac{\\pi}{3})$ the graph shifts $\\frac{\\pi}{3}$ to the {{c1::left}}.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "app-c6",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "Range of $y=A\\sin(Bx)+D$ with $A>0$",
+   "back": "$[D-A,\\ D+A]$",
+   "tags": []
+  },
+  {
+   "id": "app-c7",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "Period of $y=\\sin(4x)$",
+   "back": "$\\frac{\\pi}{2}$",
+   "tags": []
+  },
+  {
+   "id": "app-c8",
+   "skill": "amplitude-period-phase",
+   "kind": "basic",
+   "front": "What does a negative $A$ do?",
+   "back": "Reflects the graph over the midline; the amplitude is still $|A|$.",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Phase shift before factoring",
+   "wrong": "$\\sin(2x-\\pi)$: shift $\\pi$",
+   "right": "$\\sin(2(x-\\frac{\\pi}{2}))$: shift $\\frac{\\pi}{2}$",
+   "why": "The shift is what is subtracted from $x$ itself."
+  },
+  {
+   "title": "Period multiplied instead of divided",
+   "wrong": "$y=\\sin(4x)$: period $8\\pi$",
+   "right": "period $\\frac{2\\pi}{4}=\\frac{\\pi}{2}$",
+   "why": "A bigger $B$ squeezes the wave, so the period gets smaller."
+  }
+ ],
+ "sources": [
+  {
+   "source": "exam-2-review",
+   "page": 1
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

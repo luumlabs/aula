@@ -1,0 +1,87 @@
+/* «Luz tras el cristal»: una mancha de luz mate del color de identidad (un curso, un tipo de evento, un resultado) que se mueve
+   despacio detrás de la burbuja, como si la tarjeta fuese de vidrio esmerilado. Sustituye a las rayas de color de la izquierda.
+   Rendimiento: un solo elemento animado por tarjeta y solo `transform` (deriva, en el compositor), `translate` y `scale`
+   (acercarse al puntero, con transición) y `opacity`. Fuera de pantalla la deriva se pausa; sin ratón no hay trabajo. */
+
+.glass-light {
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* detrás del contenido, encima del fondo de la tarjeta (la tarjeta aísla su contexto de apilamiento) */
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  contain: strict;
+}
+
+.glass-light__blob {
+  /* tinte pastel mate: el tono de identidad con luminosidad y croma fijos (un pastel limpio, nunca un gris sucio; si el
+     color es neutro, se queda neutro). Nada de mezclar con blanco: aplanaba el croma y salía un borrón gris azulado. */
+  --gl-tint: oklch(from var(--gl) 0.86 clamp(0, c, 0.085) h);
+  --gl-alpha: 62%;
+  --gl-size-v: var(--gl-size, clamp(140px, 42%, 270px));
+  position: absolute;
+  width: var(--gl-size-v);
+  aspect-ratio: 1;
+  /* en reposo, dentro de la tarjeta (hacia la derecha y abajo, donde menos texto hay), nunca cortada por el borde */
+  left: calc(64% - var(--gl-size-v) / 2);
+  top: calc(56% - var(--gl-size-v) / 2);
+  border-radius: 50%;
+  /* un solo color que se desvanece (la caída de una luz), nunca varios colores */
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--gl-tint) var(--gl-alpha), transparent) 0%, color-mix(in oklab, var(--gl-tint) calc(var(--gl-alpha) * 0.6), transparent) 42%, transparent 100%);
+  opacity: 0.85;
+  translate: 0 0;
+  scale: 1;
+  will-change: transform;
+  animation: gl-drift var(--gl-period, 23s) ease-in-out var(--gl-delay, 0s) infinite alternate;
+  transition:
+    translate 1.25s cubic-bezier(0.16, 0.8, 0.22, 1),
+    scale 1.1s cubic-bezier(0.16, 0.8, 0.22, 1),
+    opacity 0.7s ease;
+}
+/* en oscuro los tonos de identidad ya son pastel: se usan tal cual, más tenues */
+html.dark .glass-light__blob {
+  --gl-tint: color-mix(in oklch, var(--gl) 88%, var(--surface));
+  --gl-alpha: 30%;
+  opacity: 0.8;
+}
+
+/* más pequeña en filas y fichas compactas */
+.glass-light[data-size='sm'] .glass-light__blob {
+  --gl-size: clamp(100px, 38%, 200px);
+}
+
+/* el ratón encima: la luz se acerca (translate lo pone el componente), crece un poco y se aviva */
+.glass-light[data-near] .glass-light__blob {
+  scale: 1.14;
+  opacity: 0.95;
+}
+
+/* deriva lenta: un lazo amplio y desigual, para que no parezca un vaivén */
+@keyframes gl-drift {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(-14%, -12%); }
+  55% { transform: translate(12%, -14%); }
+  80% { transform: translate(14%, 10%); }
+  100% { transform: translate(-10%, 8%); }
+}
+
+.glass-light[data-off] .glass-light__blob,
+.glass-light[data-still] .glass-light__blob {
+  animation-play-state: paused;
+}
+.glass-light[data-still] .glass-light__blob {
+  animation: none;
+}
+
+/* Reducir movimiento: la luz se queda quieta en su sitio */
+.reduce-motion .glass-light__blob {
+  animation: none !important;
+  transition: opacity 0.2s ease !important;
+  translate: 0 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-light__blob {
+    animation: none !important;
+    translate: 0 0 !important;
+  }
+}

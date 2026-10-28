@@ -1,0 +1,113 @@
+/* Lector de documentos: la capa de texto de pdf.js (invisible, para seleccionar y buscar) y los resaltados con
+   `::highlight(...)` (subrayados guardados en documentos de texto y coincidencias de la búsqueda). */
+
+.pdf-page {
+  box-shadow: 0 1px 2px rgba(56, 40, 22, 0.08), 0 6px 18px rgba(56, 40, 22, 0.12);
+  border-radius: 3px;
+}
+.dark .pdf-page {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: transparent;
+  z-index: 1;
+}
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.textLayer span.markedContent {
+  top: 0;
+  height: 0;
+}
+.textLayer ::selection {
+  background: rgba(180, 80, 47, 0.28);
+}
+.textLayer br::selection {
+  background: transparent;
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+.textLayer.selecting .endOfContent {
+  top: 0;
+}
+
+.doc-text ::selection {
+  background: var(--accent-wash);
+}
+.doc-text p {
+  margin: 0 0 0.85em;
+}
+.doc-text h1,
+.doc-text h2,
+.doc-text h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  margin: 0.6em 0 0.4em;
+  line-height: 1.25;
+}
+.doc-text h1 { font-size: 1.45em; }
+.doc-text h2 { font-size: 1.25em; }
+.doc-text h3 { font-size: 1.08em; }
+.doc-text ul,
+.doc-text ol {
+  padding-left: 1.3em;
+  margin: 0 0 0.85em;
+}
+.doc-text ul { list-style: disc; }
+.doc-text ol { list-style: decimal; }
+.doc-text table {
+  border-collapse: collapse;
+  font-size: 0.85em;
+  margin: 0.4em 0 1em;
+}
+.doc-text td,
+.doc-text th {
+  border: 0.5px solid var(--line);
+  padding: 4px 8px;
+}
+
+/* búsqueda */
+::highlight(aula-find) {
+  background-color: rgba(250, 214, 89, 0.55);
+}
+::highlight(aula-find-current) {
+  background-color: rgba(180, 80, 47, 0.45);
+}
+
+/* subrayados guardados en documentos de texto (los colores del marcador de Aula) */
+::highlight(aula-highlight-yellow) { background-color: rgba(250, 214, 89, 0.45); }
+::highlight(aula-highlight-green) { background-color: rgba(140, 204, 140, 0.45); }
+::highlight(aula-highlight-blue) { background-color: rgba(133, 184, 242, 0.45); }
+::highlight(aula-highlight-pink) { background-color: rgba(245, 153, 184, 0.45); }
+::highlight(aula-underline-yellow) { text-decoration: underline 2px rgba(214, 170, 30, 1); text-underline-offset: 3px; }
+::highlight(aula-underline-green) { text-decoration: underline 2px rgba(90, 170, 90, 1); text-underline-offset: 3px; }
+::highlight(aula-underline-blue) { text-decoration: underline 2px rgba(80, 140, 220, 1); text-underline-offset: 3px; }
+::highlight(aula-underline-pink) { text-decoration: underline 2px rgba(220, 110, 150, 1); text-underline-offset: 3px; }
+::highlight(aula-strike-yellow) { text-decoration: line-through 2px rgba(214, 170, 30, 1); }
+::highlight(aula-strike-green) { text-decoration: line-through 2px rgba(90, 170, 90, 1); }
+::highlight(aula-strike-blue) { text-decoration: line-through 2px rgba(80, 140, 220, 1); }
+::highlight(aula-strike-pink) { text-decoration: line-through 2px rgba(220, 110, 150, 1); }
+.dark ::highlight(aula-highlight-yellow) { background-color: rgba(250, 214, 89, 0.3); }
+.dark ::highlight(aula-highlight-green) { background-color: rgba(140, 204, 140, 0.3); }
+.dark ::highlight(aula-highlight-blue) { background-color: rgba(133, 184, 242, 0.3); }
+.dark ::highlight(aula-highlight-pink) { background-color: rgba(245, 153, 184, 0.3); }

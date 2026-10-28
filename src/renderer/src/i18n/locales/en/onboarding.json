@@ -1,0 +1,19 @@
+{
+  "hello": "Hi, I’m Aula",
+  "helloBody": "Give me your notes, your slides or just a topic, and I’ll turn it into a course for your exam. Then we study it together.",
+  "name": "What’s your name?",
+  "namePlaceholder": "Your name (optional)",
+  "start": "Get started",
+  "aiTitle": "Choose your AI",
+  "aiBody": "I’ve already looked at what you have on this computer. If unsure, keep the one I marked: you can change it anytime.",
+  "later": "I’ll do it later",
+  "continue": "Continue",
+  "platformTitle": "Do you use a study platform?",
+  "platformBody": "Canvas, Moodle, Classroom, Blackboard… Sign in once and Aula brings your dates and materials. Optional.",
+  "platformSkip": "I don’t use one",
+  "doneTitle": "All set",
+  "doneBody": "Start with a new course or open the sample to see how it works.",
+  "create": "Create my first course",
+  "explore": "Open the sample course",
+  "step": "Step {{n}} of {{total}}"
+}

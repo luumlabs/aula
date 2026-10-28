@@ -1,0 +1,120 @@
+/* Movimiento del chat que se hace mejor en CSS (sin JavaScript por fotograma): la ola de luz del «pensando», las animaciones
+   de cada clase de paso, la barra que progresa, el cursor del texto que llega y la entrada de cada párrafo.
+   Con «Reducir movimiento» no corre nada (styles.css) y todo queda en su postura de reposo. */
+
+/* «Pensando…»: una ola de luz recorre las letras (solo opacidad, sin degradados) */
+.chat-wave > span {
+  display: inline-block;
+  white-space: pre;
+  animation: chat-wave 2.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 45ms);
+}
+@keyframes chat-wave {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  18% { opacity: 1; transform: translateY(-1px); }
+  42% { opacity: 0.5; transform: translateY(0); }
+}
+
+/* Párrafos que llegan: aparecen subiendo un poco */
+.chat-para + .chat-para { margin-top: 0.7em; }
+.chat-live .chat-para {
+  animation: chat-para-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes chat-para-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* El cursor de Aula mientras escribe: un punto de sol al final del texto */
+.chat-caret .chat-para:last-child .aula-rich > :is(p, h1, h2, h3, h4, blockquote):last-child::after,
+.chat-caret .chat-para:last-child .aula-rich > :is(ul, ol):last-child > li:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.25em;
+  border-radius: 999px;
+  background: var(--sun);
+  vertical-align: 0.05em;
+  animation: chat-caret 1.1s ease-in-out infinite;
+}
+@keyframes chat-caret {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
+
+/* La barra de un paso en curso: un tramo de sol que va y viene; al terminar se llena y se apaga */
+.chat-bar > i {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 38%;
+  border-radius: 999px;
+  background: var(--sun);
+  animation: chat-bar 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes chat-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(265%); }
+}
+
+/* Cada clase de paso hace lo suyo mientras está en curso */
+.chat-act { position: relative; overflow: hidden; }
+.chat-act > svg { transition: transform 0.3s ease; }
+.chat-act[data-motion='scan']::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 0;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--sun);
+  opacity: 0.8;
+  animation: chat-scan 1.3s ease-in-out infinite;
+}
+@keyframes chat-scan {
+  0% { transform: translateY(5px); opacity: 0; }
+  15% { opacity: 0.9; }
+  85% { opacity: 0.9; }
+  100% { transform: translateY(21px); opacity: 0; }
+}
+.chat-act[data-motion='seek'] > svg { animation: chat-seek 1.6s ease-in-out infinite; }
+@keyframes chat-seek {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(1.5px, -1px); }
+  50% { transform: translate(0, -2px); }
+  75% { transform: translate(-1.5px, -1px); }
+}
+.chat-act[data-motion='stamp'] > svg { animation: chat-stamp 1.4s cubic-bezier(0.3, 0, 0.3, 1.4) infinite; }
+@keyframes chat-stamp {
+  0%, 55%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-2.5px) scale(1.06); }
+  45% { transform: translateY(0.5px) scale(0.94); }
+}
+.chat-act[data-motion='deal'] > svg { animation: chat-deal 1.5s ease-in-out infinite; }
+@keyframes chat-deal {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  30% { transform: rotate(-9deg) translateX(-1px); }
+  60% { transform: rotate(7deg) translateX(1px); }
+}
+.chat-act[data-motion='draw'] > svg { transform-origin: left center; animation: chat-draw 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@keyframes chat-draw {
+  0% { transform: scaleX(0.35); opacity: 0.5; }
+  70%, 100% { transform: scaleX(1); opacity: 1; }
+}
+.chat-act[data-motion='tick'] > svg { animation: chat-tick 1.1s ease-in-out infinite; }
+@keyframes chat-tick {
+  0%, 40%, 100% { transform: scale(1); }
+  10% { transform: scale(0.86); }
+  25% { transform: scale(1.05); }
+  32% { transform: scale(0.9); }
+}
+.chat-act[data-motion='pulse'] > svg { animation: chat-pulse 1.6s ease-in-out infinite; }
+@keyframes chat-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* El botón de detener: un arco de sol gira alrededor mientras Aula trabaja */
+.chat-stop-ring { animation: aula-spin 1.6s linear infinite; transform-origin: center; }

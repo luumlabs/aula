@@ -1,0 +1,27 @@
+name: Idea
+description: Suggest something new or a better way to do something.
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome — tell us what you're trying to study or do. Search the [open issues](https://github.com/luumlabs/aula/issues) first in case someone already suggested it. You can write in English or Spanish.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would help you?
+      description: The problem or situation behind the idea.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you imagine it working in Aula.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: What you study, examples, screenshots of other apps…

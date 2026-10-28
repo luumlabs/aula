@@ -1,0 +1,637 @@
+{
+ "id": "inverse-trig-calculator",
+ "title": "Finding angles with a calculator",
+ "summary": "Use the inverse trig keys in the right mode and find every angle that solves the equation.",
+ "objectives": [
+  "Use sin⁻¹, cos⁻¹ and tan⁻¹ in degree and radian mode",
+  "Find all solutions in [0°, 360°)",
+  "Solve right-triangle angle problems"
+ ],
+ "prerequisites": [
+  "exact-trig-values"
+ ],
+ "lesson": [
+  {
+   "id": "itc-b01",
+   "type": "text",
+   "md": "# Finding angles with a calculator\n\nWhen a value is not in the special-angle table, the $\\sin^{-1}$, $\\cos^{-1}$ and $\\tan^{-1}$ keys find an angle for you, but only **one** angle and only in a limited range. Your job is to check the mode and to find the other angles yourself."
+  },
+  {
+   "id": "itc-b02",
+   "type": "table",
+   "headers": [
+    "Key",
+    "Returns an angle in",
+    "Quadrants"
+   ],
+   "rows": [
+    [
+     "$\\sin^{-1}x$",
+     "$[-90^\\circ, 90^\\circ]$",
+     "I and IV"
+    ],
+    [
+     "$\\cos^{-1}x$",
+     "$[0^\\circ, 180^\\circ]$",
+     "I and II"
+    ],
+    [
+     "$\\tan^{-1}x$",
+     "$(-90^\\circ, 90^\\circ)$",
+     "I and IV"
+    ]
+   ],
+   "caption": "What the inverse keys return"
+  },
+  {
+   "id": "itc-b03",
+   "type": "callout",
+   "kind": "warning",
+   "title": "Degree or radian mode?",
+   "md": "Before you press anything, check the mode. $\\sin^{-1}(0.5)$ is $30$ in degree mode and $0.5236$ in radian mode. Both are right, for different questions."
+  },
+  {
+   "id": "itc-b04",
+   "type": "predict",
+   "question": "$\\cos\\theta=-0.4$ and $\\theta$ is in Quadrant III. Does $\\cos^{-1}(-0.4)$ give you $\\theta$?",
+   "options": [
+    {
+     "md": "Yes",
+     "correct": false,
+     "why": "$\\cos^{-1}$ only returns angles from $0^\\circ$ to $180^\\circ$, so it can never land in Quadrant III."
+    },
+    {
+     "md": "No",
+     "correct": true,
+     "why": "It returns the Quadrant II angle, $113.6^\\circ$. The Quadrant III angle is $180^\\circ+66.4^\\circ=246.4^\\circ$."
+    }
+   ]
+  },
+  {
+   "id": "itc-b05",
+   "type": "steps",
+   "title": "Every angle in $[0^\\circ, 360^\\circ)$",
+   "steps": [
+    {
+     "title": "Reference angle",
+     "md": "Use the key on the **absolute value**: $\\theta'=\\sin^{-1}|v|$, and so on."
+    },
+    {
+     "title": "Quadrants",
+     "md": "Decide which quadrants the sign allows (All Students Take Calculus)."
+    },
+    {
+     "title": "Build the angles",
+     "md": "Quadrant II: $180^\\circ-\\theta'$. Quadrant III: $180^\\circ+\\theta'$. Quadrant IV: $360^\\circ-\\theta'$."
+    }
+   ]
+  },
+  {
+   "id": "itc-b06",
+   "type": "example",
+   "title": "$\\sin\\theta=-0.6$",
+   "problem": "Solve $\\sin\\theta=-0.6$ for $0^\\circ\\le\\theta<360^\\circ$, to the nearest tenth of a degree.",
+   "steps": [
+    {
+     "md": "Reference angle: $\\theta'=\\sin^{-1}(0.6)\\approx36.9^\\circ$."
+    },
+    {
+     "md": "Sine is negative in Quadrants III and IV."
+    },
+    {
+     "md": "Quadrant III: $180^\\circ+36.9^\\circ=216.9^\\circ$. Quadrant IV: $360^\\circ-36.9^\\circ=323.1^\\circ$."
+    }
+   ],
+   "answer": "$\\theta\\approx216.9^\\circ$ or $\\theta\\approx323.1^\\circ$"
+  },
+  {
+   "id": "itc-b07",
+   "type": "plot",
+   "title": "Two solutions of $\\sin\\theta=-0.6$",
+   "xMin": 0,
+   "xMax": 360,
+   "yMin": -1.3,
+   "yMax": 1.3,
+   "xTickStep": 90,
+   "xLabel": "θ (degrees)",
+   "curves": [
+    {
+     "expr": "sin(x)",
+     "degrees": true,
+     "label": "y = sin θ"
+    }
+   ],
+   "lines": [
+    {
+     "kind": "horizontal",
+     "y": "-0.6",
+     "color": "orange",
+     "label": "y = −0.6"
+    }
+   ],
+   "points": [
+    {
+     "x": "216.87",
+     "y": "-0.6",
+     "label": "216.9°",
+     "color": "orange"
+    },
+    {
+     "x": "323.13",
+     "y": "-0.6",
+     "label": "323.1°",
+     "color": "orange"
+    }
+   ],
+   "caption": "The line $y=-0.6$ crosses one period of the sine wave twice."
+  },
+  {
+   "id": "itc-b08",
+   "type": "callout",
+   "kind": "mistake",
+   "md": "Stopping at the calculator's answer. $\\sin^{-1}(-0.6)\\approx-36.9^\\circ$ is not in $[0^\\circ,360^\\circ)$, and it is only one of the two solutions."
+  },
+  {
+   "id": "itc-b09",
+   "type": "tryit",
+   "title": "Try it",
+   "exerciseIDs": [
+    "itc-e1",
+    "itc-e3",
+    "itc-e4",
+    "itc-e8"
+   ]
+  },
+  {
+   "id": "itc-b10",
+   "type": "recap",
+   "points": [
+    "Check degree or radian mode first.",
+    "The keys return one angle in a limited range.",
+    "Reference angle from $|v|$, then build every angle allowed by the sign."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "itc-e1",
+   "skill": "inverse-trig-calculator",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "itc-e1-q",
+     "type": "text",
+     "md": "Use a calculator to find the acute angle $\\theta$ with $\\sin\\theta=0.75$, to the nearest tenth of a degree."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "48.6",
+    "prefix": "$\\theta \\approx$",
+    "suffix": "°",
+    "absTol": 0.06
+   },
+   "hints": [
+    "Degree mode, then $\\sin^{-1}(0.75)$."
+   ],
+   "solution": [
+    {
+     "id": "itc-e1-s",
+     "type": "text",
+     "md": "$\\theta=\\sin^{-1}(0.75)\\approx48.6^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "0.8481",
+     "why": "Your calculator is in radian mode: $0.8481$ rad $\\approx48.6^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e2",
+   "skill": "inverse-trig-calculator",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "itc-e2-q",
+     "type": "text",
+     "md": "Find the acute angle $\\theta$ with $\\tan\\theta=2.4$, to the nearest tenth of a degree."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "67.4",
+    "prefix": "$\\theta \\approx$",
+    "suffix": "°",
+    "absTol": 0.06
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "itc-e2-s",
+     "type": "text",
+     "md": "$\\theta=\\tan^{-1}(2.4)\\approx67.4^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "1.176",
+     "why": "Radian mode: switch to degrees."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e3",
+   "skill": "inverse-trig-calculator",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "itc-e3-q",
+     "type": "text",
+     "md": "Solve $\\sin\\theta=-0.6$ for $0^\\circ\\le\\theta<360^\\circ$, to the nearest tenth of a degree. Separate the answers with commas."
+    }
+   ],
+   "answer": {
+    "kind": "set",
+    "expected": [
+     "216.9",
+     "323.1"
+    ],
+    "placeholder": "e.g. 12.3, 45.6"
+   },
+   "hints": [
+    "Reference angle $\\sin^{-1}(0.6)\\approx36.9^\\circ$.",
+    "Sine is negative in Quadrants III and IV."
+   ],
+   "solution": [
+    {
+     "id": "itc-e3-s",
+     "type": "text",
+     "md": "$180^\\circ+36.9^\\circ=216.9^\\circ$ and $360^\\circ-36.9^\\circ=323.1^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-36.9",
+     "why": "That is the calculator's answer, outside $[0^\\circ,360^\\circ)$ and only one of two solutions."
+    },
+    {
+     "input": "36.9, 143.1",
+     "why": "Those angles have a **positive** sine. Negative sine means Quadrants III and IV."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e4",
+   "skill": "inverse-trig-calculator",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "itc-e4-q",
+     "type": "text",
+     "md": "$\\cos\\theta=-0.4$ and $\\theta$ is in Quadrant III. Find $\\theta$ to the nearest tenth of a degree."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "246.4",
+    "prefix": "$\\theta \\approx$",
+    "suffix": "°",
+    "absTol": 0.06
+   },
+   "hints": [
+    "Reference angle: $\\cos^{-1}(0.4)$."
+   ],
+   "solution": [
+    {
+     "id": "itc-e4-s",
+     "type": "text",
+     "md": "$\\theta'=\\cos^{-1}(0.4)\\approx66.4^\\circ$, so $\\theta=180^\\circ+66.4^\\circ=246.4^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "113.6",
+     "why": "That is the Quadrant II angle that $\\cos^{-1}$ returns. In Quadrant III use $180^\\circ+\\theta'$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e5",
+   "skill": "inverse-trig-calculator",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "itc-e5-q",
+     "type": "text",
+     "md": "Find $\\theta$ in radians, with $0\\le\\theta<\\dfrac{\\pi}{2}$, such that $\\cos\\theta=0.3$. Round to four decimals."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "1.2661",
+    "prefix": "$\\theta \\approx$",
+    "absTol": 6e-05
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "itc-e5-s",
+     "type": "text",
+     "md": "Radian mode: $\\cos^{-1}(0.3)\\approx1.2661$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "72.5424",
+     "why": "Degree mode: the question asks for radians."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e6",
+   "skill": "inverse-trig-calculator",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "itc-e6-q",
+     "type": "text",
+     "md": "Which range of angles does $\\tan^{-1}$ return?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$(-90^\\circ, 90^\\circ)$",
+      "correct": true,
+      "why": "Tangent is undefined at $\\pm90^\\circ$, so the interval is open."
+     },
+     {
+      "id": "b",
+      "md": "$[0^\\circ, 180^\\circ]$",
+      "correct": false,
+      "why": "That is the range of $\\cos^{-1}$."
+     },
+     {
+      "id": "c",
+      "md": "$[-90^\\circ, 90^\\circ]$",
+      "correct": false,
+      "why": "Close, but $\\tan^{-1}$ never reaches $\\pm90^\\circ$: tangent is undefined there."
+     },
+     {
+      "id": "d",
+      "md": "$[0^\\circ, 360^\\circ)$",
+      "correct": false,
+      "why": "No inverse key returns a whole turn: each gives one angle."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [],
+   "solution": [],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e7",
+   "skill": "inverse-trig-calculator",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "itc-e7-q",
+     "type": "text",
+     "md": "Solve $\\tan\\theta=-1.5$ for $0^\\circ\\le\\theta<360^\\circ$, to the nearest tenth of a degree. Separate the answers with commas."
+    }
+   ],
+   "answer": {
+    "kind": "set",
+    "expected": [
+     "123.7",
+     "303.7"
+    ],
+    "placeholder": "e.g. 12.3, 45.6"
+   },
+   "hints": [
+    "Reference angle $\\tan^{-1}(1.5)\\approx56.3^\\circ$.",
+    "Tangent is negative in Quadrants II and IV."
+   ],
+   "solution": [
+    {
+     "id": "itc-e7-s",
+     "type": "text",
+     "md": "$180^\\circ-56.3^\\circ=123.7^\\circ$ and $360^\\circ-56.3^\\circ=303.7^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-56.3",
+     "why": "That is outside $[0^\\circ,360^\\circ)$; add $180^\\circ$ and $360^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e8",
+   "skill": "inverse-trig-calculator",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "itc-e8-q",
+     "type": "text",
+     "md": "True or false: in radian mode, $\\sin^{-1}(0.5)$ is about $0.5236$."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": true
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "itc-e8-s",
+     "type": "text",
+     "md": "True: $0.5236\\approx\\frac{\\pi}{6}$, which is $30^\\circ$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e9",
+   "skill": "inverse-trig-calculator",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "itc-e9-q",
+     "type": "text",
+     "md": "A ramp rises $1.2$ m over a horizontal run of $9$ m. Find its angle of elevation, to the nearest tenth of a degree."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "7.6",
+    "prefix": "$\\theta \\approx$",
+    "suffix": "°",
+    "absTol": 0.06
+   },
+   "hints": [
+    "Rise over run is the tangent."
+   ],
+   "solution": [
+    {
+     "id": "itc-e9-s",
+     "type": "text",
+     "md": "$\\theta=\\tan^{-1}(\\frac{1.2}{9})\\approx7.6^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "7.7",
+     "why": "You used $\\sin^{-1}$, but $9$ m is the horizontal run, not the length of the ramp: use $\\tan^{-1}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "itc-e10",
+   "skill": "inverse-trig-calculator",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "itc-e10-q",
+     "type": "text",
+     "md": "Put the steps for solving $\\cos\\theta=-0.25$ on $[0^\\circ, 360^\\circ)$ in order."
+    }
+   ],
+   "answer": {
+    "kind": "ordering",
+    "items": [
+     "Find $\\theta'=\\cos^{-1}(0.25)\\approx75.5^\\circ$",
+     "Note that cosine is negative in Quadrants II and III",
+     "Quadrant II: $180^\\circ-75.5^\\circ=104.5^\\circ$",
+     "Quadrant III: $180^\\circ+75.5^\\circ=255.5^\\circ$"
+    ]
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "itc-e10-s",
+     "type": "text",
+     "md": "Reference angle first, then the quadrants, then one angle per quadrant."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [],
+ "cards": [
+  {
+   "id": "itc-c1",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "Range of $\\sin^{-1}$",
+   "back": "$[-90^\\circ, 90^\\circ]$",
+   "tags": []
+  },
+  {
+   "id": "itc-c2",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "Range of $\\cos^{-1}$",
+   "back": "$[0^\\circ, 180^\\circ]$",
+   "tags": []
+  },
+  {
+   "id": "itc-c3",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "Range of $\\tan^{-1}$",
+   "back": "$(-90^\\circ, 90^\\circ)$",
+   "tags": []
+  },
+  {
+   "id": "itc-c4",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "First thing to check before using an inverse key",
+   "back": "Degree or radian mode.",
+   "tags": []
+  },
+  {
+   "id": "itc-c5",
+   "skill": "inverse-trig-calculator",
+   "kind": "cloze",
+   "front": "To solve $\\sin\\theta=v<0$ on $[0^\\circ,360^\\circ)$, use Quadrants {{c1::III}} and {{c2::IV}}.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "itc-c6",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "Quadrant III angle from a reference angle $\\theta'$",
+   "back": "$180^\\circ+\\theta'$",
+   "tags": []
+  },
+  {
+   "id": "itc-c7",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "Quadrant IV angle from a reference angle $\\theta'$",
+   "back": "$360^\\circ-\\theta'$",
+   "tags": []
+  },
+  {
+   "id": "itc-c8",
+   "skill": "inverse-trig-calculator",
+   "kind": "basic",
+   "front": "Angle of elevation from rise and run",
+   "back": "$\\theta=\\tan^{-1}(\\dfrac{\\text{rise}}{\\text{run}})$",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Wrong calculator mode",
+   "wrong": "$\\sin^{-1}(0.75)=0.8481$ when degrees were asked",
+   "right": "$\\sin^{-1}(0.75)\\approx48.6^\\circ$",
+   "why": "The mode decides the unit of the answer."
+  },
+  {
+   "title": "Only one solution",
+   "wrong": "$\\sin\\theta=-0.6\\Rightarrow\\theta=-36.9^\\circ$",
+   "right": "$\\theta\\approx216.9^\\circ$ or $323.1^\\circ$",
+   "why": "Inverse keys return one angle; the sign usually allows two quadrants."
+  }
+ ],
+ "sources": [
+  {
+   "source": "exam-2-review",
+   "page": 2
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

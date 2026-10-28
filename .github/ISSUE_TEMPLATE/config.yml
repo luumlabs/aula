@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/luumlabs/aula/security/advisories/new
+    about: Report vulnerabilities privately, not in a public issue.
+  - name: How to install Aula
+    url: https://github.com/luumlabs/aula#download-and-install
+    about: First launch, "Open Anyway", Linux notes and choosing your AI.

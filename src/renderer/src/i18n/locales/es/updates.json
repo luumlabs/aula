@@ -1,0 +1,53 @@
+{
+  "notice": {
+    "ready": "Versión {{version}} lista",
+    "restart": "Reiniciar para actualizar",
+    "manual": "Versión {{version}} sin instalar",
+    "why": "Ver por qué",
+    "download": "Versión {{version}} disponible",
+    "how": "Cómo instalarla",
+    "dismiss": "No avisar más de esta versión"
+  },
+  "status": {
+    "checking": "Buscando una versión nueva…",
+    "upToDate": "Tienes la última versión.",
+    "downloading": "Descargando la versión {{version}}… {{percent}} %",
+    "verifying": "Comprobando la versión {{version}}…",
+    "ready": "La versión {{version}} está lista: se instala al reiniciar (o la próxima vez que cierres Aula).",
+    "updatedFrom": "Aula se actualizó desde la versión {{from}}."
+  },
+  "available": {
+    "translocated": "Hay una versión nueva ({{version}}). Para que Aula se actualice sola, muévela a la carpeta Aplicaciones y ábrela desde ahí.",
+    "readOnly": "Hay una versión nueva ({{version}}), pero Aula no puede escribir en la carpeta donde está. Para que se actualice sola, muévela a una carpeta en la que puedas escribir, o pide a quien administre este ordenador que instale la versión nueva.",
+    "failedBefore": "La versión {{version}} no se pudo instalar sola. Descárgala desde la web o inténtalo otra vez.",
+    "package": "Hay una versión nueva ({{version}}). Como instalaste Aula con un paquete (.deb), no se actualiza sola: descarga el paquete nuevo e instálalo igual que el primero."
+  },
+  "error": {
+    "offline": "Sin conexión: no se pudo buscar ahora. Aula lo intentará más tarde.",
+    "unavailable": "No se encontró ninguna versión publicada para descargar. Aula lo intentará más tarde.",
+    "corrupt": "La descarga de la versión {{version}} llegó dañada y se descartó. Tu versión sigue igual.",
+    "signature": "Aula no pudo comprobar que la versión {{version}} sea auténtica, así que no la instaló. Tu versión sigue igual. No la descargues a mano salvo que el proyecto lo anuncie.",
+    "permission": "Aula no tiene permiso para actualizarse en esta carpeta. Descarga la versión nueva e instálala a mano.",
+    "disk": "No queda espacio en el disco para la versión nueva. Libera algo de espacio y vuelve a buscar.",
+    "install": "No se pudo instalar la versión {{version}}. Sigues con la {{current}}, que funciona como siempre.",
+    "unknown": "No se pudo actualizar ahora. Aula lo intentará más tarde.",
+    "offlineDownload": "Se cortó la conexión mientras se descargaba la versión {{version}}. Aula lo intentará de nuevo más tarde.",
+    "system": "La versión {{version}} necesita un macOS más nuevo que el de este Mac, así que no se instaló. Sigues con la {{current}}."
+  },
+  "unsupported": {
+    "dev": "Esta copia es de desarrollo: no se actualiza sola.",
+    "package": "Esta copia de Aula no se actualiza sola. Las versiones nuevas están en la web del proyecto.",
+    "other": "Esta copia no se actualiza sola."
+  },
+  "actions": {
+    "check": "Buscar actualizaciones",
+    "restart": "Reiniciar y actualizar",
+    "download": "Descargar",
+    "retry": "Reintentar",
+    "notes": "Notas de la versión"
+  },
+  "notes": {
+    "title": "Notas de la versión {{version}}",
+    "close": "Cerrar"
+  }
+}

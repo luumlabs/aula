@@ -1,0 +1,90 @@
+name: Bug report
+description: Something in Aula doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Aula better! Issues are **public**: don't paste API keys, passwords, private calendar links or anything personal from your courses. Security problems go privately: see [SECURITY.md](https://github.com/luumlabs/aula/blob/main/SECURITY.md).
+        You can write in English or Spanish.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. …
+  - type: input
+    id: aula-version
+    attributes:
+      label: Aula version
+      description: Settings → About
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: System
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows (x64)
+        - Windows (ARM)
+        - Linux (AppImage)
+        - Linux (.deb)
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: System version
+      placeholder: "macOS 26.1 · Windows 11 24H2 · Ubuntu 24.04"
+  - type: dropdown
+    id: ai
+    attributes:
+      label: AI you use
+      multiple: true
+      options:
+        - A model on this computer (Aula's engine)
+        - Ollama / LM Studio
+        - Claude (subscription)
+        - ChatGPT / Codex (subscription)
+        - OpenCode
+        - API key (DeepSeek, OpenRouter, OpenAI, Anthropic…)
+        - Other
+        - Not related to AI
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Install, first launch or updates
+        - Creating a course
+        - Lessons, practice, flashcards or mock exams
+        - Chat or tutor
+        - Documents or PDF reader
+        - Calendar, automations or the Inbox
+        - Study platform or browser
+        - Settings or AI providers
+        - Other
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log (optional)
+      description: |
+        The end of Aula's log often shows the cause. On macOS: menu **Help → Show Logs**. On Windows and Linux: *Settings → Privacy and data → Open data folder* → `Logs/main.log` (`%APPDATA%\Aula\Logs` or `~/.config/Aula/Logs`). Check it for anything personal before pasting.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: Drag images here. Blur anything personal.

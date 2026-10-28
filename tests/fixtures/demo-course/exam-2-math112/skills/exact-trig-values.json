@@ -1,0 +1,1021 @@
+{
+ "id": "exact-trig-values",
+ "title": "Exact values of the six trig functions",
+ "summary": "Combine reference angles and quadrant signs with the special-angle table to find exact values without a calculator.",
+ "objectives": [
+  "Recall the exact sine, cosine and tangent of 30°, 45° and 60°",
+  "Use the quadrant to choose the sign",
+  "Find csc, sec and cot exactly and rationalize"
+ ],
+ "prerequisites": [
+  "reference-angles",
+  "degree-radian-conversion"
+ ],
+ "lesson": [
+  {
+   "id": "etv-b01",
+   "type": "text",
+   "md": "# Exact values of the six trig functions\n\nA calculator says $\\cos 210^\\circ\\approx-0.866$. The exam wants $-\\dfrac{\\sqrt3}{2}$. Every exact value comes from the same three-step routine: **find the reference angle, read its value from the special-angle table, then choose the sign from the quadrant**."
+  },
+  {
+   "id": "etv-b02",
+   "type": "callout",
+   "kind": "definition",
+   "title": "The six functions on the unit circle",
+   "md": "If the terminal side of $\\theta$ meets the unit circle at $(x,y)$, then $\\cos\\theta=x$, $\\sin\\theta=y$ and $\\tan\\theta=\\dfrac{y}{x}$. The other three are their reciprocals, $\\csc\\theta=\\dfrac1y$, $\\sec\\theta=\\dfrac1x$ and $\\cot\\theta=\\dfrac{x}{y}$, always written after rationalizing."
+  },
+  {
+   "id": "etv-b03",
+   "type": "predict",
+   "question": "Without a calculator: what is the sign of $\\cos 210^\\circ$?",
+   "options": [
+    {
+     "md": "Positive",
+     "correct": false,
+     "why": "Cosine is the $x$-coordinate, and $x>0$ only in Quadrants I and IV."
+    },
+    {
+     "md": "Negative",
+     "correct": true,
+     "why": "$210^\\circ$ is in Quadrant III, where every point has $x<0$."
+    },
+    {
+     "md": "Zero",
+     "correct": false,
+     "why": "Cosine is zero only at $90^\\circ$ and $270^\\circ$."
+    }
+   ],
+   "explanation": "Keep this in mind: the sign comes from the quadrant, never from the reference angle."
+  },
+  {
+   "id": "etv-b04",
+   "type": "text",
+   "md": "## The special-angle table\n\nThese rows are worth memorizing. Every other exact value on the exam is built from them with a reference angle and a sign."
+  },
+  {
+   "id": "etv-b05",
+   "type": "table",
+   "headers": [
+    "$\\theta$",
+    "$\\sin\\theta$",
+    "$\\cos\\theta$",
+    "$\\tan\\theta$"
+   ],
+   "rows": [
+    [
+     "$0^\\circ$",
+     "$0$",
+     "$1$",
+     "$0$"
+    ],
+    [
+     "$30^\\circ=\\frac{\\pi}{6}$",
+     "$\\frac12$",
+     "$\\frac{\\sqrt3}{2}$",
+     "$\\frac{\\sqrt3}{3}$"
+    ],
+    [
+     "$45^\\circ=\\frac{\\pi}{4}$",
+     "$\\frac{\\sqrt2}{2}$",
+     "$\\frac{\\sqrt2}{2}$",
+     "$1$"
+    ],
+    [
+     "$60^\\circ=\\frac{\\pi}{3}$",
+     "$\\frac{\\sqrt3}{2}$",
+     "$\\frac12$",
+     "$\\sqrt3$"
+    ],
+    [
+     "$90^\\circ=\\frac{\\pi}{2}$",
+     "$1$",
+     "$0$",
+     "undefined"
+    ]
+   ],
+   "caption": "First-quadrant values",
+   "firstColumnIsHeader": true,
+   "highlightRows": [
+    1,
+    2,
+    3
+   ],
+   "align": [
+    "left",
+    "center",
+    "center",
+    "center"
+   ]
+  },
+  {
+   "id": "etv-b06",
+   "type": "callout",
+   "kind": "remember",
+   "title": "A pattern that helps",
+   "md": "The sines of $0^\\circ, 30^\\circ, 45^\\circ, 60^\\circ, 90^\\circ$ are $\\frac{\\sqrt0}{2}, \\frac{\\sqrt1}{2}, \\frac{\\sqrt2}{2}, \\frac{\\sqrt3}{2}, \\frac{\\sqrt4}{2}$. The cosines are the same list backwards. Tangent is sine over cosine, written after rationalizing: $\\tan30^\\circ=\\frac{1}{\\sqrt3}=\\frac{\\sqrt3}{3}$."
+  },
+  {
+   "id": "etv-b07",
+   "type": "text",
+   "md": "## Reference angles and quadrant signs\n\nThe table only covers Quadrant I. For any other angle, use reference angles and quadrant signs together: the **reference angle** gives the size of the answer and the **quadrant** gives its sign. Cosine is the $x$-coordinate and sine is the $y$-coordinate, so the sign only asks which side of each axis the point is on."
+  },
+  {
+   "id": "etv-b08",
+   "type": "plot",
+   "title": "$210^\\circ$ on the unit circle",
+   "xMin": -1.6,
+   "xMax": 1.6,
+   "yMin": -1.25,
+   "yMax": 1.25,
+   "equalAspect": true,
+   "xTickStep": 0.5,
+   "yTickStep": 0.5,
+   "parametric": [
+    {
+     "x": "cos(t)",
+     "y": "sin(t)",
+     "tMin": 0,
+     "tMax": 6.2832,
+     "color": "accent"
+    },
+    {
+     "x": "0.22*cos(t)",
+     "y": "0.22*sin(t)",
+     "tMin": 0,
+     "tMax": 3.6652,
+     "color": "gray"
+    },
+    {
+     "x": "0.5*cos(t)",
+     "y": "0.5*sin(t)",
+     "tMin": 3.1416,
+     "tMax": 3.6652,
+     "color": "orange"
+    }
+   ],
+   "lines": [
+    {
+     "kind": "segment",
+     "x1": "0",
+     "y1": "0",
+     "x2": "-sqrt(3)/2",
+     "y2": "-1/2",
+     "color": "accent",
+     "dashed": false
+    },
+    {
+     "kind": "segment",
+     "x1": "-sqrt(3)/2",
+     "y1": "0",
+     "x2": "-sqrt(3)/2",
+     "y2": "-1/2",
+     "color": "gray",
+     "dashed": true
+    }
+   ],
+   "points": [
+    {
+     "x": "-sqrt(3)/2",
+     "y": "-1/2",
+     "color": "accent"
+    }
+   ],
+   "labels": [
+    {
+     "x": "-0.98",
+     "y": "-0.78",
+     "tex": "$(-\\frac{\\sqrt3}{2},-\\frac12)$",
+     "color": "accent"
+    },
+    {
+     "x": "-0.66",
+     "y": "-0.2",
+     "tex": "$30^\\circ$",
+     "color": "orange"
+    },
+    {
+     "x": "1.05",
+     "y": "0.95",
+     "tex": "QI",
+     "color": "gray"
+    },
+    {
+     "x": "-1.05",
+     "y": "0.95",
+     "tex": "QII",
+     "color": "gray"
+    },
+    {
+     "x": "-1.05",
+     "y": "-1.0",
+     "tex": "QIII",
+     "color": "gray"
+    },
+    {
+     "x": "1.05",
+     "y": "-1.0",
+     "tex": "QIV",
+     "color": "gray"
+    }
+   ],
+   "caption": "The reference angle is $30^\\circ$; in Quadrant III both coordinates are negative."
+  },
+  {
+   "id": "etv-b09",
+   "type": "table",
+   "headers": [
+    "Quadrant",
+    "I",
+    "II",
+    "III",
+    "IV"
+   ],
+   "rows": [
+    [
+     "$\\sin\\theta,\\ \\csc\\theta$",
+     "$+$",
+     "$+$",
+     "$-$",
+     "$-$"
+    ],
+    [
+     "$\\cos\\theta,\\ \\sec\\theta$",
+     "$+$",
+     "$-$",
+     "$-$",
+     "$+$"
+    ],
+    [
+     "$\\tan\\theta,\\ \\cot\\theta$",
+     "$+$",
+     "$-$",
+     "$+$",
+     "$-$"
+    ]
+   ],
+   "caption": "Signs by quadrant: “All Students Take Calculus”",
+   "firstColumnIsHeader": true,
+   "align": [
+    "left",
+    "center",
+    "center",
+    "center",
+    "center"
+   ]
+  },
+  {
+   "id": "etv-b10",
+   "type": "text",
+   "md": "## Putting it together\n\nEvery exact value is a size times a sign. Find them separately, then put them together: first the quadrant, then the reference angle, then the table, and only at the end the sign."
+  },
+  {
+   "id": "etv-b11",
+   "type": "math",
+   "tex": "\\cos\\theta=(\\text{sign from the quadrant})\\cdot\\cos\\theta'",
+   "label": "The routine in one line"
+  },
+  {
+   "id": "etv-b12",
+   "type": "example",
+   "title": "$\\cos 210^\\circ$",
+   "problem": "Find the exact value of $\\cos 210^\\circ$.",
+   "steps": [
+    {
+     "md": "**Quadrant.** $180^\\circ<210^\\circ<270^\\circ$, so the terminal side is in Quadrant III."
+    },
+    {
+     "md": "**Reference angle.** $\\theta'=210^\\circ-180^\\circ=30^\\circ$."
+    },
+    {
+     "md": "**Table.** $\\cos30^\\circ=\\dfrac{\\sqrt3}{2}$."
+    },
+    {
+     "md": "**Sign.** Cosine is the $x$-coordinate, negative in Quadrant III: $\\cos210^\\circ=-\\dfrac{\\sqrt3}{2}$.",
+     "note": "The size comes from the reference angle; the sign comes from the quadrant. Never take the sign from the table."
+    }
+   ],
+   "answer": "$\\cos 210^\\circ=-\\dfrac{\\sqrt3}{2}$"
+  },
+  {
+   "id": "etv-b13",
+   "type": "diagram",
+   "kind": "flow",
+   "title": "The exact-value routine",
+   "direction": "lr",
+   "nodes": [
+    {
+     "id": "a",
+     "label": "Quadrant",
+     "color": "blue"
+    },
+    {
+     "id": "b",
+     "label": "Reference angle $\\theta'$",
+     "color": "orange"
+    },
+    {
+     "id": "c",
+     "label": "Size from the table",
+     "color": "orange"
+    },
+    {
+     "id": "d",
+     "label": "Sign",
+     "shape": "round",
+     "color": "green"
+    }
+   ],
+   "edges": [
+    {
+     "from": "a",
+     "to": "b"
+    },
+    {
+     "from": "b",
+     "to": "c"
+    },
+    {
+     "from": "c",
+     "to": "d"
+    }
+   ],
+   "caption": "First make the angle coterminal in $[0^\\circ,360^\\circ)$. Size and sign are found separately, then put together."
+  },
+  {
+   "id": "etv-b14",
+   "type": "callout",
+   "kind": "mistake",
+   "md": "Taking the sign from the reference angle. $\\cos30^\\circ$ is positive, but $\\cos210^\\circ$ is not: the answer $\\dfrac{\\sqrt3}{2}$ has the right size and the wrong sign."
+  },
+  {
+   "id": "etv-b15",
+   "type": "spot",
+   "intro": "A student found $\\tan 300^\\circ$. Which line is wrong?",
+   "lines": [
+    "$300^\\circ$ is in Quadrant IV.",
+    "The reference angle is $360^\\circ-300^\\circ=60^\\circ$.",
+    "$\\tan60^\\circ=\\sqrt3$.",
+    "Tangent is positive in Quadrant IV, so $\\tan300^\\circ=\\sqrt3$."
+   ],
+   "wrongIndex": 3,
+   "explanation": "In Quadrant IV, $x>0$ and $y<0$, so $\\tan\\theta=\\frac{y}{x}<0$: $\\tan300^\\circ=-\\sqrt3$."
+  },
+  {
+   "id": "etv-b16",
+   "type": "text",
+   "md": "## The reciprocal functions\n\nFor $\\csc$, $\\sec$ and $\\cot$, find the matching sine, cosine or tangent first, flip it and rationalize the denominator. A reciprocal keeps the sign, and the reciprocal of $0$ does not exist: $\\csc180^\\circ$ and $\\sec90^\\circ$ are **undefined**."
+  },
+  {
+   "id": "etv-b17",
+   "type": "example",
+   "title": "$\\sec 135^\\circ$",
+   "problem": "Find the exact value of $\\sec 135^\\circ$.",
+   "steps": [
+    {
+     "md": "Quadrant II, reference angle $45^\\circ$."
+    },
+    {
+     "md": "$\\cos135^\\circ=-\\dfrac{\\sqrt2}{2}$ (cosine is negative in Quadrant II)."
+    },
+    {
+     "md": "$\\sec135^\\circ=\\dfrac{1}{\\cos135^\\circ}=-\\dfrac{2}{\\sqrt2}=-\\sqrt2$."
+    }
+   ],
+   "answer": "$-\\sqrt2$"
+  },
+  {
+   "id": "etv-b18",
+   "type": "tryit",
+   "title": "Check yourself",
+   "exerciseIDs": [
+    "etv-e1",
+    "etv-e5",
+    "etv-e3",
+    "etv-e7",
+    "etv-e8"
+   ]
+  },
+  {
+   "id": "etv-b19",
+   "type": "recap",
+   "points": [
+    "Size from the **reference angle**, sign from the **quadrant**.",
+    "Memorize the $30^\\circ$, $45^\\circ$ and $60^\\circ$ rows; the cosines are the sines backwards.",
+    "All Students Take Calculus: which functions are positive in Quadrants I, II, III and IV.",
+    "Reciprocals keep the sign, and $\\frac10$ is undefined."
+   ]
+  }
+ ],
+ "exercises": [
+  {
+   "id": "etv-e1",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e1-q",
+     "type": "text",
+     "md": "Find the exact value of $\\sin 150^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "1/2",
+    "prefix": "$\\sin 150^\\circ =$"
+   },
+   "hints": [
+    "$150^\\circ$ is in Quadrant II with reference angle $30^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "etv-e1-s",
+     "type": "text",
+     "md": "$\\sin150^\\circ=\\sin30^\\circ=\\dfrac12$ (sine is positive in Quadrant II)."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-1/2",
+     "why": "$150^\\circ$ is in Quadrant II, where sine (the $y$-coordinate) is positive."
+    },
+    {
+     "input": "√3/2",
+     "why": "For a $30^\\circ$ reference angle, sine goes with $\\frac12$; $\\frac{\\sqrt3}{2}$ is the cosine."
+    }
+   ],
+   "points": 1,
+   "tags": [],
+   "source": {
+    "source": "unit-3-notes",
+    "page": 2
+   }
+  },
+  {
+   "id": "etv-e2",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e2-q",
+     "type": "text",
+     "md": "Find the exact value of $\\tan 225^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "1",
+    "prefix": "$\\tan 225^\\circ =$"
+   },
+   "hints": [
+    "Reference angle $45^\\circ$, Quadrant III."
+   ],
+   "solution": [
+    {
+     "id": "etv-e2-s",
+     "type": "text",
+     "md": "$\\tan225^\\circ=\\tan45^\\circ=1$: in Quadrant III sine and cosine are both negative, so their ratio is positive."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-1",
+     "why": "In Quadrant III sine and cosine are both negative, so tangent (their ratio) is positive."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e3",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e3-q",
+     "type": "text",
+     "md": "Find the exact value of $\\sin\\dfrac{4\\pi}{3}$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-sqrt(3)/2",
+    "prefix": "$\\sin\\frac{4\\pi}{3} =$"
+   },
+   "hints": [
+    "$\\frac{4\\pi}{3}=240^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "etv-e3-s",
+     "type": "text",
+     "md": "$240^\\circ$ is in Quadrant III with reference angle $60^\\circ$, so $\\sin\\frac{4\\pi}{3}=-\\sin60^\\circ=-\\dfrac{\\sqrt3}{2}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "√3/2",
+     "why": "Right size, wrong sign: $\\frac{4\\pi}{3}$ is in Quadrant III, where sine is negative."
+    },
+    {
+     "input": "-1/2",
+     "why": "That is $\\cos\\frac{4\\pi}{3}$. For a $60^\\circ$ reference angle, sine goes with $\\frac{\\sqrt3}{2}$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e4",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e4-q",
+     "type": "text",
+     "md": "Which expression equals $\\cos 300^\\circ$?"
+    }
+   ],
+   "answer": {
+    "kind": "choice",
+    "options": [
+     {
+      "id": "a",
+      "md": "$\\cos 60^\\circ$",
+      "correct": true,
+      "why": "Quadrant IV, reference angle $60^\\circ$, and cosine is positive there."
+     },
+     {
+      "id": "b",
+      "md": "$-\\cos 60^\\circ$",
+      "correct": false,
+      "why": "Cosine is positive in Quadrant IV, so there is no minus sign."
+     },
+     {
+      "id": "c",
+      "md": "$\\cos 30^\\circ$",
+      "correct": false,
+      "why": "The reference angle of $300^\\circ$ is $60^\\circ$, not $30^\\circ$."
+     },
+     {
+      "id": "d",
+      "md": "$-\\sin 60^\\circ$",
+      "correct": false,
+      "why": "That is $\\sin300^\\circ$."
+     }
+    ],
+    "shuffle": true
+   },
+   "hints": [
+    "Find the quadrant and the reference angle."
+   ],
+   "solution": [
+    {
+     "id": "etv-e4-s",
+     "type": "text",
+     "md": "$\\cos300^\\circ=\\cos60^\\circ=\\frac12$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e5",
+   "skill": "exact-trig-values",
+   "level": 1,
+   "prompt": [
+    {
+     "id": "etv-e5-q",
+     "type": "text",
+     "md": "Find the exact value of $\\cos 210^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-sqrt(3)/2",
+    "prefix": "$\\cos 210^\\circ =$"
+   },
+   "hints": [
+    "In which quadrant is $210^\\circ$? What is its reference angle?",
+    "$\\cos30^\\circ=\\frac{\\sqrt3}{2}$. Now the sign: is $x$ positive or negative in Quadrant III?"
+   ],
+   "solution": [
+    {
+     "id": "etv-e5-s",
+     "type": "text",
+     "md": "$210^\\circ$ is in Quadrant III with reference angle $30^\\circ$. Cosine is negative there, so $\\cos210^\\circ=-\\cos30^\\circ=-\\dfrac{\\sqrt3}{2}$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "√3/2",
+     "why": "Right size, wrong sign. $210^\\circ$ is in Quadrant III, where every point of the unit circle has a negative $x$-coordinate, and cosine is that $x$: $\\cos210^\\circ=-\\cos30^\\circ=-\\frac{\\sqrt3}{2}$."
+    },
+    {
+     "input": "-1/2",
+     "why": "That is $\\sin210^\\circ$. For a $30^\\circ$ reference angle, cosine goes with $\\frac{\\sqrt3}{2}$ and sine with $\\frac12$."
+    },
+    {
+     "input": "1/2",
+     "why": "That is $\\cos60^\\circ$, and positive. The reference angle of $210^\\circ$ is $30^\\circ$ and cosine is negative in Quadrant III."
+    }
+   ],
+   "points": 1,
+   "tags": [
+    "sign",
+    "quadrant III"
+   ],
+   "source": {
+    "source": "unit-3-notes",
+    "page": 2
+   },
+   "estimatedSeconds": 60
+  },
+  {
+   "id": "etv-e6",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e6-q",
+     "type": "text",
+     "md": "Find the exact value of $\\csc 180^\\circ$. If it does not exist, write “undefined”."
+    }
+   ],
+   "answer": {
+    "kind": "short",
+    "accepted": [
+     "undefined",
+     "does not exist",
+     "DNE",
+     "no existe"
+    ],
+    "placeholder": "a number or “undefined”"
+   },
+   "hints": [
+    "$\\csc\\theta=\\frac{1}{\\sin\\theta}$. What is $\\sin180^\\circ$?"
+   ],
+   "solution": [
+    {
+     "id": "etv-e6-s",
+     "type": "text",
+     "md": "$\\sin180^\\circ=0$, and $\\frac10$ does not exist, so $\\csc180^\\circ$ is **undefined**."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "0",
+     "why": "That is $\\sin180^\\circ$ itself; its reciprocal cannot be $0$ (no number has reciprocal $0$). Since $\\sin180^\\circ=0$, $\\csc180^\\circ=\\frac10$ is undefined."
+    },
+    {
+     "input": "-1",
+     "why": "$\\csc\\theta=\\frac{1}{\\sin\\theta}$ and $\\sin180^\\circ=0$, not $-1$: the point is $(-1, 0)$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e7",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e7-q",
+     "type": "text",
+     "md": "Find the exact value of $\\sec\\dfrac{3\\pi}{4}$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-sqrt(2)",
+    "prefix": "$\\sec\\frac{3\\pi}{4} =$"
+   },
+   "hints": [
+    "$\\frac{3\\pi}{4}=135^\\circ$.",
+    "$\\sec\\theta=\\frac{1}{\\cos\\theta}$."
+   ],
+   "solution": [
+    {
+     "id": "etv-e7-s",
+     "type": "text",
+     "md": "$\\cos\\frac{3\\pi}{4}=-\\frac{\\sqrt2}{2}$, so $\\sec\\frac{3\\pi}{4}=-\\frac{2}{\\sqrt2}=-\\sqrt2$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "√2",
+     "why": "Right size, wrong sign: cosine, and so secant, is negative in Quadrant II."
+    },
+    {
+     "input": "-√2/2",
+     "why": "That is $\\cos\\frac{3\\pi}{4}$. Secant is its reciprocal."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e8",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e8-q",
+     "type": "text",
+     "md": "Find the exact value of $\\cot 330^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "-sqrt(3)",
+    "prefix": "$\\cot 330^\\circ =$"
+   },
+   "hints": [
+    "$\\cot\\theta=\\frac{\\cos\\theta}{\\sin\\theta}$."
+   ],
+   "solution": [
+    {
+     "id": "etv-e8-s",
+     "type": "text",
+     "md": "Quadrant IV, reference angle $30^\\circ$: $\\cot330^\\circ=\\dfrac{\\sqrt3/2}{-1/2}=-\\sqrt3$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "-√3/3",
+     "why": "That is $\\tan330^\\circ$. Cotangent is its reciprocal: $-\\sqrt3$."
+    },
+    {
+     "input": "√3",
+     "why": "In Quadrant IV, $\\sin<0$ and $\\cos>0$, so $\\cot<0$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e9",
+   "skill": "exact-trig-values",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "etv-e9-q",
+     "type": "text",
+     "md": "Find all angles $\\theta$ in $[0^\\circ, 360^\\circ)$ with $\\sin\\theta=-\\dfrac12$. Separate them with commas."
+    }
+   ],
+   "answer": {
+    "kind": "set",
+    "expected": [
+     "210",
+     "330"
+    ],
+    "placeholder": "e.g. 45, 135"
+   },
+   "hints": [
+    "The reference angle is $30^\\circ$.",
+    "Sine is negative in Quadrants III and IV."
+   ],
+   "solution": [
+    {
+     "id": "etv-e9-s",
+     "type": "text",
+     "md": "Reference angle $30^\\circ$; Quadrant III gives $210^\\circ$ and Quadrant IV gives $330^\\circ$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "30, 150",
+     "why": "Those angles have $\\sin\\theta=+\\frac12$. A negative sine needs Quadrants III and IV."
+    },
+    {
+     "input": "-30",
+     "why": "Give angles between $0^\\circ$ and $360^\\circ$: $-30^\\circ$ is coterminal with $330^\\circ$."
+    }
+   ],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e10",
+   "skill": "exact-trig-values",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "etv-e10-q",
+     "type": "text",
+     "md": "Find the exact value of $\\sin120^\\circ\\cos330^\\circ-\\cos120^\\circ\\sin330^\\circ$."
+    }
+   ],
+   "answer": {
+    "kind": "numeric",
+    "value": "1/2"
+   },
+   "hints": [
+    "Find each of the four values first."
+   ],
+   "solution": [
+    {
+     "id": "etv-e10-s",
+     "type": "text",
+     "md": "$\\frac{\\sqrt3}{2}\\cdot\\frac{\\sqrt3}{2}-(-\\frac12)(-\\frac12)=\\frac34-\\frac14=\\frac12$."
+    }
+   ],
+   "wrongs": [
+    {
+     "input": "1",
+     "why": "$\\cos120^\\circ\\sin330^\\circ=(-\\frac12)(-\\frac12)=+\\frac14$, and it is subtracted."
+    }
+   ],
+   "points": 2,
+   "tags": []
+  },
+  {
+   "id": "etv-e11",
+   "skill": "exact-trig-values",
+   "level": 2,
+   "prompt": [
+    {
+     "id": "etv-e11-q",
+     "type": "text",
+     "md": "True or false: $\\tan 90^\\circ$ is undefined."
+    }
+   ],
+   "answer": {
+    "kind": "truefalse",
+    "value": true
+   },
+   "hints": [],
+   "solution": [
+    {
+     "id": "etv-e11-s",
+     "type": "text",
+     "md": "True: at $90^\\circ$ the point is $(0,1)$ and $\\tan\\theta=\\frac{y}{x}=\\frac10$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  },
+  {
+   "id": "etv-e12",
+   "skill": "exact-trig-values",
+   "level": 3,
+   "prompt": [
+    {
+     "id": "etv-e12-q",
+     "type": "text",
+     "md": "Match each expression with its exact value."
+    }
+   ],
+   "answer": {
+    "kind": "matching",
+    "pairs": [
+     {
+      "left": "$\\sin 240^\\circ$",
+      "right": "$-\\frac{\\sqrt3}{2}$"
+     },
+     {
+      "left": "$\\cos 240^\\circ$",
+      "right": "$-\\frac12$"
+     },
+     {
+      "left": "$\\tan 240^\\circ$",
+      "right": "$\\sqrt3$"
+     },
+     {
+      "left": "$\\csc 240^\\circ$",
+      "right": "$-\\frac{2\\sqrt3}{3}$"
+     }
+    ],
+    "extraRights": [
+     "$\\frac{\\sqrt3}{3}$"
+    ]
+   },
+   "hints": [
+    "$240^\\circ$: Quadrant III, reference angle $60^\\circ$."
+   ],
+   "solution": [
+    {
+     "id": "etv-e12-s",
+     "type": "text",
+     "md": "In Quadrant III sine and cosine are negative and tangent is positive; $\\csc240^\\circ=-\\frac{2}{\\sqrt3}=-\\frac{2\\sqrt3}{3}$."
+    }
+   ],
+   "wrongs": [],
+   "points": 1,
+   "tags": []
+  }
+ ],
+ "templates": [],
+ "cards": [
+  {
+   "id": "etv-c1",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "$\\sin30^\\circ$, $\\cos30^\\circ$, $\\tan30^\\circ$",
+   "back": "$\\frac12$, $\\frac{\\sqrt3}{2}$, $\\frac{\\sqrt3}{3}$",
+   "tags": []
+  },
+  {
+   "id": "etv-c2",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "$\\sin45^\\circ$, $\\cos45^\\circ$, $\\tan45^\\circ$",
+   "back": "$\\frac{\\sqrt2}{2}$, $\\frac{\\sqrt2}{2}$, $1$",
+   "tags": []
+  },
+  {
+   "id": "etv-c3",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "$\\sin60^\\circ$, $\\cos60^\\circ$, $\\tan60^\\circ$",
+   "back": "$\\frac{\\sqrt3}{2}$, $\\frac12$, $\\sqrt3$",
+   "tags": []
+  },
+  {
+   "id": "etv-c4",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "In which quadrants is cosine negative?",
+   "back": "Quadrants II and III, where $x<0$.",
+   "tags": []
+  },
+  {
+   "id": "etv-c5",
+   "skill": "exact-trig-values",
+   "kind": "cloze",
+   "front": "All Students Take Calculus: {{c1::all}} are positive in QI, {{c2::sine}} in QII, {{c3::tangent}} in QIII and {{c4::cosine}} in QIV.",
+   "back": "",
+   "tags": []
+  },
+  {
+   "id": "etv-c6",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "$\\cos 210^\\circ$",
+   "back": "$-\\frac{\\sqrt3}{2}$ (Quadrant III, reference angle $30^\\circ$).",
+   "tags": []
+  },
+  {
+   "id": "etv-c7",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "Why is $\\csc180^\\circ$ undefined?",
+   "back": "Because $\\sin180^\\circ=0$ and $\\frac10$ does not exist.",
+   "tags": []
+  },
+  {
+   "id": "etv-c8",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "Rationalize $\\dfrac{1}{\\sqrt3}$",
+   "back": "$\\dfrac{\\sqrt3}{3}$",
+   "tags": []
+  },
+  {
+   "id": "etv-c9",
+   "skill": "exact-trig-values",
+   "kind": "basic",
+   "front": "$\\sec\\theta$ for the unit-circle point $(x,y)$",
+   "back": "$\\dfrac1x$",
+   "tags": []
+  }
+ ],
+ "decks": [],
+ "mistakes": [
+  {
+   "title": "Sign taken from the table",
+   "wrong": "$\\cos210^\\circ=\\frac{\\sqrt3}{2}$",
+   "right": "$\\cos210^\\circ=-\\frac{\\sqrt3}{2}$",
+   "why": "The table gives the size for the reference angle; the quadrant gives the sign."
+  },
+  {
+   "title": "Sine and cosine swapped",
+   "wrong": "$\\sin30^\\circ=\\frac{\\sqrt3}{2}$",
+   "right": "$\\sin30^\\circ=\\frac12$",
+   "why": "At $30^\\circ$ the point is low on the circle: its height (sine) is the small value $\\frac12$."
+  },
+  {
+   "title": "Unrationalized answers",
+   "wrong": "$\\tan30^\\circ=\\frac{1}{\\sqrt3}$",
+   "right": "$\\tan30^\\circ=\\frac{\\sqrt3}{3}$",
+   "why": "The exam expects rationalized denominators."
+  }
+ ],
+ "sources": [
+  {
+   "source": "unit-3-notes",
+   "page": 2
+  },
+  {
+   "source": "exam-2-review",
+   "page": 1
+  }
+ ],
+ "status": "ready",
+ "issues": [],
+ "revision": 1,
+ "updated": "2026-01-05T12:00:00.000Z"
+}

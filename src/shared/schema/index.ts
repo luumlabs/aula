@@ -1,0 +1,18 @@
+// Modelo de curso (port de StudyModel): tipos que describen EXACTAMENTE el JSON de la app Swift, más los decodificadores
+// tolerantes (`decodeX`) y los codificadores (`encodeX`) que escriben la misma forma. Isomorfo: lo usa también la interfaz.
+export * from './coding'
+export * from './common'
+export * from './plot'
+export * from './visual'
+export * from './blocks'
+export * from './exercises'
+export * from './cards'
+export * from './pack'
+export * from './progress'
+export * from './chat'
+export * from './courseIcons'
+export * from './courseTones'
+export * from './simulationPresets'
+export * from './richText'
+export * from './history'
+export * from './library'

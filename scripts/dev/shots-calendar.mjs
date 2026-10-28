@@ -1,0 +1,27 @@
+import { _electron as electron } from 'playwright'
+import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+const out = resolve(process.argv[2]); mkdirSync(out, { recursive: true })
+const home = mkdtempSync(join(tmpdir(), 'aula-cal-'))
+writeFileSync(join(home, 'settings.json'), JSON.stringify({ version: 2, onboarded: true, general: { language: 'es', name: 'Boris' } }))
+const app = await electron.launch({ args: [resolve('.'), '--no-sandbox'], env: { ...process.env, AULA_HOME: home, AULA_DEMO: '1' } })
+const win = await app.firstWindow()
+await win.setViewportSize({ width: 1440, height: 900 })
+win.on('pageerror', (e) => console.error('[pageerror]', e.message))
+await win.waitForTimeout(1500)
+await win.evaluate(() => window.__aula.navigate({ name: 'calendar' }))
+await win.waitForTimeout(2200)
+await win.screenshot({ path: join(out, 'cal-mes.png') })
+await win.keyboard.press('ArrowRight'); await win.waitForTimeout(180)
+await win.screenshot({ path: join(out, 'cal-pasando-pagina.png') })
+await win.waitForTimeout(1200)
+await win.keyboard.press('ArrowLeft'); await win.waitForTimeout(1200)
+await win.getByRole('tab', { name: 'Semana' }).click(); await win.waitForTimeout(1600)
+await win.screenshot({ path: join(out, 'cal-semana.png') })
+await win.getByRole('tab', { name: 'Agenda' }).click(); await win.waitForTimeout(1600)
+await win.screenshot({ path: join(out, 'cal-agenda.png') })
+await win.getByRole('tab', { name: 'Mes' }).click(); await win.waitForTimeout(600)
+await win.evaluate(() => window.__aula.setTheme('dark')); await win.waitForTimeout(1400)
+await win.screenshot({ path: join(out, 'cal-mes-oscuro.png') })
+await app.close()

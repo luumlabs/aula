@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Aula",
+    "tagline": "Your study companion"
+  },
+  "nav": {
+    "home": "Today",
+    "calendar": "Calendar",
+    "chat": "Aula",
+    "tools": "Tools",
+    "documents": "Documents",
+    "inbox": "Inbox",
+    "stats": "Statistics",
+    "settings": "Settings",
+    "courses": "Your courses",
+    "newCourse": "New course with Aula",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "back": "Back",
+    "forward": "Forward",
+    "noCourses": "No courses yet",
+    "examToday": "Exam today",
+    "examTomorrow": "Exam tomorrow",
+    "examInDays_one": "Exam in {{count}} day",
+    "examInDays_other": "Exam in {{count}} days",
+    "sampleCourse": "Example course"
+  },
+  "search": {
+    "placeholder": "Search Aula",
+    "hint": "Courses, lessons, tools, actions",
+    "empty": "Nothing here. Try other words.",
+    "groups": {
+      "navigate": "Go to",
+      "courses": "Courses",
+      "tools": "Tools",
+      "actions": "Actions"
+    }
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "done": "Done",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "retry": "Retry",
+    "continue": "Continue",
+    "start": "Start",
+    "open": "Open",
+    "more": "More",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "time": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago"
+  },
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "withName": "{{greeting}}, {{name}}"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "retry": "Try again in a moment.",
+    "screen": "This screen couldn’t be shown. Your courses and progress are safe.",
+    "details": "Technical details"
+  },
+  "orb": {
+    "ask": "Ask Aula"
+  },
+  "approval": {
+    "action": {
+      "click": "Aula wants to click “{{label}}”",
+      "navigate": "Aula wants to open “{{label}}”",
+      "download": "Aula wants to download “{{label}}”",
+      "submit": "Aula wants to send “{{label}}”"
+    },
+    "allow": "Allow",
+    "deny": "No",
+    "timeLeft": "Time to answer",
+    "autoDeny": "If you don’t answer, Aula won’t do it ({{seconds}} s)",
+    "more_one": "And {{count}} more request waiting",
+    "more_other": "And {{count}} more requests waiting"
+  },
+  "sample": {
+    "tag": "Example",
+    "hint": "It comes with Aula so you can see how it works. Delete it whenever you like."
+  }
+}

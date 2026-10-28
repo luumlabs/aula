@@ -1,0 +1,89 @@
+{
+  "draft": {
+    "discard": "Descartar borrador",
+    "discardTitle": "¿Descartar este borrador?",
+    "discardBody": "Se borran el título, las notas y los materiales que Aula ya leyó para este curso.",
+    "discardConfirm": "Descartar",
+    "keep": "Seguir con el borrador",
+    "replaceTitle": "Tienes un curso a medio preparar",
+    "replaceBody": "Ya habías empezado a preparar «{{title}}». ¿Lo descartas para preparar este otro?",
+    "replaceBodyUntitled": "Ya habías empezado a preparar otro curso. ¿Lo descartas para preparar este?",
+    "replaceConfirm": "Descartar y empezar este"
+  },
+  "title": "Nuevo curso",
+  "heading": "¿Qué quieres estudiar?",
+  "subheading": "Escribe la asignatura o el examen. Con tus apuntes sale mejor, pero no hace falta.",
+  "titlePlaceholder": "Cálculo I · Parcial 2, Inglés B2, Historia del arte…",
+  "examDate": "Fecha del examen",
+  "level": "Nivel",
+  "levels": {
+    "school": "Secundaria",
+    "highschool": "Bachillerato",
+    "university": "Universidad",
+    "official": "Oposición",
+    "language": "Idiomas",
+    "hobby": "Por gusto"
+  },
+  "materials": "Tus materiales",
+  "materialsHint": "Arrastra PDF, Word, PowerPoint, fotos de apuntes o de la pizarra, exámenes de repaso…",
+  "drop": "Suelta aquí tus archivos",
+  "browse": "Elegir archivos",
+  "pasteText": "Pegar texto",
+  "addLink": "Añadir enlace",
+  "add": "Añadir",
+  "addText": "Añadir este texto a tus materiales",
+  "addLinkNow": "Añadir este enlace a tus materiales",
+  "linkPlaceholder": "https://…",
+  "textPlaceholder": "Pega aquí apuntes o lo que dijo el profesor…",
+  "official": "Oficial del profesor",
+  "pages_one": "{{count}} página",
+  "pages_other": "{{count}} páginas",
+  "reading": "Leyendo…",
+  "fromPlatform": "Buscar mis materiales en {{platform}}",
+  "fromPlatformHint": "Aula usa tu sesión, solo lee y trae lo que entra en el examen.",
+  "more": "Más detalles (opcional)",
+  "topics": "Lo que entra en el examen",
+  "topicsPlaceholder": "Temas 3 y 4: identidades trigonométricas, ecuaciones…",
+  "examNotes": "Formato del examen",
+  "examNotesPlaceholder": "100 puntos, calculadora permitida, piden mostrar el procedimiento…",
+  "lessonMode": "Cómo quieres las lecciones",
+  "lessonModes": {
+    "stepByStep": {
+      "title": "Paso a paso",
+      "body": "Te explica y comprueba que lo entiendes antes de seguir."
+    },
+    "explore": {
+      "title": "Explorar",
+      "body": "Vas a tu aire; las preguntas son opcionales."
+    },
+    "read": {
+      "title": "Solo leer",
+      "body": "Una clase para leer, sin preguntas por medio."
+    }
+  },
+  "courseLanguage": "Idioma del curso",
+  "depth": "Tamaño del curso",
+  "depths": {
+    "quick": {
+      "title": "Rápido",
+      "body": "Lo esencial. Si el examen es mañana."
+    },
+    "standard": {
+      "title": "Estándar",
+      "body": "Curso completo con práctica, tarjetas y verificación."
+    },
+    "deep": {
+      "title": "A fondo",
+      "body": "Más temas, ejercicios y diapositivas. Tarda más."
+    }
+  },
+  "web": "Buscar en internet si falta algo",
+  "verify": "Verificar las respuestas con otra IA",
+  "create": "Crear curso",
+  "creating": "Preparando…",
+  "needTitle": "Escribe qué quieres estudiar",
+  "noAI": "Para crear cursos hace falta una IA",
+  "noAIBody": "Elige una en Ajustes: Aula detecta lo que ya tienes.",
+  "chooseAI": "Elegir IA",
+  "removed": "Material quitado"
+}
