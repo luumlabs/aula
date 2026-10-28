@@ -132,6 +132,52 @@ entrar palabra a palabra.
 
 Ejemplo de todo: `montage/demo3.ts`.
 
+## Versión corta para redes: pintura, rótulos pintados y vertical
+
+Todo con el mismo pincel que la app (`src/renderer/src/design/paint`: silueta con presión, temblor, remate romo, hebras
+secas y el ritmo de la mano), con semilla fija y como función pura del tiempo. El código está en `compose/paint.ts`; el
+compositor lo recibe en `assets.paint`, porque importa el kit de la app y Node no lo carga.
+
+- **Pincelada que barre el cuadro:** `enter: { kind: 'brush', dur, dir?, seed? }`.
+  - Son 3–5 pinceladas largas de pincel seco, escalonadas, que cruzan el cuadro.
+  - Cada una tiene la silueta del pincel de la app (presión variable, temblor, hebras al salir), la punta ovalada que
+    avanza, rayas secas de cerdas y un poco de desenfoque de velocidad.
+  - Cada trazo cruza en el 60 % del barrido, con la curva suave.
+  - Ya pintado, cada trazo se convierte en el plano nuevo en ~5 fotogramas, y el papel nuevo (día ↔ noche) va dentro de
+    la pintura; fuera sigue el viejo hasta que acaba.
+  - Al final se completan los huecos.
+  - `dir` (`right`, `left`, `down` o `up`) da el sentido. El lint pide entre 1 pulso y 1 compás.
+- **Rótulos pintados:** `style: 'paint'`, grandes, en el papel y sin píldora.
+  - Van en `band: 'top' | 'bottom'` (con `montage.bands`) o en `at`.
+  - `size` es el cuerpo de la letra; por defecto, el 7,5 % del lado corto.
+  - Con `gesture: 'brush'`, cada palabra se revela con una pincelada, cada `stagger` s (0,16 por defecto). Sale con el
+    gesto calmado.
+  - `underline: {}` o `ring: {}` subraya o rodea a pincel la palabra en cursiva al acabar de escribirse; también se puede
+    dar `word`, `t` y `color`.
+- **Adornos de pintura:** `montage.paint: [{ t, kind, at, to?, size?, dur?, draw?, color?, seed? }]`.
+  - `kind` puede ser `splash`, `underline`, `ring` o `stroke`.
+  - `at` es una fracción del cuadro o `mark:x`; con una marca de la toma, se rodea o subraya lo que la app enseña.
+  - Se pinta en `draw` s (0,35 por defecto), se queda hasta `dur` (1,2 s por defecto) y se apaga en 0,25 s.
+  - El lint los quiere en el pulso, con 2 por compás como mucho y una salpicadura por compás como mucho.
+- **Prólogo pintado:** `prologue.draw: [t0, t1]`. Sobre la losa de papel, el arco se pinta de un trazo y luego el horizonte.
+  El sol sale después, con `rise`. Para que el primer fotograma ya tenga pintura, conviene empezar un poco antes de 0
+  (por ejemplo, −0,15).
+- **Vertical y cuadrado:** `montage.bands: { top, bottom, fill? }` (px).
+  - La ventana vive en el hueco entre las bandas y no se mete en ellas; las bandas quedan para los rótulos `paint`.
+  - Con `fill`, «ventana entera» es la altura del hueco: la ventana se sale por los lados y la cámara elige qué parte se
+    ve, sin dejar papel.
+  - Ejemplo de vertical 1080×1920: `{ top: 420, bottom: 360, fill: true }`. Para 1:1 basta otro montaje con
+    `size: [1080, 1080]` y bandas más bajas.
+- **Zonas seguras:** `montage.safe: { top, bottom, left, right }` (px que tapa la interfaz de la red). Los rótulos con
+  `band` van en la parte visible de su banda y dentro del ancho seguro, y el centro de la cámara se aparta. En vertical:
+  `{ top: 220, bottom: 480, right: 140 }`.
+- **Primer plano en 16:9:** con `captionPin: true`, la ventana que no cabe sobre la banda apoya en ella su borde de
+  abajo.
+- **Pista corta:** `filmGrid(g, cuts, start)` acepta un corte `[1, b)`, que hace que el vídeo empiece en el compás `b` de la
+  pista. `shortCuts(desde, compases, final)` da los cortes de «N compases enérgicos y luego el final real del tema».
+- **Tamaño:** `montage.maxMB` (o `output.maxMB`) sin `bitrate` calcula la tasa de vídeo para caber; por ejemplo, 30 MB.
+  `minTitle` (s) baja la duración mínima de los rótulos para el lint.
+
 ## Seguridad
 
 - Cada toma lanza una instancia propia con `AULA_HOME` temporal, que se borra al acabar.
@@ -212,8 +258,9 @@ completo es `montage/demo.ts`.
   columna que corta donde empieza la pintura del horizonte. La losa del prólogo y del final es el papel del icono.
 - `prologue`: `{ start, end, size, at, rise: [t0, t1], grow, morph, title, sub, titleAt }`. El icono entra y el medio
   sol ámbar sale por detrás del pincelazo del horizonte; al final, el PNG exacto. Con `morph`, la losa crece hasta ser
-  la ventana del primer plano: la app funde dentro mientras el icono ya pintado se despinta encima (primero el
-  horizonte, luego el arco desde su cola seca), con los tramos de `PROLOGUE_STEPS`.
+  la ventana del primer plano, en un solo movimiento suave hacia el encuadre del final del gesto. El icono ya pintado
+  se despinta dentro de la losa (primero el horizonte, luego el arco desde su cola seca) antes de que entre la app, con
+  los tramos de `PROLOGUE_STEPS`. Con bandas, la losa no entra en ellas.
 - `finale`: `{ start, dur, rise: [t0, t1], sunFrom: [x, y] | 'cursor', size, at, title, sub }`.
   - La ventana del último plano se encoge y se redondea hasta la losa (escala, radio y sombra).
   - Mientras la ventana se apaga, el arco se pinta a pincel encima (`drawInk`: la tinta del icono se descubre a lo largo

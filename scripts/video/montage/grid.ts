@@ -50,7 +50,8 @@ export interface FilmGrid {
   bars: { bar: number; t: number; trackBar: number; rmsDb: number; lowDb: number; novelty: number }[]
 }
 
-/** `cuts`: compases de la pista que se quitan, como [desde, hasta) (p. ej. [[57, 65]] quita 8 compases).
+/** `cuts`: compases de la pista que se quitan, como [desde, hasta) (p. ej. [[57, 65]] quita 8 compases; [1, 49) hace
+ *  que el vídeo empiece en el compás 49).
  *  `start`: segundo de la pista en el que empieza el vídeo (p. ej. g.downbeat − un pulso, para saltar el silencio). */
 export function filmGrid(g: GridJson, cuts: [number, number][] = [], start = 0, tail = 0.8): FilmGrid {
   const barDur = g.beat * g.beatsPerBar
@@ -58,11 +59,14 @@ export function filmGrid(g: GridJson, cuts: [number, number][] = [], start = 0, 
   if (start < 0 || start >= g.downbeat + barDur) throw new Error('start debe caer antes del final del compás 1')
   const sorted = [...cuts].sort((a, b) => a[0] - b[0])
   for (const [a, b] of sorted) {
-    if (!(Number.isInteger(a) && Number.isInteger(b) && b > a && a >= 2)) throw new Error(`corte no válido [${a}, ${b}): compases enteros, desde el 2`)
+    if (!(Number.isInteger(a) && Number.isInteger(b) && b > a && a >= 1)) throw new Error(`corte no válido [${a}, ${b}): compases enteros, desde el 1`)
   }
   for (let i = 1; i < sorted.length; i++) if (sorted[i][0] < sorted[i - 1][1]) throw new Error('cortes solapados')
+  // un corte desde el compás 1 ([1, b)) hace que el vídeo empiece en el compás b de la pista (con el mismo `start` antes
+  // del tiempo fuerte): para una versión corta que arranca en lo más enérgico
+  const lead = sorted[0]?.[0] === 1 ? sorted.shift()![1] - 1 : 0
   const segments: Segment[] = []
-  let from = start
+  let from = start + lead * barDur
   let video = 0
   for (const [a, b] of sorted) {
     const to = tb(a)
@@ -74,7 +78,7 @@ export function filmGrid(g: GridJson, cuts: [number, number][] = [], start = 0, 
   segments.push({ video, from, to: end })
   const duration = video + (end - from)
   const trackBar = (bar: number) => {
-    let tbar = bar
+    let tbar = bar + lead
     for (const [a, b] of sorted) if (tbar >= a) tbar += b - a
     return tbar
   }
@@ -108,4 +112,11 @@ export function filmGrid(g: GridJson, cuts: [number, number][] = [], start = 0, 
     bars,
     sections: bars.filter((b) => g.sections.includes(b.trackBar) && (b.bar === 1 || bars[b.bar - 2].trackBar === b.trackBar - 1)).map((b) => b.bar)
   }
+}
+
+/** Cortes para una versión corta: `bars` compases desde el compás `from` de la pista y, sin saltos de frase, el final
+ *  real del tema desde el compás `ending` (hasta su última nota). Con `filmGrid(g, shortCuts(…), g.downbeat − g.beat)`. */
+export function shortCuts(from: number, bars: number, ending: number): [number, number][] {
+  if (from < 2 || bars < 1 || from + bars > ending) throw new Error('shortCuts: tramo no válido')
+  return from + bars === ending ? [[1, from]] : [[1, from], [from + bars, ending]]
 }

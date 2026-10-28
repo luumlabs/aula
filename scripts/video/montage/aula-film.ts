@@ -134,8 +134,10 @@ const takeMain: Take = {
     // 21 · el resumen (la nota cuenta) y la luz tras el cristal; 22 · Practice → «Exact values»
     moveAt(V(21, 3), [1010, 330], 0.9),
     clickAt(V(22), 'text:Practice', 0.6),
-    moveAt(V(22, 2), 'text:Exact values', 0.5),
-    clickAt(V(22, 3), 'text:Exact values', 0.2),
+    // la fila «Exact values» de «By topic» (la pestaña también lo nombra en «It will start with», sin enlace)
+    { at: V(22), do: 'eval', js: markWhere('vt-ev', '[role="button"], button, a', 'Exact values'), hidden: 0.9 },
+    moveAt(V(22, 2), '#vt-ev', 0.5),
+    clickAt(V(22, 3), '#vt-ev', 0.2),
     // 23–24 · el error típico y «Not yet» con su porqué
     moveAt(V(22, 4), [620, 266], 0.4),
     { at: V(23, 1), do: 'eval', js: answerPractice('wrong', 10) },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filmGrid, type GridJson } from './grid.ts'
+import { filmGrid, shortCuts, type GridJson } from './grid.ts'
 
 const G: GridJson = {
   track: 'x', bpm: 120, beat: 0.5, beatsPerBar: 4, downbeat: 0.25, duration: 0.25 + 40 * 2 + 1.5, confidence: 10, sections: [],
@@ -51,5 +51,25 @@ describe('final y secciones', () => {
     expect(f.duration).toBeCloseTo(70.8 - 16)
     // la sección 20 de la pista cae dentro del corte; la 30 pasa a ser el compás 22 del vídeo
     expect(f.sections).toEqual([22])
+  })
+})
+
+describe('versión corta', () => {
+  it('un corte [1, b) empieza el vídeo en el compás b de la pista, con el mismo pulso de entrada', () => {
+    const f = filmGrid(G, shortCuts(9, 4, 33), 0.2)
+    expect(f.trackBar(1)).toBe(9)
+    expect(f.trackBar(4)).toBe(12)
+    expect(f.trackBar(5)).toBe(33)
+    expect(f.V(1)).toBeCloseTo(0.05)
+    // la pista suena desde 0,05 s antes del compás 9 y acaba en su final real
+    expect(f.segments[0]).toEqual({ video: 0, from: 0.2 + 8 * 2, to: 0.25 + 12 * 2 })
+    expect(f.segments[1].from).toBeCloseTo(0.25 + 32 * 2)
+    expect(f.segments[1].to).toBe(G.duration)
+    expect(f.duration).toBeCloseTo(0.05 + 4 * 2 + (G.duration - (0.25 + 32 * 2)))
+    expect(f.toTrack(f.V(2))).toBeCloseTo(0.25 + 9 * 2)
+  })
+  it('shortCuts sin hueco cuando el tramo llega al final', () => {
+    expect(shortCuts(25, 8, 33)).toEqual([[1, 25]])
+    expect(() => shortCuts(30, 8, 33)).toThrow()
   })
 })

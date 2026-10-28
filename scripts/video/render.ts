@@ -98,15 +98,27 @@ interface ComposeResult {
   hashes: string[]
   /** Instantes con fotogramas planos (gris, blanco, a medio cargar). */
   flat?: number[]
+  /** Saltos entre fotogramas: la diferencia media de luma (0–255) más alta y dónde, y los fotogramas por encima de 12. */
+  scan?: { max: number; at: number; over12: number[]; top: { t: number; d: number }[] }
   timing: Record<string, number>
 }
 
 type ResolvedOutput = ComposePayload['output']
 
 /** El máster (tamaño y fps del montaje) y las salidas declaradas, con sus valores por defecto. */
+/** bits/s del vídeo para que el archivo quepa en `maxMB` (con un 6 % de margen para el contenedor y el control de tasa). */
+export function bitrateFor(maxMB: number, seconds: number, audioBitrate: number): number {
+  return Math.max(1e6, Math.min(16e6, Math.floor((maxMB * 8e6 * 0.94) / Math.max(1, seconds) - audioBitrate)))
+}
+
 function resolveOutputs(m: Montage): ResolvedOutput[] {
-  const master: ResolvedOutput = { name: m.name, size: m.size, fps: m.fps, bitrate: m.bitrate ?? 16e6, audioBitrate: 192000, range: [0, m.duration] }
-  const rest = (m.outputs ?? []).map((o: Output): ResolvedOutput => ({ ...o, size: o.size ?? m.size, fps: o.fps ?? m.fps, bitrate: o.bitrate ?? m.bitrate ?? 16e6, audioBitrate: o.audioBitrate ?? 192000, range: o.range ?? [0, m.duration] }))
+  const rate = (o: { bitrate?: number; maxMB?: number }, range: [number, number], audio: number) => o.bitrate ?? m.bitrate ?? (o.maxMB ?? m.maxMB ? bitrateFor((o.maxMB ?? m.maxMB)!, range[1] - range[0], audio) : 16e6)
+  const master: ResolvedOutput = { name: m.name, size: m.size, fps: m.fps, bitrate: rate({}, [0, m.duration], 192000), audioBitrate: 192000, range: [0, m.duration], maxMB: m.maxMB }
+  const rest = (m.outputs ?? []).map((o: Output): ResolvedOutput => {
+    const range = o.range ?? [0, m.duration]
+    const audioBitrate = o.audioBitrate ?? 192000
+    return { ...o, size: o.size ?? m.size, fps: o.fps ?? m.fps, bitrate: rate(o, range, audioBitrate), audioBitrate, range }
+  })
   return [master, ...rest]
 }
 
@@ -172,7 +184,8 @@ function qc(file: string, r: ComposeResult, o: ResolvedOutput): Record<string, u
     decodedFrames: r.decodedFrames,
     psnr: r.psnr,
     loudness: r.finalAudio,
-    mix: r.mix
+    mix: r.mix,
+    scan: r.scan
   }
   const problems: string[] = []
   if (!info.faststart) problems.push('moov no va delante de mdat')
@@ -310,6 +323,7 @@ async function main(): Promise<void> {
     results.push(r)
     const problems = report.problems as string[]
     log(`${o.name}: ${report.mb} MB, ${problems.length ? 'PROBLEMAS: ' + problems.join('; ') : 'sin problemas'}`)
+    if (r.scan) log(`${o.name}: salto máximo entre fotogramas ${r.scan.max} en ${r.scan.at} s; por encima de 12: ${r.scan.over12.length ? r.scan.over12.join(', ') : 'ninguno'}`)
   }
   const summary: Record<string, unknown> = {
     montage: m.name,

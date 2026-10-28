@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FINALE_STEPS, PROLOGUE_STEPS, clipViews } from './render.ts'
+import { FINALE_STEPS, PROLOGUE_STEPS, clipViews, prologueMorph, span as stepSpan } from './render.ts'
 import type { Montage, TakeMeta } from '../montage/types.ts'
 import { ease } from '../montage/ease.ts'
 
@@ -86,15 +86,16 @@ describe('planos y transiciones', () => {
     const m = base({ clips: [{ take: 'a', start: 0, dur: 4, camera: [{ t: 0, zoom: 'fit' }, { t: 2, zoom: 1.3, focus: 'mark:el' }] }] })
     expect(clipViews(m, takes, 1.234)).toEqual(clipViews(m, takes, 1.234))
   })
-  it('los gestos icono↔ventana nunca pasan por una losa vacía: lo que entra empieza con lo que sale aún al 30 % o más (y nunca baja todo del 15 %)', () => {
-    const span = (q: number, [a, b]: readonly [number, number]) => ease('inOut', Math.min(1, Math.max(0, (q - a) / (b - a))))
+  it('los gestos icono↔ventana nunca pasan por una losa vacía: el final pinta el arco con la ventana aún al 30 %; el prólogo despinta el arco antes de que entre la app', () => {
+    const span = stepSpan
     for (let q = 0; q <= 1; q += 0.005) {
       // final: la ventana que se apaga, el arco que se pinta, el icono que funde
       const fin = Math.max(1 - span(q, FINALE_STEPS.content), span(q, FINALE_STEPS.arch), span(q, FINALE_STEPS.icon))
       expect(fin).toBeGreaterThanOrEqual(0.15)
-      // prólogo: el icono (canto, sol, tinta) que se va y la app que entra
-      const pro = Math.max(1 - span(q, PROLOGUE_STEPS.sun), 1 - span(q, PROLOGUE_STEPS.arch), span(q, PROLOGUE_STEPS.app))
-      expect(pro).toBeGreaterThanOrEqual(0.15)
+      // prólogo: la tinta se funde dentro de la losa mientras entra la app (fundido cruzado): nunca una losa vacía
+      const ink = 1 - span(q, PROLOGUE_STEPS.arch)
+      const app = span(q, PROLOGUE_STEPS.app)
+      expect(Math.max(ink, app)).toBeGreaterThanOrEqual(0.25)
     }
     // el arco empieza a pintarse con la ventana aún por encima del 30 %, y la app entra con el arco aún entero
     const first = (f: (q: number) => number) => {
@@ -103,6 +104,49 @@ describe('planos y transiciones', () => {
       return q
     }
     expect(1 - span(first((q) => span(q, FINALE_STEPS.arch)), FINALE_STEPS.content)).toBeGreaterThanOrEqual(0.3)
-    expect(1 - span(first((q) => span(q, PROLOGUE_STEPS.app)), PROLOGUE_STEPS.arch)).toBeGreaterThanOrEqual(0.9)
+    // la app termina de entrar con la tinta ya del todo apagada
+    expect(1 - span(first((q) => (span(q, PROLOGUE_STEPS.app) > 0.6 ? 1 : 0)), PROLOGUE_STEPS.arch)).toBeLessThanOrEqual(0.02)
+  })
+  it('«brush»: el plano anterior sigue debajo (quieto si acabó) y el nuevo lleva el avance de la pincelada', () => {
+    const m = base({ clips: [{ take: 'a', start: 0, dur: 4 }, { take: 'b', start: 4, dur: 4, enter: { kind: 'brush', dur: 1 } }] })
+    const v = clipViews(m, takes, 4.5)
+    expect(v.map((x) => x.clip.take)).toEqual(['a', 'b'])
+    expect(v[1].brush).toBeCloseTo(0.5)
+    expect(v[0].frame).toBe(Math.round((4 - 1e-6) * 60))
+    expect(clipViews(m, takes, 5.1).map((x) => x.clip.take)).toEqual(['b'])
+  })
+  it('con bandas (vertical), la ventana llena el hueco entre ellas y nunca deja papel dentro', () => {
+    const m = base({ size: [1080, 1920], bands: { top: 420, bottom: 360, fill: true }, clips: [{ take: 'a', start: 0, dur: 4, camera: [{ t: 0, zoom: 'fit', focus: [1400, 100] }] }] })
+    const v = clipViews(m, takes, 1)[0]
+    const w = 1440 * v.zoom
+    const h = 900 * v.zoom
+    expect(h).toBeCloseTo(1920 - 420 - 360 - 24, 0)
+    expect(v.x).toBeLessThanOrEqual(0)
+    expect(v.x + w).toBeGreaterThanOrEqual(1080)
+    expect(v.y).toBeGreaterThanOrEqual(420)
+    expect(v.y + h).toBeLessThanOrEqual(1920 - 360)
+  })
+  it('captionPin: un primer plano apoya el borde de abajo de la ventana en la banda de rótulos', () => {
+    const cam = [{ t: 0, zoom: 1.4, focus: [700, 800] as [number, number] }]
+    const pinned = clipViews(base({ captionBand: 950, captionPin: true, clips: [{ take: 'a', start: 0, dur: 4, camera: cam }] }), takes, 1)[0]
+    expect(pinned.y + 900 * pinned.zoom).toBeCloseTo(950 - 12, 3)
+    const free = clipViews(base({ captionBand: 950, clips: [{ take: 'a', start: 0, dur: 4, camera: cam }] }), takes, 1)[0]
+    expect(free.y + 900 * free.zoom).toBeLessThan(950 - 12 - 1)
+  })
+  it('zona segura a la derecha: el centro por defecto de la cámara se aparta de ella', () => {
+    const m = base({ size: [1080, 1920], bands: { top: 480, bottom: 520, fill: true }, safe: { right: 140 }, clips: [{ take: 'a', start: 0, dur: 4, camera: [{ t: 0, zoom: 1.2, focus: [700, 450] }] }] })
+    const v = clipViews(m, takes, 1)[0]
+    expect(v.x + 700 * v.zoom).toBeCloseTo((1080 - 140) / 2, 0)
+  })
+  it('prologue.morph empieza como pronto con el primer plano (antes, el icono sigue a la vista)', () => {
+    const m = base({ prologue: { start: 0, end: 2, rise: [0, 0.5], morph: 1.2 }, clips: [{ take: 'a', start: 1.5, dur: 4 }] })
+    expect(prologueMorph(m, 1)).toBeNull()
+    expect(prologueMorph(m, 1.5)).toEqual({ local: 0, dur: 0.5 })
+    const ok = base({ prologue: { start: 0, end: 2, rise: [0, 0.5], morph: 1.2 }, clips: [{ take: 'a', start: 0.5, dur: 4 }] })
+    expect(prologueMorph(ok, 1)?.dur).toBeCloseTo(1.2)
+  })
+  it('prólogo: el sol ya no está cuando la app empieza a verse', () => {
+    const span = stepSpan
+    for (let q = 0; q <= 1; q += 0.005) if (span(q, PROLOGUE_STEPS.app) >= 0.05) expect(1 - span(q, PROLOGUE_STEPS.sun)).toBeLessThan(0.01)
   })
 })

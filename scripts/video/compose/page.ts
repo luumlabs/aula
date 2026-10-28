@@ -5,6 +5,7 @@ import type { Montage, Output, TakeMeta } from '../montage/types.ts'
 import { vt } from './bridge.ts'
 import { clipViews, drawFrame, type Assets, type ClipView, type FrameSource } from './render.ts'
 import { loadIconAssets } from './icon.ts'
+import { paintKit } from './paint.ts'
 import { decodeAac, encodeAac, H264Encoder, h264Codec } from './encode.ts'
 import { muxMp4 } from '../mp4/muxer.ts'
 import { inspectMp4, trackSamples } from '../mp4/inspect.ts'
@@ -190,6 +191,17 @@ async function soundtrack(m: Montage, job: ComposePayload, clicks: number[], sfx
  *  cargar) da casi 0. */
 const probe = new OffscreenCanvas(48, 27)
 const probeCtx = probe.getContext('2d', { willReadFrequently: true })!
+/** Luma del fotograma a 192×108 (para medir saltos entre fotogramas: la diferencia media, 0–255). */
+const jumpCanvas = new OffscreenCanvas(192, 108)
+const jumpCtx = jumpCanvas.getContext('2d', { willReadFrequently: true })!
+function lumaSmall(src: OffscreenCanvas): Float32Array {
+  jumpCtx.drawImage(src, 0, 0, 192, 108)
+  const d = jumpCtx.getImageData(0, 0, 192, 108).data
+  const out = new Float32Array(192 * 108)
+  for (let i = 0; i < out.length; i++) out[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]
+  return out
+}
+
 function flatness(src: OffscreenCanvas): number {
   probeCtx.drawImage(src, 0, 0, 48, 27)
   const d = probeCtx.getImageData(0, 0, 48, 27).data
@@ -265,7 +277,7 @@ export async function run(): Promise<void> {
   const lap = (k: string, since: number) => (timing[k] = Math.round(performance.now() - since))
   try {
     const job = (await vt.job()) as ComposePayload
-    if (job.strips) return strips(job, await loadIconAssets())
+    if (job.strips) return strips(job, { ...(await loadIconAssets()), paint: paintKit })
     const m = job.montage
     const o = job.output
     const [W, H] = o.size
@@ -308,7 +320,7 @@ export async function run(): Promise<void> {
 
     // 2) vídeo fotograma a fotograma
     const tv = performance.now()
-    const assets: Assets = await loadIconAssets()
+    const assets: Assets = { ...(await loadIconAssets()), paint: paintKit }
     const canvas = new OffscreenCanvas(W, H)
     const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: job.hashFrames })!
     const codec = h264Codec(W, H, fps)
@@ -324,6 +336,9 @@ export async function run(): Promise<void> {
     const sheetStep = Math.max(1, Math.round(job.sheetEvery * fps))
     let loadMs = 0
     let drawMs = 0
+    // escaneo de saltos: diferencia media de luma con el fotograma anterior (lo que un crítico ve como «pop»)
+    let prevLuma: Float32Array | null = null
+    const jumps: { t: number; d: number }[] = []
     for (let i = first; i < last; i++) {
       const t = i / fps
       const views = clipViews(m, job.takes, t)
@@ -336,6 +351,13 @@ export async function run(): Promise<void> {
       drawMs += performance.now() - td
       for (const s of sources) s.image.close()
       if (flatness(canvas) < 4) flat.push(+t.toFixed(3))
+      const luma = lumaSmall(canvas)
+      if (prevLuma) {
+        let sum = 0
+        for (let k = 0; k < luma.length; k++) sum += Math.abs(luma[k] - prevLuma[k])
+        jumps.push({ t: +t.toFixed(3), d: +(sum / luma.length).toFixed(1) })
+      }
+      prevLuma = luma
       const n = i - first
       if (job.hashFrames || refAt.has(n)) {
         const img = ctx.getImageData(0, 0, W, H)
@@ -374,7 +396,9 @@ export async function run(): Promise<void> {
     const sheet = await contactSheet(thumbs, `${o.name}-contactos.png`)
     lap('qcMs', tq)
     timing.totalMs = Math.round(performance.now() - t0)
-    vt.done({ path, sheet, bytes: mp4.length, frames: total, codec, hardware, mix, finalAudio, decodedFrames: check.decoded, psnr: check.psnr, hashes, flat, timing })
+    const top = [...jumps].sort((a, b) => b.d - a.d)
+    const scan = { max: top[0]?.d ?? 0, at: top[0]?.t ?? 0, over12: jumps.filter((j) => j.d > 12).map((j) => j.t), top: top.slice(0, 12) }
+    vt.done({ path, sheet, bytes: mp4.length, frames: total, codec, hardware, mix, finalAudio, decodedFrames: check.decoded, psnr: check.psnr, hashes, flat, scan, timing })
   } catch (e) {
     vt.done({ error: String((e as Error)?.stack ?? e) })
   }

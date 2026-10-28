@@ -3,8 +3,10 @@
 // con alfa, vidrio tras la barra lateral, sombra sepia, marco mac/windows/linux) · cámara con deriva viva · cursor de
 // macOS o cursor-sol con onda al pulsar · el sol de Aula como guía · titulares serif (*cursiva en ladrillo*) · sello de
 // hora que rueda · transiciones (corte, fundido, subida, amanecer, iris).
-import type { CameraKey, Clip, Focus, Montage, Notice, SunKey, TakeMeta, Title, WindowFrame } from '../montage/types.ts'
+import type { CameraKey, Clip, Focus, Montage, Notice, PaintMark, SunKey, TakeMeta, Title, WindowFrame } from '../montage/types.ts'
 import { ICON, STROKES, doorPath, pathLength, type IconAssets } from './icon.ts'
+import type { PaintKit, Splash, Stroke, Wipe } from './paint.ts'
+import { EDGE, buildMatte, matteAt, type Matte } from './matte.ts'
 import { clamp01, ease, lerp } from '../montage/ease.ts'
 
 export const MAX_ZOOM = 2
@@ -59,6 +61,8 @@ export interface ClipView {
   paper?: number
   /** Solo cuenta para el papel (el tema de su fotograma): no se dibuja. */
   ghost?: boolean
+  /** Transición «brush»: fracción de tiempo (0…1) de la pincelada que barre el cuadro y descubre este plano. */
+  brush?: number
 }
 
 // ───────────── color ─────────────
@@ -104,12 +108,17 @@ function overlay(theme: Theme): Pal {
   return overlayPal ?? PALETTE[theme]
 }
 function setOverlay(stage: string): void {
+  overlayPal = palFor(stage)
+}
+
+/** Paleta de lo que va encima (rótulos, sello) para un papel dado. */
+function palFor(stage: string): Pal {
   const L = oklab(stage)[0]
   const d = clamp01((0.66 - L) / 0.3)
   const e = d * d * (3 - 2 * d)
   const a = PALETTE.light
   const b = PALETTE.dark
-  overlayPal = { ...(e < 0.5 ? a : b), text: mixOklab(a.text, b.text, e), text2: mixOklab(a.text2, b.text2, e), accent: mixOklab(a.accent, b.accent, e), sun: mixOklab(a.sun, b.sun, e), surface: mixOklab(a.surface, b.surface, e) }
+  return { ...(e < 0.5 ? a : b), text: mixOklab(a.text, b.text, e), text2: mixOklab(a.text2, b.text2, e), accent: mixOklab(a.accent, b.accent, e), sun: mixOklab(a.sun, b.sun, e), surface: mixOklab(a.surface, b.surface, e) }
 }
 
 // ───────────── cámara y planos ─────────────
@@ -119,12 +128,18 @@ const BAND_TOP_MARGIN = 40
 
 /** Zoom de «ventana entera»: con banda de rótulos, la ventana cabe entre 40 px y la banda (con 20 px de aire). */
 export function fitZoom(m: Montage, vw: number, vh: number): number {
+  if (m.bands) {
+    // con bandas (vertical, cuadrado): la ventana llena el hueco entre ellas (`fill`, puede salirse por los lados) o cabe
+    const gap = m.size[1] - m.bands.top - m.bands.bottom - 24
+    return m.bands.fill ? gap / vh : Math.min((m.size[0] * 0.92) / vw, gap / vh)
+  }
   if (m.captionBand) return Math.min((m.size[0] * 0.84) / vw, (m.captionBand - 20 - BAND_TOP_MARGIN) / vh)
   return Math.min((m.size[0] * 0.84) / vw, (m.size[1] * 0.84) / vh)
 }
 
 /** Dónde cae, por defecto, el centro enfocado: el centro del cuadro o, con banda, el centro del hueco sobre ella. */
 function defaultScreen(m: Montage): [number, number] {
+  if (m.bands) return [((m.safe?.left ?? 0) + (m.size[0] - (m.safe?.right ?? 0))) / 2 / m.size[0], (m.bands.top + m.size[1] - m.bands.bottom) / 2 / m.size[1]]
   return m.captionBand ? [0.5, (BAND_TOP_MARGIN + m.captionBand - 20) / 2 / m.size[1]] : [0.5, 0.5]
 }
 
@@ -211,6 +226,18 @@ function doorOrigin(m: Montage): { x: number; y: number; k: number } {
 const barSeconds = (m: Montage) => (m.music ? 240 / m.music.bpm : 2.4)
 
 /** Planos visibles en el instante t, con su geometría y su transición. */
+/** Con bandas: la ventana vive en el hueco entre ellas. Si cabe, no se mete en las bandas; si es más alta o más ancha que
+ *  el hueco, lo cubre entero (nada de papel en medio): la cámara solo elige qué parte se ve. */
+export function clampToBands(m: Montage, x: number, y: number, w: number, h: number): [number, number] {
+  const b = m.bands!
+  const [W, H] = m.size
+  const top = b.top + 12
+  const bottom = H - b.bottom - 12
+  const ny = h <= bottom - top ? Math.min(Math.max(y, top), bottom - h) : Math.min(Math.max(y, bottom - h), top)
+  const nx = w <= W ? Math.min(Math.max(x, 0), W - w) : Math.min(Math.max(x, W - w), 0)
+  return [nx, ny]
+}
+
 /** Un plano en el instante t, con su propia cámara (sin transición). */
 function viewOf(m: Montage, takes: Record<string, TakeMeta>, clip: Clip, t: number): ClipView {
   const meta = takes[clip.take]
@@ -225,8 +252,16 @@ function viewOf(m: Montage, takes: Record<string, TakeMeta>, clip: Clip, t: numb
   const x = W * cam.screen[0] - cam.focus[0] * zoom
   let y = H * cam.screen[1] - cam.focus[1] * zoom
   // con banda de rótulos, la ventana nunca baja de ella: los rótulos van en el papel y no tapan nada de la app
-  if (m.captionBand) y = Math.min(y, m.captionBand - 12 - meta.viewport[1] * zoom)
-  return { clip, meta, theme: (m.takes[clip.take].theme ?? 'light') as Theme, frame, local, zoom, x, y, alpha: 1, dy: 0, scale: 1 }
+  if (m.captionBand) {
+    const h = meta.viewport[1] * zoom
+    y = Math.min(y, m.captionBand - 12 - h)
+    // captionPin: si la ventana no cabe sobre la banda (primer plano), su borde de abajo se apoya en ella: nunca flota
+    // sobre papel vacío con la parte de arriba cortada
+    if (m.captionPin && h > m.captionBand - 12 - BAND_TOP_MARGIN) y = m.captionBand - 12 - h
+  }
+  let xx = x
+  if (m.bands) [xx, y] = clampToBands(m, xx, y, meta.viewport[0] * zoom, meta.viewport[1] * zoom)
+  return { clip, meta, theme: (m.takes[clip.take].theme ?? 'light') as Theme, frame, local, zoom, x: xx, y, alpha: 1, dy: 0, scale: 1 }
 }
 
 /** El plano anterior en la línea de tiempo (el que «sale» cuando entra `clip`). */
@@ -295,6 +330,15 @@ export function clipViews(m: Montage, takes: Record<string, TakeMeta>, t: number
         view.x = lerp(pv.x, view.x, cam)
         view.y = lerp(pv.y, view.y, cam)
       }
+      if (enter.kind === 'brush' && prev) {
+        // pincelada que barre el cuadro: el plano anterior sigue debajo (quieto en su último fotograma si ya acabó) y este
+        // aparece donde ya pasó el pincel; el papel cambia con la misma curva
+        const pv = viewOf(m, takes, prev, Math.min(t, prev.start + prev.dur - 1e-6))
+        if (!out.some((o) => o.clip === prev)) out.push(pv)
+        view.brush = clamp01(p)
+        // el papel nuevo va DENTRO de la pincelada: fuera de ella sigue el viejo hasta que acaba (sin fundido gris)
+        view.paper = 0
+      }
       if (enter.kind === 'match' && prev) {
         // corte por coincidencia: el elemento de este plano arranca con la caja que tenía el del plano anterior en el corte
         const pv = viewOf(m, takes, prev, Math.min(clip.start, prev.start + prev.dur - 1e-6))
@@ -315,6 +359,15 @@ export function clipViews(m: Montage, takes: Record<string, TakeMeta>, t: number
           view.y = sy - bc[1] * zoom
         }
       }
+    }
+    // prologue.morph: la losa va a parar al encuadre del final del gesto (un solo movimiento suave, no a una cámara que
+    // se mueve mientras tanto)
+    const pr = m.prologue
+    if (pr?.morph && prologueMorph(m, t) && clip === [...m.clips].sort((a, b) => a.start - b.start)[0]) {
+      const end = viewOf(m, takes, clip, Math.max(clip.start, pr.end - 1e-3))
+      view.x = end.x
+      view.y = end.y
+      view.zoom = end.zoom
     }
     out.push(view)
   }
@@ -425,7 +478,8 @@ const BAR_PT: Record<WindowFrame, number> = { mac: 0, windows: 32, linux: 46 }
 const RADIUS_PT: Record<WindowFrame, number> = { mac: 12, windows: 8, linux: 12 }
 
 /** Recursos dibujados que no salen de la captura (el icono de la app). */
-export type Assets = IconAssets
+/** Recursos dibujados que no salen de la captura: el icono y el kit de pintura (lo pone el compositor). */
+export type Assets = IconAssets & { paint?: PaintKit }
 
 const BAR_COLOR = {
   windows: { light: '#f3f3f3', dark: '#202020' },
@@ -841,8 +895,167 @@ function drawTypeset(ctx: Ctx2D, t: Typeset, x: number, y: number, lineHeight: n
   return index
 }
 
-export function drawTitle(ctx: Ctx2D, m: Montage, title: Title, t: number, theme: Theme, stage: string): void {
+// ───────────── rótulos y adornos pintados (versión corta) ─────────────
+
+const titleStrokes = new Map<string, Stroke>()
+function cachedStroke(key: string, make: () => Stroke): Stroke {
+  let st = titleStrokes.get(key)
+  if (!st) {
+    st = make()
+    if (titleStrokes.size > 600) titleStrokes.clear()
+    titleStrokes.set(key, st)
+  }
+  return st
+}
+
+/** Lo que tarda en revelarse cada palabra a pincel (s), según su largo. */
+const wordDur = (w: number, size: number) => Math.min(0.4, Math.max(0.2, 0.16 + (w / size) * 0.05))
+
+/** Colocación de un rótulo `paint`: cuerpo, líneas y la caja de cada palabra (px del vídeo). */
+export interface PaintLayout {
+  size: number
+  words: { text: string; italic: boolean; x: number; y: number; w: number }[]
+}
+
+export function paintTitleLayout(ctx: Ctx2D, m: Montage, title: Title): PaintLayout {
+  const [W, H] = m.size
+  const size = title.size ?? Math.round(Math.min(W, H) * 0.075)
+  const sw = W - (m.safe?.left ?? 0) - (m.safe?.right ?? 0)
+  const t = typeset(ctx, title.text, size, 500, SERIF, Math.min(W * 0.86, sw * 0.94))
+  const lh = size * 1.12
+  const b = m.bands
+  // zonas seguras (la interfaz de TikTok/Reels/Shorts): el rótulo va en la parte VISIBLE de su banda y lejos del borde
+  const sf = { top: 0, bottom: 0, left: 0, right: 0, ...m.safe }
+  const cy = title.band && b ? (title.band === 'top' ? (sf.top + b.top) / 2 : (H - b.bottom + H - sf.bottom) / 2) : H * (title.at?.[1] ?? 0.85)
+  const cx = title.at && !title.band ? W * title.at[0] : sf.left + (W - sf.left - sf.right) / 2
+  // el bloque centrado en el ancla (la línea base, a 0,35 del cuerpo por debajo del centro de cada línea)
+  const y0 = cy - ((t.lines.length - 1) * lh) / 2 + size * 0.35
+  const words: PaintLayout['words'] = []
+  t.lines.forEach((line, li) => {
+    const widths = measure(ctx, t, line)
+    let x = cx - widths.reduce((a, c) => a + c, 0) / 2
+    line.forEach((w, wi) => {
+      ctx.font = font(t, w)
+      words.push({ text: w.text, italic: w.italic, x, y: y0 + li * lh, w: ctx.measureText(w.text).width })
+      x += widths[wi]
+    })
+  })
+  return { size, words }
+}
+
+/** Rótulo `paint`: grande, en el papel (o en su banda), sin píldora. Con `gesture: 'brush'` cada palabra se revela con
+ *  una pincelada; sale con el gesto calmado. Subrayado y rodeo a pincel en ladrillo, en su instante. */
+function drawPaintTitle(ctx: Ctx2D, m: Montage, title: Title, t: number, theme: Theme, assets?: Assets): void {
+  const pal = overlay(theme)
+  const kit = assets?.paint
+  const L = paintTitleLayout(ctx, m, title)
+  const brush = title.gesture === 'brush' && kit && !title.instant
+  const stagger = title.stagger ?? 0.16
+  const closing = title.start + title.dur >= m.duration - 1e-6
+  const aOut = closing ? 1 : 1 - ease('in', clamp01((t - (title.start + title.dur - 0.35)) / 0.35))
+  const aIn = brush || title.start <= 0 || title.instant ? 1 : ease('out', clamp01((t - title.start) / 0.35))
+  const local = t - title.start
+  ctx.save()
+  ctx.globalAlpha = aOut * aIn
+  ctx.translate(0, -(1 - aOut) * 8 + (1 - aIn) * 8)
+  ctx.textBaseline = 'alphabetic'
+  let revealed = 0
+  L.words.forEach((w, i) => {
+    const f = `${w.italic ? 'italic ' : ''}500 ${L.size}px ${SERIF}`
+    // durante un barrido, la tinta de cada palabra es la que se lee sobre el papel que tiene detrás en este fotograma
+    const wp = wipeInk ? (wipeInk.at(w.x + w.w / 2, w.y - L.size * 0.35) > 0.5 ? wipeInk.neu : wipeInk.old) : pal
+    const color = w.italic ? wp.accent : wp.text
+    const paint = (c: Ctx2D) => {
+      c.font = f
+      c.fillStyle = color
+      c.fillText(w.text, w.x, w.y)
+    }
+    if (!brush) return paint(ctx)
+    const t0 = i * stagger
+    const d = wordDur(w.w, L.size)
+    revealed = Math.max(revealed, t0 + d)
+    const p = (local - t0) / d
+    if (p >= 1) return paint(ctx)
+    const st = cachedStroke(`w:${title.text}:${i}:${w.x.toFixed(1)}:${w.y.toFixed(1)}:${L.size}`, () => kit!.wordStroke(w.x, w.y, w.w, L.size, `${title.text}:${i}`))
+    kit!.drawThroughStroke(ctx, st, p, (l) => paint(l))
+  })
+  if (!brush) revealed = 0.35
+  // subrayado y rodeo a pincel
+  if (kit) {
+    for (const [kind, spec] of [['u', title.underline], ['r', title.ring]] as const) {
+      if (!spec) continue
+      const wi = spec.word ?? Math.max(0, L.words.findIndex((x) => x.italic))
+      const w = L.words[Math.min(L.words.length - 1, Math.max(0, wi))]
+      if (!w) continue
+      const at = spec.t ?? title.start + revealed + 0.05
+      const p = (t - at) / (kind === 'u' ? 0.4 : 0.55)
+      if (p <= 0) continue
+      const st =
+        kind === 'u'
+          ? cachedStroke(`u:${title.text}:${wi}:${w.x.toFixed(1)}:${w.y.toFixed(1)}`, () => kit.underlineStroke(w.x, w.y, w.w, L.size, `${title.text}:u`))
+          : cachedStroke(`r:${title.text}:${wi}:${w.x.toFixed(1)}:${w.y.toFixed(1)}`, () => kit.ringStroke(w.x - L.size * 0.12, w.y - L.size * 0.78, w.w + L.size * 0.24, L.size * 1.02, Math.max(4, L.size * 0.07), `${title.text}:r`))
+      const under = wipeInk ? (wipeInk.at(w.x + w.w / 2, w.y) > 0.5 ? wipeInk.newTheme : wipeInk.oldTheme) : theme
+      kit.drawStroke(ctx, st, Math.min(1, p), spec.color ?? BRICK[under])
+    }
+  }
+  ctx.restore()
+}
+
+const markSplashes = new Map<string, Splash>()
+
+/** La caja (px del vídeo) de una marca del plano activo. */
+function markBox(views: ClipView[], name: string): [number, number, number, number] | null {
+  const v = views[views.length - 1]
+  const r = v?.meta.marks[name]?.[Math.min(v.frame, v.meta.frames - 1)]
+  return v && r ? [v.x + r[0] * v.zoom, v.y + r[1] * v.zoom, r[2] * v.zoom, r[3] * v.zoom] : null
+}
+
+/** Un adorno de pintura (salpicadura, subrayado, rodeo o trazo) en su instante: se pinta, se queda y se apaga. */
+function drawPaintMark(ctx: Ctx2D, m: Montage, mk: PaintMark, t: number, views: ClipView[], theme: Theme, kit: PaintKit): void {
+  const [W, H] = m.size
+  const dur = mk.dur ?? 1.2
+  const local = t - mk.t
+  if (local < 0 || local >= dur) return
+  const fade = 1 - clamp01((local - (dur - 0.25)) / 0.25)
+  const color = mk.color ?? BRICK[theme]
+  const seed = `${mk.seed ?? mk.t}:${mk.kind}`
+  const box: [number, number, number, number] | null =
+    typeof mk.at === 'string' ? markBox(views, mk.at.slice(5)) : (() => {
+      const w = mk.size ?? Math.min(W, H) * 0.2
+      return [W * mk.at[0] - w / 2, H * mk.at[1] - w * 0.15, w, w * 0.3]
+    })()
+  if (!box) return
+  const [bx, by, bw, bh] = box
+  const p = local / (mk.draw ?? 0.35)
+  const k = `${seed}:${Math.round(bx)}:${Math.round(by)}:${Math.round(bw)}:${Math.round(bh)}:${W}`
+  if (mk.kind === 'splash') {
+    const r = mk.size ?? Math.min(W, H) * 0.035
+    let sp = markSplashes.get(seed + r)
+    if (!sp) {
+      sp = kit.splash(r, seed)
+      markSplashes.set(seed + r, sp)
+    }
+    const [cx, cy] = typeof mk.at === 'string' ? [bx + bw / 2, by + bh / 2] : [W * mk.at[0], H * mk.at[1]]
+    kit.drawSplash(ctx, sp, cx, cy, local, color, 0.92 * fade)
+  } else if (mk.kind === 'underline') {
+    const size = Math.max(24, bh)
+    const st = cachedStroke(`mu:${k}`, () => kit.underlineStroke(bx, by + bh, bw, size, seed))
+    kit.drawStroke(ctx, st, Math.min(1, p), color, fade)
+  } else if (mk.kind === 'ring') {
+    const line = mk.size ?? Math.max(5, Math.min(W, H) * 0.008)
+    const st = cachedStroke(`mr:${k}`, () => kit.ringStroke(bx, by, bw, bh, line, seed))
+    kit.drawStroke(ctx, st, Math.min(1, p), color, fade)
+  } else {
+    const to = mk.to ?? [0.6, 0.5]
+    const from = typeof mk.at === 'string' ? { x: bx, y: by + bh / 2 } : { x: W * mk.at[0], y: H * mk.at[1] }
+    const st = cachedStroke(`ms:${k}`, () => kit.freeStroke(from, { x: W * to[0], y: H * to[1] }, mk.size ?? Math.min(W, H) * 0.018, seed))
+    kit.drawStroke(ctx, st, Math.min(1, p), color, fade)
+  }
+}
+
+export function drawTitle(ctx: Ctx2D, m: Montage, title: Title, t: number, theme: Theme, stage: string, assets?: Assets): void {
   if (t < title.start || t >= title.start + title.dur) return
+  if (title.style === 'paint') return drawPaintTitle(ctx, m, title, t, theme, assets)
   const pal = overlay(theme)
   const [W, H] = m.size
   const opening = title.start <= 0 || title.instant
@@ -1003,12 +1216,21 @@ function drawInk(ctx: Ctx2D, assets: Assets, x: number, y: number, s: number, ar
     const p = key === 'arch' ? arch : horizon
     if (p <= 0) continue
     const pts = strokePts[key]
+    // el arco solo descubre lo que está por encima del horizonte: su remate (donde se posa el pincel) no se lleva un
+    // pegote del pincelazo del horizonte; eso lo descubre el horizonte
+    l.save()
+    if (key === 'arch') {
+      l.beginPath()
+      l.rect(-50, -50, ICON.art + 100, ICON.door.bottom - 14 + 50)
+      l.clip()
+    }
     l.lineWidth = STROKES[key].w
     l.setLineDash(p >= 1 ? [] : [strokeLen[key] * p, strokeLen[key] * 3])
     l.beginPath()
     l.moveTo(pts[0][0], pts[0][1])
     for (const q of pts.slice(1)) l.lineTo(q[0], q[1])
     l.stroke()
+    l.restore()
   }
   l.restore()
   l.globalCompositeOperation = 'source-in'
@@ -1037,8 +1259,9 @@ function drawIcon(ctx: Ctx2D, assets: Assets, x: number, y: number, S: number, r
 
 /** Tramos (fracción del gesto) del final: el contenido se apaga, el arco se pinta a pincel encima mientras tanto, luego
  *  el horizonte, y el icono real (con su canto) funde al final. */
-export const FINALE_STEPS = { content: [0.25, 0.8], arch: [0.45, 0.8], horizon: [0.78, 0.9], icon: [0.88, 1] } as const
-const span = (q: number, [a, b]: readonly [number, number]) => ease('inOut', clamp01((q - a) / (b - a)))
+export const FINALE_STEPS = { content: [0.3, 0.85], arch: [0.38, 0.78], horizon: [0.74, 0.88], icon: [0.86, 1] } as const
+/** Avance (0…1) de un tramo [a, b] de un gesto en la fracción q, con la curva suave (la misma que miden las pruebas). */
+export const span = (q: number, [a, b]: readonly [number, number]) => ease('smooth', clamp01((q - a) / (b - a)))
 
 /** El final: la ventana del último plano se encoge y se redondea hasta la losa del icono; luego sale el sol. */
 function drawFinale(ctx: Ctx2D, m: Montage, t: number, v: ClipView | undefined, src: FrameSource | null, assets: Assets, theme: Theme, stage: string): void {
@@ -1151,7 +1374,22 @@ function drawPrologue(ctx: Ctx2D, m: Montage, t: number, assets: Assets, theme: 
   ctx.shadowBlur = 40
   ctx.shadowOffsetY = 16
   // entra subiendo un poco, como las tarjetas de Aula
-  drawIcon(ctx, assets, r.x, r.y + (1 - ease('out', fadeIn)) * 24, r.S, rise, ease('out', fadeIn), theme)
+  const iy = r.y + (1 - ease('out', fadeIn)) * 24
+  // `draw`: el arco se pinta de un trazo sobre la losa de papel y luego el horizonte; el icono real funde al final
+  const drawn = pr.draw ? clamp01((t - pr.draw[0]) / Math.max(0.05, pr.draw[1] - pr.draw[0])) : 1
+  if (drawn < 1) {
+    const side = ICON.art * r.k
+    const ay = iy + (ICON.boxAt * r.S) / ICON.canvas
+    roundRect(ctx, r.ox, ay, side, side, (ICON.radius / ICON.art) * side)
+    ctx.globalAlpha = ease('out', fadeIn)
+    ctx.fillStyle = assets.slab
+    ctx.fill()
+    ctx.restore()
+    ctx.save()
+    ctx.globalAlpha = ease('out', fadeIn)
+    drawInk(ctx, assets, r.ox, ay, side, ease('inOut', clamp01(drawn / 0.78)), ease('inOut', clamp01((drawn - 0.74) / 0.22)))
+  }
+  if (drawn > 0.86) drawIcon(ctx, assets, r.x, iy, r.S, rise, ease('out', fadeIn) * (drawn < 1 ? (drawn - 0.86) / 0.14 : 1), theme)
   ctx.restore()
   if (rise > 0) drawSun(ctx, r.ox + ICON.cx * r.k, r.oy + ICON.door.bottom * r.k * 0.98, 26, theme, rise * 0.35, true)
   if (pr.title) {
@@ -1165,16 +1403,22 @@ function drawPrologue(ctx: Ctx2D, m: Montage, t: number, assets: Assets, theme: 
 }
 
 /** Si el prólogo está en su tramo de transformación (prologue.morph), cuánto lleva y cuánto dura. */
-function prologueMorph(m: Montage, t: number): { local: number; dur: number } | null {
+export function prologueMorph(m: Montage, t: number): { local: number; dur: number } | null {
   const pr = m.prologue
-  if (!pr?.morph || t < pr.end - pr.morph || t >= pr.end) return null
-  return { local: t - (pr.end - pr.morph), dur: pr.morph }
+  if (!pr?.morph) return null
+  // el gesto necesita el primer plano: si empieza más tarde que end − morph, el gesto empieza con él (y dura menos);
+  // mientras tanto el icono del prólogo sigue a la vista (nunca un cuadro vacío)
+  const first = Math.min(...m.clips.map((c) => c.start))
+  const start = Math.max(pr.end - pr.morph, first)
+  if (t < start || t >= pr.end || pr.end - start < 0.05) return null
+  return { local: t - start, dur: pr.end - start }
 }
 
 /** prologue.morph: tramo del gesto (fracción 0…1) en que la ventana de la app funde sobre la losa. */
-/** Tramos (fracción del gesto) del prólogo, el final al revés: el canto del icono se va, la app entra mientras el sol se
- *  apaga, y la tinta se despinta encima (primero el horizonte, luego el arco, desde su cola seca hasta donde se posó). */
-export const PROLOGUE_STEPS = { edge: [0, 0.15], sun: [0.25, 0.5], app: [0.3, 0.8], horizon: [0.35, 0.55], arch: [0.45, 0.85] } as const
+/** Tramos (fracción del gesto) del prólogo: el canto del icono se va y la tinta se FUNDE dentro de la losa (primero el
+ *  horizonte, luego el arco) mientras la app entra: un fundido cruzado dentro de la losa, nunca un trazo suelto encima
+ *  de la interfaz ni una losa vacía. */
+export const PROLOGUE_STEPS = { edge: [0, 0.15], sun: [0, 0.22], app: [0.14, 0.6], horizon: [0.02, 0.2], arch: [0.1, 0.44] } as const
 
 /** Principio (el mismo gesto que el final, al revés): la losa del icono del prólogo crece y se convierte en la ventana
  *  del primer plano; la app funde dentro mientras el icono ya pintado se despinta encima. Nunca hay una losa lisa. */
@@ -1219,8 +1463,12 @@ function drawIconToWindow(ctx: Ctx2D, m: Montage, v: ClipView, src: FrameSource 
   }
   const sun = 1 - span(q, PROLOGUE_STEPS.sun)
   if (sun > 0) {
+    // si el sol aún estaba saliendo cuando empezó el gesto, sigue a la altura a la que iba
+    const pr0 = m.prologue
+    const t0 = v.clip.start + v.local
+    const rise = pr0 ? ease('out', clamp01((t0 - pr0.rise[0]) / Math.max(0.01, pr0.rise[1] - pr0.rise[0]))) : 1
     ctx.globalAlpha = sun
-    drawSunSprite(ctx, assets, cx, cy, cs, 1)
+    drawSunSprite(ctx, assets, cx, cy, cs, rise)
   }
   // la ventana (su vidrio y su captura, centrada como «cubrir») funde de una vez sobre la losa mientras se ensancha
   const appIn = span(q, PROLOGUE_STEPS.app)
@@ -1233,7 +1481,12 @@ function drawIconToWindow(ctx: Ctx2D, m: Montage, v: ClipView, src: FrameSource 
   }
   ctx.globalAlpha = 1
   // la tinta se despinta encima de la app: el pincel vuelve sobre sus pasos
-  drawInk(ctx, assets, ax, ay, side, 1 - span(q, PROLOGUE_STEPS.arch), 1 - span(q, PROLOGUE_STEPS.horizon))
+  // el icono pintado no se «rebobina»: se funde dentro de la losa que crece (el horizonte algo antes que el arco), y está
+  // del todo apagado antes de que entre la app
+  const archLeft = 1 - span(q, PROLOGUE_STEPS.arch)
+  const horLeft = 1 - span(q, PROLOGUE_STEPS.horizon)
+  if (horLeft > 0) drawInk(ctx, assets, ax, ay, side, 0, 1, horLeft)
+  if (archLeft > 0) drawInk(ctx, assets, ax, ay, side, 1, 0, archLeft)
   ctx.restore()
   if (appIn > 0.5) drawControls(ctx, 'mac', x, y, w, v.zoom, v.theme, appIn)
 }
@@ -1309,16 +1562,116 @@ function drawNotice(ctx: Ctx2D, m: Montage, n: Notice, t: number, assets: Assets
 // ───────────── composición ─────────────
 
 let irisLayer: OffscreenCanvas | null = null
+let wipeScene: OffscreenCanvas | null = null
+const wipes = new Map<string, Wipe>()
+
+/** Pigmento ladrillo de la app (design/paint/paint.css), claro y oscuro. */
+export const BRICK = { light: '#B4502F', dark: '#EE9F72' }
+/** Brasa: el ladrillo de una pincelada que va de oscuro a oscuro (no un fogonazo claro en mitad de la noche). */
+export const EMBER = '#7C3220'
+
+const mattes = new Map<string, Matte>()
+let matteSmall: { paint: OffscreenCanvas; scene: OffscreenCanvas; pd: ImageData; sd: ImageData } | null = null
+
+/** Durante un barrido: qué papel hay detrás de cada punto del cuadro en este fotograma (0 = el viejo, 1 = el nuevo), y
+ *  las paletas de los dos, para que los rótulos se pinten con la tinta que se lee sobre lo que tienen detrás. */
+let wipeInk: { at: (x: number, y: number) => number; old: Pal; neu: Pal; oldTheme: Theme; newTheme: Theme } | null = null
+
+/** Avance (0…1) de cada trazo del barrido en la fracción `p` (la misma curva que el matte). */
+export function wipeProgress(w: Wipe, p: number): number[] {
+  return w.strokes.map((s) => ease('smooth', clamp01((p - s.span[0]) / (s.span[1] - s.span[0]))))
+}
+
+/** Transición «brush» como matte: 3–5 pinceladas de pincel seco cruzan el cuadro y lo cubren ENTERO de ladrillo; detrás de
+ *  cada una, la pintura se levanta a tirones (por cerdas) y deja ver el plano nuevo con su papel. Cada píxel pasa de
+ *  viejo a ladrillo y de ladrillo a nuevo, en ese orden: ni dos escenas mezcladas, ni pintura translúcida, ni saltos
+ *  fuera de la pintura. */
+function drawBrushWipe(ctx: Ctx2D, m: Montage, t: number, v: ClipView, src: FrameSource | null, assets: Assets, newStage: string, oldStage: string, oldTheme: Theme): void {
+  const kit = assets.paint!
+  const [W, H] = m.size
+  const dir = v.clip.enter?.dir ?? 'right'
+  const key = `${v.clip.enter?.seed ?? `${v.clip.take}@${v.clip.start.toFixed(3)}`}:${dir}:${W}x${H}`
+  let wipe = wipes.get(key)
+  if (!wipe) {
+    wipe = kit.wipeStrokes(W, H, dir, key)
+    wipes.set(key, wipe)
+  }
+  let matte = mattes.get(key)
+  if (!matte) {
+    matte = buildMatte(wipe, W, H)
+    mattes.set(key, matte)
+  }
+  const p = v.brush ?? 1
+  const { gw, gh } = matte
+  if (!matteSmall || matteSmall.paint.width !== gw || matteSmall.paint.height !== gh) {
+    const mk = () => new OffscreenCanvas(gw, gh)
+    const pd = new ImageData(gw, gh)
+    const sd = new ImageData(gw, gh)
+    matteSmall = { paint: mk(), scene: mk(), pd, sd }
+  }
+  const brick = hexRgb(oldTheme === 'dark' && v.theme === 'dark' ? EMBER : BRICK[v.theme]).map((c) => Math.round(c * 255))
+  const { pd, sd } = matteSmall
+  for (let i = 0; i < gw * gh; i++) {
+    pd.data[i * 4] = brick[0]
+    pd.data[i * 4 + 1] = brick[1]
+    pd.data[i * 4 + 2] = brick[2]
+  }
+  matteAt(matte, p, pd.data, sd.data)
+  matteSmall.paint.getContext('2d')!.putImageData(pd, 0, 0)
+  matteSmall.scene.getContext('2d')!.putImageData(sd, 0, 0)
+  if (!wipeScene || wipeScene.width !== W || wipeScene.height !== H) wipeScene = new OffscreenCanvas(W, H)
+  // la escena nueva (con su papel), entera en su capa, solo donde la pintura ya se levantó
+  const B = wipeScene.getContext('2d')!
+  B.setTransform(1, 0, 0, 1, 0, 0)
+  B.globalCompositeOperation = 'source-over'
+  B.globalAlpha = 1
+  B.clearRect(0, 0, W, H)
+  drawStage(B, m, newStage, v.theme)
+  if (m.bands) {
+    B.save()
+    B.beginPath()
+    B.rect(0, m.bands.top, W, H - m.bands.top - m.bands.bottom)
+    B.clip()
+  }
+  drawWindow(B, m, t, v, src, assets)
+  drawCursor(B, m, v)
+  if (m.bands) B.restore()
+  B.globalCompositeOperation = 'destination-in'
+  B.imageSmoothingEnabled = true
+  B.imageSmoothingQuality = 'high'
+  B.drawImage(matteSmall.scene, 0, 0, W, H)
+  B.globalCompositeOperation = 'source-over'
+  ctx.drawImage(wipeScene, 0, 0)
+  // encima, la pintura que aún no se ha levantado
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(matteSmall.paint, 0, 0, W, H)
+  ctx.restore()
+  const mt = matte
+  wipeInk = { at: (x, y) => matteNewAt(mt, p, x, y), old: palFor(oldStage), neu: palFor(newStage), oldTheme, newTheme: v.theme }
+}
+
+/** Cuánto se ve ya el papel nuevo en (x, y) durante el barrido `matte` en `p` (0…1). */
+function matteNewAt(matte: Matte, p: number, x: number, y: number): number {
+  const cx = Math.min(matte.gw - 1, Math.max(0, Math.floor(x / matte.scale)))
+  const cy = Math.min(matte.gh - 1, Math.max(0, Math.floor(y / matte.scale)))
+  return clamp01((p - matte.L[cy * matte.gw + cx] + EDGE) / (2 * EDGE))
+}
 
 /** Composición completa de un fotograma. `sources` trae la imagen de cada plano visible (mismo orden que views). */
 export function drawFrame(ctx: Ctx2D, m: Montage, t: number, viewsIn: ClipView[], sources: (FrameSource | null)[], assets?: Assets): void {
   const [W, H] = m.size
   // el tema de cada plano es el que se ve en su fotograma (una toma puede pasar de claro a oscuro por dentro)
   const views = viewsIn.map((v, i) => (sources[i]?.dark === undefined ? v : { ...v, theme: (sources[i]!.dark ? 'dark' : 'light') as Theme }))
-  const { stage, theme } = stageAt(m, views, t)
+  wipeInk = null
+  // con una pincelada en curso, fuera de ella sigue el papel viejo y dentro va el nuevo (el de cuando acaba)
+  const brushing = views.find((v) => v.brush !== undefined && v.clip.enter)
+  const { stage, theme } = brushing ? stageAt(m, views, Math.min(t, brushing.clip.start - 1e-3)) : stageAt(m, views, t)
+  const newStage = brushing ? stageAt(m, [{ ...brushing, paper: 1 }], brushing.clip.start + brushing.clip.enter!.dur + 1e-3).stage : stage
   setOverlay(stage)
   drawStage(ctx, m, stage, theme)
-  for (const title of m.titles ?? []) if (title.layer === 'under') drawTitle(ctx, m, title, t, theme, stage)
+  for (const title of m.titles ?? []) if (title.layer === 'under') drawTitle(ctx, m, title, t, theme, stage, assets)
   if (assets) drawPrologue(ctx, m, t, assets, theme)
   const sun = sunAt(m, views, t)
   const finale = finaleProgress(m, t)
@@ -1328,7 +1681,7 @@ export function drawFrame(ctx: Ctx2D, m: Montage, t: number, viewsIn: ClipView[]
     drawVignette(ctx, m)
     drawStamp(ctx, m, t, theme)
     for (const n of m.notices ?? []) drawNotice(ctx, m, n, t, assets, theme)
-    for (const title of m.titles ?? []) if (title.layer !== 'under') drawTitle(ctx, m, title, t, theme, stage)
+    for (const title of m.titles ?? []) if (title.layer !== 'under') drawTitle(ctx, m, title, t, theme, stage, assets)
     return
   }
   // prologue.morph: en sus últimos `morph` s, la losa del icono se convierte en la ventana del primer plano (el mismo
@@ -1337,7 +1690,24 @@ export function drawFrame(ctx: Ctx2D, m: Montage, t: number, viewsIn: ClipView[]
   if (pm && assets) {
     const first = [...m.clips].sort((a, b) => a.start - b.start)[0]
     const i = views.findIndex((v) => v.clip === first)
+    // con bandas, la losa que crece tampoco entra en ellas (los rótulos nunca quedan encima de la app)
+    if (m.bands && pm.local / pm.dur > PROLOGUE_STEPS.edge[1]) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, m.bands.top, W, H - m.bands.top - m.bands.bottom)
+      ctx.clip()
+    }
     if (i >= 0) drawIconToWindow(ctx, m, { ...views[i], local: pm.local }, sources[i], assets, pm.dur)
+    if (m.bands && pm.local / pm.dur > PROLOGUE_STEPS.edge[1]) ctx.restore()
+  }
+  // la pincelada se pinta después, sobre el cuadro entero (también las bandas: lleva el papel nuevo)
+  let deferred: (() => void) | null = null
+  // con bandas, las ventanas viven en el hueco entre ellas (los rótulos de las bandas nunca tapan la app)
+  if (m.bands) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, m.bands.top, W, H - m.bands.top - m.bands.bottom)
+    ctx.clip()
   }
   views.forEach((v, i) => {
     if (pm || v.ghost) return
@@ -1350,6 +1720,11 @@ export function drawFrame(ctx: Ctx2D, m: Montage, t: number, viewsIn: ClipView[]
     if (v.content !== undefined && i > 0) {
       drawContent(ctx, m, t, v, sources[i], v.content)
       drawCursor(ctx, m, { ...v, alpha: v.content })
+      return
+    }
+    // «brush»: una pincelada barre el cuadro y descubre este plano detrás de su cabeza de ladrillo
+    if (v.brush !== undefined && i > 0 && assets?.paint) {
+      deferred = () => drawBrushWipe(ctx, m, t, v, sources[i], assets, newStage, stage, theme)
       return
     }
     const incoming = views[i + 1]
@@ -1399,6 +1774,9 @@ export function drawFrame(ctx: Ctx2D, m: Montage, t: number, viewsIn: ClipView[]
       ctx.restore()
     }
   })
+  if (m.bands) ctx.restore()
+  ;(deferred as (() => void) | null)?.()
+  if (assets?.paint) for (const mk of m.paint ?? []) drawPaintMark(ctx, m, mk, t, views, theme, assets.paint)
   // transición «sunrise»: el sol sale por abajo y su luz baña el cuadro en el cambio de plano
   for (const v of views) {
     const enter = v.clip.enter
@@ -1416,5 +1794,5 @@ export function drawFrame(ctx: Ctx2D, m: Montage, t: number, viewsIn: ClipView[]
   drawVignette(ctx, m)
   drawStamp(ctx, m, t, theme)
   for (const n of m.notices ?? []) drawNotice(ctx, m, n, t, assets, theme)
-  for (const title of m.titles ?? []) if (title.layer !== 'under') drawTitle(ctx, m, title, t, theme, stage)
+  for (const title of m.titles ?? []) if (title.layer !== 'under') drawTitle(ctx, m, title, t, theme, stage, assets)
 }

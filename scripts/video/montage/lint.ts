@@ -3,7 +3,7 @@
 import type { CameraKey, Montage } from './types.ts'
 import { filmGrid } from './grid.ts'
 
-const fitZoom = (m: Montage, vw: number, vh: number) => (m.captionBand ? Math.min((m.size[0] * 0.84) / vw, (m.captionBand - 60) / vh) : Math.min((m.size[0] * 0.84) / vw, (m.size[1] * 0.84) / vh))
+const fitZoom = (m: Montage, vw: number, vh: number) => m.bands ? (m.bands.fill ? (m.size[1] - m.bands.top - m.bands.bottom - 24) / vh : Math.min((m.size[0] * 0.92) / vw, (m.size[1] - m.bands.top - m.bands.bottom - 24) / vh)) : (m.captionBand ? Math.min((m.size[0] * 0.84) / vw, (m.captionBand - 60) / vh) : Math.min((m.size[0] * 0.84) / vw, (m.size[1] * 0.84) / vh))
 
 const same = (a: CameraKey, b: CameraKey) => a.zoom === b.zoom && JSON.stringify(a.focus ?? null) === JSON.stringify(b.focus ?? null) && JSON.stringify(a.screen ?? null) === JSON.stringify(b.screen ?? null)
 
@@ -15,13 +15,14 @@ export interface LintOptions {
 
 export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
   const out: string[] = []
-  const maxRel = opts.maxZoom ?? 1.5
+  // con bandas (vertical, cuadrado) la ventana se acerca más: en un móvil lo que importa tiene que llenar el ancho
+  const maxRel = opts.maxZoom ?? (m.bands ? 2.4 : 1.5)
   const frame = 1 / m.fps
   const grid = m.music?.track ? filmGrid(m.music.track.grid, m.music.track.cuts ?? [], m.music.track.start ?? 0) : null
   const offBeat = (t: number) => (grid ? Math.abs(t - grid.snap(t)) > frame + 1e-6 : false)
   const fmt = (t: number) => `${t.toFixed(2)} s${grid ? ` (compás ${Math.floor((t - grid.V(1)) / grid.barDur) + 1})` : ''}`
 
-  const fades = m.clips.filter((c) => c.enter && ['content', 'theme', 'match'].includes(c.enter.kind)).map((c) => c.start)
+  const fades = m.clips.filter((c) => c.enter && ['content', 'theme', 'match', 'brush'].includes(c.enter.kind)).map((c) => c.start)
   const checkKeys = (keys: CameraKey[] | undefined, offset: number, take: string, where: string) => {
     const vp = m.takes[take]?.viewport ?? [1440, 900]
     const fit = fitZoom(m, vp[0], vp[1])
@@ -48,6 +49,7 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
     }
     // un fundido de contenido largo mezcla dos contenidos a medias (el «fotograma gris»): para claro↔oscuro, «theme»
     if (c.enter?.kind === 'content' && c.enter.dur > 0.25 + 1e-6) out.push(`plano ${c.take}: fundido de contenido de ${c.enter.dur} s (máximo 0,25 s; para claro↔oscuro usa enter {kind:'theme'})`)
+    if (c.enter?.kind === 'brush' && grid && (c.enter.dur < grid.beat - 0.05 || c.enter.dur > grid.barDur + 0.05)) out.push(`plano ${c.take}: la pincelada dura ${c.enter.dur.toFixed(2)} s (entre 1 pulso y 1 compás)`)
     if (c.enter && ['sunrise', 'door', 'iris', 'rise'].includes(c.enter.kind) && !(m.prologue?.morph && c.start <= m.prologue.end)) out.push(`plano ${c.take}: transición «${c.enter.kind}» (la v2 pide content, match o corte causado por la app)`)
   }
   if (m.camera?.length) checkKeys(m.camera, 0, m.clips[0]?.take ?? '', 'cámara global')
@@ -55,8 +57,11 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
   const titles = [...(m.titles ?? [])].sort((a, b) => a.start - b.start)
   for (let i = 0; i < titles.length; i++) {
     const t = titles[i]
-    if (i > 0 && t.start < titles[i - 1].start + titles[i - 1].dur - 1e-6) out.push(`rótulo «${t.text}» se pisa con «${titles[i - 1].text}» en ${fmt(t.start)}`)
-    if (grid && t.dur < 2 * grid.barDur - 1e-6) out.push(`rótulo «${t.text}» dura ${t.dur.toFixed(2)} s (< 2 compases)`)
+    // en la tarjeta final (dentro del finale) los rótulos conviven a propósito
+    const endCard = m.finale && t.start >= m.finale.start - 1e-6 && titles[i - 1]?.start >= m.finale.start - 1e-6
+    if (i > 0 && !endCard && t.start < titles[i - 1].start + titles[i - 1].dur - 1e-6) out.push(`rótulo «${t.text}» se pisa con «${titles[i - 1].text}» en ${fmt(t.start)}`)
+    const minDur = m.minTitle ?? (grid ? 2 * grid.barDur : 0)
+    if (t.dur < minDur - 1e-6) out.push(`rótulo «${t.text}» dura ${t.dur.toFixed(2)} s (< ${m.minTitle ? `${m.minTitle} s` : '2 compases'})`)
     if (offBeat(t.start)) out.push(`rótulo «${t.text}» entra fuera del pulso en ${fmt(t.start)}`)
   }
   // rótulos que tapan la acción: el cursor (lo que se pulsa o se escribe) dentro de la caja del pie
@@ -72,6 +77,23 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
           break
         }
       }
+    }
+  }
+  // adornos de pintura con mesura: en el pulso, como mucho dos por compás y una salpicadura por compás
+  const marks = [...(m.paint ?? [])].sort((a, b) => a.t - b.t)
+  for (const mk of marks) if (offBeat(mk.t)) out.push(`adorno «${mk.kind}» fuera del pulso en ${fmt(mk.t)}`)
+  if (grid) {
+    const perBar = new Map<number, { all: number; splash: number }>()
+    for (const mk of marks) {
+      const bar = Math.floor((mk.t - grid.V(1)) / grid.barDur + 1e-6)
+      const c = perBar.get(bar) ?? { all: 0, splash: 0 }
+      c.all++
+      if (mk.kind === 'splash') c.splash++
+      perBar.set(bar, c)
+    }
+    for (const [bar, c] of perBar) {
+      if (c.all > 2) out.push(`demasiados adornos de pintura en el compás ${bar + 1} (${c.all}; máximo 2)`)
+      if (c.splash > 1) out.push(`más de una salpicadura en el compás ${bar + 1}`)
     }
   }
   const stamps = [...(m.stamps ?? [])].sort((a, b) => a.t - b.t)

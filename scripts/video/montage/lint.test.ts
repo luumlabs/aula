@@ -60,3 +60,34 @@ describe('cambios de tema', () => {
     expect(lintMontage(base({ clips: clips('content', 4.5, 1) })).some((x) => x.includes('fundido de contenido'))).toBe(true)
   })
 })
+
+describe('versión corta', () => {
+  it('la pincelada dura entre 1 pulso y 1 compás', () => {
+    const clips = (dur: number) => [{ take: 'a', start: 0, dur: 4 }, { take: 'b', start: 4, dur: 28, enter: { kind: 'brush' as const, dur } }]
+    expect(lintMontage(base({ clips: clips(1) }))).toEqual([])
+    expect(lintMontage(base({ clips: clips(0.25) })).some((x) => x.includes('pincelada'))).toBe(true)
+    expect(lintMontage(base({ clips: clips(3) })).some((x) => x.includes('pincelada'))).toBe(true)
+  })
+  it('adornos con mesura: en el pulso, ≤ 2 por compás y una salpicadura por compás', () => {
+    const ok = lintMontage(base({ paint: [{ t: 2, kind: 'splash', at: [0.5, 0.5] }, { t: 3, kind: 'underline', at: [0.5, 0.5] }] }))
+    expect(ok).toEqual([])
+    const many = lintMontage(base({ paint: [{ t: 2, kind: 'splash', at: [0.5, 0.5] }, { t: 2.5, kind: 'splash', at: [0.5, 0.5] }, { t: 3.25, kind: 'ring', at: [0.5, 0.5] }] }))
+    expect(many.some((x) => x.includes('demasiados adornos'))).toBe(true)
+    expect(many.some((x) => x.includes('más de una salpicadura'))).toBe(true)
+    expect(many.some((x) => x.includes('fuera del pulso'))).toBe(true)
+  })
+  it('minTitle cambia la duración mínima de los rótulos', () => {
+    const titles = [{ start: 2, dur: 1.5, text: 'Hi', style: 'paint' as const }]
+    expect(lintMontage(base({ titles })).some((x) => x.includes('dura'))).toBe(true)
+    expect(lintMontage(base({ titles, minTitle: 1.2 })).some((x) => x.includes('dura'))).toBe(false)
+  })
+  it('con bandas se permite más zoom, y en la tarjeta final los rótulos pueden convivir', () => {
+    const cam = [{ t: 0, zoom: 1.6 }]
+    const clips = [{ take: 'a', start: 0, dur: 32, camera: cam }]
+    expect(lintMontage(base({ size: [1080, 1920], bands: { top: 400, bottom: 400, fill: true }, clips: [{ take: 'a', start: 0, dur: 32, camera: [{ t: 0, zoom: 2.4 }] }] })).some((x) => x.includes('zoom'))).toBe(false)
+    expect(lintMontage(base({ clips })).some((x) => x.includes('zoom'))).toBe(true)
+    const titles = [{ start: 26, dur: 6, text: 'Free', style: 'paint' as const }, { start: 28, dur: 4, text: 'github', style: 'paint' as const }]
+    expect(lintMontage(base({ titles, finale: { start: 24, dur: 8 } })).some((x) => x.includes('se pisa'))).toBe(false)
+    expect(lintMontage(base({ titles })).some((x) => x.includes('se pisa'))).toBe(true)
+  })
+})

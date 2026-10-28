@@ -73,7 +73,7 @@ export interface CameraKey {
   lag?: number
 }
 
-export type TransitionKind = 'cut' | 'fade' | 'sunrise' | 'rise' | 'iris' | 'door' | 'content' | 'match' | 'theme' | 'icon'
+export type TransitionKind = 'cut' | 'fade' | 'sunrise' | 'rise' | 'iris' | 'door' | 'content' | 'match' | 'theme' | 'icon' | 'brush'
 
 /** Marco dibujado de la ventana: semáforos de macOS, botones de Windows o cabecera de GNOME. */
 export type WindowFrame = 'mac' | 'windows' | 'linux'
@@ -99,6 +99,10 @@ export interface Clip {
     /** … y el mismo elemento en el plano que entra: este arranca con él en el mismo sitio (y escala, hasta ×/÷1,6 de
      *  su cámara) y vuelve a su cámara en `dur` con la curva única. */
     to?: Focus
+    /** `brush`: hacia dónde va la primera pasada de la pincelada que barre el cuadro (las demás van y vuelven). */
+    dir?: 'right' | 'left' | 'down' | 'up'
+    /** `brush`: semilla de la pincelada (por defecto, el plano). */
+    seed?: string | number
     /** `theme`: segundos que tarda la VENTANA en cambiar de tema (fundido corto de la ventana entera; por defecto 5
      *  fotogramas). `dur` es lo que tarda el papel del fondo y los rótulos (2 pulsos). */
     window?: number
@@ -113,16 +117,45 @@ export interface Title {
   /** Las palabras entre *asteriscos* salen en cursiva y en ladrillo. */
   text: string
   sub?: string
-  /** `hero` (grande, centrado, con la marca de Aula), `side` (a la izquierda, junto a la ventana), `caption` (abajo). */
-  style: 'hero' | 'side' | 'caption'
+  /** `hero` (grande, centrado, con la marca de Aula), `side` (a la izquierda, junto a la ventana), `caption` (abajo),
+   *  `paint` (grande, en el papel, sin píldora: para la versión corta; con `band` va centrado en esa banda). */
+  style: 'hero' | 'side' | 'caption' | 'paint'
+  /** `paint`: en qué banda del cuadro va (montage.bands); sin ella, en `at`. */
+  band?: 'top' | 'bottom'
+  /** `paint`: cuerpo de la letra (px del vídeo; por defecto 6,5 % del lado corto). */
+  size?: number
+  /** `brush`: cada palabra se revela con una pincelada (de izquierda a derecha), una tras otra cada `stagger` s. */
+  stagger?: number
+  /** Subrayado a pincel bajo la palabra `word` (índice desde 0; por defecto la primera en *cursiva*), que cae en `t` (s
+   *  del vídeo; por defecto al acabar de revelarse el rótulo). */
+  underline?: { word?: number; t?: number; color?: string }
+  /** Rodeo a pincel alrededor de la palabra `word` (por defecto, la primera en cursiva). */
+  ring?: { word?: number; t?: number; color?: string }
   /** `over` (por defecto) encima de la ventana; `under`, detrás (la ventana lo tapa). */
   layer?: 'over' | 'under'
-  /** `calm` (por defecto): entra y sale con el mismo gesto (350 ms, fundido y 8 px). `words`: palabra a palabra. */
-  gesture?: 'calm' | 'words'
+  /** `calm` (por defecto): entra y sale con el mismo gesto (350 ms, fundido y 8 px). `words`: palabra a palabra.
+   *  `brush`: cada palabra se revela con una pincelada (sale con el fundido de `calm`). */
+  gesture?: 'calm' | 'words' | 'brush'
   /** Ya entero desde su primer fotograma (sin la entrada palabra a palabra): para el fotograma 0 de una parte. */
   instant?: boolean
   /** Posición (fracción del cuadro) del ancla del texto, si no vale la de su estilo. */
   at?: [number, number]
+}
+
+/** Un adorno de pintura. `at`: fracción del cuadro, o `mark:x` (la caja de una marca del plano activo, para rodear o
+ *  subrayar algo de la app). Se pinta en `draw` s (por defecto 0,35), se queda y se apaga en 0,25 s al acabar `dur`. */
+export interface PaintMark {
+  t: number
+  kind: 'splash' | 'underline' | 'ring' | 'stroke'
+  at: [number, number] | `mark:${string}`
+  /** `stroke`: dónde acaba (fracción del cuadro). */
+  to?: [number, number]
+  /** Tamaño (px): radio de la salpicadura, grosor del trazo; en `underline`/`ring` con `at` fracción, ancho de la caja. */
+  size?: number
+  dur?: number
+  draw?: number
+  color?: string
+  seed?: string | number
 }
 
 /** Sello de hora («MONDAY · 8:10 AM») arriba a la izquierda; los caracteres que cambian ruedan. */
@@ -220,6 +253,9 @@ export interface IconLayer {
   grow?: number
   /** Fundido de entrada de la losa (s). Por defecto 0: el icono ya está en el primer fotograma. */
   fadeIn?: number
+  /** [desde, hasta] (s): el arco se PINTA de un trazo sobre la losa de papel (y luego el horizonte), como gancho desde el
+   *  primer fotograma; el sol sale después, con `rise`. */
+  draw?: [number, number]
   title?: string
   sub?: string
   /** Desde cuándo entra el titular (por defecto, al acabar de salir el sol). */
@@ -281,6 +317,10 @@ export interface Montage {
   size: [number, number]
   /** bits/s del H.264. */
   bitrate?: number
+  /** Duración mínima de un rótulo para el lint (s; por defecto 2 compases). La versión corta: 1,2. */
+  minTitle?: number
+  /** Tamaño máximo del máster (MB): sin `bitrate`, se calcula para caber (redes: 30). */
+  maxMB?: number
   theme: 'light' | 'dark'
   duration: number
   takes: Record<string, Take>
@@ -302,6 +342,18 @@ export interface Montage {
   /** Banda de rótulos en el papel, bajo la ventana (px desde arriba donde empieza, p. ej. 950): la ventana descansa entre
    *  40 px y la banda, nunca baja de ella aunque se acerque la cámara, y los pies van centrados en la banda. */
   captionBand?: number
+  /** Bandas de rótulos arriba y abajo (px; para el vertical y el cuadrado): la ventana vive entre ellas y los rótulos
+   *  `paint` con `band` van centrados en ellas. `fill`: «ventana entera» = la altura del hueco (la ventana puede salirse
+   *  por los lados; la cámara la mueve sin dejar papel a los lados). */
+  bands?: { top: number; bottom: number; fill?: boolean }
+  /** Zonas seguras (px desde cada borde) que tapa la interfaz de la red (TikTok/Reels/Shorts: arriba ~220, abajo ~25 %,
+   *  derecha ~140): los rótulos `paint` con `band` van en la parte visible de su banda y dentro del ancho seguro, y el
+   *  centro por defecto de la cámara se aparta de la derecha. */
+  safe?: { top?: number; bottom?: number; left?: number; right?: number }
+  /** Con captionBand: si la ventana no cabe sobre la banda (primer plano), su borde de abajo se apoya en la banda. */
+  captionPin?: boolean
+  /** Adornos de pintura que caen en el ritmo (con mesura): salpicaduras, subrayados, rodeos y trazos sueltos. */
+  paint?: PaintMark[]
   /** La curva única de la cámara (por defecto `smooth`: suave y amortiguada, sin rebote). */
   cameraEase?: Ease
   /** Historias pixel art colocadas a mano (si la toma no las registró): instante, id de la historia y pista. */
