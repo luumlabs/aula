@@ -17,6 +17,11 @@ export function setFakeAIScript(fn: FakeAIScript | null): void {
   script = fn ?? defaultScript
 }
 
+/** ¿Hay un guion propio (pruebas)? Entonces manda él, también sobre las respuestas simuladas de cada módulo. */
+export function hasFakeAIScript(): boolean {
+  return script !== defaultScript
+}
+
 export const FAKE_PROVIDER_ID = 'fake'
 
 /** Cómo se presenta: en el modo demostración (`AULA_DEMO=1`, capturas y vídeo) como Claude, que es lo que vería quien lo usa;

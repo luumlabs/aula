@@ -1,6 +1,6 @@
 // Aula en el lector: pide una acción sobre lo que se lee (con la página como imagen si la IA ve), recibe la respuesta a trozos
 // y la cancela. Una petición nueva no corta la anterior salvo que siga en marcha (como en Swift: «Detener» la para).
-import type { DocumentAIAction } from '@shared/documents'
+import type { DocumentAIAction, DocumentAIUpdate } from '@shared/documents'
 import i18n from '@renderer/i18n'
 import { api } from '@renderer/lib/api'
 import { openEntryPdf, pageJPEG } from '../pdf'
@@ -8,15 +8,27 @@ import { shortId, useReader } from './store'
 
 let wired = false
 let vision: boolean | null = null
+/** Lo que llegó antes que el id de su petición (una IA que responde, o falla, al instante): se aplica al recibir el id. Solo la
+ *  última de cada una (el texto llega acumulado). */
+const early = new Map<string, DocumentAIUpdate>()
+
+/** Pone la respuesta en su petición; false si aún no se sabe de cuál es. */
+function apply(u: DocumentAIUpdate): boolean {
+  const st = useReader.getState()
+  const item = st.items.find((i) => i.jobId === u.jobId)
+  if (!item) return false
+  st.updateItem(item.id, { text: u.text, done: u.done, ...(u.error ? { error: u.error.message } : {}), ...(u.cards ? { cards: u.cards } : {}), ...(u.cited ? { cited: u.cited } : {}) })
+  return true
+}
 
 function wire(): void {
   if (wired) return
   wired = true
   api.on('documents.ai', (u) => {
-    const st = useReader.getState()
-    const item = st.items.find((i) => i.jobId === u.jobId)
-    if (!item) return
-    st.updateItem(item.id, { text: u.text, done: u.done, ...(u.error ? { error: u.error.message } : {}), ...(u.cards ? { cards: u.cards } : {}), ...(u.cited ? { cited: u.cited } : {}) })
+    if (apply(u)) return
+    early.delete(u.jobId)
+    early.set(u.jobId, u)
+    while (early.size > 16) early.delete(early.keys().next().value as string)
   })
 }
 
@@ -62,6 +74,11 @@ export async function askAula(action: DocumentAIAction): Promise<void> {
   try {
     const { jobId } = await api.invoke('documents.aiStart', { ref, action, language: i18n.language, ...(pageImage ? { pageImage } : {}) })
     useReader.getState().updateItem(id, { jobId })
+    const first = early.get(jobId)
+    if (first) {
+      early.delete(jobId)
+      apply(first)
+    }
   } catch (e) {
     useReader.getState().updateItem(id, { done: true, error: e instanceof Error ? e.message : String(e) })
   }

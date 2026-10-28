@@ -6,7 +6,7 @@ import { homedir } from 'node:os'
 import electronLog from 'electron-log/main'
 import { emit, installRpc, setTrustedPage } from './electron/rpc'
 import { createMainWindow, getMainWindow, isAppURL } from './electron/window'
-import { reveal, windowsAlwaysHidden } from './electron/visibility'
+import { guardHiddenWindows, reveal, windowsAlwaysHidden } from './electron/visibility'
 import { registerAllHandlers } from './electron/handlers'
 import { setDataRoot, paths } from './services/paths'
 import { setPackaged } from './services/runtime'
@@ -93,6 +93,8 @@ if (!primaryInstance) {
   app.quit()
 } else {
   app.on('second-instance', () => { reveal(getMainWindow()) })
+  // con AULA_HIDDEN ninguna ventana sale a la pantalla: ni a pantalla completa ni porque algo la enseñe
+  guardHiddenWindows(app)
 
   app.whenReady().then(async () => {
     // lanzada con AULA_HIDDEN (pruebas, capturas): sin icono en el Dock que alguien pueda pulsar

@@ -2,7 +2,8 @@
 // el plan y lo escribe en Word o Markdown. El PDF lo dibuja la capa de Electron con la vista de impresión (print.ts).
 import { readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import type { DocumentNote, DocumentPlan, DocumentRequest } from '@shared/documents'
+import type { DocumentKind, DocumentNote, DocumentPlan, DocumentRequest } from '@shared/documents'
+import { DOCUMENT_KINDS } from '@shared/documents'
 import type { Pack, Skill, StudyProgress } from '@shared/schema'
 import { orderedSkills } from '@shared/schema'
 import { AulaError } from '../errors'
@@ -10,7 +11,7 @@ import { tr } from '@shared/ai/i18n'
 import { getLibrary, listJSONNames, type PackStore } from '../store'
 import { renderDocx } from './docx'
 import { renderMarkdown, type AssetReader } from './markdown'
-import { displayTitle, fileBaseName, planDocument } from './planner'
+import { displayTitle, DocumentError, fileBaseName, planDocument } from './planner'
 import { imageFolderName, type RenderedDocument } from './saving'
 import { docLang } from './words'
 
@@ -67,6 +68,23 @@ export function planFor(request: DocumentRequest, now = new Date()): { plan: Doc
   const notes = course && request.kind === 'guide' && request.style.includeNotes ? lessonNotes(course.store, course.pack) : {}
   const plan = planDocument(request, { pack: course?.pack, skills: course?.skills ?? {}, progress: course?.progress, notes, now })
   return { plan, course }
+}
+
+/** Los tipos de documento que no salen de este curso y estas lecciones, con el motivo (el de `DocumentError`, en el idioma del
+ *  documento): un curso sin tarjetas no tiene tarjetas para imprimir. El mismo plan que la vista previa, sin dibujar nada. */
+export function unavailableKinds(request: DocumentRequest, now = new Date()): Partial<Record<DocumentKind, string>> {
+  const course = loadCourse(request.courseID)
+  const notes = course && request.style.includeNotes ? lessonNotes(course.store, course.pack) : {}
+  const out: Partial<Record<DocumentKind, string>> = {}
+  for (const kind of DOCUMENT_KINDS) {
+    try {
+      planDocument({ ...request, kind }, { pack: course?.pack, skills: course?.skills ?? {}, progress: course?.progress, notes: kind === 'guide' ? notes : {}, now })
+    } catch (err) {
+      if (!(err instanceof DocumentError)) throw err
+      out[kind] = err.message
+    }
+  }
+  return out
 }
 
 /** Lee las imágenes del curso (`assets/<id>`) para Word y Markdown. */

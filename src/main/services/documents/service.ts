@@ -8,6 +8,7 @@ import { isCancellation, resolveActiveModel, withAIUse } from '../ai'
 import { toErrorInfo } from '../errors'
 import { DocumentAnnotationStore } from './annotations'
 import { runDocumentAI } from './ai'
+import { withDocumentFake } from './fake'
 import { entryForLocated, touchRecent } from './library'
 import { locate } from './locate'
 import { searchPages } from './pages'
@@ -78,7 +79,8 @@ export class DocumentAIJobs {
       const pages = await loadPages(doc)
       const courseID = doc.store?.id
       const result = await withAIUse({ purpose: 'documents', ...(courseID ? { courseID } : {}), label: doc.title }, async () => {
-        const model = await resolveActiveModel()
+        // la IA simulada (pruebas, vídeo) responde con el texto del documento
+        const model = withDocumentFake(await resolveActiveModel(), req.action, pages, req.language)
         return runDocumentAI(req.action, pages, {
           model, language: req.language, examContext: examContext(doc.pack), pageImage: req.pageImage, signal,
           onText: (t) => {

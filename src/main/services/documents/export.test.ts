@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { defaultDocumentStyle, parseDocumentRequest, type DocumentKind, type DocumentRequest } from '@shared/documents'
 import { setDataRoot } from '../paths'
 import { getLibrary } from '../store'
-import { planFor, renderDocument } from './compose'
+import { planFor, renderDocument, unavailableKinds } from './compose'
 import { cardFaces, DocumentError, stableShuffle } from './planner'
 import { addCourseDocument, listCourseDocuments, removeCourseDocument, writeRendered } from './saving'
 import { texToMath, texToPlain } from './texMath'
@@ -86,6 +86,37 @@ describe('Plan de cada tipo de documento', () => {
 
   it('en inglés, los títulos en inglés', () => {
     expect(planFor(request('cheatsheet', { lang: 'en' })).plan.title).toBe('Cheat sheet')
+  })
+})
+
+describe('Tipos que salen de cada curso', () => {
+  it('el curso de ejemplo da todos', () => {
+    expect(unavailableKinds(request('guide'))).toEqual({})
+  })
+
+  it('un curso solo con texto: sin chuleta, ni tarjetas, ni examen, con el motivo en el idioma del documento', () => {
+    // el curso de ejemplo sin fórmulas, glosario, tarjetas, ejercicios ni errores típicos (como un curso de Historia)
+    const dir = join(home, 'Packs', 'solo-texto')
+    cpSync(join(home, 'Packs', COURSE), dir, { recursive: true })
+    const pack = JSON.parse(readFileSync(join(dir, 'pack.json'), 'utf8')) as Record<string, unknown>
+    writeFileSync(join(dir, 'pack.json'), JSON.stringify({ ...pack, id: 'solo-texto', formulaSheet: [], glossary: [], blueprint: null }))
+    for (const name of readdirSync(join(dir, 'skills'))) {
+      const file = join(dir, 'skills', name)
+      const skill = JSON.parse(readFileSync(file, 'utf8')) as { lesson: { type: string }[] }
+      writeFileSync(file, JSON.stringify({ ...skill, lesson: skill.lesson.filter((b) => b.type === 'text'), exercises: [], templates: [], cards: [], decks: [], mistakes: [] }))
+    }
+    const es = unavailableKinds(request('guide', { courseID: 'solo-texto' }))
+    expect(Object.keys(es).sort()).toEqual(['cheatsheet', 'exam', 'flashcards'])
+    expect(es.flashcards).toBe('Estas lecciones aún no tienen tarjetas de repaso.')
+    // lo mismo que dice la vista previa al pedirlo
+    expect(() => planFor(request('cheatsheet', { courseID: 'solo-texto' }))).toThrow(es.cheatsheet!)
+    expect(unavailableKinds(request('exam', { courseID: 'solo-texto', lang: 'en' })).exam).toBe("These lessons don't have exercises for the exam yet.")
+  })
+
+  it('si ninguna lección coincide, ninguno sale (el motivo es el alcance)', () => {
+    const out = unavailableKinds(request('guide', { scope: { skillIDs: ['nada'], unitIDs: [], onlyDone: false } }))
+    expect(Object.keys(out)).toHaveLength(6)
+    expect(new Set(Object.values(out))).toEqual(new Set(['Ninguna lección del curso coincide con lo que pediste.']))
   })
 })
 

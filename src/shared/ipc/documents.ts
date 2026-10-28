@@ -1,8 +1,8 @@
 // Documentos: la biblioteca (materiales de los cursos y archivos importados), el lector con subrayados y notas, Aula sobre lo
 // que se lee y los documentos para estudiar en papel (PDF, Word, Markdown). Lo implementa src/main/services/documents.
 import type {
-  DocumentAIRequest, DocumentAIUpdate, DocumentAnnotation, DocumentCardDraft, DocumentCardTarget, DocumentEntry, DocumentHit, DocumentLibrary,
-  DocumentPlan, DocumentRef, DocumentRequest, DocumentSearchHit, DocumentView
+  DocumentAIRequest, DocumentAIUpdate, DocumentAnnotation, DocumentCardDraft, DocumentCardTarget, DocumentEntry, DocumentHit, DocumentKind,
+  DocumentLibrary, DocumentPlan, DocumentRef, DocumentRequest, DocumentSearchHit, DocumentView
 } from '../documents/types'
 
 export interface DocumentImportResult {
@@ -75,6 +75,8 @@ declare module './contract' {
     'documents.saveCards': { args: { ref?: DocumentRef; courseId: string; skillId: string; cards: DocumentCardDraft[]; page?: number }; result: { saved: number } }
     /** El plan del documento (qué va en él), para la vista previa. */
     'documents.plan': { args: { request: DocumentRequest }; result: DocumentPlan }
+    /** Los tipos que no salen del curso y las lecciones de la petición (su `kind` no cuenta), con el motivo. */
+    'documents.kinds': { args: { request: DocumentRequest }; result: { unavailable: Partial<Record<DocumentKind, string>> } }
     /** Dibuja el PDF (vista de impresión en una ventana oculta). */
     'documents.renderPDF': { args: { request: DocumentRequest }; result: DocumentRenderResult }
     /** Guarda el documento (PDF, Word o Markdown) donde diga el estudiante o en el curso. null = cancelado. */

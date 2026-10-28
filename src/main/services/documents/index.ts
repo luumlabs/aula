@@ -12,7 +12,7 @@ export { planDocument, scopedSkills, keyBlocks, cardFaces, answerText, stableShu
 export { renderMarkdown, answerArea, type AssetReader, type MarkdownOutput } from './markdown'
 export { renderDocx, hueHex, wordImage } from './docx'
 export { texToMath, texToPlain } from './texMath'
-export { planFor, loadCourse, lessonNotes, renderDocument, assetReader, type CourseBundle } from './compose'
+export { planFor, unavailableKinds, loadCourse, lessonNotes, renderDocument, assetReader, type CourseBundle } from './compose'
 export { writeRendered, addCourseDocument, listCourseDocuments, removeCourseDocument, freePath, imageFolderName, fileName, FORMAT_EXTENSION, type RenderedDocument } from './saving'
 export { openDocument, annotationStore, findInDocument, examContext, DocumentAIJobs } from './service'
 export { words, docLang, printWords, pointsText, type DocLang } from './words'

@@ -16,7 +16,7 @@ import { uiLanguage } from '@main/services/settings/uiLanguage'
 import { getLibrary, notifyCourseChanged } from '@main/services/store'
 import {
   addCourseDocument, annotationStore, cardTargets, DocumentAIJobs, docLang, findInDocument, FORMAT_EXTENSION, importFiles, listLibrary, locate,
-  openDocument, originalPath, planFor, removeDocument, renderDocument, saveDocumentCards, searchLibrary, touchRecent, writeRendered,
+  openDocument, originalPath, planFor, removeDocument, renderDocument, saveDocumentCards, searchLibrary, touchRecent, unavailableKinds, writeRendered,
   type RenderedDocument
 } from '@main/services/documents'
 import { displayTitle, fileBaseName } from '@main/services/documents/planner'
@@ -269,6 +269,7 @@ export function register(): void {
   })
 
   handle('documents.plan', (args) => planFor(requestArg(args)).plan)
+  handle('documents.kinds', (args) => ({ unavailable: unavailableKinds(requestArg(args)) }))
   handle('documents.renderPDF', async (args) => {
     const request = { ...requestArg(args), format: 'pdf' as const }
     const doc = await renderPDF(request)

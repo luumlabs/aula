@@ -9,7 +9,7 @@ import type { DocumentCourse, DocumentFormat, DocumentKind, DocumentRequest, Doc
 import { defaultDocumentStyle, DOCUMENT_KINDS } from '@shared/documents'
 import type { Pack } from '@shared/schema'
 import { orderedSkills } from '@shared/schema'
-import { AulaMark, Button, Dialog, Icon, IconButton, SegmentedTabs, Select, Switch, cx, toast, type IconName } from '@renderer/design'
+import { AulaMark, Button, Dialog, Icon, IconButton, SegmentedTabs, Select, Switch, Tooltip, cx, toast, type IconName } from '@renderer/design'
 import i18n from '@renderer/i18n'
 import { api } from '@renderer/lib/api'
 import { openPdf, pageThumbnail } from '../pdf'
@@ -65,7 +65,13 @@ export function ExportDialog({ open, onClose, courses, courseId }: { open: boole
     }
   }, [course, kind, style, format, scopeMode, picked, skills])
 
-  const preview = usePreview(open ? request : null)
+  // los tipos que no salen de este curso y estas lecciones (un curso sin tarjetas no tiene tarjetas para imprimir): se ven
+  // apagados, con el motivo, y no se piden; si el elegido no sale (al cambiar de curso, o el que se recordaba), el primero que sí
+  const unavailable = useUnavailableKinds(open ? request : null)
+  const someKind = DOCUMENT_KINDS.find((k) => !unavailable?.[k])
+  const switching = !!unavailable?.[kind] && !!someKind
+  useEffect(() => { if (switching && someKind) setKind(someKind) }, [switching, someKind])
+  const preview = usePreview(open && unavailable && !switching ? request : null)
   const [saving, setSaving] = useState<'file' | 'course' | null>(null)
   const save = async (target: 'file' | 'course'): Promise<void> => {
     if (!request) return
@@ -102,13 +108,19 @@ export function ExportDialog({ open, onClose, courses, courseId }: { open: boole
       <div className="grid gap-6 md:grid-cols-[minmax(0,400px)_1fr]">
         <div className="flex max-h-[min(calc(88vh-236px),560px)] flex-col gap-4 overflow-y-auto pr-1">
           <div className="grid grid-cols-2 gap-2">
-            {DOCUMENT_KINDS.map((k) => (
-              <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k}
-                className={cx('flex min-h-[44px] items-center gap-2.5 rounded-[12px] border px-3 py-2 text-left transition-colors', kind === k ? 'border-accent-line bg-accent-wash' : 'border-line hover:bg-fill1')}>
-                <Icon name={KIND_ICONS[k]} size={16} className={kind === k ? 'text-accent-text' : 'text-text2'} />
-                <span className={cx('t-ui leading-tight', kind === k ? 'font-semibold' : 'font-medium')}>{t(`kinds.${k}.title`)}</span>
-              </button>
-            ))}
+            {DOCUMENT_KINDS.map((k) => {
+              // si no sale ninguno, el motivo es el alcance (lo dice la vista previa), no el tipo
+              const why = someKind ? unavailable?.[k] : undefined
+              const button = (
+                <button key={k} onClick={() => { if (!why) setKind(k) }} aria-pressed={kind === k} aria-disabled={why ? true : undefined}
+                  className={cx('flex min-h-[44px] w-full items-center gap-2.5 rounded-[12px] border px-3 py-2 text-left transition-colors', kind === k ? 'border-accent-line bg-accent-wash' : why ? 'cursor-default border-line-soft opacity-45' : 'border-line hover:bg-fill1')}>
+                  <Icon name={KIND_ICONS[k]} size={16} className={kind === k ? 'text-accent-text' : 'text-text2'} />
+                  <span className={cx('t-ui leading-tight', kind === k ? 'font-semibold' : 'font-medium')}>{t(`kinds.${k}.title`)}</span>
+                  {why && <span className="sr-only">. {why}</span>}
+                </button>
+              )
+              return why ? <Tooltip key={k} label={why}>{button}</Tooltip> : button
+            })}
           </div>
           <p className="t-footnote -mt-1 px-0.5">{t(`kinds.${kind}.detail`)}</p>
           <div className="rounded-[16px] bg-sunken px-4 py-1">
@@ -194,6 +206,22 @@ function OptionRow({ label, hint, disabled, children }: { label: string; hint?: 
 }
 
 // MARK: - Vista previa
+
+/** Los tipos que no salen del curso y las lecciones de la petición, con el motivo (null mientras se miran). */
+function useUnavailableKinds(request: DocumentRequest | null): Partial<Record<DocumentKind, string>> | null {
+  const key = request ? JSON.stringify({ course: request.courseID ?? '', scope: request.scope, lang: request.lang ?? '' }) : ''
+  const [state, setState] = useState<{ key: string; unavailable: Partial<Record<DocumentKind, string>> } | null>(null)
+  useEffect(() => {
+    if (!request) return
+    let alive = true
+    // si no se puede mirar, se pide la vista previa igual (y ella dirá qué pasa)
+    void api.invoke('documents.kinds', { request }).then((r) => r.unavailable, () => ({}))
+      .then((unavailable) => { if (alive) setState({ key, unavailable }) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return state?.key === key ? state.unavailable : null
+}
 
 interface Preview { busy: boolean; error?: string; token?: string; pages: number; pdf?: PDFDocumentProxy }
 
