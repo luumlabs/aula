@@ -1,6 +1,6 @@
 // Fila de logos de las IA para el README («Choose your AI» / «Elige tu IA»), en claro y en oscuro.
 // Uso: npx esbuild scripts/dev/provider-strip.ts --bundle --platform=node --format=esm --outfile=/tmp/aula-strip.mjs && node /tmp/aula-strip.mjs
-//      → docs/media/v2/providers-{light,dark}-{en,es}.svg
+//      → docs/media/screenshots/providers-{light,dark}-{en,es}.svg
 // Los trazos salen de src/renderer/src/design/providers/logos.ts (los mismos de la app); el arco de Aula y el enchufe, de sus iconos.
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -86,7 +86,7 @@ function strip(theme: keyof typeof THEMES, lang: 'en' | 'es'): string {
 
 for (const theme of ['light', 'dark'] as const)
   for (const lang of ['en', 'es'] as const) {
-    const file = resolve(`docs/media/v2/providers-${theme}-${lang}.svg`)
+    const file = resolve(`docs/media/screenshots/providers-${theme}-${lang}.svg`)
     writeFileSync(file, strip(theme, lang))
     console.log('ok', file)
   }

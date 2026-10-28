@@ -8,7 +8,7 @@
 
 ## Checklist
 
-- [ ] I ran `npm run typecheck`, `npm test` and `npm run build`
+- [ ] I ran `npm run typecheck`, `npm test`, `npm run build` and, for interface changes, `npm run e2e`
 - [ ] New interface texts are in both Spanish and English
 - [ ] No API keys, passwords or personal data in the code, tests or screenshots
 - [ ] I agree to the [contribution terms](https://github.com/luumlabs/aula/blob/main/CONTRIBUTING.md#license-of-your-contribution): my contribution is

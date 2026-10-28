@@ -1,12 +1,12 @@
 // Capturas del README: la app real con el curso de ejemplo y seis semanas de estudio simuladas por el motor.
-//   npx electron-vite build && xvfb-run -a node scripts/readme-shots.mjs [docs/media/v2] [nombre…]
+//   npx electron-vite build && xvfb-run -a node scripts/readme-shots.mjs [docs/media/screenshots] [nombre…]
 // Cada captura se hace en inglés y en español, en claro; las marcadas con `dark` también en oscuro.
 import { execFileSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const [dir, ...only] = process.argv.slice(2)
-const out = resolve(dir || 'docs/media/v2')
+const out = resolve(dir || 'docs/media/screenshots')
 mkdirSync(out, { recursive: true })
 const ID = 'exam-2-math112'
 const course = (tab) => JSON.stringify({ name: 'course', id: ID, tab })

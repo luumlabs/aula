@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping make Aula better! Issues are **public**: don't paste API keys, passwords, private calendar links or anything personal from your courses. Security problems go privately: see [SECURITY.md](https://github.com/luumlabs/aula/blob/main/SECURITY.md).
+        Thanks for reporting this. Issues are **public**: don't paste API keys, passwords, private calendar links or anything personal from your courses. Security problems go privately: see [SECURITY.md](https://github.com/luumlabs/aula/blob/main/SECURITY.md).
         You can write in English or Spanish.
   - type: textarea
     id: what
@@ -72,7 +72,7 @@ body:
         - Lessons, practice, flashcards or mock exams
         - Chat or tutor
         - Documents or PDF reader
-        - Calendar, automations or the Inbox
+        - Calendar, Aula always on or the Inbox
         - Study platform or browser
         - Settings or AI providers
         - Other

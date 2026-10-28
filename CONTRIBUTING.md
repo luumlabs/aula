@@ -1,6 +1,6 @@
 # Contributing to Aula
 
-Thanks for helping. Aula is free and open source under the [AGPL-3.0](LICENSE.md), and pull requests are welcome.
+Thanks for helping out. Aula is free and open source under the [AGPL-3.0](LICENSE.md), and pull requests are welcome.
 Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Before you start
@@ -22,8 +22,7 @@ IPC contracts, the data formats and the rules for the code are in [`CLAUDE.md`](
 - **Pure logic gets vitest tests** next to it (`*.test.ts`).
 - **Electron security stays on**: `contextIsolation`, sandbox, no `nodeIntegration`, the CSP, validated IPC arguments.
   Keys and secrets never leave the main process.
-- **Design**: follow [`src/renderer/src/design/README.md`](src/renderer/src/design/README.md) («Papel y luz»: warm
-  paper, brick as the only light, no color gradients) and respect `prefers-reduced-motion`.
+- **Design**: follow [`src/renderer/src/design/README.md`](src/renderer/src/design/README.md) ("Papel y luz", paper and light: warm paper, brick as the only light, no color gradients) and respect `prefers-reduced-motion`.
 - **No new dependencies** without asking first in the issue. Prefer permissive licenses (MIT, BSD, ISC, Apache-2.0,
   MPL-2.0 at file level); copyleft dependencies (GPL, LGPL, AGPL) only after discussing it in the issue, because they
   would limit point 3 below.
@@ -50,8 +49,8 @@ By sending a contribution (a pull request, a patch or a suggested change) you ag
    royalty-free and irrevocable license to use, copy, modify, sublicense and distribute your contribution under other
    license terms as well, including commercial ones.
 
-You keep the copyright of your work. Point 3 lets Luum Labs keep Aula's licensing flexible — for example, to offer it to
-a school or a company under other terms — without having to ask every contributor again.
+You keep the copyright of your work. Point 3 keeps Aula's licensing flexible, for example to offer it to a school or
+a company under other terms, without having to ask every contributor again.
 
 A fork or any other modified version needs its own name and icon: see the additional terms under section 7 of the
 license in [`NOTICE.md`](NOTICE.md).

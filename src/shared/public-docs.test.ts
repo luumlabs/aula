@@ -117,7 +117,7 @@ describe('la .deb de Linux y el código de cada versión (A6-P1-3, A6-P2-14)', (
   it('README, notas y plantilla cuentan lo mismo de la .deb, y lo que de verdad hace', () => {
     for (const f of ['README.md', 'README.es.md', `docs/release-notes/${version}.md`]) expect(read(f), f).toContain(deb)
     expect(read('.github/ISSUE_TEMPLATE/bug_report.yml')).toContain('Linux (.deb)')
-    // la .deb no se actualiza sola y Ajustes no ofrece descargarla: se baja de las releases
+    // la .deb no se actualiza sola: Aula avisa y Ajustes → Acerca de lleva a descargarla de las releases
     expect(read('README.md')).not.toMatch(/offers the new one to download/)
     expect(read('README.md')).toMatch(/download its `\.deb` from the \[releases\]/)
     expect(read('README.es.md')).toMatch(/descarga su `\.deb` de las \[versiones publicadas\]/)

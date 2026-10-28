@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Ideas are welcome — tell us what you're trying to study or do. Search the [open issues](https://github.com/luumlabs/aula/issues) first in case someone already suggested it. You can write in English or Spanish.
+        Ideas are welcome. Tell me what you're trying to study or do. Search the [open issues](https://github.com/luumlabs/aula/issues) first in case someone already suggested it. You can write in English or Spanish.
   - type: textarea
     id: problem
     attributes:
