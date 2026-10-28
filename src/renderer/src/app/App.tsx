@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { useTranslation } from 'react-i18next'
-import { ThemeProvider, Toaster, Spinner, cx } from '@renderer/design'
+import { SunCursor, ThemeProvider, Toaster, Spinner, cx, useTheme } from '@renderer/design'
 import { api } from '@renderer/lib/api'
 import { setLanguage, pickLanguage } from '@renderer/i18n'
 import { applyEngineLanguage } from '@engine/language'
@@ -68,8 +68,16 @@ export function App() {
       <Approvals />
       <AchievementToast />
       <Toaster />
+      <AppCursor />
     </ThemeProvider>
   )
+}
+
+/** El cursor-sol de Aula (Ajustes → Apariencia), con el tema y el movimiento ya resueltos. */
+function AppCursor() {
+  const cursor = useSettings((s) => s.settings?.general.cursor ?? 'sun')
+  const { dark, reducedMotion } = useTheme()
+  return <SunCursor enabled={cursor === 'sun'} dark={dark} reducedMotion={reducedMotion} />
 }
 
 /**

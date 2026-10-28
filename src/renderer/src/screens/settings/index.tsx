@@ -127,6 +127,20 @@ function AppearanceCard({ s, update }: { s: AppSettings; update: Upd }) {
             ]}
           />
         </div>
+        <div>
+          <div className="t-ui font-medium text-text2 mb-1.5">{t('appearance.cursor')}</div>
+          <SegmentedTabs
+            fill
+            size="sm"
+            value={s.general.cursor}
+            onChange={(v) => void update({ general: { cursor: v } })}
+            items={[
+              { id: 'sun', label: t('appearance.cursorSun') },
+              { id: 'system', label: t('appearance.cursorSystem') }
+            ]}
+          />
+          <div className="t-ui text-text3 mt-1.5">{t('appearance.cursorHint')}</div>
+        </div>
       </div>
     </Card>
   )

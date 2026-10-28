@@ -25,11 +25,11 @@ export function coversAControl(orb: Box, controls: readonly Box[], min = 0.2): b
 /** Lo que se puede pulsar o enfocar (sin la propia gota). */
 export const INTERACTIVE = 'button, a[href], input, select, textarea, label, summary, [role="switch"], [role="button"], [role="tab"], [role="checkbox"], [role="radio"], [role="option"], [role="link"], [tabindex="0"]'
 
-/** Puntos de la caja de la gota donde mirar qué hay debajo (centro y cuatro lados, un poco hacia dentro). */
-export function probePoints(orb: Box): Array<[number, number]> {
-  const cx = (orb.left + orb.right) / 2
-  const cy = (orb.top + orb.bottom) / 2
-  const dx = (orb.right - orb.left) * 0.38
-  const dy = (orb.bottom - orb.top) * 0.38
-  return [[cx, cy], [cx - dx, cy], [cx + dx, cy], [cx, cy - dy], [cx, cy + dy]]
+/** El centro de la parte de `el` que queda bajo la gota (ahí se mira si de verdad se ve), o null si no se tocan. */
+export function overlapCenter(orb: Box, el: Box): [number, number] | null {
+  const left = Math.max(orb.left, el.left)
+  const top = Math.max(orb.top, el.top)
+  const right = Math.min(orb.right, el.right)
+  const bottom = Math.min(orb.bottom, el.bottom)
+  return right > left && bottom > top ? [(left + right) / 2, (top + bottom) / 2] : null
 }

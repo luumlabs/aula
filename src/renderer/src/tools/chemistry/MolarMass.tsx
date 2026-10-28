@@ -118,7 +118,6 @@ function Donut({ v }: { v: MolarView }) {
             animate={{ pathLength: 1, opacity: hover === null || hover === i ? 1 : 0.35 }}
             transition={{ pathLength: { duration: 0.55, delay: 0.1 + i * 0.22, ease: [0.3, 0.6, 0.3, 1] }, opacity: { duration: 0.2 } }}
             onMouseEnter={() => setHover(i)}
-            style={{ cursor: 'default' }}
           />
         ))}
         {focus && (

@@ -1,0 +1,43 @@
+// El cursor-sol: el sol en lugar de la flecha (con aro sobre lo que se pulsa), la barra de escribir en los campos de texto, la
+// cola de cometa al moverse y la flecha de siempre con «Cursor: System» en Ajustes → Apariencia.
+import { test, expect } from 'playwright/test'
+import { go, launch } from './helpers'
+
+const cursorOf = (sel: string) => (s: string) => {
+  const el = document.querySelector(s)
+  return el ? getComputedStyle(el).cursor : null
+}
+
+test('el cursor es el sol, deja cola al moverse y vuelve a la flecha si se pide', async () => {
+  const { app, page } = await launch({ env: { AULA_HIDDEN: '1' } })
+  await expect(page.locator('nav[aria-label="Aula"]')).toBeAttached()
+  await expect(page.locator('html.sun-cursor')).toBeAttached()
+
+  // el sol en el fondo y, con aro, en los botones; la barra de escribir en los campos
+  expect(await page.evaluate(cursorOf('body'), 'body')).toMatch(/url\("?data:image\/png/)
+  const button = await page.evaluate(cursorOf('nav button'), 'nav button')
+  expect(button).toMatch(/url\("?data:image\/png/)
+  expect(button).not.toBe(await page.evaluate(cursorOf('body'), 'body'))
+  await go(page, { name: 'chat' })
+  await expect(page.locator('textarea').first()).toBeAttached()
+  expect(await page.evaluate(cursorOf('textarea'), 'textarea')).toBe('text')
+
+  // la cola: un lienzo encima de todo que no recibe clics y pinta al moverse
+  await page.mouse.move(200, 300)
+  await page.mouse.move(900, 420, { steps: 12 })
+  const painted = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('body > canvas')].find((x) => (x as HTMLCanvasElement).style.zIndex === '2147483647') as HTMLCanvasElement | undefined
+    if (!c) return -1
+    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data
+    let a = 0
+    for (let i = 3; i < d.length; i += 4) a += d[i]
+    return c.style.pointerEvents === 'none' ? a : -2
+  })
+  expect(painted).toBeGreaterThan(0)
+
+  // Ajustes → Apariencia → Cursor: System
+  await page.evaluate(() => (window as unknown as { aula: { invoke(m: string, a: unknown): Promise<unknown> } }).aula.invoke('settings.update', { general: { cursor: 'system' } }))
+  await expect(page.locator('html.sun-cursor')).not.toBeAttached()
+  expect(await page.evaluate(cursorOf('body'), 'body')).toBe('auto')
+  await app.close()
+})

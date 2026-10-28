@@ -36,6 +36,7 @@ const SECTIONS: Record<string, Record<string, (v: unknown, k: string) => unknown
     theme: (v, k) => oneOf(v, k, ['system', 'light', 'dark'] as const),
     motion: (v, k) => oneOf(v, k, ['system', 'full', 'reduced'] as const),
     textScale: (v, k) => num(v, k, 0.85, 1.4),
+    cursor: (v, k) => oneOf(v, k, ['sun', 'system'] as const),
     reminders: bool,
     reminderTime: time,
     name: (v, k) => text(v, k, 80)

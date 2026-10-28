@@ -142,7 +142,11 @@
     "motion": "Animaciones",
     "motionSystem": "Como el sistema",
     "motionFull": "Todas",
-    "motionReduced": "Reducidas"
+    "motionReduced": "Reducidas",
+    "cursor": "Cursor",
+    "cursorSun": "Sol",
+    "cursorSystem": "Del sistema",
+    "cursorHint": "El sol deja una cola de cometa corta al moverse (no con animaciones reducidas)."
   },
   "general": {
     "title": "Idioma y avisos",

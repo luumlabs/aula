@@ -16,6 +16,8 @@ export interface GeneralSettings {
   motion: 'system' | 'full' | 'reduced'
   /** Tamaño del texto (1 = normal). */
   textScale: number
+  /** Cursor: 'sun' (el sol de Aula con su cola de cometa) o 'system' (la flecha de siempre). */
+  cursor: 'sun' | 'system'
   /** Recordatorio diario para estudiar y aviso el día antes de cada examen. */
   reminders: boolean
   reminderTime: string // 'HH:mm'
@@ -53,7 +55,7 @@ export function defaultSettings(): AppSettings {
   return {
     version: 2,
     onboarded: false,
-    general: { language: 'system', theme: 'system', motion: 'system', textScale: 1, reminders: true, reminderTime: '18:00', name: '' },
+    general: { language: 'system', theme: 'system', motion: 'system', textScale: 1, cursor: 'sun', reminders: true, reminderTime: '18:00', name: '' },
     ai: defaultAISettings(),
     platforms: defaultPlatformSettings(),
     persistent: { enabled: false, style: 'balanced', openAtLogin: false, quietHours: { from: '22:00', to: '08:00' } },

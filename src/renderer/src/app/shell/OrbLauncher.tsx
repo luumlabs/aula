@@ -9,19 +9,20 @@ import { AulaMark } from '@renderer/design'
 import { navigate, useNav } from '../router'
 import { useAulaMarkState } from '@renderer/screens/chat/liveStatus'
 import { isDemo } from '@renderer/lib/demo'
-import { coversAControl, INTERACTIVE, probePoints, type Box } from './orbDodge'
+import { coversAControl, INTERACTIVE, overlapCenter, type Box } from './orbDodge'
 import './orb.css'
 
-/** Los controles que hay debajo de la gota ahora mismo (sin contar la gota). */
+/** Los controles que hay debajo de la gota ahora mismo (sin contar la gota): todos los que se cruzan con ella y se ven ahí (no
+ *  tapados por otra capa). Antes se miraban 5 puntos fijos y un interruptor en el borde de la gota se escapaba. */
 function controlsBeneath(orb: Box, own: Element): Box[] {
-  const seen = new Set<Element>()
   const out: Box[] = []
-  for (const [x, y] of probePoints(orb)) {
-    const top = document.elementsFromPoint(x, y).find((el) => !own.contains(el))
-    const ctl = top?.closest(INTERACTIVE)
-    if (!ctl || seen.has(ctl) || own.contains(ctl)) continue
-    seen.add(ctl)
-    out.push(ctl.getBoundingClientRect())
+  for (const ctl of document.querySelectorAll(INTERACTIVE)) {
+    if (own.contains(ctl)) continue
+    const r = ctl.getBoundingClientRect()
+    const at = r.width > 0 && r.height > 0 ? overlapCenter(orb, r) : null
+    if (!at) continue
+    const top = document.elementsFromPoint(at[0], at[1]).find((el) => !own.contains(el))
+    if (top && (ctl === top || ctl.contains(top) || top.contains(ctl))) out.push(r)
   }
   return out
 }

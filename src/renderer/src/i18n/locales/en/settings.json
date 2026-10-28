@@ -142,7 +142,11 @@
     "motion": "Animations",
     "motionSystem": "Match system",
     "motionFull": "Full",
-    "motionReduced": "Reduced"
+    "motionReduced": "Reduced",
+    "cursor": "Cursor",
+    "cursorSun": "Sun",
+    "cursorSystem": "System",
+    "cursorHint": "The sun leaves a short comet tail as it moves (not with reduced animations)."
   },
   "general": {
     "title": "Language and reminders",
