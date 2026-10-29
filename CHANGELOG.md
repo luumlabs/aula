@@ -13,6 +13,7 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 - "Create document" greys out the kinds a course can't produce yet (no flashcards, exercises or formulas) and says
   why, instead of failing with "Couldn't prepare the document".
 - The reader's Aula panel no longer gets stuck on "Reading the document…" when the answer arrives very fast.
+- Page citations in the reader's answers, like (p. 2), are real links again and jump to that page.
 - The floating Aula button steps aside when a switch sits half under its edge.
 
 ## [0.1.0] - 2026-10-28 (early access)

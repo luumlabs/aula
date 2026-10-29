@@ -11,13 +11,20 @@ import { cx } from '@renderer/design'
 // las mismas macros que acepta el validador del contenido (\\SI, \\qty, \\mbox…)
 const katexOptions = { throwOnError: false, strict: false, trust: false, output: 'htmlAndMathml' as const, macros: { ...AULA_KATEX_MACROS } }
 
-/** Solo enlaces web o de correo: cualquier otra dirección (relativa, file:, //host…) se queda en texto. */
+/** Las citas del lector («p. 3») llevan a su página dentro de la app: `#aula-page-<n>` (las atiende el panel de Aula). */
+const PAGE_ANCHOR = /^#aula-page-\d{1,4}$/
+
+/** Solo enlaces web o de correo, y las citas de página del lector: cualquier otra dirección (relativa, file:, //host…) se
+ *  queda en texto. */
 export function safeHref(url: string): string {
-  return /^(https?:|mailto:)/i.test(url.trim()) ? url.trim() : ''
+  const u = url.trim()
+  return /^(https?:|mailto:)/i.test(u) || PAGE_ANCHOR.test(u) ? u : ''
 }
 
 function Link({ href, children }: { href?: string; children?: React.ReactNode }) {
   if (!href) return <span className="text-accent-text">{children}</span>
+  // una cita de página: sin target, nunca sale de la app (el panel del lector la intercepta y va a esa página)
+  if (PAGE_ANCHOR.test(href)) return <a href={href} className="text-accent-text">{children}</a>
   // target=_blank: la ventana de la app nunca navega; el proceso principal lo abre en el navegador del sistema
   return (
     <a href={href} target="_blank" rel="noreferrer noopener" className="text-accent-text underline underline-offset-2">

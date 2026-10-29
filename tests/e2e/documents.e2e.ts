@@ -91,6 +91,11 @@ test('Aula en el lector responde con la IA simulada: con el texto del documento 
   await expect(answer).toContainText('Arc length and sector area')
   // la página citada, para ir a ella
   await expect(page.getByRole('button', { name: 'p. 1', exact: true })).toBeVisible()
+  // la cita «(p. N)» dentro de la respuesta es un enlace de verdad, y lo atiende el panel (no cambia la dirección de la app)
+  const cite = answer.locator('a[href^="#aula-page-"]').first()
+  await expect(cite).toBeVisible()
+  await cite.click()
+  expect(await page.evaluate(() => location.hash)).toBe('')
   await expect(page.getByText('Simulated reply from Aula.')).toHaveCount(0)
   await page.getByText('What’s on the exam?').click()
   await expect(page.locator('.aula-answer').last()).toContainText('Most likely on the exam', { timeout: 15_000 })
