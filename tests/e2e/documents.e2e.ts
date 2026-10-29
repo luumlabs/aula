@@ -95,7 +95,7 @@ test('Aula en el lector responde con la IA simulada: con el texto del documento 
   const cite = answer.locator('a[href^="#aula-page-"]').first()
   await expect(cite).toBeVisible()
   await cite.click()
-  expect(await page.evaluate(() => location.hash)).toBe('')
+  expect(await page.evaluate<string>('location.hash')).toBe('')
   await expect(page.getByText('Simulated reply from Aula.')).toHaveCount(0)
   await page.getByText('What’s on the exam?').click()
   await expect(page.locator('.aula-answer').last()).toContainText('Most likely on the exam', { timeout: 15_000 })
