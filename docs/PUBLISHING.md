@@ -8,6 +8,7 @@ them in the background and install them when the student restarts (or quits) Aul
 - [Publishing from your computer](#publishing-from-your-computer-no-github-actions) (while GitHub Actions is off)
 - [Publishing with GitHub Actions](#publishing-with-github-actions)
 - [Test, then publish](#test-then-publish)
+- [Testing the published installers on Windows and Linux](#testing-the-published-installers-on-windows-and-linux)
 - [Rehearsing an update locally](#rehearsing-an-update-locally)
 - [Signing](#signing)
 - [Update signatures (Ed25519)](#update-signatures-ed25519)
@@ -104,6 +105,9 @@ A failed *automatic* check (e.g. offline) stays silent.
    npm run build
    npx playwright test -c tests/e2e/playwright.config.ts   # Linux: xvfb-run -a npx playwright …
    ```
+   CI (`.github/workflows/ci.yml`) runs the same on Linux and Windows, x64 and arm64. On a Linux machine without a
+   desktop, the e2e tests need a window manager and libnotify like a real desktop has (`sudo apt install openbox
+   libnotify4`, then `xvfb-run -a sh -c 'openbox & npx playwright test -c tests/e2e/playwright.config.ts'`).
 5. Commit and push to `main`.
 
 ## Publishing from your computer (no GitHub Actions)
@@ -226,6 +230,26 @@ never offered as updates; use them for testers who download by hand.
 **Private repository.** While `luumlabs/aula` is private, only its members can download the files and installed copies
 can't check for updates (they'd quietly report "no published version"). Make the repository public (or publish the
 releases elsewhere) before announcing.
+
+## Testing the published installers on Windows and Linux
+
+*Actions → Platforms → Run workflow* (`.github/workflows/platforms.yml`, script `scripts/ci/installed.mjs`) downloads the
+**published** installers and uses them like a student would, on real Windows and Linux machines (x64 and arm64). It needs
+no secrets (everything is public, and Aula runs with its simulated AI). Run it right after publishing a release, with
+`from` = the previous version and `to` = the one you just published (it must be the latest release: that's what installed
+copies are offered):
+
+| Job | What it checks |
+| --- | --- |
+| windows update (quit / restart) | `Aula-Setup-<from>.exe /S` installs per user (HKCU, `%LOCALAPPDATA%\Programs\aula`, no admin); Aula opens, finds `<to>` on github.com, downloads it, checks Aula's signature and installs it on quit (or with *Restart and update*, which reopens it); `<to>` is installed in the same folder, the courses and settings are still there, the log has no errors |
+| windows fresh install | `Aula-Setup-<to>.exe` from scratch: opens (with `AULA_HOME` and with the real `%APPDATA%\Aula`), is up to date, closes with its window, and a silent uninstall removes the app and keeps the data |
+| linux AppImage update | the `<from>` AppImage, with and without libfuse2 (without it, extracted with `APPIMAGE_EXTRACT_AND_RUN`), replaces itself with the published `<to>` AppImage (same SHA-512) on quit or on *Restart* |
+| linux .deb | `apt install` of the `<from>` `.deb`: it sees `<to>` and only offers the download; then `apt install` of `<to>` over it opens up to date with the same data |
+
+Each job uploads its `main.log`s and screenshots as an artifact, and the summary of the run lists every check. On Windows,
+*Restart and update* reopens Aula through the shell, without the environment it was started with: a copy started with
+`AULA_HOME` comes back with the normal data folder (students never set it, so the job uses `%APPDATA%\Aula`). The runners
+are administrators, so a standard (non-admin) Windows account is only covered by checking where things are installed.
 
 ## Rehearsing an update locally
 
