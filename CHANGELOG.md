@@ -3,6 +3,16 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [Unreleased]
+
+### Fixed
+- Windows: checking for updates no longer writes an electron-updater warning ("disableWebInstaller is set to false…")
+  to Aula's log every time. Aula only publishes the full installer.
+
+### Tests
+- Unit and end-to-end tests run on every push in GitHub Actions on Linux and Windows, x64 and arm64, and a manual
+  *Platforms* workflow installs the published Windows and Linux installers and checks that they update themselves.
+
 ## [0.1.1] - 2026-10-30
 
 ### New
