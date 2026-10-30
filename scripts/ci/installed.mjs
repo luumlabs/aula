@@ -66,8 +66,20 @@ function note(what) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/** Registros que se enseñan en la salida si algo falla (los artefactos pueden no poder descargarse). */
+const logsToShow = new Set()
+
 function finish() {
   const failed = results.filter((r) => !r.ok)
+  if (failed.length) {
+    for (const file of logsToShow) {
+      let text = ''
+      try { text = readFileSync(file, 'utf8') } catch { continue }
+      console.log(`::group::${file} (last 60 lines)`)
+      console.log(text.split(/\r?\n/).slice(-60).join('\n'))
+      console.log('::endgroup::')
+    }
+  }
   const summary = { scenario, mode: MODE, from: FROM, to: TO, platform: process.platform, arch: process.arch, failed: failed.length, results }
   writeFileSync(join(OUT, 'summary.json'), JSON.stringify(summary, null, 2))
   if (process.env.GITHUB_STEP_SUMMARY) {
@@ -113,8 +125,8 @@ function publishedSha512(ymlText, fileName) {
 }
 
 /** Carpeta de datos nueva con el curso de ejemplo (el formato real en disco). */
-function seededHome(label) {
-  const home = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `aula-home-${label}-`))
+function seededHome(label, at) {
+  const home = at ?? mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `aula-home-${label}-`))
   cpSync(join(ROOT, 'resources/demo-course/Packs'), join(home, 'Packs'), { recursive: true })
   return home
 }
@@ -147,7 +159,11 @@ function readJSONSafe(file) {
   try { return JSON.parse(readFileSync(file, 'utf8')) } catch { return null }
 }
 
-const logFile = (home) => join(home, 'Logs', 'main.log')
+const logFile = (home) => {
+  const file = join(home, 'Logs', 'main.log')
+  logsToShow.add(file)
+  return file
+}
 function readLog(home) {
   try { return readFileSync(logFile(home), 'utf8') } catch { return '' }
 }
@@ -187,7 +203,9 @@ function saveLog(home, label) {
 
 /** Lanza un programa con su salida en --out/<nombre>.output.txt. */
 function launch(cmd, args, env, name) {
-  const fd = openSync(join(OUT, `${name}.output.txt`), 'a')
+  const output = join(OUT, `${name}.output.txt`)
+  logsToShow.add(output)
+  const fd = openSync(output, 'a')
   const child = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: ['ignore', fd, fd], detached: process.platform !== 'win32' })
   closeSync(fd)
   child.exited = new Promise((r) => child.once('exit', (code, signal) => r({ code, signal })))
@@ -295,12 +313,17 @@ async function winInstall(version) {
 async function winUpdate() {
   say(`Windows ${process.arch}: install ${FROM}, update to ${TO} (${MODE === 'quit' ? 'install on quit' : 'Restart and update'})`)
   const { exe } = await winInstall(FROM)
-  const home = seededHome('update')
+  // con «Reiniciar», el instalador reabre Aula como el Explorador (ExecShellAsUser): sin el entorno de quien la lanzó, así
+  // que la versión nueva usa la carpeta de siempre. Esta prueba también: %APPDATA%\Aula (la máquina es desechable)
+  const userHome = MODE === 'restart'
+  const home = userHome ? seededHome('update', join(process.env.APPDATA, 'Aula')) : seededHome('update')
   const packs = manifest(join(home, 'Packs'))
 
   // 1) la versión vieja: busca en GitHub, descarga, comprueba la firma y, al salir (o con «Reiniciar»), instala
   let mark = logMark(home)
-  const app = launch(exe, [], appEnv(home, { AULA_SKIP_ONBOARDING: '1', AULA_UPDATE_AUTO_INSTALL: MODE === 'quit' ? 'quit' : '1' }), `${FROM}-update`)
+  const env = appEnv(home, { AULA_SKIP_ONBOARDING: '1', AULA_UPDATE_AUTO_INSTALL: MODE === 'quit' ? 'quit' : '1' })
+  if (userHome) delete env.AULA_HOME
+  const app = launch(exe, [], env, `${FROM}-update`)
   const alive = () => running(app)
   await winWaitWindow(`${FROM}`)
   const checking = await waitForLog(home, mark, /Checking for update/, 90_000, alive)
