@@ -50,10 +50,10 @@ Download the file for your system from the [latest release](https://github.com/l
 
 | System | File | First launch |
 | --- | --- | --- |
-| macOS 13 or later (Apple Silicon and Intel) | `Aula-0.1.1-mac.dmg` | Open the .dmg and drag Aula to *Applications*. Aula isn't notarized by Apple yet, so macOS asks you to confirm the first time. On macOS 15 or later, try to open it, then go to *System Settings → Privacy & Security* and click *Open Anyway*. On macOS 13 and 14, right-click Aula and choose *Open*. |
-| Windows 10 and 11 (x64 and ARM, one installer) | `Aula-Setup-0.1.1.exe` | Run the installer (it doesn't need admin rights). If SmartScreen shows up, click *More info → Run anyway*. Aula isn't code-signed yet. |
-| Linux x64 | `Aula-0.1.1-linux-x86_64.AppImage` or `Aula-0.1.1-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.1.1-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.1.1-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
+| macOS 13 or later (Apple Silicon and Intel) | `Aula-0.1.2-mac.dmg` | Open the .dmg and drag Aula to *Applications*. Aula isn't notarized by Apple yet, so macOS asks you to confirm the first time. On macOS 15 or later, try to open it, then go to *System Settings → Privacy & Security* and click *Open Anyway*. On macOS 13 and 14, right-click Aula and choose *Open*. |
+| Windows 10 and 11 (x64 and ARM, one installer) | `Aula-Setup-0.1.2.exe` | Run the installer (it doesn't need admin rights). If SmartScreen shows up, click *More info → Run anyway*. Aula isn't code-signed yet. |
+| Linux x64 | `Aula-0.1.2-linux-x86_64.AppImage` or `Aula-0.1.2-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.1.2-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.1.2-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
 
 On Linux you need a 64-bit distribution with glibc. Install GNOME Keyring or KWallet too, or Aula has to store your
 keys unencrypted.

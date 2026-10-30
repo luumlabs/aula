@@ -47,10 +47,10 @@ Descarga el archivo de tu sistema desde la [última versión](https://github.com
 
 | Sistema | Archivo | La primera vez |
 | --- | --- | --- |
-| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.1.1-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
-| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.1.1.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
-| Linux x64 | `Aula-0.1.1-linux-x86_64.AppImage` o `Aula-0.1.1-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.1.1-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.1.1-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
+| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.1.2-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
+| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.1.2.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
+| Linux x64 | `Aula-0.1.2-linux-x86_64.AppImage` o `Aula-0.1.2-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.1.2-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.1.2-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
 
 En Linux necesitas una distribución de 64 bits con glibc. Instala también GNOME Keyring o KWallet; si no, Aula tiene
 que guardar tus claves sin cifrar.
