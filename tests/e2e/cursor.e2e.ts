@@ -8,7 +8,9 @@ const cursorOf = (page: Page, sel: string): Promise<string | null> =>
   page.evaluate(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); return el ? getComputedStyle(el).cursor : null })()`)
 
 test('el cursor es el sol, deja cola al moverse y vuelve a la flecha si se pide', async () => {
-  const { app, page } = await launch({ env: { AULA_HIDDEN: '1' } })
+  // en Windows y Linux una ventana que nunca sale a la pantalla deja de pintar fotogramas (y la cola no se dibuja): allí
+  // se abre a la vista; en macOS, escondida (sigue pintando y no molesta a quien trabaja en el Mac)
+  const { app, page } = await launch({ env: process.platform === 'darwin' ? { AULA_HIDDEN: '1' } : {} })
   await expect(page.locator('nav[aria-label="Aula"]')).toBeAttached()
   await expect(page.locator('html.sun-cursor')).toBeAttached()
 

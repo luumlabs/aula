@@ -9,7 +9,7 @@ import { AgentError } from './errors'
 import { locatorOverrides } from './locator'
 import { SHARED_WORK_NAME } from './sandbox'
 import type { AgentTask, CLIAgentConfig, MCPServerSpec } from './types'
-import { ClaudeEvents as E, FakeCLI, cleanupTempDirs, collect, fixture, makeTempDir, processExists, waitUntil, posixIt } from './__fixtures__/support'
+import { ClaudeEvents as E, FakeCLI, cleanupTempDirs, collect, fixture, makeTempDir, processExists, waitUntil, posixIt, isWindows } from './__fixtures__/support'
 
 const TEXT_OK = fixture('claude-text-ok.jsonl')
 const MAX_TURNS = fixture('claude-mcp-tool-max-turns.jsonl')
@@ -86,7 +86,7 @@ describe('ClaudeCodeRunner · línea de órdenes', () => {
     expect(mcp.mcpServers.aula.args).toEqual(['--store', '/tmp/s'])
     expect(mcp.mcpServers.aula.env?.A).toBe('1')
     expect(mcp.mcpServers['mi canvas.v2'].command).toBe('npx')
-    expect(cli.mcpConfigPermissions).toBe('600') // puede llevar credenciales: solo lo lee el usuario
+    if (!isWindows) expect(cli.mcpConfigPermissions).toBe('600') // puede llevar credenciales: solo lo lee el usuario (en Windows, la ACL de su carpeta)
   })
 
   it('con servidores MCP el prompt de sistema dice cómo se llaman sus herramientas aquí (mcp__aula__…)', async () => {
@@ -153,7 +153,7 @@ describe('ClaudeCodeRunner · línea de órdenes', () => {
     expect(cli.valueAfter('--effort')).toBeUndefined()
   })
 
-  it('una CLI antigua sin --effort lo dice en vez de quitarlo', async () => {
+  posixIt('una CLI antigua sin --effort lo dice en vez de quitarlo', async () => {
     const before = `for a in "$@"; do if [ "$a" = "--effort" ]; then echo "error: unknown option '--effort'" >&2; exit 1; fi; done`
     const cli = new FakeCLI(makeTempDir(), { stdout: TEXT_OK, before })
     const run = await collect(runner(undefined, {}, config(cli, { model: 'sonnet', effort: 'high' })).run(task({ model: undefined })))
@@ -394,7 +394,7 @@ describe('ClaudeCodeRunner · errores', () => {
 })
 
 describe('ClaudeCodeRunner · versiones antiguas', () => {
-  it('una opción opcional desconocida se quita y se reintenta', async () => {
+  posixIt('una opción opcional desconocida se quita y se reintenta', async () => {
     const before = `for a in "$@"; do
   if [ "$a" = "--permission-prompts" ]; then echo "error: unknown option '--permission-prompts'" >&2; exit 1; fi
   if [ "$a" = "--disable-slash-commands" ]; then echo "error: unknown option '--disable-slash-commands'" >&2; exit 1; fi
@@ -419,7 +419,7 @@ done`
     expect(cli.calls).toHaveLength(1)
   })
 
-  it('--permission-mode vuelve a default en versiones antiguas', async () => {
+  posixIt('--permission-mode vuelve a default en versiones antiguas', async () => {
     const before = `for a in "$@"; do
   if [ "$a" = "dontAsk" ]; then echo "error: option '--permission-mode <mode>' argument 'dontAsk' is invalid. Allowed choices are acceptEdits, bypassPermissions, default, plan." >&2; exit 1; fi
 done`

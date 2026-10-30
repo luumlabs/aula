@@ -64,6 +64,8 @@ test('A3-P1-1: el tutor no se reabre en otras pantallas ni repite «Explain my m
 })
 
 test('A3-P1-2: «Conectar con ChatGPT» dice en qué va, deja abrir otra vez la página y cancelar, y sigue igual al volver', async () => {
+  // el Codex que instala Aula en Windows es codex.exe: con este guion falso, Aula no lo encontraría y descargaría el de verdad
+  test.skip(process.platform === 'win32', 'necesita un codex.exe falso')
   test.setTimeout(90_000)
   const home = englishHome(mkdtempSync(join(tmpdir(), 'aula-e2e-')))
   // un Codex «ya instalado por Aula» que espera al navegador (nunca abre nada ni toca la red)

@@ -352,7 +352,7 @@ describe('CodexRunner', () => {
     expect(agentError(r.error)?.message).toContain('does not exist')
   })
 
-  it('una opción opcional desconocida se quita y se reintenta', async () => {
+  posixIt('una opción opcional desconocida se quita y se reintenta', async () => {
     const before = `for a in "$@"; do
   if [ "$a" = "--ignore-user-config" ]; then printf "error: unexpected argument '--ignore-user-config' found\\n\\n  tip: to pass '--ignore-user-config' as a value, use '-- --ignore-user-config'\\n" >&2; exit 2; fi
 done`

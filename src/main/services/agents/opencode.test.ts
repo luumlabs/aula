@@ -9,7 +9,7 @@ import { locatorOverrides } from './locator'
 import { claudeMCPConfig, codexMCPOverrides, openCodeConfigJSON, toml, tomlKey } from './mcp-config'
 import { OpenCodeEventParser, OpenCodeRunner, stripServerPrefix, type OpenCodeOptions } from './opencode'
 import type { AgentEvent, AgentTask, CLIAgentConfig, ImagePart, MCPServerSpec } from './types'
-import { FakeCLI, cleanupTempDirs, collect, makeTempDir, processExists, summarize, waitUntil, posixIt } from './__fixtures__/support'
+import { FakeCLI, cleanupTempDirs, collect, makeTempDir, processExists, summarize, waitUntil, posixIt, isWindows } from './__fixtures__/support'
 
 /** Eventos de `opencode run --format json` con la forma de los tipos del SDK (`TextPart`, `ToolPart`, `StepFinishPart`…). */
 const SESSION = 'ses_2b1f0c7e4ffe6Nn8zq'
@@ -399,7 +399,7 @@ describe('OpenCodeRunner', () => {
     expect(Math.abs((agentError(r.error)?.retryAfter ?? 0) - 90)).toBeLessThanOrEqual(1)
   })
 
-  it('una opción opcional desconocida se quita y se reintenta', async () => {
+  posixIt('una opción opcional desconocida se quita y se reintenta', async () => {
     const before = `for a in "$@"; do
   if [ "$a" = "--pure" ]; then printf 'Unknown arguments: pure\\n' >&2; exit 1; fi
 done`
@@ -443,7 +443,9 @@ describe('OpenCode · respuestas incompletas (seguridad del final)', () => {
   async function launch(lines: string[], exit = 0, stderr = '') {
     const dir = makeTempDir()
     const cli = new FakeCLI(dir, { stdout: lines.join('\n') + '\n', stderr, exitCode: exit })
-    const invocation = { executable: cli.executable, arguments: [], environment: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: dir }, workingDirectory: dir }
+    // en Windows la CLI falsa es un envoltorio de npm: necesita encontrar node.exe en el PATH
+    const PATH = isWindows ? process.env.PATH ?? '' : '/usr/bin:/bin:/usr/sbin:/sbin'
+    const invocation = { executable: cli.executable, arguments: [], environment: { PATH, HOME: dir, ...(isWindows ? { SystemRoot: process.env.SystemRoot ?? '' } : {}) }, workingDirectory: dir }
     return collect(
       eventStream<AgentEvent>((emit, signal) =>
         runCLI(invocation, new OpenCodeEventParser('OpenCode', 'synthetic/model', ['aula'], false), CLIErrorClassifier.openCode, { timeoutMs: 5000, postResultGraceMs: 100, signal, emit })
