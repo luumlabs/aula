@@ -6,8 +6,12 @@ on:
 permissions:
   contents: read
 jobs:
-  linux:
-    runs-on: ubuntu-24.04
+  cursor:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -18,42 +22,48 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Diagnostics spec
+        shell: bash
         run: |
           cat > tests/e2e/zz-debug.e2e.ts <<'SPEC'
-          import { test } from 'playwright/test'
+          import { test, expect } from 'playwright/test'
           import { launch } from './helpers'
           for (const hidden of [true, false]) {
-            test(`diag hidden=${hidden}`, async () => {
+            test(`cursor hidden=${hidden}`, async () => {
               const { app, page } = await launch({ env: hidden ? { AULA_HIDDEN: '1' } : {} })
+              await expect(page.locator('html.sun-cursor')).toBeAttached()
+              await page.evaluate(`(() => {
+                window.__moves = 0; window.__trail = 0; window.__frames = 0; window.__err = ''
+                window.addEventListener('pointermove', (e) => { window.__moves++; window.__last = [e.clientX, e.clientY, e.pointerType, typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents().length : -1] }, { capture: true })
+                const c = [...document.querySelectorAll('body > canvas')].find((x) => x.style.zIndex === '2147483647')
+                const start = performance.now()
+                const tick = () => {
+                  window.__frames++
+                  try {
+                    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+                    let a = 0
+                    for (let i = 3; i < d.length; i += 4) a += d[i]
+                    window.__trail = Math.max(window.__trail, a)
+                  } catch (e) { window.__err = String(e) }
+                  if (performance.now() - start < 4000) requestAnimationFrame(tick)
+                }
+                requestAnimationFrame(tick)
+              })()`)
+              await page.mouse.move(200, 300)
+              await page.mouse.move(900, 420, { steps: 12 })
               await page.waitForTimeout(1500)
-              const info = await page.evaluate(`(async () => ({
-                vis: document.visibilityState, focus: document.hasFocus(),
-                raf: await Promise.race([new Promise((r) => requestAnimationFrame(() => r('ran'))), new Promise((r) => setTimeout(() => r('timeout'), 2000))]),
-                reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, sun: document.documentElement.classList.contains('sun-cursor'),
-                canvas: [...document.querySelectorAll('body > canvas')].length
-              }))()`)
-              const main = await app.evaluate(({ Notification, BrowserWindow }) => {
-                const w = BrowserWindow.getAllWindows()
-                return { notif: Notification.isSupported(), wins: w.map((x) => ({ vis: x.isVisible(), min: x.isMinimized(), focus: x.isFocused() })) }
-              })
-              console.log('DIAG', hidden, JSON.stringify(info), JSON.stringify(main))
-              if (!hidden) {
-                await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((x) => x.isVisible())?.minimize())
-                await page.waitForTimeout(1500)
-                const after = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((x) => ({ vis: x.isVisible(), min: x.isMinimized() })))
-                const vis = await page.evaluate('document.visibilityState')
-                const amb = await page.evaluate('document.documentElement.dataset.ambient ?? "run"')
-                console.log('DIAG minimize', JSON.stringify(after), vis, amb)
-              }
+              const info = await page.evaluate(`(() => { const c = [...document.querySelectorAll('body > canvas')].find((x) => x.style.zIndex === '2147483647'); return { moves: window.__moves, last: window.__last, trail: window.__trail, frames: window.__frames, err: window.__err, canvas: c ? [c.width, c.height, c.style.width, c.style.height] : null, inner: [innerWidth, innerHeight], dpr: devicePixelRatio, vis: document.visibilityState, focus: document.hasFocus() } })()`)
+              console.log('DIAG', hidden, JSON.stringify(info))
               await app.close()
             })
           }
           SPEC
-      - name: Diagnostics without a window manager
-        run: xvfb-run -a npx playwright test -c tests/e2e/playwright.config.ts zz-debug cursor interface.e2e.ts:265 power
-        continue-on-error: true
-      - name: With a window manager (openbox)
+      - name: Linux
+        if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends openbox dbus-x11 libnotify4 notification-daemon
-          xvfb-run -a sh -c 'openbox & sleep 1; npx playwright test -c tests/e2e/playwright.config.ts zz-debug cursor interface.e2e.ts:265 power'
+          sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends openbox libnotify4
+          xvfb-run -a sh -c 'openbox & npx playwright test -c tests/e2e/playwright.config.ts zz-debug'
+        continue-on-error: true
+      - name: Windows
+        if: runner.os == 'Windows'
+        run: npx playwright test -c tests/e2e/playwright.config.ts zz-debug
         continue-on-error: true
