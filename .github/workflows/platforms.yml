@@ -12,10 +12,6 @@ on:
       to:
         description: Latest published version (the update)
         default: '0.1.1'
-  # TEMPORARY while this branch isn't merged (workflow_dispatch only works once the file is on main): remove before merging
-  push:
-    branches: [platform-tests]
-    paths: ['.github/workflows/platforms.yml', 'scripts/ci/**']
 
 permissions:
   contents: read
