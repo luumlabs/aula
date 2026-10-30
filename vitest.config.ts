@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     environment: 'node',
-    testTimeout: 20000
+    // los ejecutores de Windows de GitHub escriben en disco mucho más despacio (fsync, antivirus)
+    testTimeout: process.platform === 'win32' ? 60000 : 20000
   }
 })

@@ -36,12 +36,15 @@ jobs:
       - name: Unit tests
         run: npm test
       - name: Build
+        id: build
+        if: ${{ !cancelled() }}
         run: npm run build
+      # también si fallan las pruebas unitarias: así se ven todos los fallos de una vez
       - name: End-to-end tests (real Electron, simulated AI)
-        if: runner.os == 'Linux'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Linux' }}
         run: xvfb-run -a npx playwright test -c tests/e2e/playwright.config.ts
       - name: End-to-end tests (real Electron, simulated AI)
-        if: runner.os == 'Windows'
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Windows' }}
         run: npx playwright test -c tests/e2e/playwright.config.ts
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()

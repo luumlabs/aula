@@ -75,7 +75,7 @@ jobs:
           retention-days: 14
 
   linux-appimage:
-    name: linux AppImage update (${{ matrix.os }}, ${{ matrix.mode }})
+    name: linux AppImage update (${{ matrix.os }}, ${{ matrix.mode }}, ${{ matrix.fuse }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -83,6 +83,9 @@ jobs:
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
         mode: [quit, restart]
+        # Ubuntu 24.04 doesn't ship libfuse2: without it the AppImage only runs extracted (APPIMAGE_EXTRACT_AND_RUN);
+        # with it, it mounts like on most desktops
+        fuse: [no-fuse, libfuse2]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -90,12 +93,15 @@ jobs:
           node-version: 22
       - name: Display and screenshot tools
         run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends xvfb x11-utils imagemagick
+      - name: libfuse2
+        if: matrix.fuse == 'libfuse2'
+        run: sudo apt-get install -y -q --no-install-recommends libfuse2t64
       - name: AppImage ${{ env.FROM }} updates itself to ${{ env.TO }}
         run: xvfb-run -a -s "-screen 0 1440x900x24" node scripts/ci/installed.mjs appimage-update --from "$FROM" --to "$TO" --mode ${{ matrix.mode }} --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: linux-appimage-${{ matrix.os }}-${{ matrix.mode }}
+          name: linux-appimage-${{ matrix.os }}-${{ matrix.mode }}-${{ matrix.fuse }}
           path: ${{ runner.temp }}/out/
           retention-days: 14
 
