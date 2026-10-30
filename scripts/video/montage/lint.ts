@@ -1,7 +1,8 @@
 // Revisión del guion contra los principios de la segunda versión (puro): zoom moderado, movimientos y cortes en el pulso,
 // rótulos que no se pisan y duran ≥ 2 compases. Devuelve avisos legibles (no detiene el render).
 import type { CameraKey, Montage } from './types.ts'
-import { filmGrid } from './grid.ts'
+import { bpmGrid, filmGrid } from './grid.ts'
+import { iconWindow, laptopCameraAt, laptopSweptBox, laptopTitleRect } from './laptop.ts'
 
 const fitZoom = (m: Montage, vw: number, vh: number) => m.bands ? (m.bands.fill ? (m.size[1] - m.bands.top - m.bands.bottom - 24) / vh : Math.min((m.size[0] * 0.92) / vw, (m.size[1] - m.bands.top - m.bands.bottom - 24) / vh)) : (m.captionBand ? Math.min((m.size[0] * 0.84) / vw, (m.captionBand - 60) / vh) : Math.min((m.size[0] * 0.84) / vw, (m.size[1] * 0.84) / vh))
 
@@ -18,12 +19,12 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
   // con bandas (vertical, cuadrado) la ventana se acerca más: en un móvil lo que importa tiene que llenar el ancho
   const maxRel = opts.maxZoom ?? (m.bands ? 2.4 : 1.5)
   const frame = 1 / m.fps
-  const grid = m.music?.track ? filmGrid(m.music.track.grid, m.music.track.cuts ?? [], m.music.track.start ?? 0) : null
+  const grid = m.music?.track ? filmGrid(m.music.track.grid, m.music.track.cuts ?? [], m.music.track.start ?? 0) : m.music && (m.music.wav || m.music.offset !== undefined) ? bpmGrid(m.music.bpm, m.duration, m.music.offset ?? 0) : null
   const offBeat = (t: number) => (grid ? Math.abs(t - grid.snap(t)) > frame + 1e-6 : false)
   const fmt = (t: number) => `${t.toFixed(2)} s${grid ? ` (compás ${Math.floor((t - grid.V(1)) / grid.barDur) + 1})` : ''}`
 
   const fades = m.clips.filter((c) => c.enter && ['content', 'theme', 'match', 'brush'].includes(c.enter.kind)).map((c) => c.start)
-  const checkKeys = (keys: CameraKey[] | undefined, offset: number, take: string, where: string) => {
+  const checkKeys = (keys: CameraKey[] | undefined, offset: number, take: string, where: string, rel = maxRel) => {
     const vp = m.takes[take]?.viewport ?? [1440, 900]
     const fit = fitZoom(m, vp[0], vp[1])
     const ks = keys ?? []
@@ -34,12 +35,13 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
       if (moving && grid && fades.some((f) => Math.abs(f - (offset + ks[i - 1].t)) < grid.beat / 2)) out.push(`${where}: un movimiento de cámara empieza en el mismo pulso que un fundido (${fmt(offset + ks[i - 1].t)})`)
     }
     for (const k of ks) {
-      if (typeof k.zoom === 'number' && k.zoom / fit > maxRel + 1e-6) out.push(`${where}: zoom ${(k.zoom / fit).toFixed(2)}× de la ventana entera en ${fmt(offset + k.t)} (máximo ${maxRel}×)`)
+      if (typeof k.zoom === 'number' && k.zoom / fit > rel + 1e-6) out.push(`${where}: zoom ${(k.zoom / fit).toFixed(2)}× de la ventana entera en ${fmt(offset + k.t)} (máximo ${rel}×)`)
       if (k.t > 0 && offBeat(offset + k.t)) out.push(`${where}: clave de cámara fuera del pulso en ${fmt(offset + k.t)}`)
     }
   }
   for (const c of m.clips) {
-    checkKeys(c.camera, c.start, c.take, `plano ${c.take}@${c.start.toFixed(2)}`)
+    // V5: en un panel o un primer plano, la cámara recorta: se puede acercar hasta el límite de la captura (2 px/pt)
+    checkKeys(c.camera, c.start, c.take, `plano ${c.take}@${c.start.toFixed(2)}`, c.layout ? 2.6 : maxRel)
     if (c.start > 0 && offBeat(c.start)) out.push(`plano ${c.take}: el cambio cae fuera del pulso en ${fmt(c.start)}`)
     if (c.enter?.kind === 'theme' && grid) {
       const beatIdx = Math.round((c.start - grid.V(1)) / grid.beat)
@@ -49,10 +51,33 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
     }
     // un fundido de contenido largo mezcla dos contenidos a medias (el «fotograma gris»): para claro↔oscuro, «theme»
     if (c.enter?.kind === 'content' && c.enter.dur > 0.25 + 1e-6) out.push(`plano ${c.take}: fundido de contenido de ${c.enter.dur} s (máximo 0,25 s; para claro↔oscuro usa enter {kind:'theme'})`)
+    if (c.enter?.kind === 'brush' && (m.chapters || m.music?.wav)) out.push(`plano ${c.take}: pincelada a pantalla completa (retirada en V5: rack focus, luz, forma o corte)`)
     if (c.enter?.kind === 'brush' && grid && (c.enter.dur < grid.beat - 0.05 || c.enter.dur > grid.barDur + 0.05)) out.push(`plano ${c.take}: la pincelada dura ${c.enter.dur.toFixed(2)} s (entre 1 pulso y 1 compás)`)
     if (c.enter && ['sunrise', 'door', 'iris', 'rise'].includes(c.enter.kind) && !(m.prologue?.morph && c.start <= m.prologue.end)) out.push(`plano ${c.take}: transición «${c.enter.kind}» (la v2 pide content, match o corte causado por la app)`)
   }
   if (m.camera?.length) checkKeys(m.camera, 0, m.clips[0]?.take ?? '', 'cámara global')
+  // V6 · el portátil: claves en el pulso, la pantalla siempre entera (sin que la guarda tenga que alejar la cámara) y los
+  // titulares en el hueco libre, nunca encima
+  if (m.laptop) {
+    for (const k of m.laptop.keys) if (k.t > 0 && k.t < m.duration && offBeat(k.t)) out.push(`portátil: clave de cámara fuera del pulso en ${fmt(k.t)}`)
+    for (let i = 0; i <= Math.round(m.duration * 30); i++) {
+      // solo cuando el portátil se ve y su pantalla enseña la app (en la revelación y el cierre puede salirse)
+      const tt = i / 30
+      if (!m.clips.some((c) => c.layout?.kind === 'laptop' && tt >= c.start && tt < c.start + c.dur) || iconWindow(m.laptop, tt)) continue
+      if (!laptopCameraAt(m, m.laptop, tt).guarded) continue
+      out.push(`portátil: la pantalla se saldría del cuadro en ${fmt(i / 30)} (la cámara se aleja sola; pide menos «fill» o acerca menos)`)
+      break
+    }
+    for (const t of m.titles ?? []) {
+      if (t.style !== 'keynote') continue
+      const host = m.clips.filter((c) => c.layout?.kind === 'laptop' && t.start >= c.start - 0.1 && t.start < c.start + c.dur - 0.05).pop()
+      if (!host) continue
+      const R = laptopTitleRect(m, m.laptop, t.start, t.start + t.dur, t.side ?? 'left')
+      const B = laptopSweptBox(m, m.laptop, t.start, t.start + t.dur)
+      const over = Math.min(R.x + R.w, B.x + B.w) > Math.max(R.x, B.x) && Math.min(R.y + R.h, B.y + B.h) > Math.max(R.y, B.y)
+      if (over) out.push(`rótulo keynote «${t.text}» encima del portátil en ${fmt(t.start)}: no le queda hueco (aleja la cámara o cambia de lado)`)
+    }
+  }
 
   const titles = [...(m.titles ?? [])].sort((a, b) => a.start - b.start)
   for (let i = 0; i < titles.length; i++) {
@@ -95,6 +120,12 @@ export function lintMontage(m: Montage, opts: LintOptions = {}): string[] {
       if (c.all > 2) out.push(`demasiados adornos de pintura en el compás ${bar + 1} (${c.all}; máximo 2)`)
       if (c.splash > 1) out.push(`más de una salpicadura en el compás ${bar + 1}`)
     }
+  }
+  // V5: un titular keynote va AL LADO de la interfaz; sobre un primer plano (layout detail) la taparía
+  for (const t of m.titles ?? []) {
+    if (t.style !== 'keynote') continue
+    const over = m.clips.find((c) => c.layout?.kind === 'detail' && c.start < t.start + t.dur - 1e-6 && t.start < c.start + c.dur - 1e-6)
+    if (over) out.push(`rótulo keynote «${t.text}» sobre un primer plano (layout detail) en ${fmt(Math.max(t.start, over.start))}: tapa la interfaz (usa 'type' o un plano keynote)`)
   }
   const stamps = [...(m.stamps ?? [])].sort((a, b) => a.t - b.t)
   for (let i = 1; i < stamps.length; i++) if (stamps[i].t - stamps[i - 1].t < 0.6) out.push(`sellos de hora demasiado seguidos en ${fmt(stamps[i].t)}`)

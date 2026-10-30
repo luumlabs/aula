@@ -132,6 +132,294 @@ entrar palabra a palabra.
 
 Ejemplo de todo: `montage/demo3.ts`.
 
+## V5: composición keynote, transiciones de luz y hoja de efectos
+
+Ejemplo de todo sobre las tomas de la película (sin recapturar): `work/v5-demo.ts` (con `V5_FMT=v`, en vertical).
+
+- **Ritmo sin mp3:**
+  - `music: { bpm, offset, wav?, root, cues: [] }` con `bpmGrid(bpm, duración, offset)` (en `montage/grid.ts`), que
+    tiene el mismo interfaz que `filmGrid`: `V`, `snap`, `beat` y `barDur`.
+  - `music.wav` es la banda sonora de SOUND: suena tal cual, con el mismo máster (−14 LUFS y ≤ −1,5 dBTP tras el AAC).
+- **Plano keynote:** `clip.layout = { kind: 'keynote', side: 'left' | 'right', size?, height?, tilt?, float? }`.
+  - La interfaz va en un panel (64 % del ancho por defecto), con sombra suave, una inclinación 3D de verdad (perspectiva
+    en franjas) que se mueve despacio, y flota.
+  - La cámara de siempre (zoom y focus) elige qué parte de la ventana se ve dentro del panel, y `screen` va en
+    fracciones del panel.
+  - `{ kind: 'detail' }` hace que el panel llene el cuadro (primer plano muy cerrado). En el lint, estos planos pueden
+    acercar hasta 2,6× la ventana entera.
+  - En vertical, el panel va abajo y el titular arriba.
+- **Rótulos:**
+  - `style: 'keynote'` (con `side`): titular serif grande al lado contrario del panel.
+  - `style: 'type'`: tipografía a pantalla completa.
+  - Las palabras suben una a una desde detrás de una máscara (`WORD_STAGGER`, `WORD_DUR`). La de *cursiva* va en
+    ladrillo y lleva un subrayado a pincel discreto al acabar; luego entra el subtítulo.
+- **Transiciones** (`clip.enter.kind`):
+  - `'whip'`: barrido con desenfoque de movimiento de obturador de 180° (`whipBlur`: lo que se mueve el plano en medio
+    fotograma, según los fps del montaje).
+  - `'focus'`: rack focus; el plano que sale se desenfoca y se apaga mientras el nuevo se enfoca.
+  - `'light'` con `style`: `dusk` (de arriba abajo), `dawn` (círculo desde `at`), `arch` (portal con el arco), `horizon`
+    (sube) o `diagonal`. El plano nuevo entra con su papel dentro de la forma, y la tinta de los rótulos sigue al papel.
+  - `'shape'` con `from`, `to` y `shape` (`circle`, `sun` o `arch`): un corte por coincidencia de forma; la forma viaja
+    y cambia de tamaño, y el corte cae a mitad, bajo ella.
+- **Cartelas:** `montage.chapters = { names, cards: [{ t, dur, n, sub }] }`, con número, título, subtítulo y la fila de
+  capítulos (el actual en ladrillo).
+- **Gancho:**
+  - `montage.hook = { start, end, converge: [t0, t1], seed, count }`: hojas, diapositivas, PDF, fotos de pizarra,
+    notas y fichas de color en profundidad, con paralaje y desenfoque de los lejanos, que convergen.
+  - `montage.flashes: [t]`: un destello.
+  - `prologue.spring: true`: el icono entra con muelle.
+- **Hoja de efectos:**
+  - `render.ts <montaje> --only cues` (y cada render) escribe `work/<montaje>/cuesheet.json` con `bpm`, `offset`,
+    `beat`, `bar`, `sections` (de `montage.sections`) y `events: [{ t, type, intensity, pan, note }]`.
+  - Lleva los clics (con el paneo del cursor), un tic por carácter escrito, la entrada de cada plano (whoosh según la
+    transición) y los movimientos de cámara.
+  - También cada palabra de cada rótulo, las cartelas, las luces, los destellos (con su subida) y el icono y el logo.
+  - Se le suma `montage.sfx` (count, impact, icon…).
+- **El reparto de verdad:** `compose/cast.ts` pinta en el compositor los 58 iconos de curso y los compañeros con el motor
+  de la app (`design/pixel/brush`: rigs, painter y `paintFrame`), sin capturar la galería.
+  - El gancho mezcla iconos y compañeros con los papeles.
+  - `montage.iconWave = { t, end, dur?, companions?, area? }` es la ola en diagonal con muelle; en la hoja de efectos
+    da 10 golpes de «icon».
+- **Papel y luz (V5):** detrás de todo, una luz crema que se mueve despacio y un resplandor ladrillo que respira; de
+  noche, una lámpara cálida y una brasa. Solo crema y ladrillo.
+- **Titulares V5:** peso 600; en keynote, ~0,105 del alto (casi un tercio en dos o tres líneas); en vertical, el 11,5 %
+  del ancho.
+  - Cuerpo mínimo keynote: `KEYNOTE_MIN` (8 % del alto). El cuerpo baja desde el de su estilo solo lo justo para que el
+    titular parta limpio (tres líneas como mucho, sin una palabra corta sola: nunca «Filled / in.»); si a cuerpo mínimo
+    no cabe, se estrecha el panel de ese plano (`clipPanelRect`, hasta `PANEL_MIN` = 0,52), no el texto. Si ni así
+    parte limpio, el panel se estrecha lo justo para tres líneas (o para la palabra más larga). En el compositor se mide
+    con la serif real (`setWordMeasure`); en Node, con `estimateWidth`.
+  - Por montaje: `montage.keynote = { min?, maxLines? }` (por defecto 0,08 y 3). Los cortos 16:9, con palabras enormes:
+    `{ min: 0.11, maxLines: 4 }`. Solo en apaisado: la película no lo lleva y el 9:16 y el 1:1 no lo usan.
+  - Un titular que sigue en pantalla en el plano siguiente: los paneles de los dos le dejan sitio y su columna es la que
+    cabe en todos.
+  - Líneas equilibradas (`balanceBreaks`): la más larga lo más corta posible y castigo a la palabra corta suelta.
+  - El titular pertenece al plano que empieza con él (`titleHost`), no al anterior que acaba en ese instante.
+  - Espera a que la transición deje de enseñar el plano viejo (`transitionClear`): `focus` 85 %, `whip` 60 %,
+    `shape` 55 %, y cualquier otra entrada (`content`, `light`, fundidos…) entera; solo `cut`/`match` no esperan.
+    `title.overlap: true` lo desactiva.
+- **Comprobaciones sin pisar a nadie:** para componer sobre las tomas de otro montaje, clónalas (`cp -Rc` en APFS) en
+  `work/<tu-montaje>/takes` cuando su captura haya terminado (nunca un enlace a sus tomas) y lanza el render con
+  `AULA_VIDEO_NO_WORLDS=1`: importar el montaje no reescribe `work/worlds*` y ninguna toma se regraba ni se borra (si
+  falta una, el render falla en vez de capturar).
+- **Cartelas con vida (V5):** el número y el título derivan en paralaje (sentidos opuestos), la luz del papel respira,
+  la fila de capítulos avanza despacio y el capítulo actual se enciende al entrar.
+- **QC:** escaneo de saltos entre fotogramas (salto medio de luma). Los destellos no cuentan como fotogramas planos.
+- **Determinismo:** componer dos veces el muestrario da los mismos fotogramas byte a byte.
+
+## V6: el portátil
+
+La app vive dentro de un portátil genérico en 3D (sin marca), al estilo de los vídeos de producto: la cámara gira a su
+alrededor y se acerca a la pantalla, y la ventana de Aula se ve siempre entera. Ejemplo: `montage/v6-laptop.ts` (12 s;
+con `V6_FMT=v`, en 9:16).
+
+- **Geometría pura** (`montage/laptop.ts`, con sus pruebas): medidas, tapa, pantalla, cámara, proyección y huecos.
+- **Render** (`compose/laptop.ts`): three, solo en la página del compositor.
+  - Aluminio cálido, teclado sugerido, trackpad y cristal negro, con sombra de contacto y la de la luz principal.
+  - La pantalla es emisiva y sin tono: muestra la captura a 2 px/pt, con sus colores tal cual y un reflejo leve.
+  - Se supermuestrea (`laptop.supersample`, 2 por defecto) para que el texto salga nítido.
+- **Planos:** `layout: { kind: 'laptop' }`. Todos comparten la cámara de `montage.laptop`, en tiempo del vídeo, así que
+  un gesto sigue aunque cambie la toma. `content` funde dentro de la pantalla y el marco (`frames`) va en ella.
+- **Cámara:** `montage.laptop.keys`, con `{ t, yaw, pitch, fill | frame | dist, at, screen, lid }`.
+  - Cada canal se interpola solo entre las claves que lo dan, con una cúbica monótona (sin rebote).
+  - `fill`: lo que ocupa la pantalla del cuadro. `frame`: lo que ocupa el portátil del ancho. Las dos se resuelven con
+    la pose de su clave.
+  - `screen`: dónde cae en el cuadro el punto mirado (desplazamiento de objetivo).
+  - `lid`: apertura de la tapa (0 = cerrada; `LID_OPEN` = 108). La pantalla se enciende entre 70° y 100°.
+  - Una clave con `t` < 0 hace que el plano ya se mueva en el fotograma 0.
+  - **Guarda:** si una clave cortara la pantalla, la cámara se aleja lo justo. El lint avisa, y las pruebas exigen que
+    no haga falta.
+- **Vistas del guion:** `laptopView(m, '3/4-right' | '3/4-left' | 'front' | 'screen', over?)` da la clave.
+  - 3/4: el portátil a un lado, girado hacia el hueco del titular.
+  - `screen`: de frente a la pantalla, que llena el cuadro (0,962 del alto en 16:9; 0,975 del ancho en 9:16).
+  - En vertical y en cuadrado, el portátil va abajo y a lo ancho, y el titular arriba.
+- **Titulares:** un `keynote` en un plano del portátil va en el hueco que este deja libre durante todo el titular
+  (`laptopTitleRect`), nunca encima.
+- **Hoja de efectos:** la tapa (`lid open`) y cada empujón o vuelta (`whoosh` con `note: 'camera'`, `style: 'push' |
+  'pull'` y `dur`). Una órbita lenta no suena.
+- **Música tal cual:** con `music.asIs`, el WAV no se renormaliza ni se limita. La sonoridad y el pico solo se miden
+  tras el AAC, y el QC pide ≤ −1,5 dBTP (lo que pidió SOUND).
+- **La prueba** (sobre clones de las tomas de la película, sin recapturar):
+
+```sh
+AULA_VIDEO_NO_WORLDS=1 node scripts/video/render.ts scripts/video/montage/v6-laptop.ts --reuse --only cues
+node scripts/video/sound-v3/excerpt.ts scripts/video/work/v6-laptop-h/cuesheet.json scripts/video/work/v6-laptop-h/soundtrack.wav
+AULA_VIDEO_NO_WORLDS=1 node scripts/video/render.ts scripts/video/montage/v6-laptop.ts --reuse --outputs laptop-test-16x9
+```
+
+- **De noche** (papel oscuro): lámpara de mesa cálida y baja a la izquierda, el cuarto apagado y la pantalla que alumbra
+  el teclado. Sale sola del papel del plano: un plano con toma oscura es de noche.
+- **Luces de capítulo** (`enter: { kind: 'light', style }`) en un plano del portátil: dentro de la forma entra el cuarto
+  nuevo entero (papel, luz del portátil y la app con su tema); fuera sigue el viejo.
+- **Dentro de la pantalla:** el aviso de macOS (`notices`, a la escala de la captura) y el marco (`frames`: macOS,
+  Windows o GNOME, uno por pulso si se quiere). Con un portátil en cuadro, el aviso ya no sale en el cuadro.
+- **El icono ↔ la pantalla:**
+  - `laptop.reveal = { t, dur }`: el icono del final del prólogo ES la pantalla. Pon en `t` una clave
+    `{ ...laptopView(m, 'screen'), fill: 2.1 }`: la pantalla, mayor que el cuadro, enseña el papel con el icono en su
+    sitio, y la cámara se aleja. La app entra en el último 45 %.
+  - `laptop.close = { t, dur }`: el gesto inverso. Pon en `t + dur` la misma clave de `fill: 2.1`; el `finale` empieza
+    en `t + dur` con el icono ya en su sitio (sin la reducción ventana → icono).
+  - En esos tramos la guarda no actúa (la pantalla puede llenar más que el cuadro).
+  - Sin `close`, si el último plano es del portátil, la ventana del `finale` que se encoge parte de donde está la
+    pantalla 3D, y el portátil se apaga debajo en 0,35 s (sin salto a una ventana 2D).
+- Ejemplo de todo esto: `montage/v6-s3.ts` (14,4 s).
+
+## V6: personajes que se dibujan a pincel
+
+Los compañeros y los iconos de curso de la app aparecen trazándose a pincel, trazo a trazo, con el pintor de la app
+(`design/pixel/brush`). El pintor admite un dibujo a medio hacer: `PaintTarget.reveal`, más `scenePieces` y
+`boardPieces` (piezas en el orden en que se pintan). Sin `reveal`, pinta igual que siempre (prueba bit a bit en
+`brush.test.ts`).
+
+- **Campo:** `montage.drawings: [{ who, t, dur?, until?, at, size, tone?, after?, ramps? }]`.
+  - `who`: `companion:<id>` (luna, gato, zorro, buho…) o `icon:<id>` (study, math, calculus…).
+  - `at`: centro (fracción del cuadro). `size`: lado (px).
+  - `at: 'gap'`: en el hueco libre que deja el portátil durante todo el dibujo (bajo el titular de su lado; en
+    vertical, en la banda de arriba), en fila con `slot: [i, n]`. Con `side` eliges el lado; si no, el de más hueco.
+  - `after`: `boil` (por defecto, la línea hierve 8 dibujos por segundo), `alive` (además su historia «hover» en
+    bucle) o `still`.
+  - `until`: se va con un fundido de 0,3 s.
+- **Orden** (`montage/draw.ts`, puro y probado):
+  1. el contorno, empezando por la línea más larga;
+  2. las aguadas, de mayor a menor;
+  3. los detalles: ojos, boca, brillos y líneas de dentro.
+  - Cada trazo dura según su largo; el pincel acelera y frena, avanza con su presión y se seca al final.
+  - Las aguadas barren su mancha con el borde mojado.
+- **Usos:** en el aire junto al portátil, junto a un titular, a pantalla completa (uno grande) o en grupo
+  (`drawGroup({ t, who: [...], at: [...] | 'gap', side?, size, stagger })`).
+- **Capa propia:** van sobre el papel, las cartelas y el final, y bajo los titulares.
+  - No pisan el texto que se ve mientras tanto: el de las cartelas (número, título, subtítulo y fila de capítulos), el
+    del final (icono, «Aula» y lema) y los titulares keynote/type.
+  - Si su caja lo toca, van al sitio libre más cercano dentro del cuadro (`clearOfText`), fijo durante todo el dibujo,
+    sin saltos.
+  - Comprobación: `montage/v6-draw-over.ts`.
+- **Hoja de efectos:** un evento `brush` por trazo (`note`: outline, fill, detail o done; con `dur`) y `accent: true`
+  en el primer trazo y al acabar. La banda del v3 convierte esos acentos en el destello de marimba (`timeline.ts`).
+  - Node lee las piezas con `compose/drawn-kit.ts`, empaquetado por esbuild.
+- **Ejemplos:** `montage/v6-draw.ts` (sin tomas) y `montage/v6-round2.ts`.
+
+## V6: cámara lenta de verdad
+
+- **Rampa:** `{ from, to, at?, slow, width? }` (`montage/ramp.ts`).
+  - Entre `from` y `to`, el tiempo corre rápido, a `slow` alrededor de `at` y rápido otra vez.
+  - En `from`, `at` y `to` todo va a su hora (lo de fuera no se mueve), con velocidad 1 en los extremos y sin tirones.
+- **Dónde va:**
+  - `clip.ramps` y `clip.speed` (número): sobre el tiempo de la toma.
+  - `laptop.ramps`: sobre el tiempo de la cámara (las claves van en ese tiempo).
+  - `drawing.ramps`.
+  - `montage.slowmo`: gancho, sol del prólogo, ola de iconos y dibujos.
+  - Con la misma rampa en el plano y en la cámara, todo el cuadro va a cámara lenta.
+- **Tomas a alta frecuencia:** `take.fps` (p. ej. 250, pasos de 4 ms exactos del reloj virtual). A 0,25×, cada
+  fotograma del vídeo avanza 1,04 de la toma; el compositor mezcla los dos fotogramas vecinos, así que no hay repetidos
+  ni tirones.
+  - La captura es la de siempre (oculta, `AULA_HIDDEN`, `AULA_HOME` temporal): unos 120 ms por fotograma.
+  - Con `AULA_VIDEO_NO_WORLDS=1` no se captura nada: la primera vez lanza solo `--only capture --reuse`, con un
+    montaje que no importe la película.
+- **Los clics y los eventos de las tomas** se colocan donde los enseña la rampa (`clipLocalOf`).
+- **Ejemplo:** `montage/v6-round2.ts`, con la toma `lesson` a 250 fps y el mundo de la V5 clonado en
+  `work/v6-tec2-world`.
+- **Tomas a 250 fps ya hechas** (`montage/v6-hfr.ts`, en `work/v6-tec2/takes`):
+  - `lesson`: el acierto que se pone verde, de noche (el clic, a 5,25 s).
+  - `nacl`: la sal en 3D, de día (visible de 2,9 a 6,6 s).
+  - Para usarlas: `cp -c -R` a `work/<montaje>/takes`, importa `lessonTake` o `naclTake` como spec y lanza con
+    `--reuse`.
+
+## Banda sonora del v3: `sound-v3/` (la del V6)
+
+Es el sintetizador del vídeo v3 (13-10): `Audio.swift` del commit `dfcb4e1` de la app Swift, con su timbre, acordes,
+mezcla y efectos intactos. Al dueño le gusta **ese** sonido tal cual. Solo corre en macOS, porque compila con `swiftc`.
+
+```sh
+node scripts/video/sound-v3/render.ts work/<montaje>/cuesheet.json work/<montaje>/soundtrack.wav
+node scripts/video/sound-v3/render.ts scripts/video/sound-v3/v3.timeline.json v3.wav     # la película del v3
+node scripts/video/sound-v3/fidelity.ts v3.wav ref/aula-intro-web.mp4 --hits scripts/video/sound-v3/v3.timeline.json --png fid.png
+```
+
+- **Archivos:**
+  - `original/`: el `Audio.swift` original, sin tocar, y el `Beat`/`Timeline` de su `Story.swift`, para la prueba.
+  - `Audio.swift`: el mismo, con los instantes que estaban escritos a mano para la película del v3 leídos de
+    `Timeline`. Son 30 líneas.
+  - `Timeline.swift`: la línea de tiempo leída de un JSON.
+  - `main.swift`: escribe el WAV de 48 kHz en flotante (con `--s16`, de 16 bits).
+- **Prueba de fidelidad** (`timeline.test.ts`): con `v3.timeline.json`, el WAV es idéntico bit a bit al del original.
+- **Hoja del montaje → línea de tiempo** (`timeline.ts`):
+  - Lo que exige el original:
+    - el compás 1 en t = 0;
+    - el drop («Meet Aula») entre los compases 2 y 4, porque su intro tiene a lo sumo 3 acordes;
+    - mejor el logo al principio de un compás.
+  - De dónde sale cada cosa:
+    - Las cartelas dan la campana y el compás en suspenso.
+    - Las luces dan los barridos, que además abren o cierran el filtro del colchón.
+    - Los clics dan su tic.
+    - Los subrayados y los conteos son los acentos.
+    - Las entradas de plano son los cortes.
+    - Las palabras del gancho dan las campanitas.
+    - Tres iconos seguidos o más dan el arpegio.
+    - El logo da el golpe grave, el acorde de campanas y las notas del cierre.
+- **Nivel:** sale a −15 LUFS y unos −1,4 dBTP, como el original. Para que suene tal cual, el compositor no debería
+  renormalizarlo a −14.
+
+## Banda sonora original: `sound/`
+
+Música y efectos compuestos por código para la imagen, herederos de `Audio.swift` del v3. Es TypeScript puro en Node
+(sin `OfflineAudioContext` ni dependencias), así que se prueba con vitest y da los mismos bytes en cada render.
+
+```sh
+node scripts/video/sound/render.ts work/aula-v5-film/cuesheet.json work/aula-v5-film/soundtrack.wav --png sound.png
+node scripts/video/sound/render.ts demo:film demo.wav --png demo.png --report demo.json --sheet demo.cues.json
+npx vitest run --config scripts/video/vitest.config.ts sound/
+```
+
+- **Entrada:** una hoja de efectos.
+  - Puede ser la del montaje (`work/<montaje>/cuesheet.json`), que se traduce sola (`fromMontage` en `sound/sheet.ts`).
+  - O la v1 propia: `{ version: 1, duration, bpm, downbeat?, key?, mode: 'film' | 'short', sections: [{ bar, kind,
+    chords?, energy? }], events: [{ t, type, intensity?, pan?, dur?, … }] }`.
+  - Los tipos están en `sound/sheet.ts`. `t` es el inicio de lo que se ve y `dur` lo que dura.
+- **Salida:** WAV estéreo de 48 kHz en flotante de 32 bits, con música y efectos ya mezclados, a −14 LUFS y ≤ −2,5 dBTP
+  (el AAC sube hasta ~0,7 dB). Opcionalmente, también:
+  - `--png`: la lámina de revisión, con el espectrograma de la mezcla, las secciones con sus acordes y una fila por tipo
+    de efecto, con su tiempo en la hoja y el golpe medido.
+  - `--report`: el informe en JSON (acordes por compás, dónde cayó cada efecto, si se oye y niveles).
+- **Forma de canción** (`sound/harmony.ts` y `sound/arrange.ts`), en re mayor salvo que se diga otra cosa:
+  - `intro`: tensión (Bm – G – Em7 – A) con el tic-tac del reloj del examen y un latido.
+  - `drop`: un respiro de media negra, la subida, el golpe, el ritmo entero y el motivo de Aula (la – re – mi – fa#) en
+    campanas.
+  - `day` y `night`: cada tanda es una variante, para que no se repita el mismo bucle.
+    - Día: A (I–V6–vi–IV, marimba del v3), B (vi–IV–I–V, con más brillo), C (calmado, a medio tiempo) y D (vuelve el
+      himno, a negras).
+    - Noche: piano eléctrico FM, filtro cerrado, medio tiempo y sub. B lleva bombo sincopado y arpegio; C, casi nada.
+  - `card`: un compás en suspenso que prepara el acorde siguiente.
+  - `rise`: suena como el día a tope y deja el redoble para los dos últimos compases.
+  - `end`: re (golpe del logo), sol/re (plagal) y re con campanas hasta el final.
+  - `mode: 'short'` (≥ 114 BPM): bombo a negras, palmas con caja, semicorcheas, bajo sintetizado y pluck.
+  - **Carácter:** la película se ciñe al perfil del v3, que es la referencia que le gusta al dueño.
+    - Bajo senoidal en la octava 3, bombo redondo, shaker y rim, sin hats.
+    - El colchón a ~2,3 kHz de día, y −6 dB por encima de 4,5 kHz.
+    - Subgraves y brillo solo en el *drop* y la subida (`boostCurve` y `ride`). El corto va siempre a tope.
+    - `node scripts/video/sound/profile.ts a.wav b.wav` mide el perfil (bandas, centroide, golpes por segundo, LRA,
+      estéreo) para compararlo con el del v3.
+- **Efectos** (`sound/sfx.ts`): cada uno va afinado a la armonía de su compás y elige una nota que no esté sonando ya.
+  - Si cae a −30/+60 ms de una semicorchea, se encaja en ella.
+  - Las palabras de un rótulo se mueven juntas, así que el escalonado de la imagen se respeta.
+  - Palabras:
+    - Un tic por palabra solo en los rótulos `type`.
+    - En los keynote, un único acento (el roce del pincel y una nota) cuando empieza el subrayado de la cursiva
+      (evento `underline`).
+    - Si la hoja no lo marca, lo adivina por la intensidad.
+  - Los movimientos de cámara pequeños no suenan.
+  - Los niveles por tipo están en `TYPE_DB`.
+  - Además, la música se aparta bajo cada efecto: unos −3 dB en general y −6 dB lo melódico.
+  - La forma añade lo que falte: el golpe del drop, la subida hacia él, la campana de cada cartela y el logo.
+- **Comprobaciones** (`sound/analysis.ts`):
+  - Cada efecto se vuelve a sintetizar solo, para medir dónde cae su golpe.
+  - Se calcula la relación efecto/música en las bandas del efecto y durante el efecto. Las pruebas exigen que los clics,
+    las cartelas, los golpes y el logo pasen de +3 dB, y que ningún efecto baje de −3 dB.
+- **En el compositor:**
+  - `music.wav` apunta a este WAV.
+  - `music.clicks = null`, porque los clics ya van dentro del WAV.
+  - Para que todo caiga en la rejilla, conviene que las palabras se escalonen en semicorcheas o medios pulsos, y que la
+    ola de iconos dure n semicorcheas.
+
 ## Versión corta para redes: pintura, rótulos pintados y vertical
 
 Todo con el mismo pincel que la app (`src/renderer/src/design/paint`: silueta con presión, temblor, remate romo, hebras

@@ -3,7 +3,7 @@
 // Opciones:
 //   --app out|tree|<ref git>   qué app capturar (por defecto out: la compilación de out/; tree: compila el árbol actual en
 //                              una carpeta propia; HEAD o un commit: la versión de git, aparte)
-//   --only capture|compose     solo un paso (las tomas se guardan en caché por huella)
+//   --only capture|compose|cues  solo un paso (las tomas se guardan en caché por huella; cues: la hoja de efectos V5)
 //   --outputs master,tour-1    qué salidas componer (por defecto: el máster y todas las de montage.outputs)
 //   --draft                    borrador rápido: solo el máster a 1280×720 y 30 fps
 //   --range 3:8                componer solo ese tramo del máster (segundos)
@@ -18,7 +18,7 @@
 //   --probe                    solo la sonda de códecs (H.264/AAC de este equipo)
 //   --analyze [pista.mp3]      rejilla de pulsos y compases de la pista real (AULA_FILM_MUSIC o la de por defecto):
 //                              escribe scripts/video/music/<pista>.grid.json (solo números; el audio nunca entra en el repo)
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -64,6 +64,15 @@ async function analyze(): Promise<void> {
   log(`escrito ${out}`)
 }
 
+/** El puente con el pintor de la app (compose/drawn-kit.ts) empaquetado para Node: el kit usa importaciones sin
+ *  extensión, así que esbuild lo junta en un módulo en la caché. Para las piezas de los dibujos en la hoja de efectos. */
+async function drawnKitForNode(cache: string): Promise<typeof import('./compose/drawn-kit.ts')> {
+  const { build } = await import('esbuild')
+  const out = join(cache, 'drawn-kit', 'drawn-kit.mjs')
+  await build({ entryPoints: [join(HERE, 'compose', 'drawn-kit.ts')], outfile: out, bundle: true, platform: 'node', format: 'esm', logLevel: 'error' })
+  return (await import(pathToFileURL(out).href + `?v=${Date.now()}`)) as typeof import('./compose/drawn-kit.ts')
+}
+
 async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>): Promise<void> {
   const queue = [...items]
   await Promise.all(
@@ -78,7 +87,7 @@ async function captureAll(m: Montage, dir: string, appDir: string, fingerprint: 
   const takes: Record<string, TakeMeta> = {}
   await pool(used, jobs, async (name) => {
     const t = Date.now()
-    takes[name] = await captureTake({ name, take: m.takes[name], fps: m.fps, appDir, fingerprint, outDir: dir, log, soft: !!opt('soft'), reuse: !!opt('reuse') || args.includes('--strips') })
+    takes[name] = await captureTake({ name, take: m.takes[name], fps: m.takes[name].fps ?? m.fps, appDir, fingerprint, outDir: dir, log, soft: !!opt('soft'), reuse: !!opt('reuse') || args.includes('--strips') })
     log(`toma ${name}: ${takes[name].frames} fotogramas (${((Date.now() - t) / 1000).toFixed(1)} s, ${takes[name].timing.perFrameMs} ms/fotograma)`)
   })
   return takes
@@ -124,6 +133,13 @@ function resolveOutputs(m: Montage): ResolvedOutput[] {
 
 /** La pista real decodificada (o null, con aviso, si falta: suena lo sintetizado). */
 async function trackFor(m: Montage): Promise<{ wav: string; dir: string } | null> {
+  if (m.music?.wav) {
+    // V5: la banda sonora generada por SOUND (WAV); si falta, aviso y suena lo sintetizado
+    const file = resolve(HERE, m.music.wav)
+    if (existsSync(file)) return { wav: basename(file), dir: dirname(file) }
+    log(`AVISO: no está la banda sonora ${file}; suena la música sintetizada`)
+    return null
+  }
   if (!m.music?.track) return null
   const { decodeTrack, trackPath } = await import('./audio/track.ts')
   const file = trackPath(m.music.track.file)
@@ -192,7 +208,9 @@ function qc(file: string, r: ComposeResult, o: ResolvedOutput): Record<string, u
   if (v.profile !== 100) problems.push('el perfil no es High')
   if (Math.abs(fps - o.fps) > 1e-6 || !constantFps) problems.push(`fps ${fps} (se pedían ${o.fps} constantes)`)
   if (r.decodedFrames !== v.sampleSizes.length) problems.push(`se decodificaron ${r.decodedFrames} de ${v.sampleSizes.length} fotogramas`)
-  if (r.finalAudio && Math.abs(r.finalAudio.lufs + 14) > 0.5) problems.push(`sonoridad ${r.finalAudio.lufs} LUFS (objetivo −14 ± 0,5)`)
+  // V6: la banda del v3 suena tal cual (music.asIs): no se le pide −14 LUFS; solo que el AAC no pase de −1,5 dBTP
+  const asIs = !!(r.mix as { asIs?: boolean } | null)?.asIs
+  if (r.finalAudio && !asIs && Math.abs(r.finalAudio.lufs + 14) > 0.5) problems.push(`sonoridad ${r.finalAudio.lufs} LUFS (objetivo −14 ± 0,5)`)
   if (r.finalAudio && r.finalAudio.truePeak > -1.5) problems.push(`pico verdadero ${r.finalAudio.truePeak} dBTP (> −1,5)`)
   if (Object.values(r.psnr).some((p) => p < 36)) problems.push('PSNR bajo (< 36 dB) frente al original')
   if (r.flat?.length) problems.push(`fotogramas planos en ${r.flat.slice(0, 8).join(', ')} s${r.flat.length > 8 ? '…' : ''}`)
@@ -289,15 +307,30 @@ async function main(): Promise<void> {
   const takes = await captureAll(m, takesDir, snap.dir, snap.fingerprint, Number(opt('jobs') ?? 1))
   const captureS = (Date.now() - t0) / 1000
   writeFileSync(join(work, 'cues.json'), JSON.stringify(cueSheet(m, takes), null, 2))
-  const { clipViews } = await import('./compose/render.ts')
+  const { clipViews, viewCursorPx } = await import('./compose/render.ts')
   const lint = lintMontage(m, {
     cursorAt: (t) =>
       clipViews(m, takes, t).flatMap((v) => {
-        const c = v.meta.cursor[v.frame]
-        return c ? [[v.x + c[0] * v.zoom, v.y + c[1] * v.zoom] as [number, number]] : []
+        const p = viewCursorPx(m, v)
+        return p ? [p] : []
       })
   })
   for (const w of lint) log(`guion: ${w}`)
+  // V5 · la hoja de efectos para SOUND (siempre; con --only cues, solo ella)
+  {
+    const { cueSheet5 } = await import('./montage/cuesheet.ts')
+    const kit = m.drawings?.length ? await drawnKitForNode(cache) : null
+    const sheet = cueSheet5(m, {
+      drawingPieces: kit ? (who, tone) => kit.subjectOf(who, tone).pieces : undefined,
+      cursorX: (t) => {
+        const v = clipViews(m, takes, t).pop()
+        return v ? (viewCursorPx(m, v)?.[0] ?? null) : null
+      }
+    })
+    writeFileSync(join(work, 'cuesheet.json'), JSON.stringify(sheet, null, 1))
+    log(`hoja de efectos: ${sheet.events.length} eventos → ${join(work, 'cuesheet.json')}`)
+    if (opt('only') === 'cues') return
+  }
   if (opt('only') === 'capture') return
   if (args.includes('--strips')) return reviewStrips(m, takes, takesDir, work)
 

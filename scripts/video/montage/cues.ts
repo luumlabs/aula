@@ -1,6 +1,7 @@
 // La cinta de cues del montaje (cortes, clics, titulares, música), en segundos del vídeo. La usan render.ts (cues.json)
 // y la página del compositor (los «tic» de los clics en la música).
 import type { Montage, TakeMeta } from './types.ts'
+import { clipLocalOf } from './ramp.ts'
 
 export interface ClickCue {
   t: number
@@ -16,7 +17,8 @@ export function clickCues(m: Montage): ClickCue[] {
     for (const a of m.takes[c.take]?.actions ?? []) {
       if (a.do !== 'click' && a.do !== 'drag' && a.do !== 'key') continue
       const press = a.do === 'click' ? (a.dur ?? 0.7) : a.do === 'drag' ? 0.1 : 0
-      const t = c.start + a.at - (c.from ?? 0) + press
+      // con velocidad o rampas, el clic cae cuando el plano enseña ese segundo de la toma
+      const t = c.start + clipLocalOf(c, a.at + press)
       if (t >= c.start && t < c.start + c.dur) out.push({ t: +t.toFixed(3), take: c.take, kind: a.do, target: a.do === 'click' ? a.to : a.do === 'drag' ? [a.from, a.to] : a.key })
     }
   }
@@ -52,7 +54,7 @@ export function pixelCues(m: Montage, takes: Record<string, TakeMeta>): PixelCue
   for (const c of m.clips) {
     const meta = takes[c.take]
     for (const ev of meta?.pixel ?? []) {
-      const t = c.start + ev.frame / meta.fps - (c.from ?? 0)
+      const t = c.start + clipLocalOf(c, ev.frame / meta.fps)
       if (t >= c.start && t < c.start + c.dur && (ev.clip === 'hover' || ev.clip === 'celebrate' || ev.clip === 'idle')) out.push({ t: +t.toFixed(4), story: ev.story, clip: ev.clip })
     }
   }

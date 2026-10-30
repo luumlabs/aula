@@ -408,7 +408,8 @@ async function launch(o: CaptureOptions, home: string): Promise<Session> {
   const [vw, vh] = take.viewport ?? [1440, 900]
   const app = await electron.launch({
     // -r: el arranque de Electron precarga no-watch.cjs en el proceso principal (sin vigilantes de archivos)
-    args: ['-r', join(HERE, 'no-watch.cjs'), o.appDir, '--force-color-profile=srgb', '--force-device-scale-factor=2'],
+    // --use-mock-keychain: la app empaquetada no pide el llavero de macOS (ni enseña su diálogo)
+    args: ['-r', join(HERE, 'no-watch.cjs'), o.appDir, '--force-color-profile=srgb', '--force-device-scale-factor=2', '--use-mock-keychain'],
     env: {
       ...process.env,
       AULA_HOME: home,
@@ -464,6 +465,8 @@ export async function captureTake(o: CaptureOptions): Promise<TakeMeta> {
     const meta = JSON.parse(readFileSync(metaFile, 'utf8')) as TakeMeta
     if (meta.hash === hash || o.reuse) return meta
   }
+  // solo componer: nunca se regraba (ni se borra) una toma; sin meta.json puede ser que otro proceso la esté grabando
+  if (process.env.AULA_VIDEO_NO_WORLDS === '1') throw new Error(`la toma «${o.name}» no está completa en ${dir} y AULA_VIDEO_NO_WORLDS=1 no deja capturar`)
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
   const home = mkdtempSync(join(tmpdir(), 'aula-video-'))

@@ -173,3 +173,42 @@ describe('los compañeros dibujados a mano (rigs)', () => {
     }
   })
 })
+
+describe('a medio dibujar (el vídeo: los personajes se dibujan trazo a trazo)', () => {
+  const ink = (d: Uint8ClampedArray) => {
+    let n = 0
+    for (let i = 3; i < d.length; i += 4) n += d[i]
+    return n
+  }
+  it('un muñeco: entero con todo a 1 es el mismo dibujo; a 0 no hay nada; a medias, algo entre los dos', async () => {
+    const { scenePieces } = await import('./painter')
+    const rig = rigOf('zorro')!
+    const k = new Kit()
+    rig.draw(k, readOps(rig, '').state)
+    const groups = k.groups()
+    const pieces = scenePieces(groups, { size: 24, margin: 2 })
+    expect(pieces.some((p) => p.kind === 'ink' && p.edge)).toBe(true)
+    expect(pieces.some((p) => p.kind === 'fill')).toBe(true)
+    const full = paintRigFrame(rig, '', target(96, 28))
+    const all = paintRigFrame(rig, '', { ...target(96, 28), reveal: { progress: pieces.map(() => 1) } })
+    expect(Buffer.from(all.data).equals(Buffer.from(full.data))).toBe(true)
+    const none = paintRigFrame(rig, '', { ...target(96, 28), reveal: { progress: pieces.map(() => 0) } })
+    expect(ink(none.data)).toBe(0)
+    const half = paintRigFrame(rig, '', { ...target(96, 28), reveal: { progress: pieces.map(() => 0.5) } })
+    expect(ink(half.data)).toBeGreaterThan(ink(full.data) * 0.15)
+    expect(ink(half.data)).toBeLessThan(ink(full.data) * 0.9)
+  })
+  it('un icono de curso: lo mismo, con una pieza por relleno y una por trazo', async () => {
+    const { boardPieces, paintBoard } = await import('./painter')
+    const { inkInfoOf } = await import('./frames')
+    const anim = iconAnim(SPRITES[0].id, TONES[0])
+    const info = inkInfoOf(anim)
+    const pieces = boardPieces(anim.base, info, anim.stride)
+    expect(pieces.length).toBeGreaterThan(2)
+    const full = paintBoard(anim.base, info, target(96, anim.stride))
+    const all = paintBoard(anim.base, info, { ...target(96, anim.stride), reveal: { progress: pieces.map(() => 1) } })
+    expect(Buffer.from(all.data).equals(Buffer.from(full.data))).toBe(true)
+    const none = paintBoard(anim.base, info, { ...target(96, anim.stride), reveal: { progress: pieces.map(() => 0) } })
+    expect(ink(none.data)).toBe(0)
+  })
+})

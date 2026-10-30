@@ -90,4 +90,9 @@ describe('versión corta', () => {
     expect(lintMontage(base({ titles, finale: { start: 24, dur: 8 } })).some((x) => x.includes('se pisa'))).toBe(false)
     expect(lintMontage(base({ titles })).some((x) => x.includes('se pisa'))).toBe(true)
   })
+  it('V5: avisa de un titular keynote sobre un primer plano', () => {
+    const clips = [{ take: 'a', start: 0, dur: 4 }, { take: 'b', start: 4, dur: 4, layout: { kind: 'detail' as const } }]
+    const w = lintMontage(base({ clips, titles: [{ start: 4.5, dur: 4.5, text: 'Hi', style: 'keynote' as const, side: 'left' as const }] }))
+    expect(w.some((x) => x.includes('primer plano'))).toBe(true)
+  })
 })

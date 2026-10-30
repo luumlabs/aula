@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filmGrid, shortCuts, type GridJson } from './grid.ts'
+import { bpmGrid, filmGrid, shortCuts, type GridJson } from './grid.ts'
 
 const G: GridJson = {
   track: 'x', bpm: 120, beat: 0.5, beatsPerBar: 4, downbeat: 0.25, duration: 0.25 + 40 * 2 + 1.5, confidence: 10, sections: [],
@@ -71,5 +71,17 @@ describe('versión corta', () => {
   it('shortCuts sin hueco cuando el tramo llega al final', () => {
     expect(shortCuts(25, 8, 33)).toEqual([[1, 25]])
     expect(() => shortCuts(30, 8, 33)).toThrow()
+  })
+})
+
+describe('rejilla sintética (V5)', () => {
+  it('bpm constante desde offset', () => {
+    const g = bpmGrid(100, 150, 0.5)
+    expect(g.beat).toBeCloseTo(0.6)
+    expect(g.barDur).toBeCloseTo(2.4)
+    expect(g.V(1)).toBeCloseTo(0.5)
+    expect(g.V(3, 2)).toBeCloseTo(0.5 + 4.8 + 0.6)
+    expect(g.snap(1.0)).toBeCloseTo(1.1)
+    expect(g.snap(3.3, 'bar')).toBeCloseTo(2.9)
   })
 })

@@ -19,9 +19,9 @@
 
 <p align="center">
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
-    <img src="docs/media/film-poster.png" width="1000" alt="Mira un recorrido por Aula (2:27, vídeo de 27 MB, en inglés)">
+    <img src="docs/media/film-poster.png" width="1000" alt="Mira un recorrido por Aula (2:12, vídeo de 24 MB, en inglés)">
   </a>
-  <br><sub>Un recorrido de dos minutos y medio por la app (vídeo de 27 MB, en inglés)</sub>
+  <br><sub>Un recorrido de dos minutos por la app (vídeo de 24 MB, en inglés)</sub>
 </p>
 
 Te da lecciones cortas, ejercicios que se corrigen al responder, tarjetas de memoria y un simulacro con la misma

@@ -120,3 +120,31 @@ export function shortCuts(from: number, bars: number, ending: number): [number, 
   if (from < 2 || bars < 1 || from + bars > ending) throw new Error('shortCuts: tramo no válido')
   return from + bars === ending ? [[1, from]] : [[1, from], [from + bars, ending]]
 }
+
+/** Rejilla sintética (V5: la marca el montaje, no un mp3): `bpm` constante, 4 pulsos por compás, el compás 1 en `offset`
+ *  s. Mismo interfaz que filmGrid (sin pista: un solo tramo). */
+export function bpmGrid(bpm: number, duration: number, offset = 0): FilmGrid {
+  const beat = 60 / bpm
+  const barDur = beat * 4
+  const n = Math.ceil((duration - offset) / barDur) + 1
+  const bars: FilmGrid['bars'] = []
+  for (let bar = 1; bar <= n; bar++) bars.push({ bar, t: offset + (bar - 1) * barDur, trackBar: bar, rmsDb: 0, lowDb: 0, novelty: 0 })
+  return {
+    bpm,
+    beat,
+    barDur,
+    beatsPerBar: 4,
+    V: (bar, b = 1, frac = 0) => offset + (bar - 1) * barDur + (b - 1 + frac) * beat,
+    snap: (t, to = 'beat') => {
+      const unit = to === 'bar' ? barDur : beat
+      return offset + Math.round((t - offset) / unit) * unit
+    },
+    trackBar: (bar) => bar,
+    toTrack: (t) => t,
+    duration,
+    sections: [],
+    segments: [{ video: 0, from: 0, to: duration }],
+    cuts: [],
+    bars
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FINALE_STEPS, PROLOGUE_STEPS, clipViews, prologueMorph, span as stepSpan } from './render.ts'
+import { FINALE_STEPS, HOOK_SLIDE, PROLOGUE_STEPS, clipViews, hookClearChange, prologueMorph, span as stepSpan } from './render.ts'
 import type { Montage, TakeMeta } from '../montage/types.ts'
 import { ease } from '../montage/ease.ts'
 
@@ -145,8 +145,46 @@ describe('planos y transiciones', () => {
     const ok = base({ prologue: { start: 0, end: 2, rise: [0, 0.5], morph: 1.2 }, clips: [{ take: 'a', start: 0.5, dur: 4 }] })
     expect(prologueMorph(ok, 1)?.dur).toBeCloseTo(1.2)
   })
-  it('prólogo: el sol ya no está cuando la app empieza a verse', () => {
-    const span = stepSpan
-    for (let q = 0; q <= 1; q += 0.005) if (span(q, PROLOGUE_STEPS.app) >= 0.05) expect(1 - span(q, PROLOGUE_STEPS.sun)).toBeLessThan(0.01)
+  it('prólogo: el icono no pierde el sol antes que el arco (se funden juntos)', () => {
+    expect(PROLOGUE_STEPS.sun).toEqual(PROLOGUE_STEPS.arch)
+  })
+  it('V5: una transición que sigue a una cartela parte de ella (el plano anterior no reaparece)', () => {
+    const m = base({
+      chapters: { names: ['A', 'B'], cards: [{ t: 4, dur: 2, n: 2 }] },
+      clips: [{ take: 'a', start: 0, dur: 4 }, { take: 'b', start: 6, dur: 4, enter: { kind: 'light', dur: 1, style: 'dusk' } }]
+    })
+    const v = clipViews(m, takes, 6.5)
+    expect(v.map((x) => x.clip.take)).toEqual(['b'])
+    expect(v[0].fromCard).toBe(0)
+    expect(v[0].light).toBeCloseTo(0.5)
+    // sin cartela entre medias, el anterior sigue debajo
+    const m2 = base({ clips: [{ take: 'a', start: 0, dur: 6 }, { take: 'b', start: 6, dur: 4, enter: { kind: 'light', dur: 1, style: 'dusk' } }] })
+    expect(clipViews(m2, takes, 6.5).map((x) => x.clip.take)).toEqual(['a', 'b'])
+  })
+  it('V5: empujón y paneo a lo largo del plano, y whip pan con los dos planos desplazados', () => {
+    const m = base({ clips: [{ take: 'a', start: 0, dur: 4, camera: [{ t: 0, zoom: 1, focus: [700, 450] }], push: 0.2, pan: [100, 0] }] })
+    const z0 = clipViews(m, takes, 0)[0].zoom
+    const z1 = clipViews(m, takes, 3.99)[0].zoom
+    expect(z1 / z0).toBeCloseTo(1.2, 2)
+    const w = base({ clips: [{ take: 'a', start: 0, dur: 4 }, { take: 'b', start: 4, dur: 4, enter: { kind: 'whip', dur: 0.4, dir: 'left' } }] })
+    const v = clipViews(w, takes, 4.2)
+    expect(v.map((x) => x.clip.take)).toEqual(['a', 'b'])
+    expect(v[0].shift![0]).toBeLessThan(0)
+    expect(v[1].shift![0]).toBeGreaterThan(0)
+    expect(v[0].motion).toBeGreaterThan(100)
+  })
+  it('V5: una cartela que entra sin plano debajo funde desde el último plano (no desde el papel vacío)', () => {
+    const m = base({ chapters: { names: ['A'], cards: [{ t: 4, dur: 2, n: 1 }] }, clips: [{ take: 'a', start: 0, dur: 4 }, { take: 'b', start: 6, dur: 4 }] })
+    expect(clipViews(m, takes, 4.05).map((x) => x.clip.take)).toEqual(['a'])
+    expect(clipViews(m, takes, 4.5)).toEqual([])
+  })
+  it('V5: cuando cambia el claro del gancho, los materiales se deslizan durante HOOK_SLIDE s', () => {
+    const m = base({ hook: { start: 0, end: 5, converge: [4, 5] }, titles: [{ start: 1, dur: 1, text: 'A', style: 'type' }, { start: 2.5, dur: 1, text: 'B', style: 'type' }] })
+    expect(hookClearChange(m, 0.5)).toBeNull()
+    const c = hookClearChange(m, 0.8)
+    expect(c?.at).toBeCloseTo(0.7)
+    expect(c?.k).toBeCloseTo(0.1 / HOOK_SLIDE)
+    expect(hookClearChange(m, 0.7 + HOOK_SLIDE + 0.01)).toBeNull()
+    expect(HOOK_SLIDE).toBeGreaterThanOrEqual(0.35)
   })
 })

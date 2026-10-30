@@ -221,6 +221,9 @@ export type WorldName = 'morning' | 'course' | 'visuals' | 'dawn'
 /** Escribe la plantilla del mundo y devuelve su carpeta. */
 export function buildWorld(name: WorldName, workDir = join(HERE, '..', 'work', 'worlds')): string {
   const home = join(workDir, `v${WORLD_VERSION}-${filmDay().toISOString().slice(0, 10)}`, name)
+  // solo componer (tomas ya capturadas, p. ej. comprobaciones sobre clones): no se toca la plantilla, que puede estar
+  // usándola la captura de otro proceso
+  if (process.env.AULA_VIDEO_NO_WORLDS === '1') return home
   rmSync(home, { recursive: true, force: true })
   mkdirSync(join(home, 'Packs'), { recursive: true })
   writeFileSync(join(home, 'settings.json'), JSON.stringify(settings()))

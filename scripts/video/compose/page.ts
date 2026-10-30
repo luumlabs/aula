@@ -6,6 +6,11 @@ import { vt } from './bridge.ts'
 import { clipViews, drawFrame, type Assets, type ClipView, type FrameSource } from './render.ts'
 import { loadIconAssets } from './icon.ts'
 import { paintKit } from './paint.ts'
+import { loadCast } from './cast.ts'
+import { LaptopRenderer } from './laptop.ts'
+import { drawnKit } from './drawn.ts'
+import { SCREEN_PX } from '../montage/laptop.ts'
+import type { LaptopKit } from './render.ts'
 import { decodeAac, encodeAac, H264Encoder, h264Codec } from './encode.ts'
 import { muxMp4 } from '../mp4/muxer.ts'
 import { inspectMp4, trackSamples } from '../mp4/inspect.ts'
@@ -73,7 +78,21 @@ class FrameLoader {
     const w = Math.ceil(vw * v.zoom * v.scale * this.outScale)
     const h = Math.ceil(vh * v.zoom * v.scale * this.outScale)
     // por debajo de 0,75 de la captura se reduce al decodificar (filtro de calidad alta: texto nítido, sin dientes)
-    const image = w < vw * v.meta.scale * 0.75 ? await createImageBitmap(blob, { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' }) : await createImageBitmap(blob)
+    const small = w < vw * v.meta.scale * 0.75
+    const decode = (b: Blob) => (small ? createImageBitmap(b, { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' }) : createImageBitmap(b))
+    let image = await decode(blob)
+    // V6 · cámara lenta: la mezcla de los dos fotogramas vecinos (a 250 fps casi iguales: sin tirones ni repetidos)
+    if (v.frameB !== undefined && v.mix) {
+      const other = await decode(await this.fetchBlob(FrameLoader.url(v.clip.take, v.frameB)))
+      const c = new OffscreenCanvas(image.width, image.height)
+      const g = c.getContext('2d')!
+      g.drawImage(image, 0, 0)
+      g.globalAlpha = v.mix
+      g.drawImage(other, 0, 0, image.width, image.height)
+      image.close()
+      other.close()
+      image = c.transferToImageBitmap()
+    }
     return { image, dark: isDark(image) }
   }
 }
@@ -166,6 +185,23 @@ function fades(channels: Float32Array[], rate: number, fadeIn = 0, fadeOut = 0):
  *  música sintetizada si no hay pista. */
 async function soundtrack(m: Montage, job: ComposePayload, clicks: number[], sfx: ReturnType<typeof storyEvents>): Promise<{ channels: Float32Array[]; sampleRate: number }> {
   const music = m.music!
+  if (music.wav && job.trackWav) {
+    // V5: la banda sonora de SOUND tal cual (música y efectos ya mezclados); el máster la deja a −14 LUFS y la limita
+    const rate = 48000
+    const res = await fetch(`vt://music/${encodeURIComponent(job.trackWav)}`)
+    if (!res.ok) throw new Error('no se pudo leer la banda sonora')
+    const ac = new OfflineAudioContext(2, rate, rate)
+    const buf = await ac.decodeAudioData(await res.arrayBuffer())
+    const n = Math.round(m.duration * rate)
+    const channels = [0, 1].map((c) => {
+      const out = new Float32Array(n)
+      out.set(buf.getChannelData(Math.min(c, buf.numberOfChannels - 1)).subarray(0, n))
+      return out
+    })
+    if (Math.abs(buf.duration - m.duration) > 0.1) vt.log({ aviso: `la banda sonora dura ${buf.duration.toFixed(2)} s y el vídeo ${m.duration} s` })
+    vt.log({ step: 'banda sonora', origen: job.trackWav, segundos: +buf.duration.toFixed(3) })
+    return { channels, sampleRate: rate }
+  }
   if (!music.track || !job.trackWav) return renderMusic(music, m.duration, clicks, sfx)
   const rate = 48000
   const res = await fetch(`vt://music/${encodeURIComponent(job.trackWav)}`)
@@ -185,6 +221,16 @@ async function soundtrack(m: Montage, job: ComposePayload, clicks: number[], sfx
   for (let c = 0; c < 2; c++) for (let i = 0; i < track[c].length; i++) track[c][i] += fx.channels[c][i] ?? 0
   vt.log({ step: 'pista', origen: job.trackWav, lufsOriginal: +level.toFixed(2), ganancia: +(20 * Math.log10(gain)).toFixed(2), cortes: g.cuts.map((x) => +x.toFixed(3)) })
   return { channels: track, sampleRate: rate }
+}
+
+/** V6 · el portátil en 3D (si el montaje lo usa): su pantalla tiene la resolución de la captura de sus planos. */
+function laptopKit(m: Montage, takes: Record<string, TakeMeta>): LaptopKit | undefined {
+  if (!m.laptop) return undefined
+  const clip = m.clips.find((c) => c.layout?.kind === 'laptop')
+  const [vw, vh] = (clip && takes[clip.take]?.viewport) || [1440, 900]
+  const screen = new OffscreenCanvas(vw * SCREEN_PX, vh * SCREEN_PX)
+  const r = new LaptopRenderer(m.size[0], m.size[1], m.laptop.supersample ?? 2, screen, vw / vh)
+  return { screen, render: (cam, look) => r.render(cam, look) }
 }
 
 /** Desviación típica de la luminancia de un fotograma (en pequeño): un fotograma «plano» (gris, blanco, a medio
@@ -277,7 +323,7 @@ export async function run(): Promise<void> {
   const lap = (k: string, since: number) => (timing[k] = Math.round(performance.now() - since))
   try {
     const job = (await vt.job()) as ComposePayload
-    if (job.strips) return strips(job, { ...(await loadIconAssets()), paint: paintKit })
+    if (job.strips) return strips(job, { ...(await loadIconAssets()), paint: paintKit, cast: job.montage.hook || job.montage.iconWave ? await loadCast() : undefined, laptop: laptopKit(job.montage, job.takes), drawn: job.montage.drawings ? drawnKit() : undefined })
     const m = job.montage
     const o = job.output
     const [W, H] = o.size
@@ -305,7 +351,12 @@ export async function run(): Promise<void> {
       // el pico verdadero se mide DESPUÉS del AAC (el codificador sube los picos ~0,5–1 dB): se masteriza, se codifica, se
       // decodifica y, si pasa de FILE_TRUE_PEAK − margen, se repite desde la mezcla sin limitar con el techo más bajo
       let ceiling = -2
-      for (let pass = 0; ; pass++) {
+      // V6 · tal cual (la banda del v3 ya sale a su nivel): sin renormalizar ni limitar; solo se mide tras el AAC
+      if (m.music.asIs) {
+        audio = await encodeAac(channels, score.sampleRate, o.audioBitrate, job.priming ?? AAC_PRIMING)
+        mix = { asIs: true, lufs: +integratedLoudness(channels, score.sampleRate).toFixed(2), truePeak: +truePeak(channels).toFixed(2), aacTruePeak: +truePeak(await decodeAac(audio)).toFixed(2) }
+      }
+      for (let pass = 0; !m.music.asIs; pass++) {
         const take = channels.map((c) => c.slice())
         const rep = master(take, score.sampleRate, -14, ceiling)
         audio = await encodeAac(take, score.sampleRate, o.audioBitrate, job.priming ?? AAC_PRIMING)
@@ -320,7 +371,7 @@ export async function run(): Promise<void> {
 
     // 2) vídeo fotograma a fotograma
     const tv = performance.now()
-    const assets: Assets = { ...(await loadIconAssets()), paint: paintKit }
+    const assets: Assets = { ...(await loadIconAssets()), paint: paintKit, cast: m.hook || m.iconWave ? await loadCast() : undefined, laptop: laptopKit(m, job.takes), drawn: m.drawings ? drawnKit() : undefined }
     const canvas = new OffscreenCanvas(W, H)
     const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: job.hashFrames })!
     const codec = h264Codec(W, H, fps)
@@ -350,7 +401,10 @@ export async function run(): Promise<void> {
       drawFrame(ctx, m, t, views, sources, assets)
       drawMs += performance.now() - td
       for (const s of sources) s.image.close()
-      if (flatness(canvas) < 4) flat.push(+t.toFixed(3))
+      // un destello (V5) es plano a propósito
+      // un destello (V5) es plano a propósito, y el centro de un rack focus está todo desenfocado
+      const intended = (m.flashes ?? []).some((f) => t > f - 0.12 && t < f + 0.95) || m.clips.some((c) => c.enter?.kind === 'focus' && t >= c.start && t < c.start + c.enter.dur)
+      if (flatness(canvas) < 4 && !intended) flat.push(+t.toFixed(3))
       const luma = lumaSmall(canvas)
       if (prevLuma) {
         let sum = 0

@@ -19,9 +19,9 @@
 
 <p align="center">
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
-    <img src="docs/media/film-poster.png" width="1000" alt="Watch a tour of Aula (2:27, 27 MB video)">
+    <img src="docs/media/film-poster.png" width="1000" alt="Watch a tour of Aula (2:12, 24 MB video)">
   </a>
-  <br><sub>A two-and-a-half-minute tour of the app (27 MB video)</sub>
+  <br><sub>A two-minute tour of the app (24 MB video)</sub>
 </p>
 <!-- Maintainers: for an inline player, drop a ≤10 MB cut of the film here in GitHub's web editor (first check that your
      commit email is the noreply address: GitHub → Settings → Emails). -->

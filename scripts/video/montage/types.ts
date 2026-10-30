@@ -31,6 +31,9 @@ export type TimedAction = Action & { at: number }
 export interface Take {
   /** Segundos que se graban (tiempo virtual). */
   duration: number
+  /** V6 · fotogramas por segundo de la captura (por defecto los del montaje). Para la cámara lenta, 250: pasos de 4 ms
+   *  exactos del reloj virtual, y a 0,24× sale un fotograma nuevo por cada uno del vídeo a 60. */
+  fps?: number
   lang?: 'es' | 'en'
   theme?: 'light' | 'dark'
   /** Tamaño de la ventana en pt (por defecto 1440×900). Se captura a 2 px/pt. */
@@ -73,7 +76,7 @@ export interface CameraKey {
   lag?: number
 }
 
-export type TransitionKind = 'cut' | 'fade' | 'sunrise' | 'rise' | 'iris' | 'door' | 'content' | 'match' | 'theme' | 'icon' | 'brush'
+export type TransitionKind = 'cut' | 'fade' | 'sunrise' | 'rise' | 'iris' | 'door' | 'content' | 'match' | 'theme' | 'icon' | 'brush' | 'focus' | 'light' | 'shape' | 'whip'
 
 /** Marco dibujado de la ventana: semáforos de macOS, botones de Windows o cabecera de GNOME. */
 export type WindowFrame = 'mac' | 'windows' | 'linux'
@@ -99,16 +102,35 @@ export interface Clip {
     /** … y el mismo elemento en el plano que entra: este arranca con él en el mismo sitio (y escala, hasta ×/÷1,6 de
      *  su cámara) y vuelve a su cámara en `dur` con la curva única. */
     to?: Focus
-    /** `brush`: hacia dónde va la primera pasada de la pincelada que barre el cuadro (las demás van y vuelven). */
+    /** `brush`: hacia dónde va la primera pasada de la pincelada; `whip`: hacia dónde se va el plano viejo. */
     dir?: 'right' | 'left' | 'down' | 'up'
     /** `brush`: semilla de la pincelada (por defecto, el plano). */
     seed?: string | number
+    /** `light`: la forma con la que entra el plano nuevo (con su tema y su papel): anochecer de arriba abajo, amanecer
+     *  desde el sol (`at`), portal con la forma del arco, horizonte que sube o barrido diagonal. */
+    style?: 'dusk' | 'dawn' | 'arch' | 'horizon' | 'diagonal'
+    /** `shape`: la forma que viaja de `from` a `to` (círculo → sol → arco). */
+    shape?: 'circle' | 'sun' | 'arch'
     /** `theme`: segundos que tarda la VENTANA en cambiar de tema (fundido corto de la ventana entera; por defecto 5
      *  fotogramas). `dur` es lo que tarda el papel del fondo y los rótulos (2 pulsos). */
     window?: number
   }
   /** Deriva viva de la cámara: fracción de zoom que gana por compás (p. ej. 0.01). Por defecto montage.drift. */
   drift?: number
+  /** V5 · empujón de cámara a lo largo del plano: cuánto acerca de principio a fin (0.15 = un 15 %), con curva suave. */
+  push?: number
+  /** V5 · paneo a lo largo del plano: cuánto recorre el foco [dx, dy] (pt de la app), con curva suave. */
+  pan?: [number, number]
+  /** V6 · velocidad de la toma (0,25 = cámara lenta a un cuarto; 2 = el doble de rápido). Para cámara lenta sin
+   *  fotogramas repetidos, captura la toma a más fps (`take.fps`, p. ej. 250). */
+  speed?: number
+  /** V6 · rampas de velocidad sobre el tiempo de la toma (segundos del plano): rápido, muy lento en el momento clave,
+   *  rápido otra vez; el tiempo total se conserva. */
+  ramps?: Ramp[]
+  /** Composición V5. `keynote`: la interfaz en un panel grande a un lado (el titular va al otro), flotando con sombra y
+   *  una leve inclinación 3D que se mueve; la cámara (zoom/focus) elige qué parte de la ventana se ve dentro del panel.
+   *  `detail`: el panel llena el cuadro (primer plano muy cerrado). */
+  layout?: Layout
 }
 
 export interface Title {
@@ -119,7 +141,12 @@ export interface Title {
   sub?: string
   /** `hero` (grande, centrado, con la marca de Aula), `side` (a la izquierda, junto a la ventana), `caption` (abajo),
    *  `paint` (grande, en el papel, sin píldora: para la versión corta; con `band` va centrado en esa banda). */
-  style: 'hero' | 'side' | 'caption' | 'paint'
+  style: 'hero' | 'side' | 'caption' | 'paint' | 'keynote' | 'type'
+  /** `keynote`: lado del titular (el contrario del panel de la interfaz). */
+  side?: 'left' | 'right'
+  /** V5: el titular empieza a su hora aunque el plano esté entrando con rack focus o luz (por defecto espera a que la
+   *  transición deje de enseñar el plano viejo). */
+  overlap?: boolean
   /** `paint`: en qué banda del cuadro va (montage.bands); sin ella, en `at`. */
   band?: 'top' | 'bottom'
   /** `paint`: cuerpo de la letra (px del vídeo; por defecto 6,5 % del lado corto). */
@@ -128,7 +155,7 @@ export interface Title {
   stagger?: number
   /** Subrayado a pincel bajo la palabra `word` (índice desde 0; por defecto la primera en *cursiva*), que cae en `t` (s
    *  del vídeo; por defecto al acabar de revelarse el rótulo). */
-  underline?: { word?: number; t?: number; color?: string }
+  underline?: { word?: number; t?: number; color?: string } | false
   /** Rodeo a pincel alrededor de la palabra `word` (por defecto, la primera en cursiva). */
   ring?: { word?: number; t?: number; color?: string }
   /** `over` (por defecto) encima de la ventana; `under`, detrás (la ventana lo tapa). */
@@ -156,6 +183,157 @@ export interface PaintMark {
   draw?: number
   color?: string
   seed?: string | number
+}
+
+export type Layout =
+  | {
+      kind: 'keynote'
+      /** Lado de la interfaz. */
+      side: 'left' | 'right'
+      /** Ancho del panel (fracción del ancho del cuadro; por defecto 0,64). */
+      size?: number
+      /** Alto del panel (fracción del alto; por defecto 0,8). */
+      height?: number
+      /** Inclinación 3D máxima (grados; por defecto 6). 0 = plano. */
+      tilt?: number
+      /** Flota (sube y baja muy despacio). Por defecto sí. */
+      float?: boolean
+    }
+  | { kind: 'detail'; tilt?: number }
+  /** V6: la ventana entera de la app dentro de la pantalla de un portátil en 3D (la cámara es `montage.laptop`). Varios
+   *  planos seguidos comparten el mismo gesto de cámara aunque cambie la toma. */
+  | { kind: 'laptop' }
+
+/** V6 · una clave de la cámara alrededor del portátil (cm y grados). Cada canal (giro, altura, distancia, punto, encuadre,
+ *  tapa) se interpola SOLO entre las claves que lo dan (curva cúbica monótona: sin rebote, con velocidad continua y nula
+ *  en su primera y su última clave; repetir un valor = quieto). Así una órbita sigue mientras otra clave mueve la tapa.
+ *  - `yaw`: giro alrededor del portátil (0 = de frente; negativo = la cámara se va a su izquierda y el portátil queda
+ *    «girado a la derecha», mirando al hueco de la derecha del cuadro).
+ *  - `pitch`: altura (grados sobre la horizontal). Para mirar la pantalla de frente: `pitch = lid − 90`.
+ *  - Distancia, una de tres: `fill` (la pantalla ocupa esa fracción del cuadro en su lado más justo: 1 = lo llena),
+ *    `frame` (el portátil abierto ocupa esa fracción del ancho del cuadro) o `dist` (cm). Se resuelven con la pose de
+ *    la clave y se interpolan en logaritmo.
+ *  - `at`: punto de la pantalla al que mira (fracciones de la ventana [u, v]); `null` = el centro del portátil abierto.
+ *  - `screen`: dónde cae ese punto en el cuadro (fracción; por defecto el centro): desplazamiento de objetivo, sin
+ *    girar la cámara (deja el portátil a un lado y el hueco para el titular al otro).
+ *  - `lid`: apertura de la tapa (grados; 0 = cerrada, `LID_OPEN` = abierta). */
+export interface LaptopKey {
+  t: number
+  yaw?: number
+  pitch?: number
+  fill?: number
+  frame?: number
+  dist?: number
+  at?: [number, number] | null
+  screen?: [number, number]
+  lid?: number
+}
+
+/** V6 · un personaje de la app que se dibuja a pincel, trazo a trazo (los compañeros y los iconos de curso, con el motor
+ *  de la app): primero el contorno, luego las aguadas y al final los detalles; cada trazo avanza con su presión y se
+ *  seca al final. Al acabar, la línea hierve un poco (o el personaje cobra vida con su historia). Va en el aire, sobre
+ *  el papel y bajo los titulares. */
+export interface Drawing {
+  /** `companion:<id>` (luna, gato, zorro, buho, fantasma, seta, taza, cohete…) o `icon:<id>` (study, math, calculus…). */
+  who: string
+  /** Cuándo empieza a dibujarse (s del vídeo) y lo que tarda (s; por defecto 1,8). */
+  t: number
+  dur?: number
+  /** Hasta cuándo se ve (s del vídeo; por defecto el final). Se va con un fundido de 0,3 s. */
+  until?: number
+  /** Centro en el cuadro (fracción) o `gap`: en el hueco libre que deja el portátil (bajo el titular de ese lado; en
+   *  vertical, en la banda de arriba), en fila con `slot` [i, n]. `size`: lado (px del vídeo; en el hueco, como mucho). */
+  at: [number, number] | 'gap'
+  size: number
+  /** `gap`: de qué lado del portátil (por defecto, el que tenga más hueco) y su sitio en la fila [i, n]. */
+  side?: 'left' | 'right'
+  slot?: [number, number]
+  /** Tono del curso (índice de TONES) para un icono. */
+  tone?: number
+  /** Al acabar: `boil` (por defecto: la línea hierve, 8 dibujos por segundo), `alive` (además su historia «hover» en
+   *  bucle, como al pasar el ratón en la app) o `still`. */
+  after?: 'boil' | 'alive' | 'still'
+  /** Rampas de velocidad del propio dibujo (s del vídeo). */
+  ramps?: Ramp[]
+}
+
+/** V6 · una rampa de velocidad (cámara lenta con rampa): entre `from` y `to` el tiempo corre rápido, muy lento alrededor
+ *  de `at` (a `slow`, p. ej. 0,2) y rápido otra vez; en `from`, `at` y `to` va a su hora (lo de fuera no se mueve), y
+ *  en los extremos la velocidad es 1 (sin tirón). `width`: semiancho (s) del tramo lento (por defecto 18 % del total). */
+export interface Ramp {
+  from: number
+  to: number
+  at?: number
+  slow: number
+  width?: number
+}
+
+/** V6 · el portátil: la cámara por claves (en segundos del vídeo, por encima de los cortes) y el cuarto. */
+export interface Laptop {
+  keys: LaptopKey[]
+  /** Rampas de velocidad de la cámara (segundos del vídeo): las claves van en el tiempo de la cámara. */
+  ramps?: Ramp[]
+  /** Revelación: el icono del prólogo ES la pantalla. De `t` a `t + dur` la pantalla enseña el icono sobre el papel (al
+   *  tamaño y en el sitio del final del prólogo) y, en su último 45 %, funde a la app; mientras, la pantalla puede llenar
+   *  más que el cuadro (la cámara empieza dentro de ella y se aleja). */
+  reveal?: { t: number; dur: number }
+  /** Cierre: el gesto inverso. De `t` a `t + dur` la pantalla funde de la app al icono sobre el papel (en su primer
+   *  45 %) mientras la cámara entra en ella; desde `t + dur`, el final (`finale`) sigue con el icono ya en su sitio. */
+  close?: { t: number; dur: number }
+  /** Campo de visión vertical (grados; por defecto 26 en apaisado y 30 en vertical o cuadrado). */
+  fov?: number
+  /** Supermuestreo del render 3D (por defecto 2: el texto de la pantalla sale nítido). */
+  supersample?: number
+}
+
+/** Cartelas de capítulo: número, título, subtítulo y la fila de capítulos con el actual en ladrillo. */
+export interface Chapters {
+  names: string[]
+  cards: { t: number; dur: number; n: number; sub?: string }[]
+}
+
+/** Gancho: materiales dibujados (hojas, diapositivas, PDF, fotos de pizarra, iconos pintados) que flotan en profundidad y
+ *  convergen hacia el centro en `converge`. */
+export interface Hook {
+  start: number
+  end: number
+  converge: [number, number]
+  seed?: number
+  /** Cuántos materiales (por defecto 26). */
+  count?: number
+  /** Zona que los materiales dejan libre [x, y, ancho, alto] (fracciones). Por defecto, la caja del rótulo `type` activo
+   *  con un margen del 8 %. */
+  clear?: [number, number, number, number]
+}
+
+/** La ola de iconos: rejilla de los iconos pintados que entran en diagonal en `dur` s y se quedan hasta `end`. */
+export interface IconWave {
+  t: number
+  end: number
+  /** Cuánto tarda la ola en cruzar (por defecto 1,2 s). */
+  dur?: number
+  /** Compañeros mezclados con los iconos (por defecto sí). */
+  companions?: boolean
+  /** Zona del cuadro que ocupa la rejilla [x, y, ancho, alto] en fracciones (por defecto, centrada en el 90 × 80 %). */
+  area?: [number, number, number, number]
+}
+
+/** Un efecto que el motor no ve por sí solo (un número que cuenta, un impacto, una ola de iconos…), para la hoja. */
+export interface SfxCue {
+  t: number
+  type: CueType
+  intensity?: number
+  pan?: number
+  note?: string
+}
+
+export type CueType = 'click' | 'whoosh' | 'word' | 'underline' | 'card' | 'light' | 'impact' | 'icon' | 'type' | 'count' | 'flash' | 'logo' | 'rise' | 'brush'
+
+/** Sección de la banda sonora (la marca el montaje). */
+export interface Section {
+  t: number
+  name: string
+  mood: 'intro' | 'drop' | 'day' | 'night' | 'build' | 'outro'
 }
 
 /** Sello de hora («MONDAY · 8:10 AM») arriba a la izquierda; los caracteres que cambian ruedan. */
@@ -213,6 +391,14 @@ export interface TrackMusic {
 }
 
 export interface Music {
+  /** V5: el WAV de la banda sonora generada (SOUND, scripts/video/sound/): suena tal cual (música y efectos), con la
+   *  misma sonoridad y el mismo pico del máster. Ruta absoluta o relativa a scripts/video. */
+  wav?: string
+  /** V5: segundo del vídeo del primer tiempo fuerte (rejilla sintética de `bpm`). */
+  offset?: number
+  /** V6: el WAV suena tal cual, sin renormalizar ni limitar (la banda del v3 ya sale a su nivel); la sonoridad y el pico
+   *  verdadero solo se miden tras el AAC. */
+  asIs?: boolean
   /** La pista real: si está, suena ella (con los clics y los personajes por debajo) y lo sintetizado queda de reserva. */
   track?: TrackMusic
   bpm: number
@@ -253,6 +439,8 @@ export interface IconLayer {
   grow?: number
   /** Fundido de entrada de la losa (s). Por defecto 0: el icono ya está en el primer fotograma. */
   fadeIn?: number
+  /** El icono entra con muelle (escala de 0,6 a 1 con rebote) desde `start`. */
+  spring?: boolean
   /** [desde, hasta] (s): el arco se PINTA de un trazo sobre la losa de papel (y luego el horizonte), como gancho desde el
    *  primer fotograma; el sol sale después, con `rise`. */
   draw?: [number, number]
@@ -279,6 +467,8 @@ export interface Finale {
   /** Palabra bajo el icono (serif) y línea de apoyo. */
   title?: string
   sub?: string
+  /** V5: cuándo entra el título letra a letra (por defecto, el golpe del logo: rise[0]). */
+  titleAt?: number
 }
 
 export interface Notice {
@@ -317,6 +507,11 @@ export interface Montage {
   size: [number, number]
   /** bits/s del H.264. */
   bitrate?: number
+  /** V6 · el portátil en 3D (los planos con `layout: { kind: 'laptop' }` se ven en su pantalla). */
+  laptop?: Laptop
+  /** V5 · titulares keynote en apaisado: cuerpo mínimo (fracción del alto; por defecto 0,08) y líneas máximas al partir
+   *  (por defecto 3). Los cortos 16:9, con palabras enormes: { min: 0.11, maxLines: 4 }. */
+  keynote?: { min?: number; maxLines?: number }
   /** Duración mínima de un rótulo para el lint (s; por defecto 2 compases). La versión corta: 1,2. */
   minTitle?: number
   /** Tamaño máximo del máster (MB): sin `bitrate`, se calcula para caber (redes: 30). */
@@ -352,6 +547,22 @@ export interface Montage {
   safe?: { top?: number; bottom?: number; left?: number; right?: number }
   /** Con captionBand: si la ventana no cabe sobre la banda (primer plano), su borde de abajo se apoya en la banda. */
   captionPin?: boolean
+  /** V5: cartelas de capítulo. */
+  chapters?: Chapters
+  /** V5: el gancho de materiales que flotan. */
+  hook?: Hook
+  /** V5: la ola de los iconos de curso pintados (los 58 de la app) que aparecen en diagonal, con muelle. */
+  iconWave?: IconWave
+  /** V6 · personajes que se dibujan a pincel (en el aire, junto a un titular, a pantalla completa o en grupo). */
+  drawings?: Drawing[]
+  /** V6 · cámara lenta con rampa de los efectos del compositor (gancho, sol del prólogo, ola de iconos y dibujos). */
+  slowmo?: Ramp[]
+  /** V5: destellos (instantes). */
+  flashes?: number[]
+  /** V5: secciones de la banda sonora (las lee SOUND en la hoja de efectos). */
+  sections?: Section[]
+  /** V5: efectos que el motor no ve solo (contar, impactos, olas de iconos…). */
+  sfx?: SfxCue[]
   /** Adornos de pintura que caen en el ritmo (con mesura): salpicaduras, subrayados, rodeos y trazos sueltos. */
   paint?: PaintMark[]
   /** La curva única de la cámara (por defecto `smooth`: suave y amortiguada, sin rebote). */

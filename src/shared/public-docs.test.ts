@@ -90,7 +90,8 @@ describe('README coherente con la release (A6-P2-7, A6-P2-19)', () => {
       const md = read(f)
       expect(md, f).not.toMatch(/releases\/download\/v[\d.]+\/Aula-film\.mp4/)
       expect(md, f).toMatch(/releases\/download\/v[\d.]+\/Aula-film-web\.mp4/)
-      expect(md, f).toMatch(/27 MB/)
+      // dice cuánto pesa (el corte web, ≤ 27 MB)
+      expect(md, f).toMatch(/\b(1\d|2[0-7]) MB\b/)
     }
   })
 

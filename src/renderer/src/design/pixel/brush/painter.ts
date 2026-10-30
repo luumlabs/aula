@@ -23,6 +23,29 @@ export interface PaintTarget {
   dark: boolean
   /** Dibujo de la animación (0, 1, 2): la línea hierve un poco entre dibujos. */
   variant: number
+  /** Solo para el vídeo: el dibujo a medio hacer (sin él, entero; la app no lo usa). */
+  reveal?: Reveal
+}
+
+/** El dibujo a medio hacer (lo usa el vídeo para que los personajes se dibujen trazo a trazo): cuánto lleva (0–1) cada
+ *  pieza, por su índice en el orden en que se pinta (`scenePieces`, `boardPieces`). Las líneas se revelan a lo largo de
+ *  su recorrido (la punta del pincel avanza con su presión y se seca al final); las manchas, con una aguada que las barre. */
+export interface Reveal {
+  progress: ArrayLike<number>
+}
+
+/** Una pieza del dibujo, en el orden en que se pinta. */
+export interface Piece {
+  /** `fill`: mancha de color; `blot`: mancha de tinta (ojos, bocas); `color`: pincelada de color; `ink`: línea de tinta. */
+  kind: 'fill' | 'blot' | 'color' | 'ink'
+  /** Va por la silueta. */
+  edge: boolean
+  /** Largo (líneas) o área (manchas), en unidades del dibujo. */
+  size: number
+  /** Caja en unidades del tablero (con el margen): x0, y0, x1, y1. */
+  box: [number, number, number, number]
+  /** El grupo (personaje, efecto…) al que pertenece. */
+  group: number
 }
 
 export interface Painting {
@@ -199,12 +222,99 @@ export function paintBoard(px: Px[], info: InkInfo, t: PaintTarget): Painting {
   const H = handFor(W, k, variant)
   const R = readBoard(px, S, info.line, { family: info.family, tidy: info.tidy, strokes: info.strokes })
   const out = new Uint8ClampedArray(W * W * 4)
-  fills(out, R, info, t, k, P, H)
+  // a medio dibujar (vídeo): primero una pieza por relleno (por su índice de color) y luego una por trazo
+  const rv = t.reveal?.progress
+  const nFill = R.colors.length - 1
+  const at = (i: number) => (rv ? (rv[i] ?? 1) : 1)
+  fills(out, R, info, t, k, P, H, rv ? washes(R, S, k, (id) => at(id - 1)) : undefined)
   // en los glifos de la interfaz la línea va en su propio color (una pincelada más), no en tinta
   const paths = info.plain ? R.paths.map((p) => (p.kind === 'ink' ? { ...p, kind: 'color' as const } : p)) : R.paths
-  for (const p of paths) if (p.kind === 'color') stroke(out, p, t, k, P, H, info.plain)
-  inkLines(out, paths.filter((p) => p.kind === 'ink'), t, k, P, H)
+  paths.forEach((p, j) => p.kind === 'color' && stroke(out, p, t, k, P, H, info.plain, at(nFill + j)))
+  const ink = paths.map((p, j) => [p, at(nFill + j)] as const).filter(([p]) => p.kind === 'ink')
+  inkLines(out, ink.map(([p]) => p), t, k, P, H, rv ? ink.map(([, v]) => v) : undefined)
   return { width: W, height: W, data: out }
+}
+
+/** Las piezas de un tablero, en el orden en que `paintBoard` las revela: un relleno por color y luego cada trazo. */
+export function boardPieces(px: Px[], info: InkInfo, stride: number): Piece[] {
+  const R = readBoard(px, stride, info.line, { family: info.family, tidy: info.tidy, strokes: info.strokes })
+  const boxes = labelBoxes(R, stride)
+  const out: Piece[] = []
+  for (let id = 1; id < R.colors.length; id++) {
+    const b = boxes[id]
+    const ink = !!R.colors[id] && info.line.has(R.colors[id]!) && !info.plain
+    out.push({ kind: ink ? 'blot' : 'fill', edge: false, size: b ? b[4] : 0, box: b ? [b[0], b[1], b[2], b[3]] : [0, 0, 0, 0], group: 0 })
+  }
+  const paths = info.plain ? R.paths.map((p) => (p.kind === 'ink' ? { ...p, kind: 'color' as const } : p)) : R.paths
+  for (const p of paths) out.push({ kind: p.kind, edge: !!p.edge || p.kind === 'ink', size: pathLen(p.pts), box: ptsBox(p.pts.map((q) => [q.x, q.y])), group: 0 })
+  return out
+}
+
+/** Caja y área (en celdas) de cada color del tablero. */
+function labelBoxes(R: Reading, S: number): ([number, number, number, number, number] | undefined)[] {
+  const boxes: ([number, number, number, number, number] | undefined)[] = []
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++)
+      for (let q = 0; q < 3; q++) {
+        const c = (y * S + x) * 3 + q
+        if (R.wt[c] <= 0) break
+        const id = R.lab[c]
+        if (id <= 0) continue
+        const b = boxes[id]
+        if (!b) boxes[id] = [x, y, x + 1, y + 1, R.wt[c]]
+        else {
+          b[0] = Math.min(b[0], x)
+          b[1] = Math.min(b[1], y)
+          b[2] = Math.max(b[2], x + 1)
+          b[3] = Math.max(b[3], y + 1)
+          b[4] += R.wt[c]
+        }
+      }
+  return boxes
+}
+
+/** Las aguadas a medio dar de cada color del tablero (o null si ya está entera). */
+function washes(R: Reading, S: number, k: number, prog: (id: number) => number): (id: number) => ((x: number, y: number) => number) | null {
+  const boxes = labelBoxes(R, S)
+  const cache = new Map<number, ((x: number, y: number) => number) | null>()
+  return (id) => {
+    let f = cache.get(id)
+    if (f === undefined) {
+      const b = boxes[id]
+      const p = prog(id)
+      f = p >= 1 || !b ? null : washMask(p, b[0] * k, b[1] * k, b[2] * k, b[3] * k, k, id * 17)
+      cache.set(id, f)
+    }
+    return f
+  }
+}
+
+const pathLen = (pts: Pt[]) => pts.reduce((s, q, i) => (i ? s + Math.hypot(q.x - pts[i - 1].x, q.y - pts[i - 1].y) : 0), 0)
+const ptsBox = (pts: [number, number][]): [number, number, number, number] => {
+  let x0 = Infinity
+  let y0 = Infinity
+  let x1 = -Infinity
+  let y1 = -Infinity
+  for (const [x, y] of pts) {
+    x0 = Math.min(x0, x)
+    y0 = Math.min(y0, y)
+    x1 = Math.max(x1, x)
+    y1 = Math.max(y1, y)
+  }
+  return [x0, y0, x1, y1]
+}
+
+/** La aguada que barre una mancha a medio pintar: de arriba a la izquierda hacia abajo a la derecha, con el borde mojado
+ *  irregular. `p`: cuánto lleva (0–1); la caja, en px de dispositivo. Devuelve la cobertura (0–1) en cada px. */
+function washMask(p: number, x0: number, y0: number, x1: number, y1: number, k: number, seed: number): (x: number, y: number) => number {
+  const w = Math.max(1, x1 - x0)
+  const h = Math.max(1, y1 - y0)
+  const E = 0.09
+  const front = -0.2 + p * 1.45
+  return (x, y) => {
+    const u = ((x - x0) / w) * 0.62 + ((y - y0) / h) * 0.38 + (stillHand.at((x / k) * 0.5 + seed, (y / k) * 0.5) - 0.5) * 0.15
+    return 1 - sstep(front - E, front + E, u)
+  }
 }
 
 const sstep = (a: number, b: number, x: number) => {
@@ -213,7 +323,7 @@ const sstep = (a: number, b: number, x: number) => {
 }
 
 /** Los rellenos: cada color, su mancha plana, hasta la línea (más o menos: lo pinta una mano). */
-function fills(out: Uint8ClampedArray, R: Reading, info: InkInfo, t: PaintTarget, k: number, P: Paper, H: Hand): void {
+function fills(out: Uint8ClampedArray, R: Reading, info: InkInfo, t: PaintTarget, k: number, P: Paper, H: Hand, wash?: (id: number) => ((x: number, y: number) => number) | null): void {
   const { W, stride: S, dark } = t
   // la tinta en masa (ojos, pupilas) es la misma tinta de las líneas
   const pig = R.colors.map((c) => (c ? (info.line.has(c) && !info.plain ? sumiPigment : pigmentOf(c, dark, info.plain)) : null))
@@ -243,7 +353,8 @@ function fills(out: Uint8ClampedArray, R: Reading, info: InkInfo, t: PaintTarget
         b += (1 - b) * tt
       }
     }
-    const a = cover * p.a * (0.985 - 0.2 * sstep(0.18, 0.04, P.height[i]))
+    const mask = wash?.(id)
+    const a = cover * p.a * (0.985 - 0.2 * sstep(0.18, 0.04, P.height[i])) * (mask ? mask(x, y) : 1)
     acc[0] += r * v * a
     acc[1] += g * v * a
     acc[2] += b * v * a
@@ -523,13 +634,16 @@ interface Coverage {
  * `brushOutline`) y, si es ancha y acaba suelta, las cerdas de PAINT-UI: rayas finas de papel que casi no se ven al
  * principio y se abren al final, donde se acaba la tinta.
  */
-function coverage(sw: Sweep, W: number, look: BrushLook, noise: Noise): Coverage | null {
+function coverage(sw: Sweep, W: number, look: BrushLook, noise: Noise, upTo = 1): Coverage | null {
+  if (upTo <= 0) return null
+  // a medio trazo: el pincel solo ha pasado hasta `upTo` del recorrido (con su forma de siempre: la punta avanza)
+  const n = upTo >= 1 ? sw.n : Math.max(1, Math.ceil(upTo * (sw.n - 1)) + 1)
   let x0 = Infinity
   let y0 = Infinity
   let x1 = -Infinity
   let y1 = -Infinity
   let wMax = 0
-  for (let i = 0; i < sw.n; i++) {
+  for (let i = 0; i < n; i++) {
     const r = sw.w[i] * 0.6 + 2
     x0 = Math.min(x0, sw.x[i] - r)
     y0 = Math.min(y0, sw.y[i] - r)
@@ -560,7 +674,7 @@ function coverage(sw: Sweep, W: number, look: BrushLook, noise: Noise): Coverage
       }
     }
   }
-  for (let i = 0; i < sw.n; i++) disc(sw.x[i], sw.y[i], sw.w[i] / 2, 1, cov)
+  for (let i = 0; i < n; i++) disc(sw.x[i], sw.y[i], sw.w[i] / 2, 1, cov)
   // las cerdas (como `bristles` de PAINT-UI): solo en trazos anchos con final suelto
   if (sw.freeEnd && wMax >= 3.2 && sw.n > 8) {
     const gaps = new Float32Array(bw * bh)
@@ -569,7 +683,7 @@ function coverage(sw: Sweep, W: number, look: BrushLook, noise: Noise): Coverage
     for (let kk = 0; kk < count; kk++) {
       const v = (kk + 0.5) / count - 0.5 + gauss(r) * 0.03
       const thick = between(r, 0.35, 0.8)
-      for (let i = 1; i < sw.n; i++) {
+      for (let i = 1; i < n; i++) {
         const t = sw.t[i]
         const gap = noise.at(i / 4 + kk * 11.3, kk * 2.7) + Math.pow(t, 2.2) * look.dry * 1.1 - 0.95 + Math.abs(v) * 0.5 * look.dry
         if (gap <= 0) continue
@@ -626,9 +740,10 @@ function alphaOf(c: number, h: number, look: BrushLook): number {
 }
 
 /** Una pincelada de color (brillo, renglón, letra): plana, del color templado. */
-function stroke(out: Uint8ClampedArray, p: InkPath, t: PaintTarget, k: number, P: Paper, H: Hand, plain = false): void {
+function stroke(out: Uint8ClampedArray, p: InkPath, t: PaintTarget, k: number, P: Paper, H: Hand, plain = false, upTo = 1): void {
+  if (upTo <= 0) return
   const { W, dpr, dark } = t
-  const c = coverage(sweepOf(p, k, dpr, H.noise), W, COLOR_LOOK, stillHand)
+  const c = coverage(sweepOf(p, k, dpr, H.noise), W, COLOR_LOOK, stillHand, upTo)
   if (!c) return
   const pg = pigmentOf(p.color, dark, plain)
   for (let y = 0; y < c.h; y++)
@@ -641,14 +756,15 @@ function stroke(out: Uint8ClampedArray, p: InkPath, t: PaintTarget, k: number, P
 }
 
 /** La línea de tinta, encima de todo (una sola tinta: la misma mano y el mismo tintero para todo). */
-function inkLines(out: Uint8ClampedArray, paths: InkPath[], t: PaintTarget, k: number, P: Paper, H: Hand): void {
+function inkLines(out: Uint8ClampedArray, paths: InkPath[], t: PaintTarget, k: number, P: Paper, H: Hand, upTo?: number[]): void {
   if (!paths.length) return
   const { W, dpr, dark } = t
   const cov = new Float32Array(W * W)
   const light = new Uint8Array(W * W)
   const amul = new Float32Array(W * W)
-  for (const p of paths) {
-    const c = coverage(sweepOf(p, k, dpr, H.noise), W, INK_LOOK, stillHand)
+  for (const [j, p] of paths.entries()) {
+    if ((upTo?.[j] ?? 1) <= 0) continue
+    const c = coverage(sweepOf(p, k, dpr, H.noise), W, INK_LOOK, stillHand, upTo?.[j] ?? 1)
     if (!c) continue
     const ivory = dark && p.edge ? 1 : 0
     const pa = p.alpha ?? 1
@@ -736,12 +852,16 @@ export function paintScene(groups: DrawGroup[], box: { size: number; margin: num
   const H = handFor(W, k, variant)
   const out = new Uint8ClampedArray(W * W * 4)
   const boil = H.noise
+  // a medio dibujar (vídeo): cada pieza con lo que lleva, en el orden de `scenePieces`
+  const rv = t.reveal?.progress
+  let piece = 0
+  const next = () => (rv ? (rv[piece++] ?? 1) : 1)
   for (const g of groups) {
     const map = (x: number, y: number): [number, number] => [(g.flip ? box.size - x : x) + (g.dx ?? 0) + box.margin, y + (g.dy ?? 0) + box.margin]
     const ga = g.alpha ?? 1
     // ¿cuerpo claro? (lo dice el grupo o su mancha más grande): en papel oscuro, su silueta se queda en tinta
     const light = g.light ?? lightBody(g.shapes)
-    for (const sh of g.shapes) shapeFill(out, sh, sh.pts.map(([x, y]) => map(x, y)), W, k, dark, P, boil, ga)
+    for (const sh of g.shapes) shapeFill(out, sh, sh.pts.map(([x, y]) => map(x, y)), W, k, dark, P, boil, ga, next())
     const toPaths = (l: DrawLine, kind: InkPath['kind']): InkPath[] => {
       const pts = l.pts.map(([x, y]) => map(x, y)).map(([x, y]) => ({ x, y }))
       const base = { color: l.color ?? SUMI, kind, edge: l.edge && !light, weight: l.weight, alpha: (l.alpha ?? 1) * ga }
@@ -755,10 +875,46 @@ export function paintScene(groups: DrawGroup[], box: { size: number; margin: num
       // densa antes de suavizar: el suavizado de la mano no debe encoger la curva
       return [{ ...base, pts: resample(pts, !!l.closed, 0.45), closed: !!l.closed, start: 'free', end: 'free' }]
     }
-    for (const l of g.lines) if (l.color) for (const p of toPaths(l, 'color')) stroke(out, p, t, k, P, H)
-    inkLines(out, g.lines.filter((l) => !l.color).flatMap((l) => toPaths(l, 'ink')), t, k, P, H)
+    // una línea con esquinas son varias pinceladas: se dan una tras otra dentro de lo que lleva la pieza
+    const parts = (n: number, v: number) => Array.from({ length: n }, (_, j) => Math.min(1, Math.max(0, v * n - j)))
+    for (const l of g.lines.filter((l) => l.color)) {
+      const ps = toPaths(l, 'color')
+      const v = parts(ps.length, next())
+      ps.forEach((p, j) => stroke(out, p, t, k, P, H, false, v[j]))
+    }
+    const ink: InkPath[] = []
+    const upTo: number[] = []
+    for (const l of g.lines.filter((l) => !l.color)) {
+      const ps = toPaths(l, 'ink')
+      ink.push(...ps)
+      upTo.push(...parts(ps.length, next()))
+    }
+    inkLines(out, ink, t, k, P, H, rv ? upTo : undefined)
   }
   return { width: W, height: W, data: out }
+}
+
+/** Las piezas de una escena en el orden en que `paintScene` las revela: por grupo, sus manchas, sus pinceladas de color
+ *  y sus líneas de tinta. */
+export function scenePieces(groups: DrawGroup[], box: { size: number; margin: number }): Piece[] {
+  const out: Piece[] = []
+  groups.forEach((g, gi) => {
+    const map = (x: number, y: number): [number, number] => [(g.flip ? box.size - x : x) + (g.dx ?? 0) + box.margin, y + (g.dy ?? 0) + box.margin]
+    for (const sh of g.shapes) {
+      const pts = sh.pts.map(([x, y]) => map(x, y))
+      let a = 0
+      for (let i = 0; i < pts.length; i++) a += pts[i][0] * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * pts[i][1]
+      out.push({ kind: sh.fill === 'ink' ? 'blot' : 'fill', edge: false, size: Math.abs(a) / 2, box: ptsBox(pts), group: gi })
+    }
+    const line = (l: DrawLine): Piece => {
+      const pts = l.pts.map(([x, y]) => map(x, y))
+      const len = pts.reduce((s, q, i) => (i ? s + Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) : 0), 0) + (l.closed && pts.length > 1 ? Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]) : 0)
+      return { kind: l.color ? 'color' : 'ink', edge: !!l.edge, size: len, box: ptsBox(pts), group: gi }
+    }
+    for (const l of g.lines) if (l.color) out.push(line(l))
+    for (const l of g.lines) if (!l.color) out.push(line(l))
+  })
+  return out
 }
 
 /** ¿Es claro el cuerpo de un grupo? (la luz OKLab de su mancha más grande, ya templada). */
@@ -782,7 +938,8 @@ function lightBody(shapes: DrawShape[]): boolean {
  * Rellena una mancha (barrido por filas con antialias: rápido aunque el polígono tenga muchos puntos). El borde lo corta
  * una mano: los puntos tiemblan (fijo + el hervor del dibujo) y la mancha va un pelo desplazada de su línea.
  */
-function shapeFill(out: Uint8ClampedArray, sh: DrawShape, pts0: [number, number][], W: number, k: number, dark: boolean, P: Paper, boil: Noise, groupAlpha: number): void {
+function shapeFill(out: Uint8ClampedArray, sh: DrawShape, pts0: [number, number][], W: number, k: number, dark: boolean, P: Paper, boil: Noise, groupAlpha: number, progress = 1): void {
+  if (progress <= 0) return
   const pts = pts0.map(([x, y]) => ({ x, y }))
   let poly: Pt[] = sh.sharp
     ? pts.flatMap((a, i) => {
@@ -808,6 +965,13 @@ function shapeFill(out: Uint8ClampedArray, sh: DrawShape, pts0: [number, number]
   const ink = sh.fill === 'ink'
   const pg = ink ? sumiPigment : pigmentOf(sh.fill, dark)
   const alpha = (sh.alpha ?? 1) * groupAlpha
+  let bx0 = Infinity
+  let bx1 = -Infinity
+  for (const q of poly) {
+    bx0 = Math.min(bx0, q.x)
+    bx1 = Math.max(bx1, q.x)
+  }
+  const wash = progress < 1 ? washMask(progress, bx0 * k, y0 * k, bx1 * k, y1 * k, k, Math.round(bx0 * 13 + y0 * 7)) : null
   const row = new Float32Array(W)
   const xs: number[] = []
   const SUB = 3
@@ -850,7 +1014,7 @@ function shapeFill(out: Uint8ClampedArray, sh: DrawShape, pts0: [number, number]
       const i = y * W + x
       const j = Math.min(W - 1, y + pg.oy) * W + Math.min(W - 1, x + pg.ox)
       const v = ink ? 1 : 1 + 0.045 * P.tone[j]
-      over(out, i, pg.r * v, pg.g * v, pg.b * v, c * alpha * pg.a * (0.985 - 0.2 * sstep(0.18, 0.04, P.height[i])))
+      over(out, i, pg.r * v, pg.g * v, pg.b * v, c * alpha * pg.a * (0.985 - 0.2 * sstep(0.18, 0.04, P.height[i])) * (wash ? wash(x, y) : 1))
     }
   }
 }

@@ -1,0 +1,276 @@
+{
+ "source": "v3 del 13-10 (dfcb4e1): Story.swift + los instantes escritos a mano en Audio.swift",
+ "bpm": 100,
+ "duration": 154,
+ "bars": 64,
+ "musicBars": 60,
+ "meetBar": 3,
+ "meet": 7.2,
+ "logo": 144.0,
+ "accentsFrom": 7.5,
+ "introSwell": 5.8,
+ "kinds": [
+  "intro",
+  "intro",
+  "intro",
+  "meet",
+  "card",
+  "day",
+  "day",
+  "day",
+  "day",
+  "dusk",
+  "night",
+  "card",
+  "night",
+  "night",
+  "night",
+  "night",
+  "night",
+  "night",
+  "card",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "card",
+  "night",
+  "night",
+  "night",
+  "night",
+  "night",
+  "night",
+  "night",
+  "card",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "card",
+  "night",
+  "night",
+  "night",
+  "night",
+  "card",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "day",
+  "outro",
+  "outro",
+  "outro",
+  "outro",
+  "outro",
+  "outro"
+ ],
+ "chapters": [
+  {
+   "n": 1,
+   "bar": 4,
+   "dark": false,
+   "textAt": 0.3
+  },
+  {
+   "n": 2,
+   "bar": 11,
+   "dark": true,
+   "textAt": 0.3
+  },
+  {
+   "n": 3,
+   "bar": 18,
+   "dark": false,
+   "textAt": 1.45
+  },
+  {
+   "n": 4,
+   "bar": 33,
+   "dark": true,
+   "textAt": 0.85
+  },
+  {
+   "n": 5,
+   "bar": 41,
+   "dark": false,
+   "textAt": 1.0
+  },
+  {
+   "n": 6,
+   "bar": 48,
+   "dark": true,
+   "textAt": 0.75
+  },
+  {
+   "n": 7,
+   "bar": 53,
+   "dark": false,
+   "textAt": 0.85
+  }
+ ],
+ "changes": [
+  {
+   "t0": 22.0,
+   "t1": 23.2,
+   "toDark": true
+  },
+  {
+   "t0": 44.0,
+   "t1": 44.9,
+   "toDark": false
+  },
+  {
+   "t0": 79.3,
+   "t1": 80.4,
+   "toDark": true
+  },
+  {
+   "t0": 98.5,
+   "t1": 99.8,
+   "toDark": false
+  },
+  {
+   "t0": 115.3,
+   "t1": 116.3,
+   "toDark": true
+  },
+  {
+   "t0": 127.3,
+   "t1": 128.4,
+   "toDark": false
+  }
+ ],
+ "accents": [
+  1.2,
+  1.8,
+  2.4,
+  3.0,
+  4.8,
+  7.8,
+  16.2,
+  82.2,
+  82.8,
+  83.4,
+  84.0,
+  84.6,
+  85.2,
+  91.8,
+  97.4,
+  104.1,
+  106.7,
+  125.0,
+  134.4,
+  135.0,
+  135.6
+ ],
+ "cuts": [
+  16.8,
+  19.2,
+  21.6,
+  24.0,
+  33.6,
+  38.4,
+  50.4,
+  55.2,
+  57.6,
+  60.0,
+  62.4,
+  64.8,
+  67.2,
+  69.6,
+  72.0,
+  74.4,
+  86.4,
+  88.8,
+  93.6,
+  96.0,
+  103.2,
+  108.0,
+  110.4,
+  122.4,
+  132.0,
+  136.8,
+  139.2
+ ],
+ "clicks": [
+  16.2,
+  90.7,
+  92.55,
+  97.1,
+  106.7,
+  124.0,
+  126.3
+ ],
+ "hookWords": [
+  [
+   1.2,
+   76.0
+  ],
+  [
+   1.8,
+   78
+  ],
+  [
+   2.4,
+   81
+  ],
+  [
+   3.0,
+   85
+  ],
+  [
+   4.8,
+   73
+  ],
+  [
+   5.1,
+   78
+  ]
+ ],
+ "iconWaves": [
+  137.05
+ ],
+ "outroMallets": [
+  [
+   145.2,
+   81.0
+  ],
+  [
+   145.5,
+   78.0
+  ],
+  [
+   146.4,
+   85.0
+  ],
+  [
+   147.6,
+   81.0
+  ],
+  [
+   148.8,
+   86.0
+  ]
+ ],
+ "levelWindow": [
+  24.0,
+  140.0
+ ],
+ "fadeOut": [
+  150.4,
+  153.8
+ ]
+}

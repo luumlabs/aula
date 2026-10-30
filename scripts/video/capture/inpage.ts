@@ -114,6 +114,14 @@ export function installInPage(opts: { seed: number; pixelIdle: boolean }): void 
     }
   }
   w.__vt = vt
+  // nada a pantalla completa durante la captura (sacaría la ventana oculta a la pantalla del dueño)
+  const noFull = function (): Promise<void> {
+    return Promise.resolve()
+  }
+  Element.prototype.requestFullscreen = noFull
+  const legacy = Element.prototype as unknown as { webkitRequestFullscreen?: unknown; webkitRequestFullScreen?: unknown }
+  if (legacy.webkitRequestFullscreen) legacy.webkitRequestFullscreen = noFull
+  if (legacy.webkitRequestFullScreen) legacy.webkitRequestFullScreen = noFull
   // los dibujos de la app (personajes, pinturas) se pintan en hilos aparte y llegan en tiempo real: cada mensaje al hilo
   // tiene una respuesta, y mientras falte alguna la interfaz no está quieta (así cada dibujo cae siempre en el mismo paso)
   const RealWorker = window.Worker
