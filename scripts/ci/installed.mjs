@@ -410,11 +410,14 @@ async function winFresh() {
   // desinstalar (en silencio): se va el programa, se quedan los datos del estudiante
   const uninstaller = join(dirname(exe), 'Uninstall Aula.exe')
   if (existsSync(uninstaller)) {
+    const before = Object.keys(manifest(appData))
     const r = spawnSync(uninstaller, ['/S'], { timeout: 5 * 60_000 })
     const end = Date.now() + 120_000
     while (Date.now() < end && (existsSync(exe) || winInstalled('HKCU'))) await sleep(2000)
     check(r.status === 0 && !existsSync(exe) && !winInstalled('HKCU'), 'silent uninstall removes the app', `exit ${r.status}`)
-    check(existsSync(join(appData, 'settings.json')) && existsSync(join(home, 'Packs')), 'uninstall keeps the student\'s data')
+    const kept = Object.keys(manifest(appData))
+    const lost = before.filter((f) => !kept.includes(f))
+    check(before.length > 0 && lost.length === 0, 'uninstall keeps the student\'s data (%APPDATA%\\Aula)', lost.length ? `lost: ${lost.join(', ')}` : `${kept.length} files`)
   } else {
     check(false, 'uninstaller present', `${uninstaller}; uninstall entry: ${info?.uninstall ?? 'none'}`)
   }
