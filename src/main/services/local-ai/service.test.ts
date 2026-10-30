@@ -72,8 +72,11 @@ function makeService(cards: ModelCard[] = [cardFor('m1'), cardFor('m2', { vision
   return service
 }
 
+// el `llama-server` falso es un guion (#!/bin/sh): en Windows haría falta un .exe de verdad
+const windows = process.platform === 'win32'
+
 describe('LocalAIService', () => {
-  it('descarga, registra, arranca y borra', async () => {
+  it.skipIf(windows)('descarga, registra, arranca y borra', async () => {
     const service = makeService()
     const events: LocalProgressEvent[] = []
     service.onProgress((e) => events.push(e))
@@ -155,7 +158,7 @@ describe('LocalAIService', () => {
     expect(existsSync(join(legacy, 'models', 'viejo'))).toBe(false) // se movió (mismo disco), no se copió
   })
 
-  it('se apaga solo tras un rato sin uso (pero no mientras se usa)', async () => {
+  it.skipIf(windows)('se apaga solo tras un rato sin uso (pero no mientras se usa)', async () => {
     const service = makeService(undefined, { idleShutdownMs: 300 })
     await service.download('m1')
     service.beginUse()
@@ -174,7 +177,7 @@ describe('LocalAIService', () => {
 })
 
 describe('Proveedor «aula-local»', () => {
-  it('enciende el motor al primer uso y contesta por la API compatible con OpenAI (con su clave)', async () => {
+  it.skipIf(windows)('enciende el motor al primer uso y contesta por la API compatible con OpenAI (con su clave)', async () => {
     const service = makeService()
     await service.download('m1')
     const requests = join(folder, 'requests.jsonl')

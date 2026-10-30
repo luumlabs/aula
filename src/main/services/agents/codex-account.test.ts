@@ -1,5 +1,6 @@
 // Port de `Tests/AgentKitTests/CodexAccountTests.swift`: «Conectar con ChatGPT» con el inicio de sesión OFICIAL de Codex, contra
-// una `codex` falsa que imita la salida real de `codex login` (rust-v0.162.1). Nunca se abre el navegador.
+// una `codex` falsa (un script de Node; en Windows, con el envoltorio `.cmd` de npm) que imita la salida real de `codex login`
+// (rust-v0.162.1). Nunca se abre el navegador.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -8,7 +9,7 @@ import { CLAUDE_ALIASES, cliModelCatalog, parseOpenCodeModels } from './catalogs
 import { codexIsLoggedIn, codexLogin, codexLogout, codexModels, parseCodexModels, CodexLoginOutput, codexAuthURL } from './codex-account'
 import { AgentError } from './errors'
 import { locatorOverrides } from './locator'
-import { cleanupTempDirs, makeTempDir, processExists, waitUntil, writeExecutable } from './__fixtures__/support'
+import { cleanupTempDirs, makeTempDir, processExists, waitUntil, writeNodeTool } from './__fixtures__/support'
 
 /** Lo que escribe la CLI real (`login/src/server.rs`) en stderr antes de esperar al navegador. */
 const BROWSER_BANNER = `Starting local login server on http://localhost:1455.
@@ -18,30 +19,44 @@ https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_TEST&re
 
 On a remote or headless machine? Use \`codex login --device-auth\` instead.`
 
-const sq = (s: string): string => s.replace(/'/g, `'\\''`)
+/** Lo que hace `codex login` (JavaScript dentro de una función async: `auth`, `sleep`, `fs`). */
+const LOGIN_OK = `process.stderr.write(${JSON.stringify(BROWSER_BANNER + '\n')})
+await sleep(300)
+fs.writeFileSync(auth, '{"tokens":{}}\\n')
+console.error('Successfully logged in')
+process.exit(0)`
+/** Deja su PID, anuncia la página y espera al navegador (que nunca llega). */
+const loginWaitsForever = (pidFile: string): string =>
+  `fs.writeFileSync(${JSON.stringify(pidFile)}, String(process.pid)); process.stderr.write(${JSON.stringify(BROWSER_BANNER + '\n')}); await sleep(300000)`
+const loginFails = (message: string): string => `console.error(${JSON.stringify(message)}); process.exit(1)`
 
 /** `codex` falsa: `login` imprime la página, espera y guarda `auth.json` en `$CODEX_HOME`; `login status`, `logout`, `debug models`. */
-function fakeCodex(dir: string, loginBody?: string): string {
+function fakeCodex(dir: string, loginBody = LOGIN_OK): string {
   const log = join(dir, 'calls.log')
-  const login = loginBody ?? `printf '%s\\n' '${sq(BROWSER_BANNER)}' >&2
-sleep 0.3
-echo '{"tokens":{}}' > "$CODEX_HOME/auth.json"
-echo "Successfully logged in" >&2
-exit 0`
-  const script = `#!/bin/bash
-echo "$CODEX_HOME|$*" >> '${log}'
-case "$*" in
-  *"login status"*) if [ -f "$CODEX_HOME/auth.json" ]; then echo "Logged in using ChatGPT" >&2; exit 0; else echo "Not logged in" >&2; exit 1; fi ;;
-  *"logout"*) rm -f "$CODEX_HOME/auth.json"; echo "Successfully logged out" >&2; exit 0 ;;
-  *"debug models --bundled"*) echo '{"models":[{"slug":"gpt-6-luna","display_name":"GPT-6-Luna","visibility":"list","priority":4,"context_window":272000,"input_modalities":["text","image"]},{"slug":"gpt-6.1-sol","display_name":"GPT-6.1-Sol","visibility":"list","priority":1,"context_window":272000},{"slug":"codex-auto-review","visibility":"hide","priority":43}]}'; exit 0 ;;
-  *"debug models"*) echo "error: not logged in" >&2; exit 1 ;;
-  *"login"*)
-${login}
-  ;;
-esac
-exit 2
+  const models = '{"models":[{"slug":"gpt-6-luna","display_name":"GPT-6-Luna","visibility":"list","priority":4,"context_window":272000,"input_modalities":["text","image"]},{"slug":"gpt-6.1-sol","display_name":"GPT-6.1-Sol","visibility":"list","priority":1,"context_window":272000},{"slug":"codex-auto-review","visibility":"hide","priority":43}]}'
+  const script = `const fs = require('fs')
+const path = require('path')
+const all = process.argv.slice(2).join(' ')
+const home = process.env.CODEX_HOME
+const auth = path.join(home, 'auth.json')
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+fs.appendFileSync(${JSON.stringify(log)}, home + '|' + all + '\\n')
+;(async () => {
+  if (all.includes('login status')) {
+    if (fs.existsSync(auth)) { console.error('Logged in using ChatGPT'); process.exit(0) }
+    console.error('Not logged in'); process.exit(1)
+  }
+  if (all.includes('logout')) { fs.rmSync(auth, { force: true }); console.error('Successfully logged out'); process.exit(0) }
+  if (all.includes('debug models --bundled')) { console.log(${JSON.stringify(models)}); process.exit(0) }
+  if (all.includes('debug models')) { console.error('error: not logged in'); process.exit(1) }
+  if (all.includes('login')) {
+${loginBody}
+    return
+  }
+  process.exit(2)
+})()
 `
-  return writeExecutable(join(dir, 'codex'), script)
+  return writeNodeTool(dir, 'codex', script)
 }
 
 const calls = (dir: string): string[] => (existsSync(join(dir, 'calls.log')) ? readFileSync(join(dir, 'calls.log'), 'utf8').split('\n').filter(Boolean) : [])
@@ -98,9 +113,8 @@ describe('CodexAccount', () => {
 
   it('el código de dispositivo se muestra', async () => {
     const dir = makeTempDir()
-    const device = `printf '\\033[94mWelcome to Codex [v0.162.1]\\033[0m\\nOpenAI'"'"'s command-line coding agent\\n\\nFollow these steps to sign in with ChatGPT using device code authorization:\\n\\n1. Open this link in your browser and sign in to your account\\n   \\033[94mhttps://auth.openai.com/codex/device\\033[0m\\n\\n2. Enter this one-time code \\033[90m(expires in 15 minutes)\\033[0m\\n   \\033[94mQX7P-9KDM\\033[0m\\n'
-sleep 0.2
-echo '{}' > "$CODEX_HOME/auth.json"; echo "Successfully logged in" >&2; exit 0`
+    const banner = "\u001B[94mWelcome to Codex [v0.162.1]\u001B[0m\nOpenAI's command-line coding agent\n\nFollow these steps to sign in with ChatGPT using device code authorization:\n\n1. Open this link in your browser and sign in to your account\n   \u001B[94mhttps://auth.openai.com/codex/device\u001B[0m\n\n2. Enter this one-time code \u001B[90m(expires in 15 minutes)\u001B[0m\n   \u001B[94mQX7P-9KDM\u001B[0m\n"
+    const device = `process.stdout.write(${JSON.stringify(banner)}); await sleep(200); fs.writeFileSync(auth, '{}'); console.error('Successfully logged in'); process.exit(0)`
     const codex = fakeCodex(dir, device)
     const { events } = await loginEvents(codexLogin(codex, { home: join(dir, 'h'), deviceAuth: true, timeoutMs: 20_000 }))
     expect(events[0]).toEqual({ type: 'deviceCode', url: 'https://auth.openai.com/codex/device', code: 'QX7P-9KDM' })
@@ -110,13 +124,13 @@ echo '{}' > "$CODEX_HOME/auth.json"; echo "Successfully logged in" >&2; exit 0`
 
   it('un inicio de sesión fallido es un error claro', async () => {
     const dir = makeTempDir()
-    const codex = fakeCodex(dir, "echo 'Error logging in: Token exchange failed: 400 Bad Request' >&2; exit 1")
+    const codex = fakeCodex(dir, loginFails('Error logging in: Token exchange failed: 400 Bad Request'))
     const failed = await loginEvents(codexLogin(codex, { home: join(dir, 'h'), timeoutMs: 20_000 }))
     expect(failed.error).toBeInstanceOf(AgentError)
     expect((failed.error as AgentError).kind).toBe('notLoggedIn')
     expect((failed.error as AgentError).message).toContain('No se pudo iniciar sesión en ChatGPT')
     expect((failed.error as AgentError).message).toContain('Token exchange failed')
-    const device = fakeCodex(makeTempDir(), "echo 'Error logging in with device code: device code login is not enabled for this Codex server.' >&2; exit 1")
+    const device = fakeCodex(makeTempDir(), loginFails('Error logging in with device code: device code login is not enabled for this Codex server.'))
     const unsupported = await loginEvents(codexLogin(device, { home: join(dir, 'h2'), deviceAuth: true, timeoutMs: 20_000 }))
     expect((unsupported.error as AgentError).kind).toBe('unsupported')
     expect((unsupported.error as AgentError).message).toContain('navegador')
@@ -125,7 +139,7 @@ echo '{}' > "$CODEX_HOME/auth.json"; echo "Successfully logged in" >&2; exit 0`
   it('se agota el plazo y la CLI muere', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'pid')
-    const codex = fakeCodex(dir, `echo $$ > '${pidFile}'; printf '%s\\n' '${sq(BROWSER_BANNER)}' >&2; sleep 300`)
+    const codex = fakeCodex(dir, loginWaitsForever(pidFile))
     const started = Date.now()
     const { events, error } = await loginEvents(codexLogin(codex, { home: join(dir, 'h'), timeoutMs: 1000 }))
     expect((error as AgentError).kind).toBe('timeout')
@@ -139,7 +153,7 @@ echo '{}' > "$CODEX_HOME/auth.json"; echo "Successfully logged in" >&2; exit 0`
   it('cancelar detiene el inicio de sesión sin error', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'pid')
-    const codex = fakeCodex(dir, `echo $$ > '${pidFile}'; printf '%s\\n' '${sq(BROWSER_BANNER)}' >&2; sleep 300`)
+    const codex = fakeCodex(dir, loginWaitsForever(pidFile))
     const controller = new AbortController()
     let sawPage = false
     const running = loginEvents(

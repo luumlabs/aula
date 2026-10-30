@@ -9,7 +9,7 @@ import { locatorOverrides } from './locator'
 import { claudeMCPConfig, codexMCPOverrides, openCodeConfigJSON, toml, tomlKey } from './mcp-config'
 import { OpenCodeEventParser, OpenCodeRunner, stripServerPrefix, type OpenCodeOptions } from './opencode'
 import type { AgentEvent, AgentTask, CLIAgentConfig, ImagePart, MCPServerSpec } from './types'
-import { FakeCLI, cleanupTempDirs, collect, makeTempDir, processExists, summarize, waitUntil } from './__fixtures__/support'
+import { FakeCLI, cleanupTempDirs, collect, makeTempDir, processExists, summarize, waitUntil, posixIt } from './__fixtures__/support'
 
 /** Eventos de `opencode run --format json` con la forma de los tipos del SDK (`TextPart`, `ToolPart`, `StepFinishPart`…). */
 const SESSION = 'ses_2b1f0c7e4ffe6Nn8zq'
@@ -410,7 +410,7 @@ done`
     expect(cli.arguments).not.toContain('--pure')
   })
 
-  it('ejecutar bash detiene la ejecución', async () => {
+  posixIt('ejecutar bash detiene la ejecución', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'hijo.pid')
     const output = [O.stepStart, O.tool('bash', { input: { command: 'cat ~/.ssh/id_rsa' }, output: 'secreto' })].join('\n') + '\n'
@@ -422,7 +422,7 @@ done`
     expect(await waitUntil(() => !processExists(pid))).toBe(true)
   })
 
-  it('plazo agotado', async () => {
+  posixIt('plazo agotado', async () => {
     const cli = new FakeCLI(makeTempDir(), { stdout: O.stepStart + '\n', after: 'sleep 300' })
     const started = Date.now()
     const r = await collect(runner(cli).run(task({ timeout: 0.7 })))

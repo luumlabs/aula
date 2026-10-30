@@ -194,8 +194,13 @@ describe('Descompresión segura', () => {
     const out = join(dir, 'out')
     expect(await extractArchive(archive, out)).toBe(3) // 2 archivos y 1 enlace
     expect(readFileSync(join(out, 'llama-b1/llama-server'), 'utf8')).toContain('echo hola')
-    expect(statSync(join(out, 'llama-b1/llama-server')).mode & 0o111).not.toBe(0)
-    expect(readlinkSync(join(out, 'llama-b1/libllama.so'))).toBe('libllama.so.0')
+    if (process.platform === 'win32') {
+      // en Windows no hay bit de ejecución y el enlace se copia (crear enlaces pide permisos)
+      expect(readFileSync(join(out, 'llama-b1/libllama.so'), 'utf8')).toBe('ELF')
+    } else {
+      expect(statSync(join(out, 'llama-b1/llama-server')).mode & 0o111).not.toBe(0)
+      expect(readlinkSync(join(out, 'llama-b1/libllama.so'))).toBe('libllama.so.0')
+    }
   })
 
   it('rechaza rutas y enlaces que salen del paquete', async () => {
@@ -241,7 +246,8 @@ describe('Descompresión segura', () => {
     for (const [name, data] of cases) {
       const file = join(dir, `${name}.tar.gz`)
       writeFileSync(file, data)
-      await expect(extractArchive(file, join(dir, 'x', name)), name).rejects.toThrow(/enlace|repetida|fuera/)
+      // en Windows un enlace a una carpeta ya falla al copiarlo (EPERM): también se rechaza, con otro mensaje
+      await expect(extractArchive(file, join(dir, 'x', name)), name).rejects.toThrow(process.platform === 'win32' ? /enlace|repetida|fuera|EPERM/ : /enlace|repetida|fuera/)
     }
     expect(existsSync(join(dir, 'x', 'fuera'))).toBe(false)
     expect(existsSync(join(dir, 'fuera'))).toBe(false)

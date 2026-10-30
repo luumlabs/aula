@@ -13,7 +13,7 @@ import { LocalAIService } from '../local-ai/service'
 import { codexTriple, ManagedCodex, pickCodexAsset, PINNED_CODEX_SHA256 } from './codex-installer'
 import { locatorOverrides } from './locator'
 import { AgentsService, modelIdArg } from './service'
-import { cleanupTempDirs, makeTempDir, writeExecutable } from './__fixtures__/support'
+import { cleanupTempDirs, makeTempDir, posixIt, writeNodeTool } from './__fixtures__/support'
 
 const GB = 1_073_741_824
 const HW: HardwareProfile = {
@@ -30,6 +30,18 @@ case "$*" in
   *"login"*) echo "If your browser did not open, navigate to this URL to authenticate: https://auth.openai.com/oauth/authorize?x=1" >&2; sleep 0.2; echo '{}' > "$CODEX_HOME/auth.json"; echo "Successfully logged in" >&2; exit 0 ;;
 esac
 exit 2
+`
+
+/** La misma `codex`, en JavaScript (la del usuario, instalada con npm: en Windows, con su envoltorio `.cmd`). */
+const fakeCodexJS = (defaultHome: string): string => `const fs = require('fs')
+const all = process.argv.slice(2).join(' ')
+const auth = require('path').join(process.env.CODEX_HOME || ${JSON.stringify(defaultHome)}, 'auth.json')
+if (all.includes('--version')) console.log('codex-cli 0.162.1')
+else if (all.includes('login status')) {
+  if (fs.existsSync(auth)) console.error('Logged in using ChatGPT')
+  else { console.error('Not logged in'); process.exitCode = 1 }
+} else if (all.includes('logout')) fs.rmSync(auth, { force: true })
+else process.exitCode = 2
 `
 
 let root: string
@@ -66,11 +78,9 @@ function local(serverOrigins: Record<string, string> = {}): LocalAIService {
 
 describe('AgentsService.detect', () => {
   it('CLIs, servidores locales, ficha, recomendado y motor (con caché)', async () => {
-    writeExecutable(join(root, 'bin', 'claude'), `#!/bin/bash
-case "$1 $2" in
-  "--version ") echo "2.1.288 (Claude Code)";;
-  "auth status") echo '{"loggedIn": true, "authMethod": "claude.ai"}';;
-esac`)
+    writeNodeTool(join(root, 'bin'), 'claude', `const a = process.argv.slice(2).join(' ')
+if (a === '--version') console.log('2.1.288 (Claude Code)')
+else if (a === 'auth status') console.log('{"loggedIn": true, "authMethod": "claude.ai"}')`)
     const ollama = new FakeServer((r) => (r.path === '/api/tags' ? reply.json({ models: [{ name: 'qwen3.5:9b', model: 'qwen3.5:9b' }] }) : r.path === '/api/version' ? reply.json({ version: '0.40' }) : reply.notFound()))
     servers.push(ollama)
     const service = new AgentsService({ local: local({ ollama: await ollama.start() }), codex: new ManagedCodex({ root }) })
@@ -90,7 +100,8 @@ esac`)
 })
 
 describe('Conectar con ChatGPT', () => {
-  it('sin Codex: instala el oficial, inicia sesión en la carpeta de Aula y queda conectado', async () => {
+  // el Codex que instala Aula es un binario (en Windows, codex.exe): el paquete falso lleva un guion bash
+  posixIt('sin Codex: instala el oficial, inicia sesión en la carpeta de Aula y queda conectado', async () => {
     const codex = await codexPackage()
     const service = new AgentsService({ local: local(), codex })
     const events: CodexLoginEvent[] = []
@@ -114,12 +125,12 @@ describe('Conectar con ChatGPT', () => {
     const home = join(root, 'home-usuario')
     mkdirSync(home, { recursive: true })
     writeFileSync(join(home, 'auth.json'), '{}')
-    const exe = writeExecutable(join(root, 'bin', 'codex'), FAKE_CODEX.replace('#!/bin/bash\n', `#!/bin/bash\nCODEX_HOME="\${CODEX_HOME:-${home}}"\n`))
+    const exe = writeNodeTool(join(root, 'bin'), 'codex', fakeCodexJS(home))
     const service = new AgentsService({ local: local(), codex: new ManagedCodex({ root }) })
     expect(await service.connectChatGPT()).toEqual({ connected: true, executable: exe, managedHome: false })
   })
 
-  it('cancelar el inicio de sesión termina sin quedar a medias', async () => {
+  posixIt('cancelar el inicio de sesión termina sin quedar a medias', async () => {
     const codex = await codexPackage()
     await codex.install()
     writeFileSync(codex.binary!, FAKE_CODEX.replace('sleep 0.2', 'sleep 30'))

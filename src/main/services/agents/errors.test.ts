@@ -221,16 +221,19 @@ describe('Ayudantes del protocolo MCP', () => {
 
 describe('AgentSandbox', () => {
   afterAll(() => cleanupTempDirs())
-  const mode = (path: string): number => statSync(path).mode & 0o777
+  // permisos POSIX (en Windows protege la ACL de la carpeta del usuario)
+  const expectMode = (path: string, mode: number): void => {
+    if (process.platform !== 'win32') expect(statSync(path).mode & 0o777).toBe(mode)
+  }
 
   it('crea carpetas privadas y limpia', () => {
     const sandbox = new AgentSandbox(undefined, false)
     expect(basename(sandbox.root).startsWith('aula-agent-')).toBe(true)
-    expect(mode(sandbox.root)).toBe(0o700)
+    expectMode(sandbox.root, 0o700)
     expect(dirname(sandbox.workingDirectory)).toBe(sandbox.root)
     expect(readdirSync(sandbox.workingDirectory)).toEqual([])
     const file = sandbox.write('secreto', 'mcp.json')
-    expect(mode(file)).toBe(0o600)
+    expectMode(file, 0o600)
     sandbox.cleanup()
     expect(existsSync(sandbox.root)).toBe(false)
     sandbox.cleanup() // idempotente
@@ -254,7 +257,7 @@ describe('AgentSandbox', () => {
     expect(a).toBeDefined()
     expect(sharedEmptyWorkDirectory(base)).toBe(a)
     expect(basename(a!)).toBe(SHARED_WORK_NAME)
-    expect(mode(a!)).toBe(0o700)
+    expectMode(a!, 0o700)
     writeFileSync(join(a!, 'resto'), 'x')
     expect(sharedEmptyWorkDirectory(base)).toBeUndefined() // con algo dentro ya no vale
     const other = makeTempDir()

@@ -17,6 +17,9 @@ import {
   watchdogScript
 } from './mac-install'
 
+// El instalador propio solo se usa en macOS; sus rutas («/») y el vigilante (/bin/sh) se prueban también en Linux, no en Windows
+const windows = process.platform === 'win32'
+
 let dir: string
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'aula-upd-'))
@@ -43,7 +46,7 @@ function fakeApp(at: string, version: string, id = 'com.luumlabs.aula', o: { min
 
 const version = (app: string) => readFileSync(join(app, 'Contents', 'MacOS', 'Aula'), 'utf8').match(/echo (\S+)/)?.[1]
 
-describe('rutas', () => {
+describe.skipIf(windows)('rutas', () => {
   it('encuentra el .app desde el ejecutable', () => {
     expect(appBundleOf('/Applications/Aula.app/Contents/MacOS/Aula')).toBe('/Applications/Aula.app')
     expect(appBundleOf('/Users/a/Mis cosas/Aula 2.app/Contents/MacOS/Aula')).toBe('/Users/a/Mis cosas/Aula 2.app')
@@ -66,7 +69,7 @@ describe('rutas', () => {
   })
 })
 
-describe('swapMacBundle', () => {
+describe.skipIf(windows)('swapMacBundle', () => {
   it('cambia la app y guarda la anterior al lado', () => {
     const target = fakeApp(join(dir, 'Aula.app'), '2.0.0')
     const staged = fakeApp(join(dir, 'cache', 'staged', 'Aula.app'), '2.0.1')
@@ -94,7 +97,7 @@ describe('swapMacBundle', () => {
   })
 })
 
-describe('vigilante', () => {
+describe.skipIf(windows)('vigilante', () => {
   const opts = (marker: string) => ({
     target: join(dir, 'Aula.app'),
     executable: join(dir, 'Aula.app', 'Contents', 'MacOS', 'Aula'),

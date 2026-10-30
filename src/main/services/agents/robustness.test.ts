@@ -14,7 +14,7 @@ import { locatorOverrides } from './locator'
 import { codexMCPOverrides } from './mcp-config'
 import { OPENCODE_INLINE_PROMPT_LIMIT, OpenCodeEventParser, openCodeTaskConfig } from './opencode'
 import { fullPrompt, type AgentTask, type MCPServerSpec } from './types'
-import { ClaudeEvents as E, FakeCLI, cleanupTempDirs, collect, fixture, makeTempDir, processExists, waitUntil } from './__fixtures__/support'
+import { ClaudeEvents as E, FakeCLI, cleanupTempDirs, collect, fixture, makeTempDir, processExists, waitUntil, posixIt } from './__fixtures__/support'
 
 const TEXT_OK = fixture('claude-text-ok.jsonl')
 
@@ -175,21 +175,21 @@ const simpleTask = (o: Partial<AgentTask> = {}): AgentTask => ({ system: 's', pr
 const agentError = (err: unknown): AgentError | undefined => (err instanceof AgentError ? err : undefined)
 
 describe('Casos límite del motor', () => {
-  it('muerte por señal tras algo de salida', async () => {
+  posixIt('muerte por señal tras algo de salida', async () => {
     const r = await collect(claudeRunner(new FakeCLI(makeTempDir(), { stdout: E.initEvent() + '\n', after: 'kill -9 $$' })).run(simpleTask()))
     expect(agentError(r.error)?.kind).toBe('other')
     expect(agentError(r.error)?.message).toContain('señal 9')
     expect(r.kinds).toContain('started')
   })
 
-  it('cerrar stdout y seguir vivo se corta con el plazo', async () => {
+  posixIt('cerrar stdout y seguir vivo se corta con el plazo', async () => {
     const started = Date.now()
     const r = await collect(claudeRunner(new FakeCLI(makeTempDir(), { stdout: E.initEvent() + '\n', after: 'exec 1>&-; sleep 300' })).run(simpleTask({ timeoutMs: 800 })))
     expect(agentError(r.error)?.kind).toBe('timeout')
     expect(Date.now() - started).toBeLessThan(8000)
   })
 
-  it('salida inmediata sin nada', async () => {
+  posixIt('salida inmediata sin nada', async () => {
     const r = await collect(claudeRunner(new FakeCLI(makeTempDir(), { before: 'exit 0' })).run(simpleTask()))
     expect(agentError(r.error)?.kind).toBe('badResponse')
     expect(agentError(r.error)?.message).toContain('sin dar ninguna respuesta')
@@ -202,7 +202,7 @@ describe('Casos límite del motor', () => {
     expect(r.finished?.text).toBe('OTRO RESULTADO')
   })
 
-  it('basura binaria en stdout no rompe la ejecución', async () => {
+  posixIt('basura binaria en stdout no rompe la ejecución', async () => {
     const dir = makeTempDir()
     writeFileSync(join(dir, 'garbage.stdout'), TEXT_OK)
     const r = await collect(claudeRunner(new FakeCLI(dir, { before: "head -c 100000 /dev/urandom | tr -d '\\n'; echo", after: `cat '${join(dir, 'garbage.stdout')}'` })).run(simpleTask()))
@@ -216,7 +216,7 @@ describe('Casos límite del motor', () => {
     expect(r.finished?.text).toBe('Listo, ya está.')
   })
 
-  it('cancelar con stdout cerrado y el proceso vivo lo mata', async () => {
+  posixIt('cancelar con stdout cerrado y el proceso vivo lo mata', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'hijo.pid')
     const controller = new AbortController()
@@ -229,7 +229,7 @@ describe('Casos límite del motor', () => {
     expect(await waitUntil(() => !processExists(pid), 8000)).toBe(true)
   })
 
-  it('una tormenta de cancelaciones no deja nada vivo', async () => {
+  posixIt('una tormenta de cancelaciones no deja nada vivo', async () => {
     const dir = makeTempDir()
     const pids = join(dir, 'pids')
     mkdirSync(pids)
@@ -264,7 +264,7 @@ describe('Casos límite del motor', () => {
 })
 
 describe('Apagado', () => {
-  it('si el plazo vence con el resultado ya llegado, no es un error', async () => {
+  posixIt('si el plazo vence con el resultado ya llegado, no es un error', async () => {
     engineSettings.postResultGraceMs = 30_000 // el proceso «se queda» tras el resultado
     const started = Date.now()
     const r = await collect(claudeRunner(new FakeCLI(makeTempDir(), { stdout: TEXT_OK, after: 'sleep 300' })).run(simpleTask({ timeoutMs: 600 })))
@@ -275,12 +275,14 @@ describe('Apagado', () => {
 
   it('killAllLive mata a todos los grupos hijo vivos', async () => {
     const dir = makeTempDir()
-    const env = { PATH: '/usr/bin:/bin' }
+    const env: Record<string, string> = { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}) }
     const processes: ChildProcessHandle[] = []
     const pids: number[] = []
     for (let i = 0; i < 3; i++) {
       const pidFile = join(dir, `nieto${i}.pid`)
-      const p = await ChildProcessHandle.spawn('/bin/sh', ['-c', `sleep 300 & echo $! > '${pidFile}'; wait`], { env })
+      // un hijo de Node con un nieto que vive 5 min (en Windows se mata el árbol con taskkill)
+      const script = `const c = require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 300000)'], { stdio: 'ignore' }); require('fs').writeFileSync(${JSON.stringify(pidFile)}, String(c.pid)); setTimeout(() => {}, 300000)`
+      const p = await ChildProcessHandle.spawn(process.execPath, ['-e', script], { env })
       p.closeStdin()
       processes.push(p)
       expect(await waitUntil(() => existsSync(pidFile) && readFileSync(pidFile, 'utf8').trim() !== '')).toBe(true)

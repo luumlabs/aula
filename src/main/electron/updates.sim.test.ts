@@ -212,7 +212,8 @@ describe('A1-P2-9 · una versión fallida', () => {
   })
 })
 
-describe('A1-P1-8 · Linux: AppImage en una carpeta sin permiso de escritura', () => {
+// la carpeta de solo lectura se hace con chmod, que en Windows no quita el permiso de escritura
+describe.skipIf(process.platform === 'win32')('A1-P1-8 · Linux: AppImage en una carpeta sin permiso de escritura', () => {
   it('ni se descarga: «available» con «readOnly»', async () => {
     const [file, yml] = FILES.linux
     release('0.1.1', file, yml, { signed: true })

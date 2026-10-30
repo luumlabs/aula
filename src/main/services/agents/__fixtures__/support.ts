@@ -1,9 +1,16 @@
 // Utilidades de las pruebas de los agentes CLI (port de `Tests/AgentKitTests/TestSupport.swift`): carpetas temporales, CLIs
 // falsas (un guion bash que registra cómo lo llamaron y emite una salida preparada) y recogida de eventos.
+// En Windows la CLI falsa es un script de Node con un envoltorio `.cmd` como los de npm (así se instalan allí `claude`,
+// `codex` y `opencode`): se prueba el mismo camino que sigue Aula para lanzarlas.
 import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { it } from 'vitest'
 import type { AgentEvent, AgentResult } from '../types'
+
+export const isWindows = process.platform === 'win32'
+/** Pruebas de grupos de procesos y señales POSIX, o con guiones bash: no corren en Windows. */
+export const posixIt = it.skipIf(isWindows)
 
 export function fixture(name: string): string {
   return readFileSync(join(__dirname, name), 'utf8')
@@ -32,6 +39,28 @@ export function writeExecutable(path: string, script: string): string {
   return path
 }
 
+/** El envoltorio `.cmd` que crea npm en Windows para una CLI de Node (`"%dp0%\<script>" %*`). */
+export function npmCmdShim(script: string): string {
+  return [
+    '@ECHO off', 'GOTO start', ':find_dp0', 'SET dp0=%~dp0', 'EXIT /b', ':start', 'SETLOCAL', 'CALL :find_dp0', '',
+    'IF EXIST "%dp0%\\node.exe" (', '  SET "_prog=%dp0%\\node.exe"', ') ELSE (', '  SET "_prog=node"', '  SET PATHEXT=%PATHEXT:;.JS;=;%', ')', '',
+    `endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\${script}" %*`, ''
+  ].join('\r\n')
+}
+
+/**
+ * Una herramienta falsa escrita en JavaScript: `<dir>/<name>` (guion que la lanza con este Node) o, en Windows,
+ * `<dir>\<name>.cmd` (envoltorio de npm). Devuelve la ruta del ejecutable.
+ */
+export function writeNodeTool(dir: string, name: string, js: string): string {
+  writeFileSync(join(dir, `${name}.js`), js)
+  if (isWindows) {
+    writeFileSync(join(dir, `${name}.cmd`), npmCmdShim(`${name}.js`))
+    return join(dir, `${name}.cmd`)
+  }
+  return writeExecutable(join(dir, name), `#!/bin/sh\nexec '${process.execPath}' '${join(dir, `${name}.js`)}' "$@"\n`)
+}
+
 const q = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`
 
 export interface FakeCLIOptions {
@@ -56,9 +85,15 @@ export class FakeCLI {
   ) {
     const name = options.name ?? 'fake-cli'
     this.base = join(directory, name)
-    this.executable = this.base
     writeFileSync(this.base + '.stdout', options.stdout ?? '')
     writeFileSync(this.base + '.stderr', options.stderr ?? '')
+    if (isWindows) {
+      // los fragmentos bash (`before`/`after`) solo existen en macOS y Linux: esas pruebas usan `posixIt`
+      if (options.before || options.after) throw new Error('FakeCLI: before/after son bash (usa posixIt)')
+      this.executable = writeNodeTool(directory, name, fakeCLIScript(this.base, options.exitCode ?? 0))
+      return
+    }
+    this.executable = this.base
     const script = `#!/bin/bash
 printf '%s\\0' "$@" > ${q(this.base + '.args')}
 printf '%s\\0' "$@" >> ${q(this.base + '.calls')}
@@ -124,6 +159,34 @@ exit ${options.exitCode ?? 0}
     const i = args.indexOf(flag)
     return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined
   }
+}
+
+/** La CLI falsa en JavaScript (Windows): lo mismo que el guion bash, sin `before`/`after`. */
+function fakeCLIScript(base: string, exitCode: number): string {
+  return `const fs = require('fs')
+const base = ${JSON.stringify(base)}
+const args = process.argv.slice(2)
+const nul = (list) => list.map((a) => a + '\\0').join('')
+fs.writeFileSync(base + '.args', nul(args))
+fs.appendFileSync(base + '.calls', nul(args) + '\\n')
+fs.writeFileSync(base + '.cwd', fs.realpathSync(process.cwd()) + '\\n')
+fs.writeFileSync(base + '.env', Object.entries(process.env).map(([k, v]) => k + '=' + v).join('\\n') + '\\n')
+const chunks = []
+process.stdin.on('data', (c) => chunks.push(c))
+process.stdin.on('end', () => {
+  fs.writeFileSync(base + '.stdin', Buffer.concat(chunks))
+  args.forEach((arg, i) => {
+    if (arg === '--mcp-config') {
+      fs.copyFileSync(args[i + 1], base + '.mcp.json')
+      fs.writeFileSync(base + '.mcpmode', (fs.statSync(args[i + 1]).mode & 0o777).toString(8) + '\\n')
+    }
+    if (arg === '--system-prompt-file') fs.copyFileSync(args[i + 1], base + '.system.md')
+  })
+  process.stdout.write(fs.readFileSync(base + '.stdout'))
+  process.stderr.write(fs.readFileSync(base + '.stderr'))
+  process.exitCode = ${exitCode}
+})
+`
 }
 
 function splitNul(text: string): string[] {

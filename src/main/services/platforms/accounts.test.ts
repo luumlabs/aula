@@ -140,7 +140,7 @@ describe('descargas a disco', () => {
     const s2 = storeDownloadedFile(put('%PDF-1.7 otro'), dir, 'Tema 1.pdf', 'application/pdf')
     expect([s1.filename, s2.filename]).toEqual(['Tema 1.pdf', 'Tema 1 (2).pdf'])
     expect(existsSync(a)).toBe(false)
-    expect((statSync(s1.path).mode & 0o777).toString(8)).toBe('644')
+    if (process.platform !== 'win32') expect((statSync(s1.path).mode & 0o777).toString(8)).toBe('644')
     expect(storeDownloadedFile(put('x'), dir, 'apuntes', 'application/pdf').filename).toBe('apuntes.pdf')
   })
 

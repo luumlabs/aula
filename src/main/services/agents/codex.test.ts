@@ -8,7 +8,7 @@ import { AgentError, CLIErrorClassifier } from './errors'
 import { locatorOverrides } from './locator'
 import { SHARED_WORK_NAME } from './sandbox'
 import { emptyUsage, type AgentEvent, type AgentTask, type CLIAgentConfig, type ImagePart, type MCPServerSpec } from './types'
-import { FakeCLI, cleanupTempDirs, collect, makeTempDir, processExists, summarize, waitUntil } from './__fixtures__/support'
+import { FakeCLI, cleanupTempDirs, collect, makeTempDir, processExists, summarize, waitUntil, posixIt } from './__fixtures__/support'
 
 /** Eventos de `codex exec --json` fieles al esquema de `codex-rs/exec/src/exec_events.rs`. */
 const line = (v: unknown): string => JSON.stringify(v)
@@ -371,7 +371,7 @@ done`
     expect(cli.calls).toHaveLength(1)
   })
 
-  it('ejecutar una orden detiene la ejecución (y al grupo)', async () => {
+  posixIt('ejecutar una orden detiene la ejecución (y al grupo)', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'hijo.pid')
     const output = [C.threadStarted, C.started(C.command('item_1', 'cat ~/.ssh/id_rsa'))].join('\n') + '\n'
@@ -383,7 +383,7 @@ done`
     expect(await waitUntil(() => !processExists(pid))).toBe(true)
   })
 
-  it('el tope de pasos para a un agente desbocado', async () => {
+  posixIt('el tope de pasos para a un agente desbocado', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'hijo.pid')
     const lines = [C.threadStarted]
@@ -397,7 +397,7 @@ done`
     expect(r.toolEvents.filter((t) => t.startsWith('←'))).toHaveLength(3)
   })
 
-  it('el plazo y la cancelación matan al grupo', async () => {
+  posixIt('el plazo y la cancelación matan al grupo', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'hijo.pid')
     const cli = new FakeCLI(dir, { stdout: C.threadStarted + '\n', before: `sleep 300 & echo $! > '${pidFile}'`, after: 'wait' })

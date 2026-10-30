@@ -169,7 +169,8 @@ describe('Opciones y parámetros fuera de rango', () => {
 })
 
 describe('Archivos especiales', () => {
-  it('una tubería con nombre se rechaza sin bloquearse', async () => {
+  // Windows no tiene tuberías con nombre en el disco (el mkfifo de Git para Windows no crea un archivo de verdad)
+  it.skipIf(process.platform === 'win32')('una tubería con nombre se rechaza sin bloquearse', async () => {
     const fifo = join(tmp.path, 'tuberia.txt')
     try { execFileSync('mkfifo', [fifo]) } catch { return }
     const t0 = performance.now()

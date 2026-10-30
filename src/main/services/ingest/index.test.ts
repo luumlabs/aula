@@ -1,6 +1,6 @@
 // API pública de la lectura (index.ts) y guardado en un curso; integración de todos los tipos (port de IngestIntegrationTests.swift).
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fullText, locationLabel, type IngestInput, type SourceKind } from '@shared/ingest'
 import { searchCourse } from '../search/course'
@@ -75,7 +75,7 @@ describe('Todos los tipos por la misma puerta', () => {
       expect(doc.title, name).not.toBe('')
       expect(fullText(doc).length, name).toBeGreaterThan(10)
       expect(doc.pages.map((x) => x.number), name).toEqual(doc.pages.map((_, i) => i + 1))
-      expect(doc.metadata.sourceFile, name).toBe(path.split('/').pop())
+      expect(doc.metadata.sourceFile, name).toBe(basename(path))
       expect(log.fractions[0], name).toBe(0)
       expect(log.fractions[log.fractions.length - 1], name).toBe(1)
       expect(log.fractions, name).toEqual([...log.fractions].sort((a, b) => a - b))

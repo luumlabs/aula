@@ -1,7 +1,7 @@
 // Port de `Tests/AgentKitTests/CLILocatorProbeTests.swift`: búsqueda de las CLIs, entorno de los hijos, PATH del shell de login
-// y estado de cada CLI (versión y sesión) contra CLIs falsas.
+// y estado de cada CLI (versión y sesión) contra CLIs falsas (scripts de Node; en Windows, con su envoltorio `.cmd` de npm).
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename, delimiter, dirname, join } from 'node:path'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ClaudeCodeRunner } from './claude'
 import { CodexRunner } from './codex'
@@ -9,7 +9,10 @@ import { buildChildEnvironment, findExecutable, locatorOverrides, mergedPATH, pa
 import { OpenCodeRunner } from './opencode'
 import { openCodeCredentialCounts, parseVersion, probeCLI, probeSettings, stripANSI } from './probe'
 import { cliAgentConfig, createCLIRunner } from './provider'
-import { cleanupTempDirs, makeTempDir, writeExecutable } from './__fixtures__/support'
+import { cleanupTempDirs, makeTempDir, posixIt, writeExecutable, writeNodeTool } from './__fixtures__/support'
+
+/** Una CLI falsa que no hace nada (en Windows, `<nombre>.cmd`). */
+const tool = (dir: string, name: string, js = ''): string => writeNodeTool(dir, name, js)
 
 beforeEach(() => {
   locatorOverrides.loginPATH = () => '/usr/bin:/bin:/usr/sbin:/sbin'
@@ -23,26 +26,26 @@ afterAll(() => cleanupTempDirs())
 
 describe('Localizador de CLIs', () => {
   it('la ruta explícita tiene prioridad', () => {
-    const tool = writeExecutable(join(makeTempDir(), 'claude'), '#!/bin/sh\necho hola\n')
+    const explicit = tool(makeTempDir(), 'claude', "console.log('hola')")
     const other = makeTempDir()
-    writeExecutable(join(other, 'claude'), '#!/bin/sh\n')
+    const found = tool(other, 'claude')
     locatorOverrides.searchDirectories = [other]
-    expect(findExecutable('claude', tool)).toBe(tool)
-    expect(findExecutable('claude')).toBe(join(other, 'claude'))
+    expect(findExecutable('claude', explicit)).toBe(explicit)
+    expect(findExecutable('claude')).toBe(found)
   })
 
   it('una carpeta explícita se busca por dentro (y se recortan espacios)', () => {
     const dir = makeTempDir()
-    const tool = writeExecutable(join(dir, 'opencode'), '#!/bin/sh\n')
-    expect(findExecutable('opencode', dir)).toBe(tool)
-    expect(findExecutable('opencode', `  ${tool}  `)).toBe(tool)
+    const opencode = tool(dir, 'opencode')
+    expect(findExecutable('opencode', dir)).toBe(opencode)
+    expect(findExecutable('opencode', `  ${opencode}  `)).toBe(opencode)
   })
 
   it('una ruta explícita no válida vuelve a la búsqueda', () => {
     const dir = makeTempDir()
-    const tool = writeExecutable(join(dir, 'codex'), '#!/bin/sh\n')
+    const codex = tool(dir, 'codex')
     locatorOverrides.searchDirectories = [dir]
-    expect(findExecutable('codex', '/no/existe/codex')).toBe(tool)
+    expect(findExecutable('codex', '/no/existe/codex')).toBe(codex)
     expect(findExecutable('noexiste', '/no/existe')).toBeUndefined()
   })
 
@@ -57,8 +60,8 @@ describe('Localizador de CLIs', () => {
 
   it('un nombre con «/» es una ruta', () => {
     const dir = makeTempDir()
-    const tool = writeExecutable(join(dir, 'tool'), '#!/bin/sh\n')
-    expect(findExecutable(tool)).toBe(tool)
+    const path = tool(dir, 'tool')
+    expect(findExecutable(path)).toBe(path)
     expect(findExecutable('../../bin/sh_inexistente')).toBeUndefined()
     expect(findExecutable(join(dir, 'nada'))).toBeUndefined()
   })
@@ -66,8 +69,8 @@ describe('Localizador de CLIs', () => {
   it('el orden de búsqueda es el de las carpetas', () => {
     const first = makeTempDir()
     const second = makeTempDir()
-    const a = writeExecutable(join(first, 'tool'), '#!/bin/sh\n')
-    writeExecutable(join(second, 'tool'), '#!/bin/sh\n')
+    const a = tool(first, 'tool')
+    tool(second, 'tool')
     locatorOverrides.searchDirectories = [first, second]
     expect(findExecutable('tool')).toBe(a)
   })
@@ -101,23 +104,24 @@ describe('Entorno de los procesos hijo', () => {
   it('«extra» manda y el PATH se combina sin duplicados', () => {
     const home = makeTempDir()
     mkdirSync(join(home, '.local/bin'), { recursive: true })
-    const env = buildChildEnvironment({ HOME: home, PATH: '/usr/bin:/bin:/usr/bin' }, '/opt/x/bin:/usr/bin:/opt/y/bin', { PATH_EXTRA: '1', NO_COLOR: '0', HOME: '/otra' })
+    const list = (...dirs: string[]): string => dirs.join(delimiter)
+    const env = buildChildEnvironment({ HOME: home, USERPROFILE: home, PATH: list('/usr/bin', '/bin', '/usr/bin') }, list('/opt/x/bin', '/usr/bin', '/opt/y/bin'), { PATH_EXTRA: '1', NO_COLOR: '0', HOME: '/otra' })
     expect(env.NO_COLOR).toBe('0')
     expect(env.HOME).toBe('/otra')
-    const path = env.PATH.split(':')
+    const path = env.PATH.split(delimiter)
     expect(path.slice(0, 3)).toEqual(['/opt/x/bin', '/usr/bin', '/opt/y/bin']) // el del shell de login primero
     expect(path.filter((p) => p === '/usr/bin')).toHaveLength(1)
     expect(path).toContain('/bin')
-    expect(path).toContain(`${home}/.local/bin`) // las carpetas habituales que existen
+    expect(path).toContain(join(home, '.local', 'bin')) // las carpetas habituales que existen
   })
 
-  it('sin PATH de partida siguen las carpetas del sistema, al final', () => {
+  posixIt('sin PATH de partida siguen las carpetas del sistema, al final', () => {
     const path = mergedPATH(null, null, '/no/existe').split(':')
     expect(path.slice(-4)).toEqual(['/usr/bin', '/bin', '/usr/sbin', '/sbin'])
     expect(path.some((p) => p.startsWith('/no/existe'))).toBe(false)
   })
 
-  it('las versiones de nvm van de la más nueva a la más vieja', () => {
+  posixIt('las versiones de nvm van de la más nueva a la más vieja', () => {
     const home = makeTempDir()
     for (const v of ['v18.20.4', 'v22.11.0', 'v20.18.1', 'v9.0.0']) mkdirSync(join(home, `.nvm/versions/node/${v}/bin`), { recursive: true })
     const dirs = wellKnownDirectories(home, {}).filter((d) => d.includes('.nvm')).map((d) => basename(dirname(d)))
@@ -134,7 +138,7 @@ describe('PATH del shell de login', () => {
     expect(parseLoginPATH('__AULA_PATH_BEGIN__  /x:/y \n __AULA_PATH_END__')).toBe('/x:/y')
   })
 
-  it('un shell colgado se corta con el plazo', async () => {
+  posixIt('un shell colgado se corta con el plazo', async () => {
     const shell = writeExecutable(join(makeTempDir(), 'lento'), '#!/bin/sh\nsleep 30\n')
     const previous = process.env.SHELL
     process.env.SHELL = shell
@@ -150,14 +154,13 @@ describe('PATH del shell de login', () => {
 })
 
 describe('Estado de las CLIs', () => {
-  const fake = (dir: string, name: string, script: string): string => writeExecutable(join(dir, name), `#!/bin/bash\n${script}\n`)
+  /** CLI falsa: `--version` da `version`; el resto lo decide `rest` (JavaScript con `args`). */
+  const fake = (dir: string, name: string, version: string, rest: string): string =>
+    tool(dir, name, `const args = process.argv.slice(2)\nif (args[0] === '--version') console.log(${JSON.stringify(version)})\nelse {\n${rest}\n}\n`)
 
   it('Claude con sesión', async () => {
-    const path = fake(makeTempDir(), 'claude', `case "$1 $2" in
-  "--version ") echo "2.1.288 (Claude Code)";;
-  "auth status") echo '{"loggedIn": true, "authMethod": "claude.ai", "apiProvider": "firstParty"}';;
-  *) echo "otro" >&2; exit 9;;
-esac`)
+    const path = fake(makeTempDir(), 'claude', '2.1.288 (Claude Code)', `if (args.join(' ') === 'auth status') console.log('{"loggedIn": true, "authMethod": "claude.ai", "apiProvider": "firstParty"}')
+else { console.error('otro'); process.exitCode = 9 }`)
     const s = await probeCLI('claude', { explicitPath: path })
     expect(s.installed).toBe(true)
     expect(s.version).toBe('2.1.288')
@@ -167,8 +170,7 @@ esac`)
   })
 
   it('Claude sin sesión (código 1 pero con JSON)', async () => {
-    const path = fake(makeTempDir(), 'claude', `if [ "$1" = "--version" ]; then echo "2.0.5 (Claude Code)"; exit 0; fi
-echo '{"loggedIn": false, "authMethod": "none"}'; exit 1`)
+    const path = fake(makeTempDir(), 'claude', '2.0.5 (Claude Code)', `console.log('{"loggedIn": false, "authMethod": "none"}'); process.exitCode = 1`)
     const s = await probeCLI('claude', { explicitPath: path })
     expect(s.loggedIn).toBe(false)
     expect(s.detail).toContain('sin sesión')
@@ -176,8 +178,7 @@ echo '{"loggedIn": false, "authMethod": "none"}'; exit 1`)
   })
 
   it('Claude antiguo sin «auth» = no se sabe', async () => {
-    const path = fake(makeTempDir(), 'claude', `if [ "$1" = "--version" ]; then echo "1.0.3 (Claude Code)"; exit 0; fi
-echo "error: unknown command 'auth'" >&2; exit 1`)
+    const path = fake(makeTempDir(), 'claude', '1.0.3 (Claude Code)', `console.error("error: unknown command 'auth'"); process.exitCode = 1`)
     const s = await probeCLI('claude', { explicitPath: path })
     expect(s.installed).toBe(true)
     expect(s.loggedIn).toBeNull()
@@ -186,29 +187,24 @@ echo "error: unknown command 'auth'" >&2; exit 1`)
 
   it('Codex con y sin sesión', async () => {
     const dir = makeTempDir()
-    const ok = await probeCLI('codex', { explicitPath: fake(dir, 'codex-ok', `if [ "$1" = "--version" ]; then echo "codex-cli 0.46.0"; exit 0; fi
-if [ "$1 $2" = "login status" ]; then echo "Logged in using ChatGPT"; exit 0; fi
-exit 5`) })
+    const ok = await probeCLI('codex', { explicitPath: fake(dir, 'codex-ok', 'codex-cli 0.46.0', `if (args.join(' ') === 'login status') console.log('Logged in using ChatGPT')
+else process.exitCode = 5`) })
     expect(ok.version).toBe('0.46.0')
     expect(ok.loggedIn).toBe(true)
-    const no = await probeCLI('codex', { explicitPath: fake(dir, 'codex-no', `if [ "$1" = "--version" ]; then echo "codex-cli 0.46.0"; exit 0; fi
-echo "Not logged in" >&2; exit 1`) })
+    const no = await probeCLI('codex', { explicitPath: fake(dir, 'codex-no', 'codex-cli 0.46.0', `console.error('Not logged in'); process.exitCode = 1`) })
     expect(no.loggedIn).toBe(false)
     expect(no.detail).toContain('Conectar con ChatGPT')
-    const unknown = await probeCLI('codex', { explicitPath: fake(dir, 'codex-raro', `if [ "$1" = "--version" ]; then echo "codex-cli 0.1.0"; exit 0; fi
-echo "algo inesperado" >&2; exit 3`) })
+    const unknown = await probeCLI('codex', { explicitPath: fake(dir, 'codex-raro', 'codex-cli 0.1.0', `console.error('algo inesperado'); process.exitCode = 3`) })
     expect(unknown.loggedIn).toBeNull()
   })
 
   it('OpenCode cuenta las credenciales', async () => {
     const dir = makeTempDir()
-    const a = await probeCLI('opencode', { explicitPath: fake(dir, 'opencode-a', `if [ "$1" = "--version" ]; then echo "1.14.2"; exit 0; fi
-printf '\\033[90m┌\\033[0m  Credentials ~/.local/share/opencode/auth.json\\n│\\n●  Anthropic api\\n│\\n└  2 credentials\\n\\n┌  Environment\\n●  OpenAI OPENAI_API_KEY\\n└  1 environment variable\\n'`) })
+    const a = await probeCLI('opencode', { explicitPath: fake(dir, 'opencode-a', '1.14.2', `process.stdout.write(${JSON.stringify('\u001b[90m┌\u001b[0m  Credentials ~/.local/share/opencode/auth.json\n│\n●  Anthropic api\n│\n└  2 credentials\n\n┌  Environment\n●  OpenAI OPENAI_API_KEY\n└  1 environment variable\n')})`) })
     expect(a.loggedIn).toBe(true)
     expect(a.version).toBe('1.14.2')
     expect(a.detail).toContain('2 credencial(es), 1 clave(s)')
-    const b = await probeCLI('opencode', { explicitPath: fake(dir, 'opencode-b', `if [ "$1" = "--version" ]; then echo "1.14.2"; exit 0; fi
-printf '┌  Credentials ~/.local/share/opencode/auth.json\\n│\\n└  0 credentials\\n'`) })
+    const b = await probeCLI('opencode', { explicitPath: fake(dir, 'opencode-b', '1.14.2', `process.stdout.write(${JSON.stringify('┌  Credentials ~/.local/share/opencode/auth.json\n│\n└  0 credentials\n')})`) })
     expect(b.loggedIn).toBeNull() // sin credenciales no es «sin sesión»: Zen funciona sin cuenta
     expect(b.detail).toContain('OpenCode Zen')
     expect(openCodeCredentialCounts('opencode  stored\nopenai  environment\n')).toEqual({ credentials: 1, environmentKeys: 1 })
@@ -226,7 +222,7 @@ printf '┌  Credentials ~/.local/share/opencode/auth.json\\n│\\n└  0 creden
   })
 
   it('una CLI colgada no bloquea para siempre', async () => {
-    const path = fake(makeTempDir(), 'claude', 'sleep 60')
+    const path = tool(makeTempDir(), 'claude', 'setTimeout(() => {}, 60000)')
     probeSettings.commandTimeoutMs = 800
     try {
       const started = Date.now()

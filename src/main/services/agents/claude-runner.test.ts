@@ -9,7 +9,7 @@ import { AgentError } from './errors'
 import { locatorOverrides } from './locator'
 import { SHARED_WORK_NAME } from './sandbox'
 import type { AgentTask, CLIAgentConfig, MCPServerSpec } from './types'
-import { ClaudeEvents as E, FakeCLI, cleanupTempDirs, collect, fixture, makeTempDir, processExists, waitUntil } from './__fixtures__/support'
+import { ClaudeEvents as E, FakeCLI, cleanupTempDirs, collect, fixture, makeTempDir, processExists, waitUntil, posixIt } from './__fixtures__/support'
 
 const TEXT_OK = fixture('claude-text-ok.jsonl')
 const MAX_TURNS = fixture('claude-mcp-tool-max-turns.jsonl')
@@ -294,7 +294,7 @@ describe('ClaudeCodeRunner · errores', () => {
     expect(run.events).toEqual([])
   })
 
-  it('sin red: la CLI que se queda reintentando se corta en segundos con un error de red', async () => {
+  posixIt('sin red: la CLI que se queda reintentando se corta en segundos con un error de red', async () => {
     const retries = [1, 2, 3, 4].map((attempt) => E.line({ type: 'system', subtype: 'api_retry', attempt, max_retries: 10, error_status: null, error: 'unknown' }))
     // tras los reintentos la CLI de verdad seguiría esperando minutos: aquí, 60 s
     const cli = new FakeCLI(makeTempDir(), { stdout: [E.initEvent(), ...retries].join('\n') + '\n', after: 'sleep 60' })
@@ -364,7 +364,7 @@ describe('ClaudeCodeRunner · errores', () => {
     expect(agentError((await collect(runner(cli).run(task()))).error)?.kind).toBe('notLoggedIn')
   })
 
-  it('una avalancha en stderr queda acotada y no bloquea', async () => {
+  posixIt('una avalancha en stderr queda acotada y no bloquea', async () => {
     const cli = new FakeCLI(makeTempDir(), { before: "head -c 20000000 /dev/zero | tr '\\0' 'e' >&2; echo ' FIN-STDERR' >&2; exit 4" })
     const started = Date.now()
     const run = await collect(runner(cli).run(task()))
@@ -434,7 +434,7 @@ done`
 describe('ClaudeCodeRunner · seguridad, tiempo, cancelación y procesos', () => {
   const pidOf = (path: string): number => Number(readFileSync(path, 'utf8').trim())
 
-  it('herramientas peligrosas en init detienen la ejecución (y a todo el grupo)', async () => {
+  posixIt('herramientas peligrosas en init detienen la ejecución (y a todo el grupo)', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'hijo.pid')
     const cli = new FakeCLI(dir, { stdout: E.initEvent({ tools: ['Bash', 'mcp__x__y'] }) + '\n', before: `sleep 300 & echo $! > '${pidFile}'`, after: 'wait' })
@@ -447,7 +447,7 @@ describe('ClaudeCodeRunner · seguridad, tiempo, cancelación y procesos', () =>
     expect(await waitUntil(() => !processExists(pid))).toBe(true)
   })
 
-  it('el plazo mata al grupo de procesos', async () => {
+  posixIt('el plazo mata al grupo de procesos', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'nieto.pid')
     const cli = new FakeCLI(dir, { stdout: E.initEvent() + '\n', before: `sleep 300 & echo $! > '${pidFile}'`, after: 'wait' })
@@ -460,7 +460,7 @@ describe('ClaudeCodeRunner · seguridad, tiempo, cancelación y procesos', () =>
     expect(await waitUntil(() => !processExists(pid))).toBe(true)
   })
 
-  it('cancelar mata al proceso y termina el flujo sin error', async () => {
+  posixIt('cancelar mata al proceso y termina el flujo sin error', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'nieto.pid')
     const cli = new FakeCLI(dir, { stdout: E.initEvent() + '\n', before: `sleep 300 & echo $! > '${pidFile}'`, after: 'wait' })
@@ -474,7 +474,7 @@ describe('ClaudeCodeRunner · seguridad, tiempo, cancelación y procesos', () =>
     expect(await waitUntil(() => !processExists(pid), 6000)).toBe(true)
   })
 
-  it('dejar de iterar pronto mata al proceso', async () => {
+  posixIt('dejar de iterar pronto mata al proceso', async () => {
     const dir = makeTempDir()
     const pidFile = join(dir, 'nieto.pid')
     const cli = new FakeCLI(dir, { stdout: E.initEvent() + '\n', before: `sleep 300 & echo $! > '${pidFile}'`, after: 'wait' })
@@ -484,7 +484,7 @@ describe('ClaudeCodeRunner · seguridad, tiempo, cancelación y procesos', () =>
     expect(await waitUntil(() => !processExists(pid), 6000)).toBe(true)
   })
 
-  it('un proceso que se queda tras el result se termina pasada la gracia', async () => {
+  posixIt('un proceso que se queda tras el result se termina pasada la gracia', async () => {
     engineSettings.postResultGraceMs = 400
     const cli = new FakeCLI(makeTempDir(), { stdout: TEXT_OK, after: 'sleep 300' })
     const started = Date.now()

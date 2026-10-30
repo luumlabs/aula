@@ -430,8 +430,11 @@ describe('disco', () => {
     const m = make({ embedder: emb, folder })
     await m.remember(draft('Prefiere explicaciones cortas'))
     await m.remember(draft('Estudia en la UNX', 'studies'))
-    expect(statSync(m.disk.recordsPath).mode & 0o777).toBe(0o600)
-    expect(statSync(folder).mode & 0o777).toBe(0o700)
+    // permisos POSIX (en Windows protege la ACL de la carpeta del usuario)
+    if (process.platform !== 'win32') {
+      expect(statSync(m.disk.recordsPath).mode & 0o777).toBe(0o600)
+      expect(statSync(folder).mode & 0o777).toBe(0o700)
+    }
     const again = new MemoryService({ folder, embedder: emb })
     expect(new Set(again.records().map((r) => r.text))).toEqual(new Set(['Prefiere explicaciones cortas', 'Estudia en la UNX']))
     const hits = await again.search('short explanations', 1)
@@ -445,7 +448,7 @@ describe('disco', () => {
     expect(recovered.records().map((r) => r.text)).toContain('Prefiere explicaciones cortas')
     const copies = readdirSync(folder).filter((n) => n.startsWith('memories.json.damaged-'))
     expect(copies).toHaveLength(1)
-    expect(statSync(join(folder, copies[0])).mode & 0o777).toBe(0o600)
+    if (process.platform !== 'win32') expect(statSync(join(folder, copies[0])).mode & 0o777).toBe(0o600)
     // dañados el archivo y su copia: se empieza de cero sin romper el arranque
     writeFileSync(m.disk.recordsPath, '{roto')
     writeFileSync(join(folder, '.memories.json.bak'), '[[')

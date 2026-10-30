@@ -14,6 +14,9 @@ import { AulaEngine, ENGINE_BUILD, EngineError, engineVariants, freePort, pickEn
 
 const FAKE = join(__dirname, '__fixtures__', 'fake-llama-server.cjs')
 const sha256 = (b: Buffer): string => createHash('sha256').update(b).digest('hex')
+// el `llama-server` falso es un guion (#!/bin/sh): en Windows haría falta un .exe de verdad, así que esas pruebas no corren allí
+const windows = process.platform === 'win32'
+const EXE = windows ? 'llama-server.exe' : 'llama-server'
 
 let folder: string
 let servers: FakeServer[] = []
@@ -44,7 +47,7 @@ function installedEngine(variant = 'macos-arm64'): { engine: AulaEngine; model: 
 }
 
 describe('AulaEngine · arrancar y apagar', () => {
-  it('arranca, atiende solo con la clave, reutiliza y se apaga', async () => {
+  it.skipIf(windows)('arranca, atiende solo con la clave, reutiliza y se apaga', async () => {
     const { engine, model } = installedEngine()
     const argsFile = join(folder, 'args.json')
     process.env.FAKE_LLAMA_ARGS = argsFile
@@ -90,7 +93,7 @@ describe('AulaEngine · arrancar y apagar', () => {
     expect(variantUsesGPU('win-cpu-x64')).toBe(false)
   })
 
-  it('cambiar de modelo apaga el anterior', async () => {
+  it.skipIf(windows)('cambiar de modelo apaga el anterior', async () => {
     const { engine, model } = installedEngine()
     const a = await engine.start({ model, alias: 'a', context: 16_384 })
     const b = await engine.start({ model, alias: 'b', context: 16_384 })
@@ -99,7 +102,7 @@ describe('AulaEngine · arrancar y apagar', () => {
     expect(engine.running?.alias).toBe('b')
   })
 
-  it('si no arranca, dice por qué', async () => {
+  it.skipIf(windows)('si no arranca, dice por qué', async () => {
     const { engine, model } = installedEngine()
     process.env.FAKE_LLAMA_FAIL = '1'
     const err = await engine.start({ model, alias: 'x', context: 16_384, loadTimeoutMs: 20_000 }).catch((e) => e)
@@ -109,7 +112,7 @@ describe('AulaEngine · arrancar y apagar', () => {
     expect(existsSync(engine.keyFile)).toBe(false)
   })
 
-  it('si el modelo no admite la caché q8_0, reintenta con f16', async () => {
+  it.skipIf(windows)('si el modelo no admite la caché q8_0, reintenta con f16', async () => {
     const { engine, model } = installedEngine()
     process.env.FAKE_LLAMA_CACHE_FAIL = '1'
     const argsFile = join(folder, 'args.json')
@@ -147,7 +150,7 @@ describe('AulaEngine · instalación', () => {
   function makeTarball(evilLink = false): Buffer {
     const entries = [
       tarEntry('llama-b9999/', { type: '5', mode: 0o755 }),
-      tarEntry('llama-b9999/llama-server', { data: '#!/bin/sh\nexit 0\n', mode: 0o755 }),
+      tarEntry(`llama-b9999/${EXE}`, { data: '#!/bin/sh\nexit 0\n', mode: 0o755 }),
       tarEntry('llama-b9999/llama-cli', { data: '#!/bin/sh\nexit 0\n', mode: 0o755 }),
       tarEntry('llama-b9999/libllama.0.6.0.dylib', { data: 'dylib' }),
       tarEntry('llama-b9999/libllama.dylib', { type: '2', link: 'libllama.0.6.0.dylib' }),
@@ -174,7 +177,7 @@ describe('AulaEngine · instalación', () => {
     await engine.install((p) => (fraction = p.bytesTotal ? p.bytesDone / p.bytesTotal : 0))
     expect(fraction).toBe(1)
     const bin = engine.binary!
-    expect(bin.endsWith(join('b9999', 'llama-b9999', 'llama-server'))).toBe(true)
+    expect(bin.endsWith(join('b9999', 'llama-b9999', EXE))).toBe(true)
     const dir = join(engine.installFolder, 'llama-b9999')
     for (const kept of ['libllama.0.6.0.dylib', 'libllama.dylib', 'libggml.so.1', 'LICENSE']) expect(existsSync(join(dir, kept)), kept).toBe(true)
     expect(existsSync(join(dir, 'llama-cli'))).toBe(false) // lo que no hace falta se quita
@@ -252,7 +255,8 @@ describe('AulaEngine · versión fijada, variantes, vigilante y puertos', () => 
     expect(engineVariants({ platform: 'freebsd', arch: 'x64', dedicatedGPU: false, vulkan: false })).toEqual([])
   })
 
-  it('el vigilante apaga el servidor si Aula desaparece (y luego termina)', async () => {
+  // en Windows no hay vigilante: el servidor que quede se apaga al volver a abrir Aula (sweepOrphan)
+  it.skipIf(windows)('el vigilante apaga el servidor si Aula desaparece (y luego termina)', async () => {
     const server = spawn('/bin/sleep', ['60'])
     const parent = spawn('/bin/sleep', ['60'])
     const watchdog = startWatchdog(server.pid!, parent.pid!)
