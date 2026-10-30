@@ -1,0 +1,116 @@
+name: Platforms
+# Tests the PUBLISHED installers the way a student uses them: download from the release, install (Windows: one-click,
+# per user, no admin), open Aula, check for updates on the real GitHub and install the update. No secrets: everything
+# it downloads is public, and Aula runs with its simulated AI. Logs and screenshots are uploaded as artifacts.
+# Script: scripts/ci/installed.mjs.
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: Published version to install and update from
+        default: '0.1.0'
+      to:
+        description: Latest published version (the update)
+        default: '0.1.1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platforms-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FROM: ${{ inputs.from || '0.1.0' }}
+  TO: ${{ inputs.to || '0.1.1' }}
+
+jobs:
+  windows-update:
+    name: windows update (${{ matrix.os }}, ${{ matrix.mode }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+        mode: [quit, restart]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install ${{ env.FROM }}, update to ${{ env.TO }}
+        run: node scripts/ci/installed.mjs win-update --from "$env:FROM" --to "$env:TO" --mode ${{ matrix.mode }} --out "$env:RUNNER_TEMP\out"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: windows-update-${{ matrix.os }}-${{ matrix.mode }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 14
+
+  windows-fresh:
+    name: windows fresh install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install ${{ env.TO }} from scratch
+        run: node scripts/ci/installed.mjs win-fresh --to "$env:TO" --out "$env:RUNNER_TEMP\out"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: windows-fresh-${{ matrix.os }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 14
+
+  linux-appimage:
+    name: linux AppImage update (${{ matrix.os }}, ${{ matrix.mode }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        mode: [quit, restart]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Display and screenshot tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends xvfb x11-utils imagemagick
+      - name: AppImage ${{ env.FROM }} updates itself to ${{ env.TO }}
+        run: xvfb-run -a -s "-screen 0 1440x900x24" node scripts/ci/installed.mjs appimage-update --from "$FROM" --to "$TO" --mode ${{ matrix.mode }} --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: linux-appimage-${{ matrix.os }}-${{ matrix.mode }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 14
+
+  linux-deb:
+    name: linux .deb (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Display and screenshot tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends xvfb x11-utils imagemagick
+      - name: .deb ${{ env.FROM }} sees ${{ env.TO }}; apt install ${{ env.TO }} over it
+        run: xvfb-run -a -s "-screen 0 1440x900x24" node scripts/ci/installed.mjs deb --from "$FROM" --to "$TO" --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: linux-deb
+          path: ${{ runner.temp }}/out/
+          retention-days: 14
