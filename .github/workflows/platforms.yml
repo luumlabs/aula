@@ -8,10 +8,10 @@ on:
     inputs:
       from:
         description: Published version to install and update from
-        default: '0.1.0'
+        default: '0.1.1'
       to:
         description: Latest published version (the update)
-        default: '0.1.1'
+        default: '0.1.2'
 
 permissions:
   contents: read
@@ -21,8 +21,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FROM: ${{ inputs.from || '0.1.0' }}
-  TO: ${{ inputs.to || '0.1.1' }}
+  FROM: ${{ inputs.from || '0.1.1' }}
+  TO: ${{ inputs.to || '0.1.2' }}
 
 jobs:
   windows-update:
