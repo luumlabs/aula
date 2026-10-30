@@ -173,8 +173,10 @@ report a damaged download (and won't retry that version on their own).
 
 ### Adding a `.deb` to a published release
 
-A `.deb` isn't listed in any `latest*.yml` (it doesn't update itself), so it can be added to a release that's already
-out — as long as it's built from **the tag's code** and uploaded **alone**. From a clone of the public repository:
+A `.deb` doesn't update itself, so it can be added to a release that's already out without touching any `latest*.yml` —
+as long as it's built from **the tag's code** and uploaded **alone**. (Built together with the AppImages, as
+`release-local.sh` does, it's also listed and signed in `latest-linux.yml`, as in v0.1.0; the AppImage updater ignores
+it.) From a clone of the public repository:
 
 ```bash
 git worktree add /tmp/aula-v0.1.0 v0.1.0                      # the exact tree of the release
@@ -272,10 +274,14 @@ HOME=$T/home AULA_HOME=$T/data AULA_HIDDEN=1 AULA_UPDATE_CHECK_DELAY_MS=3000 AUL
   "--host-resolver-rules=MAP github.com 127.0.0.1:18443, MAP release-assets.githubusercontent.com 127.0.0.1:18443"
 ```
 
-`$T/R/requests.log` lists every request, and `$T/data/Logs/main.log` what the app did. From 0.1.1 on, `AULA_HIDDEN=1`
-keeps every window hidden (and the app out of the Dock); the published **0.1.0** still shows its window if macOS
-activates it, so rehearse with a copy that has `LSUIElement` (`PlistBuddy -c "Add :LSUIElement bool true"` + `codesign
---force -s - --preserve-metadata=entitlements,flags,runtime`). Don't run this against
+`$T/R/requests.log` lists every request, and `$T/data/Logs/main.log` what the app did. `AULA_HIDDEN=1` keeps every
+window hidden and the app out of the Dock, also in the published **0.1.0** (0.1.1 only adds a guard against HTML full
+screen, which a rehearsal never enters), so use the downloaded app **unchanged**: re-signing it (e.g. ad hoc, to add
+`LSUIElement`) turns its designated requirement into a `cdhash`, and the installer then skips the certificate check it
+does on students' copies. Remove the quarantine first (`xattr -dr com.apple.quarantine $T/inst/Aula.app`): a
+quarantined copy nobody approved with *Open Anyway* is stopped by Gatekeeper even when launched from a shell, and macOS
+shows *“Aula” Not Opened* on the screen. The first launch of a quarantined copy, and whether *App Management* lets it
+replace itself in `/Applications`, can only be tried by hand (a test macOS account). Don't run this against
 `/Applications/Aula.app` or with your own `HOME`, and delete the signed rehearsal files and the TLS key afterwards.
 The installed app refuses `--remote-debugging-port` (see [What's hardened](#whats-hardened-in-the-package)): to drive a
 packaged build with CDP (`scripts/dev/security-check.mjs`, measurements), build it with `AULA_AUDIT_BUILD=1 npm run build`
