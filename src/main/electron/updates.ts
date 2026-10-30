@@ -153,6 +153,8 @@ function getUpdater(): AppUpdater {
   u.autoInstallOnAppQuit = true
   u.allowPrerelease = false
   u.allowDowngrade = false
+  // Windows: Aula publica el instalador NSIS completo, nunca el «web installer» (sin esto, cada búsqueda deja un aviso)
+  u.disableWebInstaller = true
   u.logger = { info: (m: unknown) => log.info('[updates]', m), warn: (m: unknown) => log.warn('[updates]', m), error: (m: unknown) => log.error('[updates]', m), debug: () => {} }
   // sin identificador por instalación (y se borra el que dejaron las versiones anteriores)
   ;(u as unknown as { getOrCreateStagingUserId: () => Promise<string> }).getOrCreateStagingUserId = async () => NIL_UUID

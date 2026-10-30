@@ -161,6 +161,8 @@ for (const platform of ['win32', 'linux'] as const) {
       expect(String((s.installs[0] as { file: string }).file)).toContain(file)
       // A1-P2-15: ningún identificador por instalación
       expect(existsSync(join(s.home, '.updaterId'))).toBe(false)
+      // solo el instalador completo (el aviso «disableWebInstaller is set to false» salía en cada registro de Windows)
+      expect(s.u.disableWebInstaller).toBe(true)
     })
     it('A1-P1-6 · notas sin firma: no llegan a la interfaz', async () => {
       release('0.1.1', file, yml, { signed: true, notes: 'unsigned' })
