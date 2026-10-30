@@ -46,8 +46,9 @@ describe('notas de la versión', () => {
     const md = readFileSync(join(__dirname, `../../docs/release-notes/${version}.md`), 'utf8')
     const es = notesForLanguage(md, 'es') ?? ''
     const en = notesForLanguage(md, 'en') ?? ''
-    expect(es).toMatch(/^La primera versión pública de Aula/)
-    expect(en).toMatch(/^The first public version of Aula/)
+    // cada lengua empieza con texto (sin el título, que la app quita)
+    expect(es.trim().length).toBeGreaterThan(40)
+    expect(en.trim().length).toBeGreaterThan(40)
     expect(md).not.toMatch(/Aula 2\b/)
     expect(es).toContain('## Lo nuevo')
     expect(es).not.toMatch(/## Instalar|What's new/)

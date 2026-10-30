@@ -3,7 +3,7 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
-## [Unreleased]
+## [0.1.1] - 2026-10-30
 
 ### New
 - A sun cursor, the same as in the videos: Aula's sun leaves a short comet tail as it moves and a brick ripple when you
@@ -99,4 +99,5 @@ grading opinion for open answers, and interface languages other than English and
 - AI-written content can contain mistakes even after it's verified. Check what matters against your teacher's
   materials.
 
+[0.1.1]: https://github.com/luumlabs/aula/releases/tag/v0.1.1
 [0.1.0]: https://github.com/luumlabs/aula/releases/tag/v0.1.0

@@ -12,7 +12,8 @@ function textFiles(dirs: string[]): string[] {
   const out: string[] = []
   const walk = (d: string): void => {
     for (const n of readdirSync(d)) {
-      if (n === 'node_modules' || n === 'out' || n === 'release' || n.startsWith('.')) continue
+      // work/: las cachés del vídeo (no van al repositorio)
+      if (n === 'node_modules' || n === 'out' || n === 'release' || n === 'work' || n.startsWith('.')) continue
       const p = join(d, n)
       if (statSync(p).isDirectory()) walk(p)
       else if (/\.(ts|tsx|mjs|js|json|md|ics|html|txt|yml)$/.test(n)) out.push(p)
