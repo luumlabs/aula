@@ -21,18 +21,25 @@ test('el cursor es el sol, deja cola al moverse y vuelve a la flecha si se pide'
   await expect(page.locator('textarea').first()).toBeAttached()
   expect(await cursorOf(page, 'textarea')).toBe('text')
 
-  // la cola: un lienzo encima de todo que no recibe clics y pinta al moverse
+  // la cola: un lienzo encima de todo que no recibe clics y pinta al moverse. La cola se apaga en 280 ms, así que se mide
+  // en cada fotograma mientras se mueve (leerla después llegaría tarde en un ordenador lento, como los de CI)
+  await page.evaluate(`(() => {
+    const c = [...document.querySelectorAll('body > canvas')].find((x) => x.style.zIndex === '2147483647')
+    window.__trail = !c ? -1 : c.style.pointerEvents === 'none' ? 0 : -2
+    if (window.__trail < 0) return
+    const start = performance.now()
+    const tick = () => {
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+      let a = 0
+      for (let i = 3; i < d.length; i += 4) a += d[i]
+      window.__trail = Math.max(window.__trail, a)
+      if (performance.now() - start < 4000) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })()`)
   await page.mouse.move(200, 300)
   await page.mouse.move(900, 420, { steps: 12 })
-  const painted = await page.evaluate<number>(`(() => {
-    const c = [...document.querySelectorAll('body > canvas')].find((x) => x.style.zIndex === '2147483647')
-    if (!c) return -1
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
-    let a = 0
-    for (let i = 3; i < d.length; i += 4) a += d[i]
-    return c.style.pointerEvents === 'none' ? a : -2
-  })()`)
-  expect(painted).toBeGreaterThan(0)
+  await expect.poll(() => page.evaluate<number>('window.__trail'), { timeout: 4000 }).toBeGreaterThan(0)
 
   // Ajustes → Apariencia → Cursor: System
   await page.evaluate(`window.aula.invoke('settings.update', { general: { cursor: 'system' } })`)

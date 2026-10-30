@@ -40,9 +40,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run build
       # también si fallan las pruebas unitarias: así se ven todos los fallos de una vez
+      # Linux: como un escritorio, con gestor de ventanas (minimizar) y libnotify (avisos del sistema)
+      - name: Window manager and notifications (Linux)
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Linux' }}
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends openbox libnotify4
       - name: End-to-end tests (real Electron, simulated AI)
         if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Linux' }}
-        run: xvfb-run -a npx playwright test -c tests/e2e/playwright.config.ts
+        run: xvfb-run -a sh -c 'openbox & npx playwright test -c tests/e2e/playwright.config.ts'
       - name: End-to-end tests (real Electron, simulated AI)
         if: ${{ !cancelled() && steps.build.outcome == 'success' && runner.os == 'Windows' }}
         run: npx playwright test -c tests/e2e/playwright.config.ts
