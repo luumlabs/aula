@@ -1,10 +1,13 @@
-// Lo que acompaña a «Con una clave de API» en Ajustes → Tu IA: elegir el modelo de un proveedor, un servicio propio compatible
-// con OpenAI (URL base, modelo y clave opcional) y el gasto de hoy y del mes con un tope diario opcional (apagado por defecto).
-import { useEffect, useState } from 'react'
+// Lo que acompaña a «Con una clave de API» en Ajustes → Tu IA: elegir el modelo de un proveedor (de los conocidos o de la lista
+// que da el propio servicio) y su nivel de razonamiento, un servicio propio compatible con OpenAI (URL base, clave opcional y
+// modelo) y el gasto de hoy y del mes con un tope diario opcional (apagado por defecto).
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { AnimatePresence, motion } from 'motion/react'
-import { Button, Icon, ProgressBar, ProviderLogo, ProviderLogoRow, Select, Switch, TextField, cx, logoForModel, logoForProvider, spring } from '@renderer/design'
-import type { AIProviderView } from '@shared/ai/views'
+import { Button, Icon, ProgressBar, ProviderLogo, ProviderLogoRow, Select, Switch, TextField, Tooltip, cx, logoForModel, logoForProvider, spring, toast } from '@renderer/design'
+import type { AIProviderView, ModelCatalogView } from '@shared/ai/views'
+import type { ModelInfo } from '@shared/ai/types'
 import { validateAPIKey } from '@shared/ai/apiKey'
 import { CUSTOM_PROVIDER_ID, checkCustomBaseURL } from '@shared/ai/customProvider'
 import { aiClient } from '@renderer/lib/aiClient'
@@ -31,7 +34,7 @@ export function ModelSelect({ provider, onChanged }: { provider: AIProviderView;
   }
   return (
     <div className="basis-full flex items-center gap-2 pl-12">
-      <span className="t-ui text-text3 shrink-0">{t('ai.model')}</span>
+      <span className={ROW_LABEL}>{t('ai.model')}</span>
       <Select
         className="flex-1 min-w-0 max-w-[280px]"
         value={value}
@@ -47,7 +50,114 @@ export function ModelSelect({ provider, onChanged }: { provider: AIProviderView;
   )
 }
 
-/** Un servicio propio compatible con OpenAI: la URL base (https, o http en este ordenador), el modelo y la clave si la pide. */
+/** Etiqueta de las filas «Modelo» y «Razonamiento» (mismo ancho: los selectores quedan alineados). */
+const ROW_LABEL = 't-ui text-text3 shrink-0 w-24'
+
+/** Pista de un modelo de la lista del servicio: su id, el contexto y si le falta algo que Aula usa. */
+function modelHint(m: ModelInfo, t: TFunction<'settings'>): string | undefined {
+  const parts: string[] = []
+  if (m.displayName && m.displayName !== m.id) parts.push(m.id)
+  if (m.contextLength) parts.push(t('ai.models.context', { k: Math.round(m.contextLength / 1000) }))
+  if (m.reasoningCapabilities?.efforts.length) parts.push(t('ai.models.reasoning'))
+  if (m.supportsTools === false) parts.push(t('ai.models.noTools'))
+  return parts.length ? parts.join(' · ') : undefined
+}
+
+/**
+ * Los modelos que lista el propio servicio (`GET /models`, guardados unas horas), con «Actualizar la lista»: para un servicio
+ * propio como Venice, del que Aula no trae modelos conocidos.
+ */
+export function LiveModelSelect({ provider, onChanged }: { provider: AIProviderView; onChanged: () => void }) {
+  const { t } = useTranslation('settings')
+  const [catalog, setCatalog] = useState<ModelCatalogView | null>(null)
+  const [loading, setLoading] = useState(false)
+  const askedAgain = useRef(false)
+  const load = async (refresh: boolean) => {
+    setLoading(true)
+    try {
+      const c = await aiClient.models(provider.id, refresh)
+      setCatalog(c)
+      // los niveles de razonamiento salen de esta lista: si el modelo elegido los tiene y la tarjeta aún no, se piden otra vez
+      const chosen = c.models.find((m) => m.id === provider.model)
+      if (!askedAgain.current && chosen?.reasoningCapabilities?.efforts.length && !provider.reasoningOptions.length) {
+        askedAgain.current = true
+        onChanged()
+      }
+    } catch (e) {
+      setCatalog({ models: [], popular: [], free: [], fetchedAt: Date.now(), source: 'known', problem: (e as Error).message })
+    } finally {
+      setLoading(false)
+    }
+  }
+  // otra dirección u otra clave: otra lista
+  useEffect(() => {
+    void load(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider.id, provider.baseURL, provider.keyHint])
+
+  const value = provider.model ?? ''
+  const models = catalog?.models ?? []
+  const options = models.map((m) => ({ value: m.id, label: m.displayName ?? m.id, hint: modelHint(m, t) }))
+  if (value && !options.some((o) => o.value === value)) options.unshift({ value, label: value, hint: undefined })
+  const choose = async (id: string) => {
+    if (id === value) return
+    try {
+      await aiClient.configure({ providerId: provider.id, model: id, activate: false })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+    onChanged()
+  }
+  return (
+    <div className="basis-full flex flex-col gap-1 pl-12">
+      <div className="flex items-center gap-2">
+        <span className={ROW_LABEL}>{t('ai.model')}</span>
+        {options.length ? (
+          <Select className="flex-1 min-w-0 max-w-[280px]" value={value || null} placeholder={t('ai.models.choose')} onChange={(v) => void choose(v)} options={options} />
+        ) : (
+          <span className="t-ui text-text3 flex-1 min-w-0 truncate">{loading || !catalog ? t('ai.models.loading') : t('ai.models.none')}</span>
+        )}
+        <Tooltip label={t('ai.models.refresh')}>
+          <Button size="sm" variant="plain" loading={loading} icon={<Icon name="refresh" size={13} />} aria-label={t('ai.models.refresh')} onClick={() => void load(true)} />
+        </Tooltip>
+      </div>
+      {catalog?.problem && !loading && <p className="t-footnote text-text3 pl-[104px]">{t('ai.models.problem', { message: catalog.problem })}</p>}
+    </div>
+  )
+}
+
+/** El nivel de razonamiento del modelo elegido («Automático»: no se envía nada y decide el servicio). Nada si no se puede elegir. */
+export function ReasoningSelect({ provider, onChanged }: { provider?: AIProviderView; onChanged: () => void }) {
+  const { t } = useTranslation('settings')
+  if (!provider?.reasoningOptions.length) return null
+  const { id, reasoning, reasoningOptions } = provider
+  const value = reasoningOptions.some((o) => o.value === reasoning) ? String(reasoning) : 'auto'
+  const choose = async (v: string) => {
+    if (v === value) return
+    try {
+      await aiClient.configure({ providerId: id, reasoning: v === 'auto' ? '' : v, activate: false })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+    onChanged()
+  }
+  return (
+    <div className="basis-full flex items-center gap-2 pl-12">
+      <span className={ROW_LABEL}>{t('ai.reasoning')}</span>
+      <Select
+        className="flex-1 min-w-0 max-w-[280px]"
+        value={value}
+        onChange={(v) => void choose(v)}
+        options={reasoningOptions.map((o) => ({ value: String(o.value), label: o.label, hint: o.value === 'auto' ? t('ai.models.reasoningAuto') : undefined }))}
+      />
+    </div>
+  )
+}
+
+/**
+ * Un servicio propio compatible con OpenAI: la URL base (https, o http en este ordenador), la clave si la pide y el modelo. Sin
+ * modelo, se usa el primero de la lista del servicio (después se elige otro en la tarjeta).
+ */
 export function CustomProvider({ current, onSaved }: { current?: AIProviderView; onSaved: (el: HTMLElement) => Promise<void> }) {
   const { t } = useTranslation('settings')
   const configured = !!current?.baseURL
@@ -66,7 +176,6 @@ export function CustomProvider({ current, onSaved }: { current?: AIProviderView;
   const save = async (el: HTMLElement) => {
     const u = checkCustomBaseURL(url)
     if (!u.ok) return setError(t(`ai.custom.url.${u.problem}`))
-    if (!model.trim()) return setError(t('ai.custom.modelMissing'))
     let cleanKey: string | null = null
     if (key.trim()) {
       const v = validateAPIKey(key)
@@ -78,6 +187,11 @@ export function CustomProvider({ current, onSaved }: { current?: AIProviderView;
     try {
       // la clave va en la misma llamada: si la dirección cambia de servidor, la guardada se borra
       await aiClient.configure({ providerId: CUSTOM_PROVIDER_ID, baseURL: u.url, model: model.trim(), activate: false, ...(cleanKey ? { key: cleanKey } : {}) })
+      if (!model.trim()) {
+        // sin modelo: el primero de la lista del servicio (los que admiten herramientas van delante)
+        const first = await aiClient.models(CUSTOM_PROVIDER_ID, true).then((c) => (c.source === 'api' ? c.models[0]?.id : undefined)).catch(() => undefined)
+        if (first) await aiClient.configure({ providerId: CUSTOM_PROVIDER_ID, model: first, activate: false })
+      }
       await onSaved(el)
       setKey('')
       setOpen(false)

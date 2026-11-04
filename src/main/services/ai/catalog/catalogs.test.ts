@@ -64,6 +64,31 @@ describe('formatos de cada API', () => {
     expect(c.models.at(-1)!.supportsVision).toBe(false)
     expect(mf.requests[0].url).toBe('https://api.deepseek.com/v1/models')
   })
+  it('Venice (servicio propio): model_spec con nombre, contexto, herramientas, precio y niveles de razonamiento', async () => {
+    const cfg: ProviderConfig = { ...preset('openai'), id: 'custom', label: 'api.venice.ai', baseURL: 'https://api.venice.ai/api/v1', model: '', secretRef: 'ai.custom' }
+    const spec = (name: string, caps: string, extra = '') =>
+      `{"name":"${name}","privacy":"private","offline":false,"availableContextTokens":202752,"maxCompletionTokens":32768,"capabilities":{${caps}},"pricing":{"input":{"usd":0.55,"diem":0.55},"output":{"usd":2.65,"diem":2.65}},"traits":[]${extra}}`
+    const { mf, deps: d } = deps(cfg, [jsonReply(`{"object":"list","type":"text","data":[
+      {"id":"zai-org-glm-5-1","object":"model","owned_by":"venice.ai","type":"text","context_length":202752,"model_spec":${spec('GLM 5.1', '"supportsFunctionCalling":true,"supportsVision":false,"supportsReasoning":true,"supportsReasoningEffort":true,"reasoningEffortOptions":["none","low","medium","high","turbo"],"defaultReasoningEffort":"low"')}},
+      {"id":"venice-uncensored","object":"model","owned_by":"venice.ai","type":"text","model_spec":${spec('Venice Uncensored', '"supportsFunctionCalling":false,"supportsVision":false,"supportsReasoning":false,"supportsReasoningEffort":false')}},
+      {"id":"claude-opus-4-6","object":"model","owned_by":"venice.ai","type":"text","model_spec":${spec('Claude Opus 4.6', '"supportsFunctionCalling":true,"supportsVision":true,"supportsReasoning":true,"supportsReasoningEffort":false')}},
+      {"id":"retired-model","object":"model","owned_by":"venice.ai","type":"text","model_spec":${spec('Retired', '"supportsFunctionCalling":true', ',"offline":true')}},
+      {"id":"flux-2","object":"model","owned_by":"venice.ai","type":"image","model_spec":{"name":"Flux 2","privacy":"private"}}
+    ]}`)])
+    const c = await fetchModelCatalog(cfg, d)
+    expect(c.source).toBe('api')
+    expect(mf.requests[0].url).toBe('https://api.venice.ai/api/v1/models')
+    // fuera los que no están en servicio y los que no son de texto; con herramientas primero
+    expect(c.models.map((m) => m.id)).toEqual(['claude-opus-4-6', 'zai-org-glm-5-1', 'venice-uncensored'])
+    const glm = c.models.find((m) => m.id === 'zai-org-glm-5-1')!
+    expect(glm).toMatchObject({ displayName: 'GLM 5.1', contextLength: 202_752, maxOutputTokens: 32_768, supportsTools: true, supportsVision: false,
+      inputPricePerMillion: 0.55, outputPricePerMillion: 2.65, isFree: false })
+    // solo los niveles que documenta Venice, con su predeterminado
+    expect(glm.reasoningCapabilities).toEqual({ efforts: ['none', 'low', 'medium', 'high'], defaultEffort: 'low' })
+    // razona siempre o no razona: nada que elegir
+    expect(c.models.find((m) => m.id === 'claude-opus-4-6')!.reasoningCapabilities?.efforts).toEqual([])
+    expect(c.models.find((m) => m.id === 'venice-uncensored')).toMatchObject({ supportsTools: false, reasoningCapabilities: { efforts: [] } })
+  })
   it('OpenRouter: precios y los dos Top 10', async () => {
     const cfg = preset('openrouter')
     const model = (id: string, prompt: string, completion: string, tools: boolean, image = false) =>

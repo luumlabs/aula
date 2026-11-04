@@ -1,7 +1,7 @@
 // Listas de modelos de cada proveedor (port de ModelCatalogs.swift y OpenRouterRanking.swift): se piden EN ESE MOMENTO a la API
 // (`GET /models` o el equivalente) con todo lo que diga de cada modelo (nombre, contexto, herramientas, imágenes, precio, niveles
 // de razonamiento); si la API no da lista, se usan los modelos conocidos que trae Aula.
-import type { JSONValue } from '@shared/ai/json'
+import type { JSONObject, JSONValue } from '@shared/ai/json'
 import type { ModelCatalog, ModelInfo } from '@shared/ai/types'
 import { knownReasoningCapabilities, reasoningCaps, type ReasoningCapabilities } from '@shared/ai/reasoning'
 import { AIError } from '../errors'
@@ -81,7 +81,8 @@ export function anthropicReasoning(caps: JSONValue | undefined): ReasoningCapabi
 /**
  * Lee los modelos de cualquiera de los formatos conocidos: OpenAI/MiMo/Ollama/LM Studio `{"data":[{"id"}]}`, OpenRouter
  * (`pricing`, `supported_parameters`, `architecture.input_modalities`, `top_provider`), DeepSeek (`context_window`,
- * `input_modalities`, `effort`), Anthropic (`display_name`, `max_input_tokens`, `capabilities`) y Ollama nativo `{"models":[…]}`.
+ * `input_modalities`, `effort`), Anthropic (`display_name`, `max_input_tokens`, `capabilities`), Venice (`model_spec`) y Ollama
+ * nativo `{"models":[…]}`.
  */
 export function parseModelInfos(json: JSONValue): ModelInfo[] {
   const list = arr(json) ?? arr(obj(json)?.data) ?? arr(obj(json)?.models)
@@ -144,12 +145,52 @@ export function parseModelInfos(json: JSONValue): ModelInfo[] {
         if (!Number.isNaN(t)) info.created = t
       }
     }
+    const spec = obj(o?.model_spec)
+    if (spec) {
+      // Venice: solo modelos de texto en servicio
+      if (bool(spec.offline) === true || (typeof o?.type === 'string' && o.type !== 'text' && o.type !== 'code')) continue
+      applyVeniceSpec(info, spec)
+    }
     if (id.endsWith(':free')) info.isFree = true
     // sin claves `undefined` (el catálogo viaja por IPC y se guarda en disco)
     for (const k of Object.keys(info) as (keyof ModelInfo)[]) if (info[k] === undefined) delete info[k]
     out.push(info)
   }
   return out
+}
+
+/** Niveles de `reasoning_effort` que documenta Venice (`reasoningEffortOptions` solo puede traer estos). */
+const VENICE_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
+
+/**
+ * Venice (`GET /models` → `model_spec`, comprobado en docs.venice.ai el 2-11-2026): nombre, contexto, salida máxima,
+ * herramientas, imágenes, precio (ya en USD por millón) y los niveles de razonamiento que admite cada modelo
+ * (`supportsReasoningEffort`, `reasoningEffortOptions`, `defaultReasoningEffort`).
+ */
+function applyVeniceSpec(info: ModelInfo, spec: JSONObject): void {
+  const name = str(spec.name)
+  if (name && name !== info.id && !info.displayName) info.displayName = name
+  info.contextLength ??= positive(spec.availableContextTokens)
+  info.maxOutputTokens ??= positive(spec.maxCompletionTokens)
+  const caps = obj(spec.capabilities)
+  if (caps) {
+    const tools = bool(caps.supportsFunctionCalling)
+    if (tools !== undefined) info.supportsTools = tools
+    const vision = bool(caps.supportsVision)
+    if (vision !== undefined) info.supportsVision = vision
+    if (!info.reasoningCapabilities && bool(caps.supportsReasoningEffort) === true) {
+      const levels = (arr(caps.reasoningEffortOptions) ?? []).map((l) => str(l)?.toLowerCase()).filter((x): x is string => !!x && VENICE_EFFORTS.has(x))
+      info.reasoningCapabilities = reasoningCaps(levels, str(caps.defaultReasoningEffort)?.toLowerCase())
+    }
+  }
+  const pricing = obj(spec.pricing)
+  if (pricing) {
+    const pIn = price(at(pricing, 'input', 'usd'))
+    const pOut = price(at(pricing, 'output', 'usd'))
+    if (pIn !== undefined) info.inputPricePerMillion = pIn
+    if (pOut !== undefined) info.outputPricePerMillion = pOut
+    if (pIn !== undefined && pOut !== undefined) info.isFree = pIn === 0 && pOut === 0
+  }
 }
 
 function enriched(model: ModelInfo, config: ProviderConfig): ModelInfo {

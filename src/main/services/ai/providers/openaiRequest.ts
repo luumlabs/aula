@@ -24,6 +24,9 @@ import { hasImages, noMessagesError, noModelError, noVisionError, repairToolPair
 
 export type ReasoningEcho = 'none' | 'reasoningContent' | 'reasoning'
 
+/** Venice AI (compatible con OpenAI; parámetros propios en `venice_parameters`). */
+export const VENICE_HOST = 'api.venice.ai'
+
 export interface OpenAIQuirks {
   useMaxCompletionTokens: boolean
   reasoningEcho: ReasoningEcho
@@ -62,9 +65,9 @@ export function detectQuirks(config: Pick<ProviderConfig, 'extraHeaders' | 'base
       useResponsesAPI = host === 'api.openai.com'
   }
   return {
-    // MiMo documenta `max_completion_tokens` (acepta las dos)
+    // MiMo documenta `max_completion_tokens` (acepta las dos); en Venice `max_tokens` está en desuso
     useMaxCompletionTokens: flags.bool('useMaxCompletionTokens') ?? flags.bool('x-aula-max-completion-tokens') ??
-      (host === 'api.openai.com' || host.endsWith('.openai.azure.com') || host.endsWith('xiaomimimo.com')),
+      (host === 'api.openai.com' || host.endsWith('.openai.azure.com') || host.endsWith('xiaomimimo.com') || host === VENICE_HOST),
     reasoningEcho,
     reasoningAsObject: flags.bool('x-aula-reasoning-object') ?? host === 'openrouter.ai',
     sendStreamOptions: flags.bool('x-aula-stream-usage') ?? true,
@@ -296,13 +299,15 @@ export function chatBody(config: ProviderConfig, request: ChatRequest, stream: b
       b.reasoning = { effort }
     } else b.reasoning_effort = effort
   }
+  // Venice antepone su propio prompt de sistema salvo que se pida lo contrario: Aula ya manda el suyo
+  if (host === VENICE_HOST) b.venice_parameters = { include_venice_system_prompt: false }
   return applyExtraBody(b, request.extraBody)
 }
 
 // MARK: Arreglos automáticos (400/422 por un parámetro opcional)
 
 /** Etiquetas que se pueden recordar. */
-export const OPENAI_MEMORABLE = new Set(['max-rename', 'temperature', 'top_p', 'stream_options', 'response_format', 'reasoning_effort', 'reasoning', 'tool_choice', 'prompt_cache'])
+export const OPENAI_MEMORABLE = new Set(['max-rename', 'temperature', 'top_p', 'stream_options', 'response_format', 'reasoning_effort', 'reasoning', 'tool_choice', 'prompt_cache', 'venice_parameters'])
 
 /** Quita o renombra lo que el servidor no admite según el mensaje de error. `null` si no hay nada que arreglar (o ya se intentó). */
 export function applyOpenAIFixup(message: string, body: JSONObject, applied: Set<string>): JSONObject | null {
@@ -358,6 +363,7 @@ export function applyOpenAIFixup(message: string, body: JSONObject, applied: Set
     remove('reasoning', 'reasoning')
   }
   if (m.includes('tool_choice')) remove('tool_choice', 'tool_choice')
+  if (m.includes('venice_parameters')) remove('venice_parameters', 'venice_parameters')
   // parámetros de caché que este servidor no admite: fuera todos (y se recuerda)
   if (!applied.has('prompt_cache') && ['prompt_cache', 'session_id', 'cache_control', 'developer'].some((w) => m.includes(w))) {
     const stripped = OpenAIPromptCache.strip(o)

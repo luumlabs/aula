@@ -517,6 +517,30 @@ describe('el razonamiento elegido llega a la petición', () => {
     // sin niveles publicados, no se manda (el modelo podría no admitirlo)
     expect((await first({ ...router, reasoning: 'max' })).reasoning).toBeUndefined()
   })
+  // Venice como servicio propio compatible con OpenAI (la clave de pruebas es la del preset de OpenAI)
+  const venice = (o: Partial<ProviderConfig> = {}): ProviderConfig => ({ ...preset('openai'), id: 'custom', label: 'api.venice.ai',
+    baseURL: 'https://api.venice.ai/api/v1', model: 'zai-org-glm-5-1', extraHeaders: {}, maxOutputTokens: 8000, ...o })
+  it('Venice: sin su prompt de sistema, max_completion_tokens y los niveles que publica el catálogo', async () => {
+    const b = await first(venice())
+    expect(b.venice_parameters).toEqual({ include_venice_system_prompt: false })
+    expect(b.max_completion_tokens).toBe(8000)
+    expect(b.max_tokens).toBeUndefined()
+    // sin niveles publicados no se manda nada
+    expect((await first(venice({ reasoning: 'high' }))).reasoning_effort).toBeUndefined()
+    const caps = { 'zai-org-glm-5-1': { efforts: ['none', 'low', 'medium', 'high'], defaultEffort: 'low' } }
+    expect((await first(venice({ reasoning: 'high', reasoningCapabilitiesByModel: caps }))).reasoning_effort).toBe('high')
+    expect((await first(venice({ reasoning: 'none', reasoningCapabilitiesByModel: caps }))).reasoning_effort).toBe('none')
+    // otro servidor compatible: nada de Venice
+    expect((await first(venice({ baseURL: 'https://api.together.xyz/v1' }))).venice_parameters).toBeUndefined()
+  })
+  it('Venice: si un servidor rechaza venice_parameters, se quita y se reintenta', async () => {
+    const cfg = venice()
+    const { mf, model } = modelFor(cfg, [jsonReply('{"error":{"message":"Unrecognized request argument supplied: venice_parameters"}}', 400), okReply(cfg)])
+    await model.complete({ model: '', messages: [msg.user('Hola')], timeoutSec: 10 })
+    expect(mf.requests).toHaveLength(2)
+    expect((mf.requests[0].body as Body).venice_parameters).toBeDefined()
+    expect((mf.requests[1].body as Body).venice_parameters).toBeUndefined()
+  })
   it('un nivel guardado que el proveedor rechaza se explica sin reintentar con otro', async () => {
     for (const id of ['openai', 'anthropic']) {
       const cfg = { ...preset(id), reasoning: 'high' }

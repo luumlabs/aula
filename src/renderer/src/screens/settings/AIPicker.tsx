@@ -12,7 +12,7 @@ import { isDemo } from '@renderer/lib/demo'
 import { api } from '@renderer/lib/api'
 import i18n from '@renderer/i18n'
 import { CUSTOM_PROVIDER_ID } from '@shared/ai/customProvider'
-import { CustomProvider, ModelSelect, SpendingPanel } from './AIKeyExtras'
+import { CustomProvider, LiveModelSelect, ModelSelect, ReasoningSelect, SpendingPanel } from './AIKeyExtras'
 import { downloadFraction, useChatGPTLogin, type ChatGPTLoginView } from './chatgptLogin'
 
 interface PickerData {
@@ -60,6 +60,8 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
   // el gasto solo tiene sentido si hay algo de pago por uso listo (las suscripciones y lo local no cuentan)
   const paid = providers.some((p) => p.billing === 'perToken' && p.available && p.configured)
   const local = useLocalDownload(detection?.recommendedModel?.id ?? null)
+  const view = (id: string) => providers.find((p) => p.id === id)
+  const reloadViews = () => void reload()
 
   const use = async (id: OptionId, el?: HTMLElement | null) => {
     setBusy(id)
@@ -136,6 +138,7 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
             action={claude?.installed ? (e) => use('claude-cli', e) : undefined}
             busy={busy === 'claude-cli'}
             logo="claude"
+            extra={<ReasoningSelect provider={view('claude-cli')} onChanged={reloadViews} />}
           />
           <Option
             active={activeId === 'codex-cli'}
@@ -149,6 +152,7 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
             actionLabel={detection?.codexManagedLoggedIn || codex?.loggedIn ? undefined : t('ai.chatgptConnect')}
             busy={busy === 'codex-cli'}
             logo="chatgpt"
+            extra={<ReasoningSelect provider={view('codex-cli')} onChanged={reloadViews} />}
           />
           <AnimatePresence>
             {loginBusy && (
@@ -210,7 +214,12 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
             action={(e) => use(p.id, e)}
             busy={busy === p.id}
             provider={p}
-            extra={p.models && p.models.length > 1 ? <ModelSelect provider={p} onChanged={() => void reload()} /> : undefined}
+            extra={
+              <>
+                {p.models && p.models.length > 1 && <ModelSelect provider={p} onChanged={reloadViews} />}
+                <ReasoningSelect provider={p} onChanged={reloadViews} />
+              </>
+            }
           />
         ))}
         {custom && customSet && (
@@ -222,6 +231,12 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
             action={(e) => use(custom.id, e)}
             busy={busy === custom.id}
             provider={custom}
+            extra={
+              <>
+                <LiveModelSelect provider={custom} onChanged={reloadViews} />
+                <ReasoningSelect provider={custom} onChanged={reloadViews} />
+              </>
+            }
           />
         )}
         <div className="flex flex-col gap-2">
