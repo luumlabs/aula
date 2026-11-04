@@ -3,6 +3,21 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.1.3] - 2026-11-03
+
+### New
+- Settings → Your AI: your own OpenAI-compatible service (for example Venice) lists its models to choose from, with
+  *Update the list of models*, so you no longer type the model's exact name (it's optional when adding the service).
+  Venice's models come with their name, context, tools, price and reasoning levels; Aula leaves out models that are
+  offline or not for text and turns off the system prompt Venice adds by default.
+- A *Reasoning* picker under the model for every AI that publishes its levels (Claude Code, ChatGPT, API keys and your
+  own service). *Automatic* sends nothing and lets the service decide.
+
+### Fixed
+- A course that is still being created but already has topics no longer looks finished: the sidebar says
+  "Being created · you can start", the course shows a banner with the progress and *See progress*, and Today uses the
+  same words. They go away when the course is done.
+
 ## [0.1.2] - 2026-10-30
 
 ### Fixed
@@ -109,6 +124,7 @@ grading opinion for open answers, and interface languages other than English and
 - AI-written content can contain mistakes even after it's verified. Check what matters against your teacher's
   materials.
 
+[0.1.3]: https://github.com/luumlabs/aula/releases/tag/v0.1.3
 [0.1.2]: https://github.com/luumlabs/aula/releases/tag/v0.1.2
 [0.1.1]: https://github.com/luumlabs/aula/releases/tag/v0.1.1
 [0.1.0]: https://github.com/luumlabs/aula/releases/tag/v0.1.0
