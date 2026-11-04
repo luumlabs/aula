@@ -15,8 +15,8 @@ import { CardsTab } from './Cards'
 import { ExamTab } from './Exam'
 import { MistakesTab } from './Mistakes'
 import { MaterialsTab } from './Materials'
-import { CourseCreationFailed, CoursePartialBanner } from './Failed'
-import { courseRunIssue, coursePartial } from './failure'
+import { CourseBuildingBanner, CourseCreationFailed, CoursePartialBanner } from './Failed'
+import { courseBuilding, courseRunIssue, coursePartial } from './failure'
 import { useCourseRun } from './runs'
 
 const TABS: CourseTab[] = ['overview', 'learn', 'practice', 'cards', 'exam', 'mistakes', 'materials', 'reference']
@@ -54,6 +54,8 @@ export default function CourseScreen() {
   const issue = courseRunIssue(lastRun, pack.skills.length)
   // la creación se cortó con temas ya escritos: parece terminado, pero no lo está (J2-2)
   const partial = coursePartial(lastRun, pack.skills.length)
+  // aún se está creando, con temas ya escritos: se puede estudiar, pero se dice que no está terminado
+  const building = courseBuilding(lastRun, pack.skills.length)
   if (issue && lastRun)
     return (
       <div className="@container flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-24">
@@ -74,6 +76,7 @@ export default function CourseScreen() {
           )}
         </div>
         {partial && lastRun && <CoursePartialBanner run={lastRun} partial={partial} />}
+        {building && lastRun && <CourseBuildingBanner run={lastRun} />}
         {/* en ventanas estrechas las pestañas se desplazan en horizontal en vez de partirse; centradas solo si caben («safe»:
             si no, empiezan por la izquierda y «Overview» no queda cortado fuera de alcance: A4-P2-17) */}
         <div className="mt-6 mb-5 flex [justify-content:safe_center] overflow-x-auto no-scrollbar -mx-6 px-6">

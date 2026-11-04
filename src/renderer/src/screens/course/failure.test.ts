@@ -1,7 +1,7 @@
 // El estado de «la creación falló y el curso no tiene temas» (home-f4 del juez: «Fotosíntesis · 0 temas · Estudiar ahora»).
 import { describe, expect, it } from 'vitest'
 import type { RunSummary } from '@shared/generation/types'
-import { courseRunIssue, coursePartial, failureReason, latestByCourse } from './failure'
+import { courseBuilding, courseRunIssue, coursePartial, failureReason, latestByCourse } from './failure'
 
 const run = (o: Partial<RunSummary>): RunSummary => ({ id: 'run-1', packId: 'p', title: 'T', icon: 'biology', hue: 0.3, state: 'done', progress: 1, stageLabel: '', updated: '2026-10-26T21:59:03Z', ...o })
 
@@ -18,6 +18,16 @@ describe('courseRunIssue', () => {
     expect(courseRunIssue(run({ state: 'failed' }), 3)).toBeUndefined()
     expect(courseRunIssue(undefined, 0)).toBeUndefined()
     expect(courseRunIssue(run({ state: 'done' }), 0)).toBeUndefined()
+  })
+
+  it('creándose con temas ya escritos: se puede estudiar, pero no está terminado', () => {
+    expect(courseBuilding(run({ state: 'running' }), 2)).toBe(true)
+    expect(courseBuilding(run({ state: 'waiting' }), 1)).toBe(true)
+    // sin temas lo explica la pantalla de «Todavía no hay temas» (courseRunIssue = 'building')
+    expect(courseBuilding(run({ state: 'running' }), 0)).toBe(false)
+    expect(courseBuilding(run({ state: 'done' }), 5)).toBe(false)
+    expect(courseBuilding(run({ state: 'paused' }), 5)).toBe(false)
+    expect(courseBuilding(undefined, 5)).toBe(false)
   })
 
   it('la última ejecución de cada curso', () => {

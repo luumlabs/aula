@@ -190,6 +190,11 @@
       "stopped": "Creation was paused (you stopped it, or Aula was closed). Nothing is lost: Aula can pick up where it left off."
     },
     "buildingBody": "Topics will show up here as soon as they’re written. You can follow the team’s work in the monitor.",
+    "building": {
+      "title": "Aula is still creating this course",
+      "body": "You can already study the topics that are ready. The rest, the glossary, the formula sheet and the mock exam will show up on their own.",
+      "progress": "{{pct}} created"
+    },
     "detail": "Error details",
     "retry": "Try again",
     "retryFailed": "Couldn’t start again",
@@ -201,6 +206,7 @@
       "stopped": "Creation stopped",
       "limit": "Paused at a limit",
       "building": "Being created…",
+      "buildingReady": "Being created · you can start",
       "partial": "Creation paused"
     },
     "request": {

@@ -5,7 +5,7 @@ import { CourseIcon, Tooltip, cx, spring } from '@renderer/design'
 import { useNav, navigate } from '../router'
 import { useCourses } from '@renderer/lib/courses'
 import { daysUntil } from '@renderer/lib/format'
-import { courseRunIssue, coursePartial } from '@renderer/screens/course/failure'
+import { courseBuilding, courseRunIssue, coursePartial } from '@renderer/screens/course/failure'
 import { useLatestRunsMap } from '@renderer/screens/course/runs'
 import { showsAsSample } from '@renderer/lib/sample'
 
@@ -31,6 +31,9 @@ export function SidebarCourses({ collapsed }: { collapsed: boolean }) {
         // o se cortó a medias, con temas ya escritos: «Creación en pausa» (J2-2)
         const partial = coursePartial(runs[c.id], c.skillCount)
         const problem = issue === 'failed' || issue === 'stopped' || issue === 'limit' || !!partial
+        // o sigue creándose con temas ya escritos: se puede abrir, pero no está terminado (como dice Hoy)
+        const building = !issue && !partial && courseBuilding(runs[c.id], c.skillCount)
+        const marker = issue ? t(`course:failure.marker.${issue}`) : building ? t('course:failure.marker.buildingReady') : null
         const row = (
           <motion.button
             key={c.id}
@@ -46,12 +49,14 @@ export function SidebarCourses({ collapsed }: { collapsed: boolean }) {
             <span className="relative">
               <CourseIcon icon={c.icon} hue={c.hue} size={30} title={c.title} animation="drop" radius={8} />
               {problem && <span aria-hidden className={cx('absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full', issue === 'failed' ? 'bg-danger' : 'bg-warning')} />}
+              {/* con la barra plegada es la única señal de que sigue creándose (el texto va en el tooltip) */}
+              {(building || issue === 'building') && <span aria-hidden className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent animate-pulse motion-reduce:animate-none" />}
             </span>
             {!collapsed && (
               <span className="relative min-w-0 flex-1">
                 <span className="block truncate t-ui font-medium text-text">{c.title}</span>
-                {issue ? (
-                  <span className={cx('block truncate text-[12px] leading-4', issue === 'failed' ? 'text-danger' : issue === 'building' ? 'text-accent-text' : 'text-warning')}>{t(`course:failure.marker.${issue}`)}</span>
+                {marker ? (
+                  <span className={cx('block truncate text-[12px] leading-4', issue === 'failed' ? 'text-danger' : issue === 'building' || building ? 'text-accent-text' : 'text-warning')}>{marker}</span>
                 ) : partial ? (
                   <span className="block truncate text-[12px] leading-4 text-warning">{t('course:failure.marker.partial')}</span>
                 ) : (
@@ -64,7 +69,7 @@ export function SidebarCourses({ collapsed }: { collapsed: boolean }) {
           </motion.button>
         )
         return collapsed ? (
-          <Tooltip key={c.id} label={issue ? `${c.title} · ${t(`course:failure.marker.${issue}`)}` : sample ? `${c.title} · ${t('nav.sampleCourse')}` : c.title} side="right">
+          <Tooltip key={c.id} label={marker ? `${c.title} · ${marker}` : sample ? `${c.title} · ${t('nav.sampleCourse')}` : c.title} side="right">
             {row}
           </Tooltip>
         ) : (

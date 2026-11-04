@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { AulaMark, Button, Card, CourseIcon, Icon, ProviderLogo, logoForText, toast, type IconName, type LogoId, type MarkState } from '@renderer/design'
+import { AulaMark, Button, Card, CourseIcon, Icon, ProgressBar, ProviderLogo, logoForText, toast, type IconName, type LogoId, type MarkState } from '@renderer/design'
 import { fmtPercent, fmtTime } from '@renderer/lib/format'
 import type { RunSummary, RunView } from '@shared/generation/types'
 import type { Pack } from '@shared/schema/pack'
@@ -131,6 +131,35 @@ function RequestCard({ pack, run, delay }: { pack: Pack; run: RunView | null; de
             </div>
           </div>
         ))}
+      </div>
+    </Card>
+  )
+}
+
+/** Un curso que aún se está creando pero ya tiene temas: una franja encima de las pestañas con cuánto lleva y «Ver el progreso»,
+ * para que no parezca terminado (antes solo Hoy decía «Creándose…»). Se va sola cuando la creación termina. */
+export function CourseBuildingBanner({ run }: { run: RunSummary }) {
+  const { t } = useTranslation(['course', 'common'])
+  const fraction = Math.min(1, Math.max(0, run.progress || 0))
+  const progress = t('failure.building.progress', { pct: fmtPercent(fraction) })
+  return (
+    <Card padded className="mt-5" role="status" data-course-building initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}>
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="shrink-0 text-text2">
+          <AulaMark size={34} state="working" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="t-headline">{t('failure.building.title')}</div>
+          <p className="t-footnote text-text2 mt-0.5">{t('failure.building.body')}</p>
+          <div className="mt-2.5 flex items-center gap-3 max-w-[420px]">
+            <ProgressBar value={fraction} label={progress} />
+            {/* el porcentaje cambia a menudo: lo lee la barra (aria-valuenow), no se anuncia como texto */}
+            <span aria-hidden className="t-caption text-text3 tabular shrink-0">{progress}</span>
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" icon={<Icon name="activity" size={13} />} onClick={() => navigate({ name: 'run', id: run.id })}>
+          {t('failure.watch')}
+        </Button>
       </div>
     </Card>
   )

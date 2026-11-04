@@ -5,7 +5,7 @@ import { Card, CoverBand, DrawnBorder, PixelIcon, ProgressBar, SectionTitle, ton
 import type { HomeCourse } from '@shared/ipc/home'
 import { daysUntil, fmtPercent } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
-import { courseRunIssue, coursePartial } from '../course/failure'
+import { courseBuilding, courseRunIssue, coursePartial } from '../course/failure'
 import { useLatestRunsMap } from '../course/runs'
 import { showsAsSample } from '@renderer/lib/sample'
 
@@ -27,6 +27,8 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
           // la creación falló o se detuvo sin temas: se dice en la tarjeta en vez de enseñar «0 %»
           const issue = courseRunIssue(runs[c.id], c.skillCount)
           const problem = issue === 'failed' || issue === 'stopped' || issue === 'limit' ? issue : coursePartial(runs[c.id], c.skillCount) ? 'partial' : undefined
+          // creándose: con temas ya escritos se puede empezar, y se dice con las mismas palabras que la barra lateral
+          const building = c.generating || courseBuilding(runs[c.id], c.skillCount)
           return (
             <Card key={c.id} enterAnim interactive padded={false} onClick={() => navigate({ name: 'course', id: c.id })} className="h-full border-transparent!" data-pixel-hover>
               {/* su borde, dibujado a mano (cada curso, su trazo) */}
@@ -56,9 +58,9 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
                   <div className={cx('flex items-center gap-2 mt-4 t-ui font-medium', problem === 'failed' ? 'text-danger' : 'text-warning')}>
                     <Icon name="alert-circle" size={13} /> {t(`course:failure.marker.${problem}`)}
                   </div>
-                ) : c.generating ? (
+                ) : building ? (
                   <div className="flex items-center gap-2 mt-4 t-ui font-medium text-accent-text">
-                    <Spinner size={12} /> {t('generating')}
+                    <Spinner size={12} /> {c.skillCount > 0 ? t('course:failure.marker.buildingReady') : t('generating')}
                   </div>
                 ) : (
                   <>

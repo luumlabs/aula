@@ -190,6 +190,11 @@
       "stopped": "La creación quedó en pausa (la paraste tú o se cerró Aula). No se pierde nada: Aula puede seguir donde se quedó."
     },
     "buildingBody": "Los temas aparecerán aquí en cuanto estén escritos. Puedes seguir el trabajo del equipo en el monitor.",
+    "building": {
+      "title": "Aula sigue creando este curso",
+      "body": "Ya puedes estudiar los temas que están listos. Los que faltan, el glosario, las fórmulas y el simulacro irán apareciendo solos.",
+      "progress": "Creado al {{pct}}"
+    },
     "detail": "Detalle del error",
     "retry": "Reintentar",
     "retryFailed": "No se pudo volver a empezar",
@@ -201,6 +206,7 @@
       "stopped": "Creación detenida",
       "limit": "En pausa por un límite",
       "building": "Creándose…",
+      "buildingReady": "Creándose · ya puedes empezar",
       "partial": "Creación en pausa"
     },
     "request": {

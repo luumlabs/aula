@@ -11,6 +11,12 @@ export function courseRunIssue(run: Pick<RunSummary, 'state'> | undefined, skill
   return byState[run.state]
 }
 
+/** Un curso que aún se está creando pero ya tiene temas: se puede estudiar lo escrito mientras llega el resto. Se dice igual
+ * en Hoy, en la barra lateral y en la pantalla del curso (antes solo Hoy decía «Creándose…» y lo demás parecía terminado). */
+export function courseBuilding(run: Pick<RunSummary, 'state'> | undefined, skillCount: number): boolean {
+  return !!run && skillCount > 0 && (run.state === 'running' || run.state === 'waiting')
+}
+
 /** Un curso a medias: su creación se cortó (al cerrar Aula, con «Detener», por un error o un límite) cuando ya tenía temas.
  * Parece terminado («2 temas · Estudiar ahora») pero le faltan temas, glosario, fórmulas o simulacro: hay que decirlo y ofrecer
  * «Reanudar» (J2-2). */
