@@ -43,14 +43,17 @@ de API) o con un modelo gratis que corre en tu propio equipo. No hay cuentas ni 
 
 ## Descargar e instalar
 
+**La 0.1.4 es una versión candidata sin publicar.** Faltan firma de Apple, notarización y verificación en el dispositivo.
+Los nombres de archivo siguientes corresponden a la candidata; la última versión pública puede seguir siendo anterior.
+
 Descarga el archivo de tu sistema desde la [última versión](https://github.com/luumlabs/aula/releases/latest):
 
 | Sistema | Archivo | La primera vez |
 | --- | --- | --- |
-| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.1.3-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
-| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.1.3.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
-| Linux x64 | `Aula-0.1.3-linux-x86_64.AppImage` o `Aula-0.1.3-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.1.3-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.1.3-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
+| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.1.4-mac.dmg` | Cierra Aula, abre el .dmg y arrástrala a *Aplicaciones*. Desde la 0.1.3 o una copia con firma local hay que reemplazarla a mano una vez. La candidata debe pasar las comprobaciones de firma Developer ID y notarización antes de publicarse. |
+| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.1.4.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
+| Linux x64 | `Aula-0.1.4-linux-x86_64.AppImage` o `Aula-0.1.4-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.1.4-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.1.4-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
 
 En Linux necesitas una distribución de 64 bits con glibc. Instala también GNOME Keyring o KWallet; si no, Aula tiene
 que guardar tus claves sin cifrar.
@@ -59,7 +62,7 @@ La primera vez que abres Aula te pregunta tu nombre, te ayuda a [elegir una IA](
 tu plataforma de estudio. Tu biblioteca empieza con dos cursos de ejemplo para que lo pruebes todo antes de crear los
 tuyos.
 
-**Actualizaciones.** Aula busca una versión nueva al arrancar y cada seis horas. La descarga en segundo plano,
+**Actualizaciones.** El cambio de firma local a Developer ID necesita una instalación manual en Mac; no borres tu carpeta de datos. Las siguientes versiones firmadas por el mismo desarrollador utilizan el actualizador existente. Aula busca una versión nueva al arrancar y cada seis horas. La descarga en segundo plano,
 comprueba su firma y la instala al salir (o al pulsar *Reiniciar para actualizar* en la barra lateral). En macOS, deja Aula en
 *Aplicaciones* para que funcione; si una versión nueva no arranca, Aula vuelve a la anterior. La AppImage también se
 actualiza sola. El `.deb` no: Aula te avisa cuando sale una versión nueva, y
@@ -70,8 +73,8 @@ descarga su `.deb` de las [versiones publicadas](https://github.com/luumlabs/aul
 
 | Problema | Qué hacer |
 |---|---|
-| macOS no puede verificar al desarrollador, o no aparece *Abrir* | Mira la fila de macOS de arriba. En macOS 15 o posterior, *Abrir igualmente* solo aparece en *Privacidad y seguridad* después de intentar abrir Aula una vez. |
-| macOS dice que la app está dañada | Mueve Aula a *Aplicaciones* e inténtalo otra vez. Si sigue sin abrir, ejecuta `xattr -dr com.apple.quarantine /Applications/Aula.app` en el Terminal. |
+| macOS no puede verificar al desarrollador, o no aparece *Abrir* | Comprueba que descargaste la versión firmada publicada. Comunica cualquier aviso de firma o notarización antes de continuar; la candidata aún no se distribuye. |
+| macOS dice que la app está dañada | Descarga de nuevo la versión firmada desde el proyecto y comunica el aviso si continúa. |
 | macOS no instala una actualización | Comprueba que Aula está en *Aplicaciones* y no en *Descargas* ni abierta desde el .dmg. *Ajustes → Acerca de* explica qué pasó y te deja reintentarlo o descargar la actualización. |
 | La AppImage no arranca | Hazla ejecutable (`chmod +x`). Necesita FUSE 2: `sudo apt install libfuse2` (en Ubuntu 24.04 y posteriores, `libfuse2t64`). |
 | Ubuntu 23.10 o posterior, con la AppImage | Ubuntu restringe los espacios de nombres de usuario que necesita el aislamiento (*sandbox*) de Chromium, así que la AppImage arranca con ese aislamiento apagado. Aula funciona igual, pero las páginas que abre (tu plataforma de estudio, por ejemplo) quedan menos aisladas. En x64, mejor instala el `.deb`: mantiene el aislamiento porque instala el perfil de AppArmor que Ubuntu necesita. |

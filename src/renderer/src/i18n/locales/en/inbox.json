@@ -301,6 +301,15 @@
     "quietHint": "Aula schedules nothing, and anything not urgent waits until they end.",
     "notifications": "Notify me",
     "notificationsHint": "Otherwise everything stays in your Inbox.",
+    "testNotification": "Test notification",
+    "notificationHelpMac": "If macOS asks for permission, allow notifications from Aula. If no notification appears, open Notifications in your Mac's System Settings, choose Aula and check your Focus mode.",
+    "notificationHelp": "If your system asks for permission, allow notifications from Aula. If no notification appears, check notification permissions and your system's Do Not Disturb mode.",
+    "notificationResult": {
+      "sent": "Test notification sent to the system. System settings may hide the banner or sound.",
+      "unconfirmed": "Aula requested the notification, but the system has not confirmed delivery yet. Check permission and your notification center.",
+      "unsupported": "This system does not offer notifications to Aula.",
+      "failed": "The test notification could not be sent. Check Aula's permissions and try again."
+    },
     "badge": "Unread count on Aula’s icon",
     "openAtLogin": "Open Aula at login",
     "openAtLoginHint": "When you close the window, Aula stays in the tray doing what’s scheduled.",

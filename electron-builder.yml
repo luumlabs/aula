@@ -1,9 +1,11 @@
 # Empaquetado de Aula (electron-builder). `npm run dist:mac|win|linux`.
-# Firma: en macOS, si hay certificado (CSC_LINK/CSC_KEY_PASSWORD o uno «Developer ID» en el llavero) se firma con él y,
-# con APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID, se notariza; si no, firma ad hoc. Ver docs/PUBLISHING.md.
+# macOS público: Developer ID Application, hardened runtime y notarización de Apple obligatorios.
+# No se usa el antiguo certificado local ni se recurre a una firma ad hoc. Ver docs/PUBLISHING.md.
 appId: com.luumlabs.aula
 productName: Aula
 copyright: Copyright © 2026 Luum Labs
+beforePack: scripts/build/mac-before-pack.cjs
+afterSign: scripts/build/mac-after-sign.cjs
 directories:
   output: release
   buildResources: build
@@ -62,13 +64,12 @@ mac:
   category: public.app-category.education
   # icono: lo genera `npx electron scripts/dev/icon/build-icons.mjs` (icns con dibujo propio a 16/32 px, .ico y build/icons)
   icon: build/icon.icns
-  # Sin certificado Developer ID: identity "-" y scripts/build/mac-sign.cjs firma con el certificado propio y estable
-  # «Aula Local Signing» (~/.aula-signing/) si está, o ad hoc si no (mismo requisito designado en todas las versiones: macOS
-  # no vuelve a pedir el llavero tras actualizar; A1-P1-5). Sin «hardened runtime» (sin certificado de Apple, la validación
-  # de bibliotecas podría impedir que la app arranque). Con Developer ID: quitar `identity` y `sign`, hardenedRuntime: true.
-  identity: "-"
-  sign: scripts/build/mac-sign.cjs
-  hardenedRuntime: false
+  # La identidad la elige electron-builder desde el llavero (CSC_NAME permite desambiguar).
+  # Una instalación anterior firmada con «Aula Local Signing» necesita instalar el DMG una vez a mano.
+  forceCodeSigning: true
+  hardenedRuntime: true
+  notarize: true
+  strictVerify: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
@@ -80,7 +81,7 @@ mac:
     - target: zip
       arch: [universal]
 dmg:
-  sign: false
+  sign: true
   artifactName: Aula-${version}-mac.${ext}
   contents:
     - { x: 150, y: 190 }
@@ -117,5 +118,5 @@ publish:
   releaseType: draft
 # título y notas de la versión (inglés y español); al publicar otra versión, apuntar a sus notas
 releaseInfo:
-  releaseName: Aula 0.1.3
-  releaseNotesFile: docs/release-notes/0.1.3.md
+  releaseName: Aula 0.1.4
+  releaseNotesFile: docs/release-notes/0.1.4.md

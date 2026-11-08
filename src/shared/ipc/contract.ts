@@ -17,7 +17,11 @@ export interface RpcMethods {
    *  `whenAway`: solo si la ventana no está a la vista y con el foco (lo decide el proceso principal: en macOS la página
    *  nunca se ve «oculta», ni minimizada: A5-P1-2). */
   'app.notify': { args: { body: string; whenAway?: boolean }; result: void }
+  /** Una prueba solicitada desde Ajustes; no equivale a consultar el permiso ni a confirmar que se vio el banner. */
+  'app.testNotification': { args: void; result: NotificationTestStatus }
 }
+
+export type NotificationTestStatus = 'sent' | 'unconfirmed' | 'unsupported' | 'failed'
 
 export interface RpcEvents {
   'app.focus': { focused: boolean }

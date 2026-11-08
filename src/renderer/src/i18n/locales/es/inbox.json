@@ -301,6 +301,15 @@
     "quietHint": "Aula no programa nada y lo que no es urgente te espera hasta que terminen.",
     "notifications": "Avisarme con notificaciones",
     "notificationsHint": "Si no, todo queda solo en Novedades.",
+    "testNotification": "Probar notificación",
+    "notificationHelpMac": "Si macOS pide permiso, permite las notificaciones de Aula. Si no aparece el aviso, abre Notificaciones en Ajustes del Sistema del Mac, elige Aula y revisa el modo de concentración.",
+    "notificationHelp": "Si el sistema pide permiso, permite las notificaciones de Aula. Si no aparece el aviso, revisa los permisos de notificaciones y el modo No molestar del sistema.",
+    "notificationResult": {
+      "sent": "Notificación de prueba enviada al sistema. Los ajustes del sistema pueden ocultar el banner o el sonido.",
+      "unconfirmed": "Aula solicitó la notificación, pero el sistema aún no confirmó su entrega. Comprueba el permiso y el centro de notificaciones.",
+      "unsupported": "Este sistema no ofrece notificaciones a Aula.",
+      "failed": "No se pudo enviar la notificación de prueba. Revisa los permisos de Aula e inténtalo de nuevo."
+    },
     "badge": "Lo no leído en el icono de Aula",
     "openAtLogin": "Abrir Aula al iniciar sesión",
     "openAtLoginHint": "Al cerrar la ventana, Aula sigue en la bandeja haciendo lo programado.",

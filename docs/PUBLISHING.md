@@ -202,9 +202,18 @@ rebuild the AppImages with other SHA-512s.
 > [Update signatures](#update-signatures-ed25519)), or store the key as the `AULA_UPDATE_SIGNING_KEY` secret and add a
 > signing step before the upload.
 >
-> **No macOS in Actions.** The Mac app must be signed with the project's own certificate (see [Signing](#signing)),
-> which only exists on the maintainer's Mac, so the workflow builds Windows and Linux only. Add the Mac files to the
-> same draft from your Mac with `scripts/release-local.sh --only mac` and `--upload`.
+> **No macOS in Actions.** The Mac app needs a Developer ID certificate (see [Signing](#signing)),
+> and notarization credentials are provisioned on the maintainer's Mac, so the workflow builds Windows and Linux only.
+> Build the Mac files locally with `scripts/release-local.sh --only mac` from the same commit as the draft.
+> `--upload` creates a new draft and refuses an existing one; it cannot append the Mac files to the Actions draft.
+
+To add Mac artifacts to an existing draft, first confirm it is still a draft and targets the commit recorded in
+`release/<version>/BUILD_INFO.mac`. Re-run `scripts/release-verify.mjs release/<version> <version>`,
+`scripts/release-sign.mjs --verify release/<version>` and
+`scripts/build/mac-release-preflight.cjs --verify-release release/<version> <version>` with `node` on the Mac.
+Then use `gh release upload v<version> -R luumlabs/aula <verified Mac files>` to upload the DMG, ZIP, their `.blockmap`
+files when present, and `latest-mac.yml` together. Do not use `--clobber` to replace previously tested artifacts.
+Download the complete draft and verify its metadata, hashes and Ed25519 signatures again before publishing.
 
 When Actions is available: *Actions → Release → Run workflow* on `main`. The **Release** workflow
 (`.github/workflows/release.yml`) is **manual only** — it never runs when a tag is pushed, because publishing the draft
@@ -212,8 +221,8 @@ creates the tag and a tag-triggered build would upload untested installers over 
 
 1. **prepare**: checks `VERSION`, `CHANGELOG.md`, the notes and `releaseInfo`; stops if `v<version>` is already
    published or if its draft already has files (it never replaces installers); otherwise creates the empty draft
-   (English notes, title from `releaseInfo`), so the three builds don't race to create it;
-2. **build** on macOS, Windows and Linux and uploads each system's files to that draft (`releaseType: draft`);
+   (English notes, title from `releaseInfo`), so the build jobs don't race to create it;
+2. **build** on Windows and Linux and uploads each system's files to that draft (`releaseType: draft`);
 3. **verify**: downloads the draft and runs `scripts/release-verify.mjs` on it (every `latest*.yml` against the SHA-512
    of its files).
 
@@ -253,8 +262,10 @@ are administrators, so a standard (non-admin) Windows account is only covered by
 
 ## Rehearsing an update locally
 
-Build every version of a rehearsal the same way (all signed with *Aula Local Signing*, or all with `AULA_MAC_ADHOC=1`):
-a copy signed with the certificate rejects an ad-hoc update, as it should.
+Build both versions with **Developer ID Application from the same Apple team**, with `APPLE_TEAM_ID` and notarization
+credentials configured as described in [Signing](#signing). The normal signing and notarization checks still apply;
+`AULA_MAC_ADHOC=1` and the former local signature are not supported by this release configuration. Sign each rehearsal's
+update metadata with Aula's Ed25519 key too. These temporary builds are only for the local rehearsal: never publish them.
 
 **Quick rehearsal** (your own builds). `scripts/dev/fake-github-releases.mjs` imitates GitHub's releases on `127.0.0.1`
 (drafts hidden, pre-releases not "latest", ranges for differential downloads). Build two versions that look for updates
@@ -262,24 +273,29 @@ there, into a temporary folder:
 
 ```bash
 T=$(mktemp -d); npm run build
-for V in 0.1.0 0.1.1; do
+for V in 0.1.4 0.1.5; do
   npx electron-builder --mac zip --arm64 --publish never -c.extraMetadata.version=$V -c.directories.output=$T/rel-$V \
     -c.publish.host=127.0.0.1:8765 -c.publish.protocol=http
+  node scripts/release-sign.mjs $T/rel-$V
   mkdir -p $T/R/v$V && cp $T/rel-$V/{*.zip,*.blockmap,latest-mac.yml} $T/R/v$V/
 done
-echo '[{"tag":"v0.1.1"},{"tag":"v0.1.0"}]' > $T/R/releases.json        # add "draft": true to hide one
+echo '[{"tag":"v0.1.5"},{"tag":"v0.1.4"}]' > $T/R/releases.json        # add "draft": true to hide one
 node scripts/dev/fake-github-releases.mjs $T/R 8765 &
-mkdir -p $T/inst && ditto $T/rel-0.1.0/mac-arm64/Aula.app $T/inst/Aula.app
+mkdir -p $T/inst && ditto $T/rel-0.1.4/mac-arm64/Aula.app $T/inst/Aula.app
 AULA_HOME=$(mktemp -d) AULA_UPDATE_CHECK_DELAY_MS=3000 AULA_UPDATE_AUTO_INSTALL=1 $T/inst/Aula.app/Contents/MacOS/Aula
 ```
 
 `AULA_UPDATE_CHECK_DELAY_MS` shortens the first check; `AULA_UPDATE_AUTO_INSTALL=1` presses *Restart and update* as soon
-as the update is ready (`=quit` quits instead, to try install-on-quit). After a few seconds `$T/inst/Aula.app` is 0.1.1
+as the update is ready (`=quit` quits instead, to try install-on-quit). After a few seconds `$T/inst/Aula.app` is 0.1.5
 and running; the log is in `$AULA_HOME/Logs/main.log` (`[updates]`). Never point these at `/Applications` or at your real
 data folder. The interface states can be captured without a server: `node scripts/dev/shots-updates.mjs <out>`.
 
-**High-fidelity rehearsal** (the **published** app, unchanged, against an imitation of github.com — what A1 and FIX2 did
-before 0.1). `scripts/dev/fake-github-com.mjs` answers like github.com over HTTPS (`releases.atom`, `releases/latest` →
+**Historical high-fidelity rehearsal (0.1.0 → 0.1.1).** The recipe below records the earlier test with the published app,
+unchanged, against an imitation of github.com. It requires the matching historical source and signing identity. It is
+not a test of migration to 0.1.4: the old locally signed app rejects Developer ID updates. Do not disable the current
+release checks to run it; use the same-team rehearsal above for current builds and test the manual migration separately.
+
+`scripts/dev/fake-github-com.mjs` answers like github.com over HTTPS (`releases.atom`, `releases/latest` →
 302 → JSON, downloads → 302 to `release-assets.githubusercontent.com`, ranges); the app is pointed at it with Chromium's
 `--host-resolver-rules`:
 
@@ -313,21 +329,71 @@ packaged build with CDP (`scripts/dev/security-check.mjs`, measurements), build 
 
 ## Signing
 
-| System | Without certificates (now) | With certificates |
-| --- | --- | --- |
-| macOS | Signed with the project's own self-signed certificate **Aula Local Signing** (`scripts/build/mac-sign.cjs`, from the keychain `~/.aula-signing/aula-signing.keychain-db`; ad hoc if it isn't there). Gatekeeper treats it like ad hoc: the first launch needs *Open* / *Open Anyway*. Its designated requirement (`identifier "com.luumlabs.aula" and certificate root = H"3b5c…"`) is the same for every version, so after one *Always Allow* macOS stops asking for the «Aula Safe Storage» keychain item on each update, and Aula's installer requires every new version to satisfy it. **So every later macOS release must be signed with this certificate**: `release-local.sh` refuses to build or upload macOS without it (`AULA_MAC_ADHOC=1` only for tests). Automatic updates **work** (Aula's own installer, above). | Set `MAC_CERT_P12_BASE64` + `MAC_CERT_PASSWORD` (a *Developer ID Application* certificate) and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` to notarize (repository secrets for Actions, or `CSC_LINK`/`CSC_KEY_PASSWORD` + the Apple variables in your shell for a local build). Then, in `electron-builder.yml`, remove `identity: "-"` and set `hardenedRuntime: true`. From that version on, updates must be signed by the same team (the installer checks it). |
-| Windows | Unsigned: SmartScreen shows *More info → Run anyway* the first time. Updates work. | `CSC_LINK`/`CSC_KEY_PASSWORD` (or Azure Trusted Signing). electron-updater then requires updates signed by the same publisher. |
-| Linux | AppImage and .deb are not signed (normal for Linux). | — |
+### macOS distribution (0.1.4 and later)
 
-Never commit certificates, `.p12` files or keys: `.gitignore` already blocks the usual names.
+Mac release builds use **Developer ID Application**, hardened runtime and Apple's notarization service. They must
+not use `Apple Development`, the old `Aula Local Signing` certificate, or an ad-hoc signature. `forceCodeSigning`
+prevents missing certificates from quietly producing unsigned artifacts. The release preflight additionally checks
+Apple credentials and the expected Team ID; the output is checked again before upload.
 
-**Back up the macOS certificate** together with the update keys (same offline places): `~/.aula-signing/aula-signing.p12`
-and its password `p12.pass` (or the keychain `aula-signing.keychain-db` and `keychain.pass`); `cert.pem` is public. If
-it's lost, copies signed with it reject every later macOS update (*invalid signature*) and Mac users would have to
-install by hand once. To restore it on a new Mac: `security create-keychain -p "$(cat keychain.pass)"
-~/.aula-signing/aula-signing.keychain-db`, then `security import aula-signing.p12 -k ~/.aula-signing/aula-signing.keychain-db
--P "$(cat p12.pass)" -T /usr/bin/codesign` and `security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k
-"$(cat keychain.pass)" ~/.aula-signing/aula-signing.keychain-db` (so `codesign` uses it without a dialog).
+1. Activate the paid Apple Developer membership. Xcode must show the paid team, not only **Personal Team**.
+2. Create or import that team's **Developer ID Application** certificate with its private key in the login keychain.
+   Check availability with `security find-identity -v -p codesigning`. Do not print or commit private keys.
+3. Set `APPLE_TEAM_ID` to the paid team's exact 10-character identifier. If more than one signing identity is
+   installed, use `CSC_NAME` to select the developer name or certificate hash (without the certificate type prefix).
+4. Provide one notarization credential set supported by electron-builder:
+   - `APPLE_KEYCHAIN_PROFILE`, referencing credentials already stored in Keychain; set `APPLE_KEYCHAIN` too if a
+     specific keychain is needed;
+   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`; or
+   - `APPLE_API_KEY` (local path), `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`.
+   Keep secrets in Keychain or the invoking process environment, never in source, command history or chat.
+5. Build with `scripts/release-local.sh --only mac`. Test the packaged app before making any release public.
+   Verification includes the bundle identifier, Developer ID authority, exact Team ID, hardened runtime, a secure
+   timestamp, strict signature validation, the stapled notarization ticket and Gatekeeper assessment.
+
+`mac.notarize: true` alone is insufficient: electron-builder skips notarization when credentials are missing, which
+is why the preflight and artifact checks are required. `gatekeeperAssess: false` only avoids a premature assessment
+while signing, before the notarization ticket exists; it does not disable the final distribution checks.
+
+The current electron-builder pipeline notarizes and staples `Aula.app`, then creates and signs the DMG. It does not
+staple a separate ticket to the DMG. Describe this precisely as a signed DMG containing a notarized, stapled app.
+Before publishing, test the downloaded, quarantined DMG and first launch on a clean Mac, including offline use.
+Apple [recommends notarizing the outer distribution container](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
+If adding a DMG ticket, do it before generating its blockmap, SHA-512 metadata and Ed25519 signatures, or regenerate
+all of them afterwards; do not mutate an artifact after signing its update metadata.
+
+**Transition from the old local identity:** 0.1.3 checks that an update satisfies the running app's designated
+requirement. A Developer ID build cannot satisfy the previous self-signed certificate's requirement. Users must
+install the signed DMG manually once; the checks in `mac-install.ts` stay intact. Do not promise a seamless automatic
+upgrade from those copies. A fully automatic transition would need a separately designed bridge release signed with
+the old identity and pinned to the verified Apple team. That bridge is not part of this release.
+
+Keep the existing Ed25519 update keys. They are independent of Apple's code-signing certificate and remain mandatory.
+Do not delete the old local certificate or keychain: they may be needed for historical builds or a future bridge.
+Changing identity can also make macOS ask again for access to the existing `Aula Safe Storage` keychain item; never
+silently reset stored provider credentials or delete user data to avoid that prompt.
+
+### Notifications and permissions
+
+The signed app must be tested on macOS. In Settings, use the notification test, then check System Settings →
+Notifications → Aula. A successful Electron `show` event is system feedback, not proof that the user saw a banner.
+Focus modes and per-app preferences still control visibility. Also test clicking an automation notice, a study
+reminder and delivery with the window closed while Aula remains running. No push certificate is needed for these
+local notifications. This release does not add APNs or grant permission on the student's behalf.
+
+### Other platforms and App Store
+
+Windows remains unsigned unless an Authenticode identity is configured; Linux keeps its existing packaging.
+A partial release marked Latest can stop other platforms finding updates, so keep the complete release workflow
+or leave a Mac-only candidate as a pre-release until the other artifacts are ready.
+
+Developer ID is for distribution outside the Mac App Store. Store submission requires a separate Electron MAS build,
+App Sandbox entitlements, distribution certificates and provisioning profiles, App Store Connect metadata, privacy
+information and review. See `docs/MAC_APP_STORE.md` for the readiness audit. Do not upload the ordinary DMG as a store
+build.
+
+Never commit certificates, profiles, `.p12` files or private keys. Back up signing credentials securely outside the
+repository.
 
 ## Update signatures (Ed25519)
 

@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { tr } from '@shared/ai/i18n'
 import type { AutomationNotice } from '@shared/automations'
 import type { StudyReminderNotice } from '@main/services/automations'
+import type { NotificationTestStatus } from '@shared/ipc'
 import { log } from '@main/services/log'
 import { getMainWindow } from './window'
 import { reveal } from './visibility'
@@ -31,12 +32,73 @@ function appFocused(): boolean {
   return !!win && win.isVisible() && win.isFocused() && !win.isMinimized()
 }
 
-function remember(id: string, n: Notification): void {
+function remember(id: string, n: Notification): () => void {
   live.get(id)?.close()
   live.set(id, n)
   const forget = () => { if (live.get(id) === n) live.delete(id) }
   n.on('close', forget)
   n.on('failed', (_e, err) => { forget(); log.warn('Notificación', err) })
+  return forget
+}
+
+/** Los avisos de la interfaz también se retienen hasta que el sistema los cierre. */
+export function postAppNotice(body: string): void {
+  if (!Notification.isSupported()) return
+  let forget: (() => void) | undefined
+  try {
+    const n = new Notification({ title: 'Aula', body, ...(iconPath() ? { icon: iconPath() } : {}) })
+    n.on('click', () => { focusMainWindow(); n.close() })
+    forget = remember('aula.app', n)
+    n.show()
+  } catch (err) {
+    forget?.()
+    log.warn('Notificación', err)
+  }
+}
+
+let pendingTest: Promise<NotificationTestStatus> | undefined
+
+/** `isSupported` solo indica soporte del sistema. El permiso y Concentración pueden impedir el aviso. */
+export function testNotification(): Promise<NotificationTestStatus> {
+  if (pendingTest) return pendingTest
+  if (!Notification.isSupported()) return Promise.resolve('unsupported')
+  const result = new Promise<NotificationTestStatus>((resolve) => {
+    let n: Notification | undefined
+    let forget: (() => void) | undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const finish = (status: NotificationTestStatus) => {
+      if (timer) clearTimeout(timer)
+      n?.removeListener('show', shown)
+      n?.removeListener('failed', failed)
+      n?.removeListener('close', closed)
+      resolve(status)
+    }
+    const shown = () => finish('sent')
+    const failed = () => finish('failed')
+    const closed = () => finish('unconfirmed')
+    try {
+      n = new Notification({
+        title: 'Aula',
+        body: tr('Esta es una notificación de prueba de Aula.', 'This is a test notification from Aula.'),
+        ...(iconPath() ? { icon: iconPath() } : {})
+      })
+      n.on('click', () => { focusMainWindow(); n?.close() })
+      forget = remember('aula.test', n)
+      n.once('show', shown)
+      n.once('failed', failed)
+      n.once('close', closed)
+      // No bloquear Ajustes si hay un diálogo de permisos o el sistema no emite un resultado.
+      timer = setTimeout(() => finish('unconfirmed'), 5_000)
+      n.show()
+    } catch (err) {
+      forget?.()
+      log.warn('Notificación de prueba', err)
+      finish('failed')
+    }
+  })
+  pendingTest = result
+  void result.finally(() => { if (pendingTest === result) pendingTest = undefined })
+  return result
 }
 
 /** Trae la ventana principal al frente. */

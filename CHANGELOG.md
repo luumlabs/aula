@@ -3,6 +3,18 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.1.4] - Unreleased
+
+### Changed
+- macOS release builds require an Apple Developer ID Application signature, hardened runtime and verified
+  notarization. The release process refuses unsigned, ad-hoc or locally signed Mac artifacts.
+- Moving from the former local signing identity requires a one-time manual installation of the Mac DMG.
+  The updater's developer identity and Ed25519 checks remain enforced.
+
+### New
+- A notification test in Settings helps check delivery and points to macOS notification permissions when delivery
+  cannot be confirmed. Notification objects remain alive while awaiting system events, including short app notices.
+
 ## [0.1.3] - 2026-11-03
 
 ### New

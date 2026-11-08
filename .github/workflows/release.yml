@@ -63,9 +63,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # No macOS here: the Mac app is signed with Aula's own certificate («Aula Local Signing»), which only exists on the
-        # maintainer's Mac, and installed copies reject an update with any other signature. Build and upload the Mac
-        # files locally with scripts/release-local.sh --only mac (docs/PUBLISHING.md).
+        # Mac distribution needs the maintainer's Developer ID identity and Apple notarization credentials.
+        # Build and verify its artifacts locally with scripts/release-local.sh --only mac (docs/PUBLISHING.md).
+        # The transition from the old local signing identity requires a one-time manual Mac installation.
         os: [windows-2025, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60

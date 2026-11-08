@@ -1,5 +1,5 @@
 // Métodos generales de la app.
-import { app, nativeTheme, Notification, shell } from 'electron'
+import { app, nativeTheme, shell } from 'electron'
 import { handle } from '../rpc'
 import { existsSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
@@ -11,6 +11,7 @@ import { getMainWindow } from '../window'
 import { secretProtection } from '../secrets'
 import { powerState } from '../power'
 import { noticeNeeded } from '@shared/ipc/power'
+import { postAppNotice, testNotification } from '../notifications'
 
 export function register(): void {
   handle('app.info', () => ({
@@ -49,9 +50,9 @@ export function register(): void {
     if (typeof body !== 'string' || !body.trim() || body.length > 300) throw invalidArgs('Aviso no válido')
     // «solo si no lo está viendo»: lo sabe el proceso principal (minimizada, oculta, detrás de otra app o bloqueada)
     if (whenAway === true && !noticeNeeded(powerState())) return
-    if (!Notification.isSupported()) return
-    new Notification({ title: 'Aula', body: body.trim() }).show()
+    postAppNotice(body.trim())
   })
+  handle('app.testNotification', () => testNotification())
   handle('app.setTheme', ({ dark }) => {
     if (typeof dark !== 'boolean') throw invalidArgs('Tema no válido')
     applyWindowTheme(dark)

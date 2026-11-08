@@ -9,6 +9,9 @@ const handlers = new Map<string, (args: unknown) => unknown>()
 const openPath = vi.fn<(p: string) => Promise<string>>()
 const openExternal = vi.fn<(u: string) => Promise<void>>()
 const appRoot = mkdtempSync(join(tmpdir(), 'aula-legal-'))
+const postAppNotice = vi.fn()
+const testNotification = vi.fn()
+const powerState = vi.fn()
 
 vi.mock('electron', () => ({
   app: { isPackaged: false, getAppPath: () => appRoot, getName: () => 'Aula', getVersion: () => '0.1.0', getLocale: () => 'en' },
@@ -19,11 +22,38 @@ vi.mock('electron', () => ({
 vi.mock('../rpc', () => ({ handle: (m: string, fn: (args: unknown) => unknown) => handlers.set(m, fn) }))
 vi.mock('../window', () => ({ getMainWindow: () => null }))
 vi.mock('../secrets', () => ({ secretProtection: () => 'os' }))
+vi.mock('../notifications', () => ({ postAppNotice, testNotification }))
+vi.mock('../power', () => ({ powerState }))
 
 beforeEach(async () => {
   openPath.mockReset()
   openExternal.mockReset()
+  postAppNotice.mockReset()
+  testNotification.mockReset()
+  powerState.mockReset().mockReturnValue({ window: 'active', locked: false, battery: false })
   if (!handlers.size) (await import('./app')).register()
+})
+
+describe('notificaciones de la interfaz', () => {
+  it('solo envía avisos válidos y conserva la condición de avisar cuando no se ve Aula', () => {
+    const notify = handlers.get('app.notify')!
+    notify({ body: '  Descanso terminado  ', whenAway: true })
+    expect(postAppNotice).not.toHaveBeenCalled()
+    powerState.mockReturnValue({ window: 'hidden', locked: false, battery: false })
+    notify({ body: '  Descanso terminado  ', whenAway: true })
+    expect(postAppNotice).toHaveBeenCalledWith('Descanso terminado')
+    postAppNotice.mockClear()
+    for (const body of ['', '   ', 3, 'x'.repeat(301)]) {
+      expect(() => notify({ body })).toThrow(/Aviso no válido/)
+    }
+    expect(postAppNotice).not.toHaveBeenCalled()
+  })
+
+  it('la prueba explícita devuelve el resultado nativo aunque Aula tenga el foco', async () => {
+    testNotification.mockResolvedValue('unconfirmed')
+    await expect(handlers.get('app.testNotification')!(undefined)).resolves.toBe('unconfirmed')
+    expect(testNotification).toHaveBeenCalledOnce()
+  })
 })
 
 const open = (args: unknown) => handlers.get('app.openLicenses')!(args) as Promise<void>

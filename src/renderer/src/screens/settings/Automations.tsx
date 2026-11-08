@@ -2,6 +2,7 @@
 // (Discreta · Equilibrada · Muy atenta), horas de silencio, notificaciones, lo no leído en el icono, abrir al iniciar sesión,
 // los seguimientos de Aula, lo usado hoy y el acceso a las rutinas y automatizaciones. Sustituye a la tarjeta sencilla de
 // «Aula siempre activa» de Ajustes. Lo que es de settings.json va por 'settings.update'; lo del modo, por 'automations.*'.
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { AulaMark, Button, Card, Icon, ProgressBar, SegmentedTabs, Switch, cx } from '@renderer/design'
@@ -10,6 +11,8 @@ import { useRpc } from '@renderer/lib/useRpc'
 import { openInboxTab } from '../inbox/state'
 import { setProactive } from '../inbox/ProactiveCard'
 import { whenText } from '../inbox/format'
+import { api } from '@renderer/lib/api'
+import type { NotificationTestStatus } from '@shared/ipc'
 
 function Toggle({ title, hint, checked, onChange, disabled }: { title: string; hint?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
@@ -28,6 +31,15 @@ export function AutomationsSettingsCard() {
   const settings = useSettings((s) => s.settings)
   const update = useSettings((s) => s.update)
   const { data: snap } = useRpc('automations.snapshot', undefined, { events: ['automations.changed', 'settings.changed'] })
+  const [testingNotice, setTestingNotice] = useState(false)
+  const [noticeResult, setNoticeResult] = useState<NotificationTestStatus | null>(null)
+  const tryNotification = async () => {
+    setTestingNotice(true)
+    setNoticeResult(null)
+    try { setNoticeResult(await api.invoke('app.testNotification')) }
+    catch { setNoticeResult('failed') }
+    finally { setTestingNotice(false) }
+  }
   if (!settings) return null
   const ps = settings.persistent
   const on = ps.enabled
@@ -73,6 +85,11 @@ export function AutomationsSettingsCard() {
           <Switch checked={!!quiet} onChange={(v) => void update({ persistent: { quietHours: v ? { from: p?.quiet.from ?? '22:30', to: p?.quiet.to ?? '07:30' } : null } })} label={t('settingsCard.quietHours')} />
         </div>
         <Toggle title={t('settingsCard.notifications')} hint={t('settingsCard.notificationsHint')} checked={p?.notifications ?? true} onChange={(v) => setProactive({ notifications: v })} disabled={!p} />
+        <div className="pb-3">
+          <Button size="sm" variant="secondary" loading={testingNotice} onClick={() => void tryNotification()}>{t('settingsCard.testNotification')}</Button>
+          <p className="t-footnote text-text3 mt-1.5">{t(api.platform === 'darwin' ? 'settingsCard.notificationHelpMac' : 'settingsCard.notificationHelp')}</p>
+          {noticeResult && <p role="status" className="t-ui text-text2 mt-1.5">{t(`settingsCard.notificationResult.${noticeResult}`)}</p>}
+        </div>
         <Toggle title={t('settingsCard.badge')} checked={p?.dockBadge ?? true} onChange={(v) => setProactive({ dockBadge: v })} disabled={!p} />
         <Toggle title={t('settingsCard.openAtLogin')} hint={t('settingsCard.openAtLoginHint')} checked={ps.openAtLogin} onChange={(v) => void update({ persistent: { openAtLogin: v } })} />
         <Toggle title={t('settingsCard.followups')} hint={t('settingsCard.followupsHint')} checked={p?.followups ?? true} onChange={(v) => setProactive({ followups: v })} disabled={!p || !on} />

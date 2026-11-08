@@ -14,8 +14,8 @@
 #                                            Sin los tres sistemas se niega (publicada, los que faltan dejarían de ver
 #                                            versiones): --partial para subirla así a sabiendas
 #
-# macOS se firma con el certificado propio «Aula Local Signing» (~/.aula-signing/, scripts/build/mac-sign.cjs): sin él
-# se niega, porque las copias ya firmadas con él rechazarían una versión ad hoc. AULA_MAC_ADHOC=1 para probar sin él.
+# macOS exige Developer ID Application, APPLE_TEAM_ID y notarización. La migración desde «Aula Local Signing»
+# requiere instalar el DMG una vez a mano: no se relaja la comprobación de identidad de las actualizaciones.
 #
 # Hecho para macOS (el único sistema que puede firmar y compilar los tres). En Windows o Linux, usa --only con el suyo.
 set -euo pipefail
@@ -84,10 +84,11 @@ if [ $UPLOAD -eq 1 ]; then
   for f in $(grep -oE 'Aula-[A-Za-z0-9._-]+\.(dmg|zip|exe|AppImage|deb)' "$NOTES" | sort -u); do
     [ -f "$OUT/$f" ] || die "Las notas ($NOTES) nombran $f, que no está en $OUT."
   done
-  # macOS: firmado con el certificado propio (si no, las copias firmadas con él la rechazarían)
-  if [ -d "$OUT/mac-universal/Aula.app" ] && [ "${AULA_MAC_ADHOC:-}" != 1 ]; then
-    codesign -d -r- "$OUT/mac-universal/Aula.app" 2>&1 | grep -q 'certificate root = H"' \
-      || die "La app de macOS de $OUT no está firmada con «Aula Local Signing»: vuelve a compilar mac en este Mac (docs/PUBLISHING.md → Signing)."
+  # Comprueba las apps de los archivos que realmente se subirán, incluida su notarización.
+  if [ -f "$OUT/latest-mac.yml" ] || compgen -G "$OUT/Aula-*-mac.*" >/dev/null; then
+    [ -f "$OUT/latest-mac.yml" ] || die "Hay archivos de macOS sin latest-mac.yml: no subas una release incompleta."
+    node scripts/build/mac-release-preflight.cjs --verify-release "$OUT" "$VERSION" \
+      || die "La firma Developer ID o la notarización de macOS no pasa la comprobación. No se sube nada."
   fi
   HEAD_SHA=$(git rev-parse HEAD)
   # lo compilado tiene que ser de ESTE contenido (el árbol de HEAD; vale una copia con el mismo árbol, como el commit
@@ -142,12 +143,11 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then die "La etiqueta 
 node scripts/release-sign.mjs --check-key || die "Sin la clave de firma de las actualizaciones no se puede publicar (docs/PUBLISHING.md)."
 # nunca una compilación de auditoría (acepta --remote-debugging-port, src/main/electron/debug-guard.ts)
 [ -z "${AULA_AUDIT_BUILD:-}" ] || die "AULA_AUDIT_BUILD está puesto: eso es para auditar, nunca para publicar. Quítalo (unset AULA_AUDIT_BUILD)."
-# macOS: el certificado estable «Aula Local Signing» (scripts/build/mac-sign.cjs; A1-P1-5)
+# Antes de compilar, comprueba los requisitos de firma y notarización de macOS (sin tocar el llavero).
 for p in "${ONLY[@]}"; do
   [ "$p" = mac ] || continue
-  [ "${AULA_MAC_ADHOC:-}" = 1 ] && { printf '\n! AULA_MAC_ADHOC=1: macOS se firma ad hoc (solo para probar; --upload lo rechaza).\n'; continue; }
-  [ -f "$HOME/.aula-signing/aula-signing.keychain-db" ] && [ -f "$HOME/.aula-signing/keychain.pass" ] \
-    || die "Falta el llavero de «Aula Local Signing» (~/.aula-signing/aula-signing.keychain-db + keychain.pass): sin él, las copias de macOS rechazarían esta versión (docs/PUBLISHING.md → Signing)."
+  node scripts/build/mac-release-preflight.cjs --preflight \
+    || die "macOS necesita Developer ID Application y notarización (docs/PUBLISHING.md → Signing)."
 done
 
 if [ $CHECKS -eq 1 ]; then
@@ -178,7 +178,8 @@ fi
 for p in "${ONLY[@]}"; do
   case "$p" in
     mac) [ "$(uname)" = Darwin ] || die "El instalador de macOS solo se puede compilar (y firmar) en un Mac."
-         npx electron-builder --mac --publish never -c.directories.output="$OUT" ;;
+         npx electron-builder --mac --publish never -c.directories.output="$OUT"
+         node scripts/build/mac-release-preflight.cjs --verify-release "$OUT" "$VERSION" ;;
     win) npx electron-builder --win --publish never -c.directories.output="$OUT" ;;
     linux)
       DEB_OPTS=()

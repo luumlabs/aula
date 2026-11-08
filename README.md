@@ -46,14 +46,17 @@ API key) or with a free model that runs on your own machine. There's no account 
 
 ## Download and install
 
+**0.1.4 is an unpublished release candidate.** Apple signing, notarization and device verification are pending.
+The filenames below describe the candidate; the latest public release may still be an earlier version.
+
 Download the file for your system from the [latest release](https://github.com/luumlabs/aula/releases/latest):
 
 | System | File | First launch |
 | --- | --- | --- |
-| macOS 13 or later (Apple Silicon and Intel) | `Aula-0.1.3-mac.dmg` | Open the .dmg and drag Aula to *Applications*. Aula isn't notarized by Apple yet, so macOS asks you to confirm the first time. On macOS 15 or later, try to open it, then go to *System Settings → Privacy & Security* and click *Open Anyway*. On macOS 13 and 14, right-click Aula and choose *Open*. |
-| Windows 10 and 11 (x64 and ARM, one installer) | `Aula-Setup-0.1.3.exe` | Run the installer (it doesn't need admin rights). If SmartScreen shows up, click *More info → Run anyway*. Aula isn't code-signed yet. |
-| Linux x64 | `Aula-0.1.3-linux-x86_64.AppImage` or `Aula-0.1.3-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.1.3-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.1.3-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
+| macOS 13 or later (Apple Silicon and Intel) | `Aula-0.1.4-mac.dmg` | Quit Aula, open the .dmg and drag Aula to *Applications*. Moving from 0.1.3 or an older locally signed copy requires this manual replacement once. The candidate must pass Developer ID signature and notarization checks before publication. |
+| Windows 10 and 11 (x64 and ARM, one installer) | `Aula-Setup-0.1.4.exe` | Run the installer (it doesn't need admin rights). If SmartScreen shows up, click *More info → Run anyway*. Aula isn't code-signed yet. |
+| Linux x64 | `Aula-0.1.4-linux-x86_64.AppImage` or `Aula-0.1.4-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.1.4-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.1.4-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
 
 On Linux you need a 64-bit distribution with glibc. Install GNOME Keyring or KWallet too, or Aula has to store your
 keys unencrypted.
@@ -61,7 +64,7 @@ keys unencrypted.
 The first time you open Aula it asks your name, helps you [pick an AI](#pick-an-ai) and, if you want, connects your
 study platform. Your library starts with two example courses, so you can try everything before making your own.
 
-**Updates.** Aula looks for a new version when it starts and every six hours. It downloads it in the background, checks
+**Updates.** The move from the old local signature to Developer ID requires one manual Mac installation; do not remove your data folder. Subsequent copies signed by the same developer use the existing updater. Aula looks for a new version when it starts and every six hours. It downloads it in the background, checks
 its signature and installs it when you quit (or when you click *Restart to update* in the sidebar). On macOS, keep Aula in
 *Applications* for this to work; if a new version doesn't start, Aula goes back to the previous one. The AppImage
 updates itself too. The `.deb` doesn't: Aula tells you when a new version is out, and you
@@ -72,8 +75,8 @@ download its `.deb` from the [releases](https://github.com/luumlabs/aula/release
 
 | Problem | What to do |
 |---|---|
-| macOS can't verify the developer, or there's no *Open* button | See the macOS row above. On macOS 15 or later, *Open Anyway* only shows up in *Privacy & Security* after you've tried to open Aula once. |
-| macOS says the app is damaged | Move Aula to *Applications* and try again. If it still won't open, run `xattr -dr com.apple.quarantine /Applications/Aula.app` in Terminal. |
+| macOS can't verify the developer, or there's no *Open* button | Check that you downloaded the published signed release. Report a signature or notarization warning before proceeding; the candidate is not yet distributed. |
+| macOS says the app is damaged | Download the signed release again from the project and report the warning if it persists. |
 | macOS doesn't install an update | Check that Aula is in *Applications*, not in *Downloads* or running from the .dmg. *Settings → About* says what went wrong and lets you try again or download the update. |
 | The AppImage doesn't start | Make it executable (`chmod +x`). It needs FUSE 2: `sudo apt install libfuse2` (on Ubuntu 24.04 and later, `libfuse2t64`). |
 | Ubuntu 23.10 or later, with the AppImage | Ubuntu restricts the user namespaces that Chromium's sandbox needs, so the AppImage starts with that sandbox turned off. Aula still works, but the pages it opens (your study platform, for example) are less isolated. On x64, use the `.deb` instead: it keeps the sandbox on by installing the AppArmor profile Ubuntu needs. |

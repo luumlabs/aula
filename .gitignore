@@ -34,6 +34,12 @@ secrets.json
 secrets.enc
 *.p12
 *.pem
+*.p8
+*.provisionprofile
+*.mobileprovision
+*.certSigningRequest
+*.keychain
+*.keychain-db
 *private*key*
 
 # ── macOS ──
