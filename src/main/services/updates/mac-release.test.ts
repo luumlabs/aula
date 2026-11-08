@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, sep } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 type Run = (command: string, args: string[]) => string
@@ -76,14 +76,15 @@ describe('public Mac release signing gate', () => {
 
   it('requires Apple trust, the exact team and app, hardened runtime, a stapled ticket and Gatekeeper approval', () => {
     const exec = fakeVerification()
+    const appPath = resolve('/tmp/Aula.app')
     checks.verifyApp('/tmp/Aula.app', { env, version: '0.1.4', exec })
     expect(exec).toHaveBeenCalledWith('/usr/bin/codesign', [
       '--verify', '--deep', '--strict', '--all-architectures',
       '-R=identifier "com.luumlabs.aula" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = "TEAM123456"',
-      '/tmp/Aula.app'
+      appPath
     ])
-    expect(exec).toHaveBeenCalledWith('/usr/bin/xcrun', ['stapler', 'validate', '/tmp/Aula.app'])
-    expect(exec).toHaveBeenCalledWith('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', '/tmp/Aula.app'])
+    expect(exec).toHaveBeenCalledWith('/usr/bin/xcrun', ['stapler', 'validate', appPath])
+    expect(exec).toHaveBeenCalledWith('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', appPath])
   })
 
   it('rejects a foreign certificate, development signature, missing runtime or wrong version', () => {
