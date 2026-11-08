@@ -72,6 +72,8 @@ export interface AppInfo {
   dataPath: string
   locale: string
   isPackaged: boolean
+  /** La compilación de la App Store usa el motor y las actualizaciones de esa tienda. */
+  isMacAppStore?: boolean
   electron: string
   /** 'basic' = los secretos no tienen cifrado del sistema (Linux sin llavero): se avisa en Ajustes. */
   secretProtection: 'os' | 'basic'

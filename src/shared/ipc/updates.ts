@@ -38,6 +38,7 @@ export type UpdateErrorCode =
 /** Por qué esta copia no se actualiza sola. */
 export type UpdateBlock =
   | 'dev' // versión de desarrollo
+  | 'appStore' // la App Store gestiona las actualizaciones
   | 'package' // paquete del sistema (.deb): no se instala sola; se busca igual y se ofrece la descarga
   | 'translocated' // macOS: abierta desde Descargas o desde el .dmg, sin mover a Aplicaciones
   | 'readOnly' // la carpeta donde está no deja escribir

@@ -6,6 +6,31 @@ This is a source audit of desktop Aula, based on public version 0.1.3 (`708e3028
 
 The 0.1.4 Developer ID work supports direct distribution. It does not turn that build into a Mac App Store (MAS) app. No features have been removed or disabled for MAS by this document.
 
+## Prototype work on `store/aula-mac`
+
+This branch adds an **incomplete, unsubmitted prototype**. In an Electron MAS runtime, the prototype prevents GitHub
+update checks and replacement, prevents external CLI/MCP processes and the managed local-engine download/start paths,
+and removes those options from the AI picker. API-based AI remains intended to work; connections to existing local
+servers remain exploratory and need a real sandbox test. The direct-download edition keeps its existing behavior.
+The included MAS entitlements are an initial least-privilege hypothesis, not a tested signing configuration. The
+direct-distribution build hook still refuses to package an MAS app, so this branch cannot be submitted as-is.
+
+`docs/PRIVACY-DRAFT.md` is a draft only. A store candidate still needs explicit, revocable consent for sharing personal
+study data with each third-party AI destination, a final published policy matching the shipped features, profiles and
+distribution identities, a reproducible review demonstration, accurate App Store privacy/age declarations, migration
+decisions, and signed sandbox tests. The restrictions on CLI and the managed engine are a store prototype, not a
+decision to remove these features from the existing GitHub edition.
+
+**License compatibility remains unresolved.** Aula is `AGPL-3.0-only`; the App Store record currently has Apple's
+[standard EULA](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/), which includes distribution and
+usage restrictions as well as an exception for certain open-source terms. The FSF has published an
+[analysis of potential App Store/GPL and AGPL conflicts](https://www.fsf.org/blogs/licensing/more-about-the-app-store-gpl-enforcement),
+although that historical analysis concerns an older Apple agreement and an iPhone app. Review the current terms, the
+actual Mac distribution and every dependency before submitting; do not assume that a link to source code or a custom
+EULA alone resolves the question. Apple permits a [custom EULA](https://developer.apple.com/help/app-store-connect/manage-app-information/provide-a-custom-license-agreement),
+subject to its minimum requirements. This prototype does not change Aula's license or choose new terms on its owner's
+behalf.
+
 ## Distribution requirements
 
 Electron's [MAS guide](https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide) distinguishes the normal macOS build from its MAS build. MAS requires the latter, App Sandbox, suitable entitlements and provisioning. Use an Apple Development identity/profile for a locally runnable test build, and Apple Distribution for store submission. A Developer ID signature is for distribution outside the store. Electron's MAS build disables `autoUpdater`; local socket listeners need the server entitlement, and file pickers need user-selected file access. An upload is followed by review, not automatic approval.

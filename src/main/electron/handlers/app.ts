@@ -22,6 +22,7 @@ export function register(): void {
     dataPath: paths.root(),
     locale: app.getLocale(),
     isPackaged: app.isPackaged,
+    isMacAppStore: process.mas === true,
     electron: process.versions.electron,
     secretProtection: secretProtection()
   }))

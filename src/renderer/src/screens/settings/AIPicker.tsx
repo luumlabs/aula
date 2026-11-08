@@ -19,19 +19,21 @@ interface PickerData {
   status: AIStatus | null
   providers: AIProviderView[]
   detection: AgentsDetection | null
+  appStore: boolean
 }
 
 function useAIData() {
-  const [data, setData] = useState<PickerData>({ status: null, providers: [], detection: null })
+  const [data, setData] = useState<PickerData>({ status: null, providers: [], detection: null, appStore: false })
   const [loading, setLoading] = useState(true)
   const load = async (refresh = false) => {
     setLoading(true)
-    const [status, providers, detection] = await Promise.all([
+    const [status, providers, detection, info] = await Promise.all([
       aiClient.status().catch(() => null),
       aiClient.providers().catch(() => [] as AIProviderView[]),
-      aiClient.detect(refresh).catch(() => null)
+      aiClient.detect(refresh).catch(() => null),
+      api.invoke('app.info').catch(() => null)
     ])
-    setData(isDemo() && !status && !detection ? demoData() : { status, providers, detection })
+    setData({ ...(isDemo() && !status && !detection ? demoData() : { status, providers, detection }), appStore: info?.isMacAppStore === true })
     setLoading(false)
   }
   useEffect(() => {
@@ -44,7 +46,7 @@ type OptionId = 'claude-cli' | 'codex-cli' | 'aula-local' | 'ollama' | 'lmstudio
 
 export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string) => void; compact?: boolean }) {
   const { t } = useTranslation('settings')
-  const { status, providers, detection, loading, reload } = useAIData()
+  const { status, providers, detection, appStore, loading, reload } = useAIData()
   const [busy, setBusy] = useState<string | null>(null)
   const [key, setKey] = useState('')
   const guessed = useMemo(() => guessProviderFromKey(key), [key])
@@ -129,7 +131,7 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
     // dos columnas: suscripción y local una sobre otra, la clave al lado; sin estirar (ninguna tarjeta con hueco vacío)
     <div className={cx('grid gap-4', compact ? 'grid-cols-1' : 'grid-cols-1 @4xl:grid-cols-2 items-start')}>
       <div className={cx('contents', !compact && '@4xl:flex @4xl:flex-col @4xl:gap-4')}>
-        <Group title={t('ai.subscription')} hint={t('ai.subscriptionHint')} companion="luna">
+        {!appStore && <Group title={t('ai.subscription')} hint={t('ai.subscriptionHint')} companion="luna">
           <Option
             active={activeId === 'claude-cli'}
             title={t('ai.claude')}
@@ -164,10 +166,10 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
               />
             )}
           </AnimatePresence>
-        </Group>
+        </Group>}
 
-        <Group title={t('ai.local')} hint={t('ai.localHint')} companion="farol">
-          {detection?.recommendedModel && (
+        {(!appStore || ollama || lmstudio) && <Group title={t('ai.local')} hint={t('ai.localHint')} companion="farol">
+          {!appStore && detection?.recommendedModel && (
             <>
               <Option
                 active={activeId === 'aula-local'}
@@ -200,7 +202,7 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
           )}
           {ollama && <Option active={activeId === 'ollama'} title={t('ai.ollama')} detail={t('ai.running', { count: ollama.models.length })} ready action={(e) => use('ollama', e)} busy={busy === 'ollama'} logo="ollama" />}
           {lmstudio && <Option active={activeId === 'lmstudio'} title={t('ai.lmstudio')} detail={t('ai.running', { count: lmstudio.models.length })} ready action={(e) => use('lmstudio', e)} busy={busy === 'lmstudio'} logo="lmstudio" />}
-        </Group>
+        </Group>}
       </div>
 
       <Group title={t('ai.key')} hint={t('ai.keyHint')} companion="cristal">
@@ -454,6 +456,7 @@ function Option({ title, detail, ready, active, action, actionLabel, busy, logo,
 
 function demoData(): PickerData {
   return {
+    appStore: false,
     status: { activeProvider: null, auto: true, resolved: { providerId: 'claude-cli', label: 'Claude', kind: 'claude-cli', model: 'claude-sonnet' }, ready: true },
     providers: [],
     detection: {

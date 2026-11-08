@@ -72,6 +72,7 @@ export function updateView(s: UpdateState, asked: boolean, current: string): Upd
       if (asked) return { ...base, message: 'status.upToDate', tone: 'quiet', primary: 'check' }
       return { ...base, message: s.updatedFrom ? 'status.updatedFrom' : null, tone: 'quiet', primary: 'check' }
     case 'unsupported':
+      if (s.blocked === 'appStore') return { ...base, message: 'unsupported.appStore', tone: 'quiet', primary: 'check' }
       return { ...base, message: asked ? `unsupported.${s.blocked === 'dev' || s.blocked === 'package' ? s.blocked : 'other'}` : null, tone: 'quiet', primary: 'check' }
     default:
       return { ...base, message: s.updatedFrom ? 'status.updatedFrom' : null, tone: 'quiet', primary: 'check' }

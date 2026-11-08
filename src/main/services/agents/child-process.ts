@@ -190,6 +190,9 @@ export class ChildProcessHandle {
 
   /** Lanza `executable` (sin shell). Lanza `SpawnError` con un motivo en español si no se puede. */
   static async spawn(executable: string, args: string[], options: SpawnOptions): Promise<ChildProcessHandle> {
+    if (process.mas === true) {
+      throw new SpawnError(tr('Esta edición de la App Store no ejecuta herramientas externas.', 'This App Store edition does not run external tools.'))
+    }
     if (!isExecutableFile(executable)) {
       throw new SpawnError(tr(`No se puede ejecutar «${executable}» (no existe o no tiene permiso de ejecución).`, `“${executable}” can’t be run (it doesn’t exist or isn’t executable).`))
     }

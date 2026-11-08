@@ -58,21 +58,22 @@ export class AgentsService {
   }
 
   private async detectNow(): Promise<AgentsDetection> {
-    await prepareLocator()
+    const store = process.mas === true
+    if (!store) await prepareLocator()
     const [clis, servers, hardware, recommendedModel, codexManagedLoggedIn] = await Promise.all([
-      Promise.all(CLI_AGENT_KINDS.map((kind) => probeCLI(kind))),
+      store ? Promise.resolve([]) : Promise.all(CLI_AGENT_KINDS.map((kind) => probeCLI(kind))),
       this.local.detectServers(),
       this.local.hardware(),
-      this.local.recommended().catch((err) => {
+      store ? Promise.resolve(undefined) : this.local.recommended().catch((err) => {
         log.warn('[agents] no pude elegir un modelo local', err)
         return undefined
       }),
-      this.managedLoggedIn()
+      store ? Promise.resolve(false) : this.managedLoggedIn()
     ])
     return {
       clis,
       servers,
-      installedApps: findInstalledLocalApps(),
+      installedApps: store ? [] : findInstalledLocalApps(),
       hardware,
       ...(recommendedModel ? { recommendedModel } : {}),
       engine: this.local.engineStatus(),
@@ -97,6 +98,7 @@ export class AgentsService {
    * de ChatGPT en el navegador) con la carpeta de sesión propia de Aula. Nunca se toca `~/.codex`.
    */
   async connectChatGPT(options: { deviceAuth?: boolean; onEvent?: (e: CodexLoginEvent) => void } = {}): Promise<CodexLoginResult> {
+    if (process.mas === true) throw new AgentError('unsupported', tr('Esta edición de la App Store no instala herramientas externas. Usa una clave de API.', 'This App Store edition does not install external tools. Use an API key.'))
     this.login?.abort()
     const controller = new AbortController()
     this.login = controller

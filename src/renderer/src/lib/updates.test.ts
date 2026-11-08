@@ -10,6 +10,12 @@ const en = JSON.parse(readFileSync(join(__dirname, '../i18n/locales/en/updates.j
 const lookup = (o: Record<string, unknown>, key: string): unknown => key.split('.').reduce<unknown>((v, k) => (v as Record<string, unknown> | undefined)?.[k], o)
 
 describe('updateView', () => {
+  it('explica que la edición de la App Store se actualiza desde la tienda', () => {
+    const v = updateView({ status: 'unsupported', blocked: 'appStore' }, false, '0.1.4')
+    expect(v.message).toBe('unsupported.appStore')
+    expect(lookup(es, v.message!)).toBeTruthy()
+    expect(lookup(en, v.message!)).toBeTruthy()
+  })
   it('una búsqueda automática que falla no molesta; si la pidió, se explica', () => {
     const s = { status: 'error', error: 'offline', errorStage: 'check' } as const
     expect(updateView(s, false, '0.1.0').message).toBeNull()

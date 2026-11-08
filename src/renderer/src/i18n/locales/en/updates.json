@@ -35,6 +35,7 @@
     "system": "Version {{version}} needs a newer version of macOS than this Mac has, so it wasn’t installed. You’re still on {{current}}."
   },
   "unsupported": {
+    "appStore": "Updates for this edition are managed through the App Store.",
     "dev": "This is a development copy: it doesn’t update itself.",
     "package": "This copy of Aula doesn’t update itself. New versions are on the project’s website.",
     "other": "This copy doesn’t update itself."

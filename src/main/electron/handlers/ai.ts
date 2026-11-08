@@ -20,7 +20,7 @@ export function register(): void {
   if (process.env.AULA_FAKE_AI === '1') setModelOverride(createFakeModel)
   // los agentes CLI (claude, codex, opencode) se usan a través del registro de proveedores
   try {
-    registerCLIProviders(registerProviderFactory)
+    if (process.mas !== true) registerCLIProviders(registerProviderFactory)
   } catch (err) {
     log.warn('IA: no se pudieron registrar los agentes CLI', err)
   }

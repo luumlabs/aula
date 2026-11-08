@@ -30,7 +30,7 @@ export function register(): void {
   const agents = agentsService()
 
   // los agentes CLI los registra el dominio «ai» (`registerCLIProviders`); el motor de Aula, aquí
-  registerLocalProviders(registerProviderFactory, local)
+  if (process.mas !== true) registerLocalProviders(registerProviderFactory, local)
   local.onProgress((event) => emit('local.progress', event))
 
   const changed = (): void => {

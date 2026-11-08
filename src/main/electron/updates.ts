@@ -124,6 +124,8 @@ function writable(path: string): boolean {
 
 /** null = se actualiza sola; si no, por qué no (el estado queda 'unsupported'). */
 function unsupportedReason(): UpdateBlock | null {
+  // La edición MAS solo puede recibir actualizaciones por la App Store; no consulta GitHub.
+  if (process.mas === true) return 'appStore'
   if (!app.isPackaged || process.env.AULA_NO_UPDATES) return 'dev'
   // Linux sin AppImage ni paquete conocido (carpeta suelta, snap…): no hay con qué buscar
   if (process.platform === 'linux' && !process.env.APPIMAGE && !linuxPackage()) return 'package'
@@ -424,6 +426,7 @@ export async function checkForUpdates(byUser = true): Promise<UpdateState> {
 }
 
 export function installUpdate(): void {
+  if (process.mas === true) return
   if (state.status !== 'ready' || !updater) return
   if (process.platform === 'darwin') {
     relaunchAfterInstall = true
@@ -437,6 +440,7 @@ export function installUpdate(): void {
 }
 
 export function openDownloadPage(): void {
+  if (process.mas === true) return
   void shell.openExternal(DOWNLOAD_PAGE)
 }
 

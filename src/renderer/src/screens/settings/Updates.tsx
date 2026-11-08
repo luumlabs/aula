@@ -59,6 +59,7 @@ export function UpdateStatus({ state, asked, current }: { state: UpdateState; as
 /** El botón (o los dos) que tocan ahora (va al pie de la tarjeta). */
 export function UpdateButtons({ state, asked, current, onAsk }: { state: UpdateState; asked: boolean; current: string; onAsk: () => void }) {
   const { t } = useTranslation('updates')
+  if (state.status === 'unsupported' && state.blocked === 'appStore') return null
   const v = updateView(state, asked, current)
   const run = (a: UpdateAction) => {
     if (a === 'restart') void api.invoke('updates.install').catch(() => {})

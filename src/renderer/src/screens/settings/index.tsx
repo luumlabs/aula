@@ -258,9 +258,11 @@ function AboutCard({ s, update }: { s: AppSettings; update: Upd }) {
           <div className="t-ui text-text3">{t('about.version', { version: info?.version ?? '—' })}</div>
         </div>
       </div>
-      <div className="mt-3">
-        <ToggleRow title={t('about.autoUpdate')} checked={s.data.autoUpdate} onChange={(v) => void update({ data: { autoUpdate: v } })} />
-      </div>
+      {!(upd.status === 'unsupported' && upd.blocked === 'appStore') && (
+        <div className="mt-3">
+          <ToggleRow title={t('about.autoUpdate')} checked={s.data.autoUpdate} onChange={(v) => void update({ data: { autoUpdate: v } })} />
+        </div>
+      )}
       <UpdateStatus state={upd} asked={asked} current={current} />
       {info?.secretProtection === 'basic' && <div className="t-footnote text-warning mt-2">{t('about.noKeyring')}</div>}
       <div className="mt-auto pt-3 flex items-center justify-between gap-3">
@@ -272,7 +274,7 @@ function AboutCard({ s, update }: { s: AppSettings; update: Upd }) {
             <AboutLink onClick={() => openLegal('aula')}>{t('about.licenseText')}</AboutLink>
             <AboutLink onClick={() => openURL(sourceCodeURL(current))}>{t('about.source')}</AboutLink>
             <AboutLink onClick={() => openLegal('third-party')}>{t('about.licenses')}</AboutLink>
-            <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>
+            {!info?.isMacAppStore && <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>}
           </span>
         </div>
         <UpdateButtons state={upd} asked={asked} current={current} onAsk={() => setAsked(true)} />

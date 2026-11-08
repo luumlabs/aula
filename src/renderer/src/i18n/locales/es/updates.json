@@ -35,6 +35,7 @@
     "system": "La versión {{version}} necesita un macOS más nuevo que el de este Mac, así que no se instaló. Sigues con la {{current}}."
   },
   "unsupported": {
+    "appStore": "Las actualizaciones de esta edición se gestionan desde la App Store.",
     "dev": "Esta copia es de desarrollo: no se actualiza sola.",
     "package": "Esta copia de Aula no se actualiza sola. Las versiones nuevas están en la web del proyecto.",
     "other": "Esta copia no se actualiza sola."
