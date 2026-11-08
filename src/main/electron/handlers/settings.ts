@@ -9,6 +9,7 @@ import { invalidArgs } from '@main/services/errors'
 import { uiLanguage } from '@main/services/settings/uiLanguage'
 import { tr } from '@shared/ai/i18n'
 import { sanitizeSettingsPatch, SettingsPatchError } from '@shared/settings/patch'
+import { revokeAIConsent } from '@main/services/ai/consent'
 
 export function register(): void {
   handle('settings.get', () => getSettings())
@@ -23,6 +24,8 @@ export function register(): void {
     return updateSettings(clean)
   })
   onSettingsChange((s) => emit('settings.changed', s))
+
+  handle('data.revokeAIConsent', () => { revokeAIConsent() })
 
   handle('data.exportAll', async (_args, ctx) => {
     const day = new Date().toISOString().slice(0, 10)

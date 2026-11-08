@@ -5,6 +5,7 @@ import { canonicalJSON } from '../core/json'
 import { ResponseCollector } from '../core/toolCalls'
 import { abortReason, defaultHTTPOptions, linkedController, startIdleWatch, ActivityTracker, type HTTPOptions } from '../http/options'
 import { AIError } from '../errors'
+import { authorizeAIRequest } from '../consent'
 import { performStreaming, type ChatStreamDecoder } from '../http/streaming'
 import type { ErrorContext } from '../http/providerErrors'
 import type { CompleteOptions, ModelCapabilities } from '../model'
@@ -90,12 +91,16 @@ export interface AttemptArgs {
 /** Un intento HTTP con su vigilancia de inactividad. */
 export async function streamingAttempt(a: AttemptArgs): Promise<void> {
   const { controller, dispose } = linkedController(a.signal)
-  const tracker = new ActivityTracker()
-  const stopIdle = startIdleWatch(a.idleSec, tracker, () => controller.abort(a.idleError()))
+  let stopIdle: (() => void) | undefined
   try {
+    // Ask before the first network write. In MAS, refuse automatic HTTP
+    // redirects so the client does not send the body to another endpoint.
+    await authorizeAIRequest(a.url, a.context.provider, controller.signal)
+    const tracker = new ActivityTracker()
+    stopIdle = startIdleWatch(a.idleSec, tracker, () => controller.abort(a.idleError()))
     await performStreaming({
       url: a.url,
-      init: { method: 'POST', headers: a.headers, body: canonicalJSON(a.body) },
+      init: { method: 'POST', headers: a.headers, body: canonicalJSON(a.body), ...(process.mas === true ? { redirect: 'error' as const } : {}) },
       fetch: a.http.fetch,
       signal: controller.signal,
       decoder: a.decoder,
@@ -104,7 +109,7 @@ export async function streamingAttempt(a: AttemptArgs): Promise<void> {
       emit: a.emit
     })
   } finally {
-    stopIdle()
+    stopIdle?.()
     dispose()
   }
 }

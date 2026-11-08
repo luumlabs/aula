@@ -211,6 +211,9 @@ function DataCard({ s, update }: { s: AppSettings; update: Upd }) {
         <Button size="md" loading={exporting} icon={<Icon name="archive" size={15} />} onClick={() => void exportAll()}>
           {t('data.exportAll')}
         </Button>
+        {info?.isMacAppStore && <Button size="md" onClick={() => void api.invoke('data.revokeAIConsent').then(() => toast.success(t('data.aiConsentRevoked'))).catch((e: unknown) => toast.error((e as Error).message))}>
+          {t('data.revokeAIConsent')}
+        </Button>}
         <Button size="md" variant="ghost" className="text-danger!" icon={<Icon name="trash" size={15} />} onClick={() => setConfirm(true)}>
           {t('data.deleteAll')}
         </Button>

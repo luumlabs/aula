@@ -6,6 +6,8 @@ declare module './contract' {
     'settings.update': { args: SettingsPatch; result: AppSettings }
     /** «Exportar todo»: elige dónde y guarda un .zip de la carpeta de datos (sin claves ni cookies). null = cancelado. */
     'data.exportAll': { args: void; result: { path: string } | null }
+    /** Retira los permisos de esta sesión para enviar datos a proveedores de IA. */
+    'data.revokeAIConsent': { args: void; result: void }
     /** «Borrar todos los datos»: Aula se reinicia y vacía su carpeta de datos antes de leer nada. */
     'data.deleteAll': { args: void; result: void }
   }

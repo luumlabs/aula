@@ -15,8 +15,16 @@ servers remain exploratory and need a real sandbox test. The direct-download edi
 The included MAS entitlements are an initial least-privilege hypothesis, not a tested signing configuration. The
 direct-distribution build hook still refuses to package an MAS app, so this branch cannot be submitted as-is.
 
-`docs/PRIVACY-DRAFT.md` is a draft only. A store candidate still needs explicit, revocable consent for sharing personal
-study data with each third-party AI destination, a final published policy matching the shipped features, profiles and
+The prototype also adds a session-only, revocable prompt before OpenAI-compatible and Anthropic chat requests,
+including automatic requests. It displays the destination origin, defaults to declining, requires a visible app window,
+and blocks automatic redirects. Consent is rechecked before retries and denied if the prompt is unavailable; a
+revocation during a pending prompt cannot grant access. These controls have unit and transport tests but no real MAS
+sandbox or accessibility testing. They do not yet establish complete coverage of every network/data path: provider
+model-list and availability checks, web/research requests, platform connections and all third-party disclosures still
+need review before submission.
+
+`docs/PRIVACY-DRAFT.md` is a draft only. A store candidate still needs complete validation of consent and every data
+flow, a final published policy matching the shipped features, profiles and
 distribution identities, a reproducible review demonstration, accurate App Store privacy/age declarations, migration
 decisions, and signed sandbox tests. The restrictions on CLI and the managed engine are a store prototype, not a
 decision to remove these features from the existing GitHub edition.
@@ -75,7 +83,7 @@ Electron specifically documents that macOS notification events require code sign
 2. Resolve the AI-support and migration decisions above. Make a feature matrix for direct and MAS distribution; expose unavailable choices clearly rather than letting them fail at runtime.
 3. Implement the separate MAS target and runtime capability boundary. Package the MAS Electron runtime, signed helpers and approved resources. Audit every executable/process entry point, not only the settings controls.
 4. Build a MAS development package using its profile. Run automated tests plus real sandbox smoke tests on supported Macs: launch, course creation, local/cloud AI as retained, import/export, Canvas sign-in/read-only access, background work, notifications, keychain use, restart and Quit. Check sandbox denials. Verify that GitHub updates and executable installers cannot run in this edition.
-5. Prepare the App Store Connect record, screenshots, description, support/privacy pages, privacy answers, age rating, encryption answers and review instructions from the final tested build. Assess applicable privacy-manifest/required-reason-API declarations for the packaged Electron version and dependencies.
+5. Audit all outbound data paths and test the consent UI in the signed sandbox; prepare the App Store Connect record, screenshots, description, support/privacy pages, privacy answers, age rating, encryption answers and review instructions from the final tested build. Assess applicable privacy-manifest/required-reason-API declarations for the packaged Electron version and dependencies.
 6. Produce the distribution package and validate/upload it with Apple's supported tooling. Record the exact source commit, build number, signing identities and validation result. TestFlight/App Review are subsequent stages; report processing, review and approval separately.
 
 Completion means a tested MAS artifact with the necessary metadata and a recorded submission result. A certificate, a successful build or a Developer ID notarization ticket alone does not meet that condition.
