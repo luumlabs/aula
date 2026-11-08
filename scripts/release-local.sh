@@ -78,7 +78,7 @@ if [ $UPLOAD -eq 1 ]; then
   # el título de cada latest*.yml es el de electron-builder.yml (releaseInfo.releaseName)
   for y in "$OUT"/latest*.yml; do
     [ -f "$y" ] || continue
-    [ "$(sed -n 's/^releaseName: *//p' "$y" | head -1)" = "$TITLE" ] || die "$(basename "$y") no dice «releaseName: $TITLE»: vuelve a compilar ese sistema."
+    [ "$(sed -n 's/^releaseName: *//p' "$y" | head -1)" = "$TITLE" ] || die "$(basename "$y") no dice «releaseName: ${TITLE}»: vuelve a compilar ese sistema."
   done
   # cada archivo que nombran las notas tiene que estar (A5-P1-3: las notas prometían una .deb que no se subió)
   for f in $(grep -oE 'Aula-[A-Za-z0-9._-]+\.(dmg|zip|exe|AppImage|deb)' "$NOTES" | sort -u); do
@@ -221,4 +221,4 @@ say "Comprobando $OUT"
 node scripts/release-verify.mjs "$OUT" "$VERSION"
 ls -lh "$OUT" | grep -E '\.(dmg|zip|exe|AppImage|deb|yml)$' || true
 [ "$BUILD_DIRTY" = 0 ] || printf '\n! Compilado con cambios sin commit: sirve para probar, pero --upload no lo subirá.\n'
-say "Siguiente paso: prueba los instaladores de $OUT y luego «scripts/release-local.sh --upload --repo $PUB_OWNER/$PUB_REPO» (sube un borrador)."
+say "Siguiente paso: prueba los instaladores de $OUT y luego «scripts/release-local.sh --upload --repo $PUB_OWNER/${PUB_REPO}» (sube un borrador)."
