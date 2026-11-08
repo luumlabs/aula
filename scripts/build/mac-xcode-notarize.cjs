@@ -33,6 +33,23 @@ function treeDigest(root) {
   return hash.digest('hex')
 }
 
+function appResourcesDigest(app) {
+  const resources = join(app, 'Contents', 'Resources')
+  // Universal Electron apps can use separate app-x64.asar and app-arm64.asar
+  // archives alongside a small app.asar entry point. Compare every archive
+  // and unpacked tree, including their names, before accepting the export.
+  const names = readdirSync(resources).filter(name => name.endsWith('.asar') || name.endsWith('.asar.unpacked')).sort()
+  if (!names.includes('app.asar')) throw new Error('The signed Aula app is missing app.asar.')
+  return JSON.stringify(names.map(name => {
+    const path = join(resources, name)
+    const stat = lstatSync(path)
+    if (name.endsWith('.asar') ? !stat.isFile() : !stat.isDirectory()) {
+      throw new Error('Unexpected app archive or unpacked resources.')
+    }
+    return [name, treeDigest(path)]
+  }))
+}
+
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: 'ignore', timeout: 5 * 60_000 })
   if (result.error || result.status !== 0) throw new Error(`Mac Xcode notarization failed at ${basename(command)}.`)
@@ -70,18 +87,15 @@ async function notarizeWithXcode(appPath, {
   const archiveApp = join(archive, 'Products', 'Applications', 'Aula.app')
   const exportOptions = join(temp, 'ExportOptions.plist')
   const exported = join(temp, 'notarized')
-  const originalAsar = join(app, 'Contents', 'Resources', 'app.asar')
   let finished = false
   try {
-    if (!existsSync(originalAsar)) throw new Error('The signed Aula app is missing app.asar.')
+    const originalResources = appResourcesDigest(app)
     const identity = getIdentity(app)
     if (!identity.startsWith('Developer ID Application: ') || !identity.endsWith(`(${team})`)) throw new Error('The Xcode archive has the wrong signing identity.')
     const appInfo = plist.parse(readFileSync(join(app, 'Contents', 'Info.plist'), 'utf8'))
     if (appInfo.CFBundleIdentifier !== 'com.luumlabs.aula' || appInfo.CFBundleShortVersionString !== version || !appInfo.CFBundleVersion) {
       throw new Error('The Xcode archive has the wrong app identifier or version.')
     }
-    const originalDigest = digest(originalAsar)
-    const originalUnpacked = treeDigest(join(app, 'Contents', 'Resources', 'app.asar.unpacked'))
     mkdirSync(dirname(archiveApp), { recursive: true })
     runTool('/usr/bin/ditto', [app, archiveApp])
     writeFileSync(join(archive, 'Info.plist'), plist.build({
@@ -122,8 +136,7 @@ async function notarizeWithXcode(appPath, {
     const apps = readdirSync(exported).filter(name => name.endsWith('.app'))
     if (apps.length !== 1 || apps[0] !== 'Aula.app') throw new Error('Xcode did not export exactly one Aula.app.')
     const notarized = join(exported, apps[0])
-    if (digest(join(notarized, 'Contents', 'Resources', 'app.asar')) !== originalDigest ||
-        treeDigest(join(notarized, 'Contents', 'Resources', 'app.asar.unpacked')) !== originalUnpacked) {
+    if (appResourcesDigest(notarized) !== originalResources) {
       throw new Error('The notarized app does not contain the same Aula code that was uploaded.')
     }
     runTool('/usr/bin/xcrun', ['stapler', 'staple', notarized])

@@ -25,7 +25,7 @@ describe('Xcode notarization gate', () => {
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
   })
 
-  function fixture(options: { changedCode?: boolean; changedUnpacked?: boolean; rejected?: boolean; failFinalVerification?: boolean } = {}) {
+  function fixture(options: { changedCode?: boolean; changedUnpacked?: boolean; changedArchCode?: boolean; changedArchUnpacked?: boolean; addedArchive?: boolean; removedArchive?: boolean; rejected?: boolean; failFinalVerification?: boolean } = {}) {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'aula-xcode-test-'))
@@ -36,6 +36,10 @@ describe('Xcode notarization gate', () => {
     writeFileSync(join(app, 'Contents', 'Resources', 'app.asar'), 'original code')
     mkdirSync(join(app, 'Contents', 'Resources', 'app.asar.unpacked'), { recursive: true })
     writeFileSync(join(app, 'Contents', 'Resources', 'app.asar.unpacked', 'worker.js'), 'original worker')
+    writeFileSync(join(app, 'Contents', 'Resources', 'app-x64.asar'), 'intel code')
+    writeFileSync(join(app, 'Contents', 'Resources', 'app-arm64.asar'), 'arm code')
+    mkdirSync(join(app, 'Contents', 'Resources', 'app-arm64.asar.unpacked'), { recursive: true })
+    writeFileSync(join(app, 'Contents', 'Resources', 'app-arm64.asar.unpacked', 'worker.js'), 'arm worker')
     writeFileSync(join(app, 'marker'), 'original')
     let exports = 0
     const runProcess = vi.fn(async (args: string[]) => {
@@ -50,6 +54,10 @@ describe('Xcode notarization gate', () => {
       writeFileSync(join(result, 'marker'), 'notarized')
       if (options.changedCode) writeFileSync(join(result, 'Contents', 'Resources', 'app.asar'), 'different code')
       if (options.changedUnpacked) writeFileSync(join(result, 'Contents', 'Resources', 'app.asar.unpacked', 'worker.js'), 'different worker')
+      if (options.changedArchCode) writeFileSync(join(result, 'Contents', 'Resources', 'app-x64.asar'), 'different intel code')
+      if (options.changedArchUnpacked) writeFileSync(join(result, 'Contents', 'Resources', 'app-arm64.asar.unpacked', 'worker.js'), 'different arm worker')
+      if (options.addedArchive) writeFileSync(join(result, 'Contents', 'Resources', 'extra.asar'), 'unexpected code')
+      if (options.removedArchive) rmSync(join(result, 'Contents', 'Resources', 'app-arm64.asar'))
       return { code: 0, tail: 'exported' }
     })
     const runTool = vi.fn((command: string, args: string[]) => {
@@ -78,7 +86,7 @@ describe('Xcode notarization gate', () => {
   })
 
   it('leaves the build untouched if Apple rejects it or returns different app code', async () => {
-    for (const option of [{ rejected: true }, { changedCode: true }, { changedUnpacked: true }]) {
+    for (const option of [{ rejected: true }, { changedCode: true }, { changedUnpacked: true }, { changedArchCode: true }, { changedArchUnpacked: true }, { addedArchive: true }, { removedArchive: true }]) {
       const f = fixture(option)
       await expect(f.invoke()).rejects.toThrow()
       expect(readFileSync(join(f.app, 'marker'), 'utf8')).toBe('original')
