@@ -31,6 +31,16 @@ EULA alone resolves the question. Apple permits a [custom EULA](https://develope
 subject to its minimum requirements. This prototype does not change Aula's license or choose new terms on its owner's
 behalf.
 
+### Preserving a free local AI option
+
+The existing pinned llama.cpp `b11429` macOS archives for arm64 and x64 were downloaded for inspection and matched the
+SHA-256 values already in `src/main/services/local-ai/engine.ts`. Each contains a separate `llama-server` and dynamic
+libraries; the arm64 executable inspected was ad-hoc signed upstream, not signed by Aula's team. Bundling a fixed,
+re-signed server and its required libraries may preserve local inference without downloading executable code at run
+time, but it still needs packaging work, licenses, sandbox entitlements, both architectures and a real signed sandbox
+test. Model weights are separate data downloads. This observation does not establish that the bundled engine works or
+that Apple will approve it.
+
 ## Distribution requirements
 
 Electron's [MAS guide](https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide) distinguishes the normal macOS build from its MAS build. MAS requires the latter, App Sandbox, suitable entitlements and provisioning. Use an Apple Development identity/profile for a locally runnable test build, and Apple Distribution for store submission. A Developer ID signature is for distribution outside the store. Electron's MAS build disables `autoUpdater`; local socket listeners need the server entitlement, and file pickers need user-selected file access. An upload is followed by review, not automatic approval.
