@@ -12,6 +12,9 @@ const checks = createRequire(import.meta.url)('../../../../scripts/build/mac-rel
   verifyRelease(folder: string, version: string, options?: Options): void
   beforePack(context: { electronPlatformName: string }): void
 }
+const xcode = createRequire(import.meta.url)('../../../../scripts/build/mac-xcode-notarize.cjs') as {
+  isProcessing(output: string): boolean
+}
 const config = {
   appId: 'com.luumlabs.aula',
   mac: { forceCodeSigning: true, hardenedRuntime: true, notarize: true, strictVerify: true }
@@ -65,6 +68,18 @@ describe('public Mac release signing gate', () => {
     ]) {
       expect(checks.preflight(config, { env: { ...base, ...credentials }, platform: 'darwin' })).toBe(env.APPLE_TEAM_ID)
     }
+  })
+
+  it('allows Xcode notarization only when the mandatory afterSign hook will verify it', () => {
+    const xcodeEnv = { APPLE_TEAM_ID: env.APPLE_TEAM_ID, CSC_LINK: '/private/distribution.p12', AULA_XCODE_NOTARIZE: '1' }
+    const xcodeConfig = { ...config, afterSign: 'scripts/build/mac-after-sign.cjs', mac: { ...config.mac, notarize: false } }
+    expect(checks.preflight(xcodeConfig, { env: xcodeEnv, platform: 'darwin' })).toBe(env.APPLE_TEAM_ID)
+    expect(() => checks.preflight({ ...xcodeConfig, afterSign: undefined }, { env: xcodeEnv, platform: 'darwin' })).toThrow('afterSign hook')
+    expect(() => checks.preflight({ ...xcodeConfig, afterSign: 'other/mac-after-sign.cjs' }, { env: xcodeEnv, platform: 'darwin' })).toThrow('afterSign hook')
+    expect(() => checks.preflight({ ...xcodeConfig, mac: config.mac }, { env: xcodeEnv, platform: 'darwin' })).toThrow('afterSign hook')
+    expect(() => checks.preflight(xcodeConfig, { env, platform: 'darwin' })).toThrow('mac.notarize')
+    expect(xcode.isProcessing('error: Archive "Aula.xcarchive" is processing and not ready for distribution.')).toBe(true)
+    expect(xcode.isProcessing('error: The notarization request was rejected.')).toBe(false)
   })
 
   it('leaves Windows/Linux builds alone and does not mistake MAS for a direct-download release', () => {

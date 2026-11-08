@@ -341,12 +341,16 @@ Apple credentials and the expected Team ID; the output is checked again before u
    Check availability with `security find-identity -v -p codesigning`. Do not print or commit private keys.
 3. Set `APPLE_TEAM_ID` to the paid team's exact 10-character identifier. If more than one signing identity is
    installed, use `CSC_NAME` to select the developer name or certificate hash (without the certificate type prefix).
-4. Provide one notarization credential set supported by electron-builder:
+4. Choose how to authenticate notarization. Either provide one credential set supported by electron-builder:
    - `APPLE_KEYCHAIN_PROFILE`, referencing credentials already stored in Keychain; set `APPLE_KEYCHAIN` too if a
      specific keychain is needed;
    - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`; or
    - `APPLE_API_KEY` (local path), `APPLE_API_KEY_ID` and `APPLE_API_ISSUER`.
-   Keep secrets in Keychain or the invoking process environment, never in source, command history or chat.
+   Keep secrets in Keychain or the invoking process environment, never in source, command history or chat. Or, on
+   a Mac whose Xcode has already been signed in to the paid team, use `AULA_XCODE_NOTARIZE=1`: the release hook
+   submits the signed archive through Xcode, waits for Apple, staples the returned app and checks it before
+   electron-builder creates the installers. The build fails closed if Apple rejects it, the code changes, the
+   ticket is missing or Xcode cannot complete the submission. Xcode must have permission to use the signing key.
 5. Build with `scripts/release-local.sh --only mac`. Test the packaged app before making any release public.
    Verification includes the bundle identifier, Developer ID authority, exact Team ID, hardened runtime, a secure
    timestamp, strict signature validation, the stapled notarization ticket and Gatekeeper assessment.
@@ -355,7 +359,7 @@ Apple credentials and the expected Team ID; the output is checked again before u
 is why the preflight and artifact checks are required. `gatekeeperAssess: false` only avoids a premature assessment
 while signing, before the notarization ticket exists; it does not disable the final distribution checks.
 
-The current electron-builder pipeline notarizes and staples `Aula.app`, then creates and signs the DMG. It does not
+Both notarization paths must yield a notarized and stapled `Aula.app`, then create and sign the DMG. Neither path
 staple a separate ticket to the DMG. Describe this precisely as a signed DMG containing a notarized, stapled app.
 Before publishing, test the downloaded, quarantined DMG and first launch on a clean Mac, including offline use.
 Apple [recommends notarizing the outer distribution container](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).

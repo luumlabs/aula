@@ -178,7 +178,11 @@ fi
 for p in "${ONLY[@]}"; do
   case "$p" in
     mac) [ "$(uname)" = Darwin ] || die "El instalador de macOS solo se puede compilar (y firmar) en un Mac."
-         npx electron-builder --mac --publish never -c.directories.output="$OUT"
+         MAC_OPTS=()
+         # Xcode's signed-in account can submit to Apple without a separate notarytool key.
+         # The required afterSign hook submits, waits and verifies the ticket before installers exist.
+         if [ "${AULA_XCODE_NOTARIZE:-}" = 1 ]; then MAC_OPTS=(-c.mac.notarize=false); fi
+         npx electron-builder --mac --publish never -c.directories.output="$OUT" ${MAC_OPTS[@]+"${MAC_OPTS[@]}"}
          node scripts/build/mac-release-preflight.cjs --verify-release "$OUT" "$VERSION" ;;
     win) npx electron-builder --win --publish never -c.directories.output="$OUT" ;;
     linux)

@@ -22,6 +22,9 @@ function expectedTeam(env = process.env) {
 }
 
 function requireNotarization(env) {
+  // Xcode can submit with its already authenticated developer account. The afterSign hook
+  // must still wait for Apple and validate the stapled app before packaging (see below).
+  if (env.AULA_XCODE_NOTARIZE === '1') return
   // Follow electron-builder 26's credential precedence, including rejecting partial first-choice credentials.
   if (env.APPLE_ID || env.APPLE_APP_SPECIFIC_PASSWORD) {
     if (!env.APPLE_ID || !env.APPLE_APP_SPECIFIC_PASSWORD) {
@@ -36,11 +39,18 @@ function requireNotarization(env) {
   }
 }
 
-function assertConfiguration(config) {
+function assertConfiguration(config, env = process.env) {
   const mac = config.mac || {}
   if (config.appId !== BUNDLE_ID) throw new Error(`The release appId must remain ${BUNDLE_ID}.`)
-  for (const field of ['forceCodeSigning', 'hardenedRuntime', 'notarize', 'strictVerify']) {
+  for (const field of ['forceCodeSigning', 'hardenedRuntime', 'strictVerify']) {
     if (mac[field] !== true) throw new Error(`Public Mac builds require mac.${field}: true.`)
+  }
+  if (env.AULA_XCODE_NOTARIZE === '1') {
+    if (mac.notarize !== false || typeof config.afterSign !== 'string' || resolve(config.afterSign) !== resolve(__dirname, 'mac-after-sign.cjs')) {
+      throw new Error('Xcode notarization requires the Aula afterSign hook and disables only electron-builder’s own notarization step.')
+    }
+  } else if (mac.notarize !== true) {
+    throw new Error('Public Mac builds require mac.notarize: true.')
   }
   if (mac.identity === null || mac.identity === '-' || mac.sign != null || mac.type === 'development') {
     throw new Error('Public Mac builds require standard Developer ID Application signing; custom, local and ad-hoc signing are disabled.')
@@ -49,7 +59,7 @@ function assertConfiguration(config) {
 
 function preflight(config, { env = process.env, platform = process.platform, exec = run } = {}) {
   if (platform !== 'darwin') throw new Error('A public Mac release must be built and verified on macOS.')
-  assertConfiguration(config)
+  assertConfiguration(config, env)
   const team = expectedTeam(env)
   if (env.AULA_MAC_ADHOC || env.CSC_IDENTITY_AUTO_DISCOVERY === 'false') {
     throw new Error('Ad-hoc signing and disabled signing discovery are not allowed for a public Mac release.')
@@ -73,7 +83,7 @@ function signingRequirement(team, bundle = true) {
   return `${bundle ? `identifier "${BUNDLE_ID}" and ` : ''}anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = "${team}"`
 }
 
-function verifyApp(appPath, { env = process.env, version, exec = run } = {}) {
+function verifySignature(appPath, { env = process.env, version, exec = run } = {}) {
   const team = expectedTeam(env)
   const app = resolve(appPath)
   exec('/usr/bin/codesign', ['--verify', '--deep', '--strict', '--all-architectures', `-R=${signingRequirement(team)}`, app])
@@ -87,6 +97,11 @@ function verifyApp(appPath, { env = process.env, version, exec = run } = {}) {
   if (plist.CFBundleIdentifier !== BUNDLE_ID || (version && plist.CFBundleShortVersionString !== version)) {
     throw new Error('The signed app has the wrong bundle ID or version.')
   }
+  return app
+}
+
+function verifyApp(appPath, { env = process.env, version, exec = run } = {}) {
+  const app = verifySignature(appPath, { env, version, exec })
   exec('/usr/bin/xcrun', ['stapler', 'validate', app])
   exec('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', app])
   return app
@@ -135,18 +150,30 @@ function beforePack(context) {
   preflight({ ...context.packager.config, mac: context.packager.platformSpecificBuildOptions })
 }
 
-function afterSign(context) {
+async function afterSign(context) {
   if (context.electronPlatformName !== 'darwin') return
-  verifyApp(join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`), { version: context.packager.appInfo.version })
+  const app = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`)
+  const version = context.packager.appInfo.version
+  if (process.env.AULA_XCODE_NOTARIZE === '1') {
+    const team = expectedTeam()
+    verifySignature(app, { version })
+    await require('./mac-xcode-notarize.cjs').notarizeWithXcode(app, { team, version, verifyApp })
+  }
+  verifyApp(app, { version })
 }
 
-module.exports = { expectedTeam, requireNotarization, assertConfiguration, preflight, signingRequirement, verifyApp, verifyRelease, beforePack, afterSign }
+module.exports = { expectedTeam, requireNotarization, assertConfiguration, preflight, signingRequirement, verifySignature, verifyApp, verifyRelease, beforePack, afterSign }
 
 if (require.main === module) {
   try {
     const [mode, folder, version] = process.argv.slice(2)
     if (mode === '--verify-release' && folder && version) verifyRelease(folder, version)
-    else if (mode === '--preflight') preflight(require('js-yaml').load(readFileSync('electron-builder.yml', 'utf8')))
+    else if (mode === '--preflight') {
+      const config = require('js-yaml').load(readFileSync('electron-builder.yml', 'utf8'))
+      // release-local.sh applies this same override to electron-builder when using Xcode.
+      if (process.env.AULA_XCODE_NOTARIZE === '1') config.mac.notarize = false
+      preflight(config)
+    }
     else throw new Error('Usage: mac-release-preflight.cjs --preflight | --verify-release <folder> <version>')
     console.log('✓ Mac release signing and notarization checks passed.')
   } catch (error) {
