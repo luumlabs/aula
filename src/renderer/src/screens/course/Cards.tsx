@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import type { Flashcard, Pack } from '@shared/schema'
 import { clozeText, dueCardCount, dueCards } from '@engine/study'
-import { AnimatedNumber, Button, Card, cx, EmptyState, Floating, GlassLight, Icon, SectionTitle, Spinner, Stagger, StaggerItem, TextField, useTheme } from '@renderer/design'
+import { AnimatedNumber, Button, Card, cx, EmptyState, Floating, PigmentMark, Icon, SectionTitle, Spinner, Stagger, StaggerItem, TextField, useTheme } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
 import { navigate } from '@renderer/app/router'
 import { useCourseData } from '@renderer/screens/study/data'
@@ -161,7 +161,7 @@ function MiniCard({ card, skillTitle, state, ink }: { card: Flashcard; skillTitl
         {flip ? t('tab.cards.showFront') : t('tab.cards.showBack')}
       </span>
       {/* dada la vuelta, la luz del curso asoma tras la ficha */}
-      {flip && <GlassLight color={ink} size="sm" still />}
+      {flip && <PigmentMark color={ink} size="sm" />}
     </button>
   )
 }

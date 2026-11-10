@@ -235,7 +235,7 @@ test('A4-P2-15 · con movimiento reducido la pantalla nueva ya se ve entera al p
   await page.waitForTimeout(800)
   await js(page, 'window.__aula.navigate({ name: "stats" })')
   await page.waitForTimeout(80)
-  const faded = await js<number>(page, `[...document.querySelectorAll('[data-screen="stats"][data-active="true"] *')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 40 && r.height > 40 && r.top < innerHeight && !e.closest('[class*="glass-light"], [aria-hidden="true"], svg') && parseFloat(getComputedStyle(e).opacity) < 0.99 }).length`)
+  const faded = await js<number>(page, `[...document.querySelectorAll('[data-screen="stats"][data-active="true"] *')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 40 && r.height > 40 && r.top < innerHeight && !e.closest('[class*="pigment-mark"], [aria-hidden="true"], svg') && parseFloat(getComputedStyle(e).opacity) < 0.99 }).length`)
   expect(faded).toBe(0)
   await app.close()
 })

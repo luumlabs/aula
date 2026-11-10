@@ -128,10 +128,7 @@ export function WeekView({ anchor, events, selected, onSelect }: { anchor: Date;
   )
 }
 
-/** Fondo de un evento en la rejilla: su color mate y, arriba a la izquierda, una luz quieta del mismo color (como tras un
- *  cristal; sustituye a la raya de 3 px). Un solo color que se desvanece, sin degradados de varios colores. */
+/** Fondo de un evento en la rejilla: su color mate y plano, como una loseta pintada (sin luces ni degradados). */
 function eventFill(c: string, dark: boolean): string {
-  const base = `color-mix(in oklab, ${c} ${dark ? 22 : 12}%, var(--surface))`
-  const glow = `color-mix(in oklab, ${c} ${dark ? 30 : 26}%, transparent)`
-  return `radial-gradient(120% 140% at 0% 0%, ${glow}, transparent 70%), ${base}`
+  return `color-mix(in oklab, ${c} ${dark ? 26 : 16}%, var(--surface))`
 }

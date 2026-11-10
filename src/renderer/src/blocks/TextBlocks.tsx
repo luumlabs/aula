@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { Sigma } from 'lucide-react'
-import { cx, GlassLight, PixelCheck, useTheme, type IconName } from '@renderer/design'
+import { cx, PigmentMark, PixelCheck, useTheme, type IconName } from '@renderer/design'
 import type { BlockOf, CalloutKind } from '@shared/schema/blocks'
 import type { BlockProps } from './types'
 import { BlockTitle, Eyebrow, Inline, MathTex, Prose, SourceLink, useAnimate, useBlocksT, useSeen } from './shared'
@@ -72,8 +72,8 @@ export function CalloutBlockView({ block, ctx }: BlockProps<BlockOf<'callout'>>)
   const chat = ctx.mode === 'chat'
   return (
     <aside className={cx('relative isolate overflow-hidden', chat ? 'rounded-[12px] py-2.5 pl-4 pr-3' : 'rounded-[16px] py-4 pl-5 pr-5')} style={{ background: look.soft }} aria-label={t(`callout.${block.kind}`)}>
-      {/* la luz del tipo de nota tras el cristal (antes, una raya de color a la izquierda) */}
-      <GlassLight color={look.bar} size={chat ? 'sm' : 'md'} still={chat} />
+      {/* la muestra de pigmento del tipo de nota en la esquina (antes, una raya de color a la izquierda) */}
+      <PigmentMark color={look.bar} size={chat ? 'sm' : 'md'} seed={block.kind} />
       <div style={{ color: look.tint }}>
         <Eyebrow icon={look.icon} glyph={look.glyph} label={t(`callout.${block.kind}`)} className="mb-1" />
       </div>
@@ -171,7 +171,7 @@ export function RecapBlockView({ block, ctx }: BlockProps<BlockOf<'recap'>>) {
   const chat = ctx.mode === 'chat'
   return (
     <section ref={ref} className={cx('relative isolate overflow-hidden bg-surface border-[0.5px] border-line', chat ? 'rounded-[14px] p-3 pl-4' : 'rounded-[22px] p-6 pl-7')} style={{ boxShadow: ctx.mode === 'lesson' ? 'var(--e1)' : undefined }}>
-      <GlassLight color="var(--success)" size={chat ? 'sm' : 'md'} still={chat} />
+      <PigmentMark color="var(--success)" size={chat ? 'sm' : 'md'} />
       <div className={cx('font-serif text-text', chat ? 'text-[16px] font-medium' : 't-title2')}>
         <Inline text={block.title?.trim() || t('recap.title')} />
       </div>
