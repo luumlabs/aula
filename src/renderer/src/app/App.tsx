@@ -10,6 +10,7 @@ import { useSettings, wireSettings } from '@renderer/lib/settings'
 import { wireCourses } from '@renderer/lib/courses'
 import { Sidebar } from './shell/Sidebar'
 import { CompactTabs, useCompact } from './shell/CompactTabs'
+import { routeFromHash, routeToHash } from './routeHash'
 import { TopBar } from './shell/TopBar'
 import { useTitleStore } from './title'
 import { CommandPalette } from './shell/CommandPalette'
@@ -39,14 +40,25 @@ export function App() {
     if (api.platform === 'darwin') document.documentElement.classList.add('vibrant')
     else if (api.remote) {
       document.documentElement.classList.add('remote')
-      // en el teléfono Aula es sobre todo su asistente: se abre por lo que hizo y lo que hay pendiente
-      if (window.matchMedia('(max-width: 700px)').matches) navigate({ name: 'inbox' }, { replace: true })
+      // si la página se recargó (un túnel nuevo al volver a la app, un refresco), se vuelve a la pantalla apuntada en la
+      // dirección; si no, en el teléfono Aula es sobre todo su asistente: se abre por lo que hizo y lo que hay pendiente
+      const saved = routeFromHash(window.location.hash)
+      if (saved) navigate(saved, { replace: true })
+      else if (window.matchMedia('(max-width: 700px)').matches) navigate({ name: 'inbox' }, { replace: true })
     }
     // Windows y Linux: los botones de la ventana (titleBarOverlay, 48 px) se dibujan encima; lo flotante empieza debajo
     else if (api.platform !== 'web') document.documentElement.style.setProperty('--titlebar-h', '48px')
     wireSettings()
     wireCourses()
     installDevHooks()
+  }, [])
+
+  // desde un dispositivo: la pantalla de ahora queda apuntada en la dirección (routeHash.ts)
+  useEffect(() => {
+    if (!api.remote) return
+    return useNav.subscribe((s) => {
+      try { window.history.replaceState(null, '', routeToHash(s.route) || window.location.pathname) } catch { /* sin historial: no se apunta */ }
+    })
   }, [])
 
   useEffect(() => {

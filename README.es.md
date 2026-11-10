@@ -199,6 +199,10 @@ Cada ejercicio tiene además un tutor al lado. Ve el ejercicio y tu respuesta, y
   pagaría, y nunca escribe tu contraseña.
 - **Aula siempre activa** (opcional): con la ventana cerrada, Aula puede mandarte un resumen por la mañana, mirar tu
   plataforma, recordarte las entregas y escribir un resumen semanal. Todo llega a *Novedades*, y se para hasta el día siguiente cuando gasta su presupuesto diario.
+- **Tu iPad y tu iPhone** (opcional, con Aula en un Mac): abre Aula desde tus dispositivos mientras tus cursos, tu IA y
+  tus datos se quedan en el Mac. En el iPad, la app entera; en el iPhone, Aula como tu asistente (lo que hizo, lo que
+  hay pendiente, el chat y el calendario). Los dispositivos llegan al Mac por tu red privada de Tailscale y se vinculan
+  una vez con un código. Más en [docs/DEVICES.md](docs/DEVICES.md).
 - **Memoria**: Aula recuerda lo que le ayuda a enseñarte, por ejemplo cómo prefieres que te expliquen o qué te cuesta. Puedes
   verlo, corregirlo, pausarlo o exportarlo todo en *Ajustes → Lo que Aula recuerda*.
 - **Buscar**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> encuentra pantallas, cursos y herramientas, y cualquier cosa

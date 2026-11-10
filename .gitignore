@@ -49,3 +49,6 @@ secrets.enc
 # ── Tailscale (proceso auxiliar): la herramienta de Go del proyecto y lo que compila ──
 .toolchain/
 native/tsnet/bin/
+native/ios/Frameworks/
+native/ios/_verify/.derived/
+xcuserdata/
