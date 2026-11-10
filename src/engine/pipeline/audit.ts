@@ -104,8 +104,11 @@ export function teachingProblems(lesson: readonly Block[], minVisuals: number, l
   }
   const first = types.findIndex((t) => PRACTICE_BLOCK_TYPES.includes(t))
   if (first >= 0) {
-    const explained = lesson.slice(0, first).reduce((n, b) => n + explanationOf(b).replace(/^#+ .*$/gm, '').trim().length, 0)
-    if (explained < MIN_EXPLANATION_CHARS) {
+    const before = lesson.slice(0, first)
+    const explained = before.reduce((n, b) => n + explanationOf(b).replace(/^#+ .*$/gm, '').trim().length, 0)
+    // un solo párrafo (aunque sea largo) y directo al ejemplo no es explicar: hace falta al menos otro bloque (la figura,
+    // la definición, la fórmula) entre el arranque y la primera práctica
+    if (explained < MIN_EXPLANATION_CHARS || before.length < 2) {
       out.push({
         forAI: `lesson: the first \`${types[first]}\` (block ${first + 1}) comes before the idea has been explained. Teach first: say in plain words what the idea is and why it works, show it (a concrete case or a figure), define every term and symbol, and only then give the worked \`example\` and the questions. Move or add that explanation before block ${first + 1}.`,
         forUser: L(lang, 'La lección pregunta o pone un ejemplo antes de explicar la idea.', 'The lesson asks a question or shows an example before explaining the idea.')
