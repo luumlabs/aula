@@ -368,6 +368,20 @@ const DISCIPLINES = ['historia', 'history', 'arte', 'art', 'art history', 'histo
   'pharmacy', 'veterinaria', 'veterinary', 'humanidades', 'humanities', 'ciencias sociales', 'social studies', 'social sciences', 'ciencias naturales',
   'natural sciences', 'science', 'ciencias', 'classics', 'civics', 'educacion civica']
 
+// Asignaturas que tratan de cosas que existen y se pueden fotografiar (un organismo, un tejido, un lugar, una obra, un
+// objeto histórico, un mineral, un astro): en ellas una lección gana mucho con la imagen real al lado del esquema.
+const REAL_THINGS = ['biolog*', 'anatom*', 'fisiolog*', 'physiolog*', 'histolog*', 'citolog*', 'cytolog*', 'microbiolog*', 'botan*', 'zoolog*', 'ecolog*', 'genetica',
+  'genetics', 'medicina', 'medicine', 'enfermeria', 'nursing', 'veterinaria', 'veterinary', 'geolog*', 'mineralog*', 'paleontolog*', 'geografia', 'geography',
+  'historia', 'history', 'arte', 'art', 'arquitectura', 'architecture', 'arqueolog*', 'archaeolog*', 'archeolog*', 'astronom*', 'ciencias naturales',
+  'natural sciences', 'ciencias de la tierra', 'earth science', 'earth sciences', 'life science', 'life sciences', 'ciencias sociales', 'social studies',
+  'celula*', 'cell', 'cells', 'tejido*', 'tissue*', 'organo*', 'organ', 'organs', 'cuerpo humano', 'human body', 'planta*', 'plants', 'animal*', 'ecosistema*',
+  'ecosystem*', 'roca*', 'rocks', 'volcan*', 'volcano*', 'sistema solar', 'solar system']
+
+/** ¿El curso trata de cosas reales que conviene enseñar con una foto? (por su asignatura, su título o sus temas). */
+export function aboutRealThings(title: string, subject = '', topics = ''): boolean {
+  return has(foldGoalText(`${subject} ${title} ${topics}`), REAL_THINGS)
+}
+
 /** La clase de meta deducida y si la deducción es segura (si no, el planificador debe fiarse del título y la asignatura). */
 export interface GoalGuess {
   kind: StudyGoalKind

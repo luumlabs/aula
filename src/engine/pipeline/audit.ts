@@ -8,7 +8,12 @@ import { blockTypeName } from '@shared/schema'
 import { DEPTHS, type GenerationDepth } from './model'
 
 /** Un hallazgo de la auditoría: texto para la IA (inglés, con instrucciones) y para la persona (idioma de la interfaz). */
-export interface AuditProblem { forAI: string; forUser: string }
+export interface AuditProblem {
+  forAI: string
+  forUser: string
+  /** Un consejo, no un fallo: se le pide al modelo una vez (en un repaso) y, si no lo cumple, la lección vale igual. */
+  advice?: boolean
+}
 
 export type Lang = 'es' | 'en'
 const L = (lang: Lang, es: string, en: string): string => (lang === 'en' ? en : es)
@@ -17,7 +22,7 @@ const L = (lang: Lang, es: string, en: string): string => (lang === 'en' ? en : 
  * Auditoría independiente de la IA: errores del validador + mínimos de cobertura. Lista vacía = habilidad lista.
  * `validatorIssues` son los del validador ligado al curso (`checkSkill`).
  */
-export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, validatorIssues: readonly ContentIssue[], lang: Lang = 'es', options: { teaching?: boolean } = {}): AuditProblem[] {
+export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, validatorIssues: readonly ContentIssue[], lang: Lang = 'es', options: { teaching?: boolean; realPictures?: boolean } = {}): AuditProblem[] {
   if (!skill) return [{ forAI: 'The skill has no content yet.', forUser: L(lang, 'Aún no tiene contenido.', 'It has no content yet.') }]
   const out: AuditProblem[] = []
   for (const i of validatorIssues) {
@@ -49,7 +54,7 @@ export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, val
     })
   }
   // solo al crear o ampliar un curso: un curso ya hecho no pasa a «pendiente de corregir» por reglas nuevas
-  if (options.teaching) out.push(...teachingProblems(skill.lesson, d.minVisuals, lang))
+  if (options.teaching) out.push(...teachingProblems(skill.lesson, d.minVisuals, lang), ...teachingAdvice(skill.lesson, { realPictures: options.realPictures === true }, lang))
   const known = new Set(skill.exercises.map((e) => e.id))
   for (const b of skill.lesson) {
     if (b.type !== 'tryit') continue
@@ -218,6 +223,51 @@ export function courseDigest(pack: Pack, skillOf: (id: string) => Skill | undefi
     for (const x of defs.slice(0, 6)) out += `  - def: ${x}\n`
     for (const f of formulas.slice(0, 8)) out += `  - formula: ${f}\n`
     if (out.length > maxChars) { out += '… (digest truncated)\n'; break }
+  }
+  return out
+}
+
+/** ¿La lección trabaja con una función de dos variables o con el espacio? (`f(x, y)`, `z = …x…y…`, un vector de tres componentes). */
+const SPACE_MATH = [/f\s*\(\s*x\s*,\s*y\s*\)/g, /\bz\s*=\s*[^$\n]{0,40}?x[^$\n]{0,40}?y/g, /\(\s*-?[\w.]+\s*,\s*-?[\w.]+\s*,\s*-?[\w.]+\s*\)/g]
+
+/** Todo lo que la lección dice con palabras o fórmulas (para buscar de qué habla). */
+function lessonText(lesson: readonly Block[]): string {
+  const parts: string[] = []
+  const walk = (v: unknown, depth: number): void => {
+    if (typeof v === 'string') { if (v.length > 2) parts.push(v) } else if (depth < 5 && v && typeof v === 'object') for (const x of Object.values(v)) walk(x, depth + 1)
+  }
+  for (const b of lesson) if (b.type !== 'model3d' && b.type !== 'image') walk(b, 0)
+  return parts.join('\n')
+}
+
+/**
+ * Consejos para que la lección se vea (no la invalidan): una gráfica en 3D cuando habla de superficies o del espacio, y una
+ * foto real cuando el curso trata de cosas que existen y hay acceso a la web.
+ */
+export function teachingAdvice(lesson: readonly Block[], options: { realPictures: boolean }, lang: Lang = 'es'): AuditProblem[] {
+  if (!lesson.length) return []
+  const out: AuditProblem[] = []
+  const types = lesson.map(blockTypeName)
+  if (!types.includes('model3d')) {
+    const text = lessonText(lesson)
+    const hits = SPACE_MATH.reduce((n, re) => n + (text.match(re)?.length ?? 0), 0)
+    if (hits >= 3) {
+      out.push({
+        advice: true,
+        forAI: 'lesson: it works with a function of two variables or with points and vectors in space, but shows nothing in 3D. The student has to SEE the surface, not imagine it: add a `model3d` block with `graph` (for example `{"type":"model3d","title":"…","alt":"…","graph":{"surfaces":[{"expr":"x^2 - y^2"}],"xMin":-2,"xMax":2,"yMin":-2,"yMax":2,"points":[{"x":0,"y":0,"z":0,"label":"…"}],"vectors":[…]}}`) for the surface, point, tangent plane, gradient or vectors this lesson is about, right where the text explains it, and tell the student what to look for when turning it. Keep the 2D figures (level curves, sections) next to it.',
+        forUser: L(lang, 'La lección habla de superficies o del espacio y no enseña ninguna gráfica en 3D.', 'The lesson is about surfaces or space and shows no 3D graph.')
+      })
+    }
+  }
+  if (options.realPictures) {
+    const real = lesson.some((b) => (b.type === 'image' && !!b.asset) || (b.type === 'labeled' && !!b.asset))
+    if (!real) {
+      out.push({
+        advice: true,
+        forAI: 'lesson: this course is about real things and the web tools are available, but the lesson shows no real picture (only drawings or diagrams). Show the real thing next to the diagram that explains it: call `find_image` with the specific thing this lesson is about (in English it finds more: "mitochondrion electron micrograph", "onion cells microscope", "Colosseum Rome", "Rosetta Stone"), pick a result that clearly shows it, call `add_image`, and place the returned block (`image`, or `labeled` with that `asset` and the parts marked) right after the paragraph that describes it, with a caption that says what to look at. If two different searches return nothing that fits this lesson, leave it as it is.',
+        forUser: L(lang, 'La lección no enseña ninguna imagen real de lo que explica.', 'The lesson shows no real picture of what it explains.')
+      })
+    }
   }
   return out
 }

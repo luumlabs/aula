@@ -105,15 +105,12 @@ function AppCursor() {
 }
 
 /**
- * Lienzo: una sola superficie de vidrio cálido para toda la ventana (en macOS, el vidrio del sistema teñido; fuera, el lienzo
- * liso), con un único brillo fijo junto a la barra lateral. La barra lateral vive sobre ese vidrio, sin panel propio.
+ * Lienzo: una sola superficie para toda la ventana (en macOS, el vidrio del sistema teñido; fuera, el lienzo liso). Sin
+ * brillos ni degradados: la única luz de la interfaz es el ladrillo de lo que se puede pulsar. La barra lateral vive
+ * sobre este lienzo, sin panel propio.
  */
 function Backdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: api.platform === 'darwin' ? 'var(--sidebar)' : 'var(--canvas)' }}>
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(520px 380px at 0% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%)' }} />
-    </div>
-  )
+  return <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: api.platform === 'darwin' ? 'var(--sidebar)' : 'var(--canvas)' }} />
 }
 
 /**

@@ -11,7 +11,7 @@ import { IDs } from '@engine/base/ids'
 import { CourseLanguages } from '@engine/base/language'
 import { LiveCalculator } from '@engine/math'
 import {
-  addUsage, auditSkill, adjudicatorPrompt, courseContext, courseDigest, crossCuttingPartPrompt, crossCuttingPrompt, DEPTHS, encodeRunState, extendPrompt, fallbackBlueprint,
+  aboutRealThings, addUsage, auditSkill, adjudicatorPrompt, courseContext, courseDigest, crossCuttingPartPrompt, crossCuttingPrompt, DEPTHS, encodeRunState, extendPrompt, fallbackBlueprint,
   gatherPrompt, gatherSystem, goalKindIsSure, goalKindOf, isExtend, knownExamOf, linkPractice, materialsMap, MAX_AGENTS, missingCrossCutting, newRunID, newRunState, planPrompt, prepareForResume,
   readerPrompt, readerSystem, readingGroups, runProgress, skillPartPrompt, skillPrompt, solverPrompt, splitSharedContext, systemPrompt, uiRoleFor, usesTeam, usuallyHasExam, decodeRunState,
   countContent, type AuditProblem, type ContentCounts, type CrossPart, type GenerationRequest, type GenerationRunState, type GenerationStage, type LaneRecord, type PipelineRole, type PromptCourse, type SkillPart,
@@ -540,8 +540,10 @@ export class GenerationPipeline {
       if (usesTeam(this.state.request)) this.linkPractice(id)
       const remaining = this.audit(id)
       this.persistAudit(id)
-      if (!remaining.length) { this.updateSkill(id, (s) => { s.status = 'done'; s.openIssues = 0; s.note = '' }); return }
-      this.updateSkill(id, (s) => { s.openIssues = remaining.length; s.note = remaining[0]?.forUser ?? '' })
+      // los consejos se piden una sola vez, tras el primer intento: si el repaso no los cumple, la lección vale igual
+      const advice = attempt === 1 ? this.audit(id, true).filter((p) => p.advice) : []
+      if (!remaining.length && !advice.length) { this.updateSkill(id, (s) => { s.status = 'done'; s.openIssues = 0; s.note = '' }); return }
+      this.updateSkill(id, (s) => { s.openIssues = remaining.length; s.note = (remaining[0] ?? advice[0])?.forUser ?? '' })
     }
     // agotados los intentos: se deja con lo que hay y se marca para revisión
     const left = this.audit(id)
@@ -583,17 +585,25 @@ export class GenerationPipeline {
     } catch (err) { log.warn('[pipeline] no se pudo enlazar la práctica', err) }
   }
 
-  /** Auditoría independiente de la IA: errores del validador + mínimos de cobertura. Lista vacía = habilidad lista. */
-  audit(id: string): AuditProblem[] {
+  /**
+   * Auditoría independiente de la IA: errores del validador + mínimos de cobertura. Lista vacía = habilidad lista.
+   * Con `withAdvice` incluye además los consejos (una foto real, una gráfica en 3D): no invalidan la lección.
+   */
+  audit(id: string, withAdvice = false): AuditProblem[] {
     const skill = this.loadSkill(id)
     let pack: Pack | undefined
     try { pack = this.loadPack() } catch { pack = undefined }
     const issues = skill ? boundValidator(this.store).checkSkill(skill, pack) : []
-    return auditSkill(skill, this.state.request.depth, issues, this.lang(), { teaching: true })
+    const r = this.state.request
+    // fotos reales: solo si el curso trata de cosas que existen y el modelo puede buscarlas en la web
+    const realPictures = r.allowWeb && aboutRealThings(pack?.title ?? r.title, pack?.subject ?? r.subject, r.topics)
+    const all = auditSkill(skill, r.depth, issues, this.lang(), { teaching: true, realPictures })
+    return withAdvice ? all : all.filter((p) => !p.advice)
   }
 
+  /** Lo que se le dice al modelo en un repaso: los fallos y, de paso, los consejos. */
   problems(id: string): string[] {
-    return this.audit(id).map((p) => p.forAI)
+    return this.audit(id, true).map((p) => p.forAI)
   }
 
   private persistAudit(id: string): void {

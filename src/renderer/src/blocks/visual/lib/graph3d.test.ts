@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { decodeModel3D, encodeModel3D, type Graph3D } from '@shared/schema/visual'
 import { ContentValidator } from '@engine/content/validator'
 import { checkGraph3D } from '@engine/content/visual-validation'
-import { FLOOR, MAX_HEIGHT, SAMPLES, axisNumber, layoutGraph, zRange, type OfT, type XY } from './graph3d'
+import { FLOOR, MAX_HEIGHT, SAMPLES, axisNumber, layoutGraph, zRange, type OfT, type XY, plainMathLabel } from './graph3d'
 
 const graph = (over: Partial<Graph3D> = {}): Graph3D => ({ xMin: -2, xMax: 2, yMin: -2, yMax: 2, surfaces: [], curves: [], vectors: [], points: [], axes: true, ...over })
 // evaluadores de prueba: una tabla de funciones conocidas
@@ -81,3 +81,20 @@ describe('gráfica 3D en el formato del curso', () => {
     expect(bad).toEqual(expect.arrayContaining(['g', 'g.surfaces[0].expr', 'g.curves[0].x', 'g.curves[0]', 'g.vectors[0]']))
   })
 })
+
+describe('etiquetas de la escena 3D en texto llano', () => {
+  it('escribe potencias, símbolos y productos como se leen', () => {
+    expect(plainMathLabel('$z = x^2 - y^2$')).toBe('z = x² − y²')
+    expect(plainMathLabel('z = x^{10} + y^-1')).toBe('z = x¹⁰ + y⁻¹')
+    expect(plainMathLabel('$\\nabla f(1, 1)$')).toBe('∇f(1, 1)')
+    expect(plainMathLabel('2*x + y')).toBe('2·x + y')
+    expect(plainMathLabel('$\\frac{1}{2}\\vec{u}$')).toBe('1/2u')
+    expect(plainMathLabel('$\\partial f/\\partial x$')).toBe('∂f/∂x')
+  })
+  it('deja como está lo que ya es texto', () => {
+    expect(plainMathLabel('(1, 1, 2)')).toBe('(1, 1, 2)')
+    expect(plainMathLabel('u + v')).toBe('u + v')
+    expect(plainMathLabel('Mínimo')).toBe('Mínimo')
+  })
+})
+
