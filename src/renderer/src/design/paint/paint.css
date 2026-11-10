@@ -132,3 +132,14 @@
 .reduce-motion .paint {
   transition: opacity 0.2s ease;
 }
+
+/* ── El diente del papel ── */
+/* El fondo de cada pantalla no es un color liso de pantalla: lleva un grano muy fino y quieto, como papel de acuarela.
+   Es una imagen de fondo (va bajo todo el contenido), no pide fotogramas y las tarjetas, encima, siguen lisas. */
+.paper-grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.33  0 0 0 0 0.25  0 0 0 0 0.17  0.13 0 0 0 0'/></filter><rect width='240' height='240' filter='url(%23g)'/></svg>");
+  background-size: 240px 240px;
+}
+.dark .paper-grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.94  0 0 0 0 0.86  0.07 0 0 0 0'/></filter><rect width='240' height='240' filter='url(%23g)'/></svg>");
+}

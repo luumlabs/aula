@@ -85,6 +85,9 @@ grano de papel muy suave, algo fuera de registro de su línea. Minimalista y ama
   silueta, huecos secos y eje; `Ink.tsx`: una máscara por trazo que la mano recorre); los rellenos, máscaras con grano hechas
   una vez en un hilo aparte (`recipes.ts`, `paint.worker.ts`). En reposo no cuesta nada; lo vivo (sol, «boil») se para en
   calma, con la ventana oculta y con «Reducir movimiento», que además lo enseña todo ya dibujado.
+- **El diente del papel** (`.paper-grain`, en `paint/paint.css`): el fondo de las pantallas lleva un grano muy fino y quieto,
+  como papel de acuarela; las tarjetas, encima, siguen lisas. Y la **muestra de pigmento** (`PigmentMark`, receta `swatch`):
+  el color de identidad como pasadas de pincel plano en una esquina (tarjetas, notas de las lecciones, diapositivas).
 - Semilla fija (`seedOf('id')`): el mismo dibujo en cada arranque. Tintas: `--ink`, `--graphite`, `--pigment-brick`,
   `--pigment-sun` (en oscuro, claras y cálidas; nunca un gris; nada violeta). Nunca debajo de texto pequeño, campos ni
   ejercicios. Todo junto en la galería (`navigate({ name: 'gallery' })`).
