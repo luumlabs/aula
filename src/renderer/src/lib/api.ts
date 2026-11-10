@@ -22,6 +22,10 @@ export const api = {
   get platform(): string {
     return typeof window !== 'undefined' && window.aula ? window.aula.platform : 'web'
   },
+  /** Edición de la Mac App Store. Se sabe al instante por el puente: no depende de una llamada que pueda fallar. */
+  get appStore(): boolean {
+    return typeof window !== 'undefined' && !!window.aula && window.aula.appStore === true
+  },
   pathForFile(file: File): string {
     return bridge().pathForFile(file)
   }

@@ -211,7 +211,7 @@ function DataCard({ s, update }: { s: AppSettings; update: Upd }) {
         <Button size="md" loading={exporting} icon={<Icon name="archive" size={15} />} onClick={() => void exportAll()}>
           {t('data.exportAll')}
         </Button>
-        {info?.isMacAppStore && <Button size="md" onClick={() => void api.invoke('data.revokeAIConsent').then(() => toast.success(t('data.aiConsentRevoked'))).catch((e: unknown) => toast.error((e as Error).message))}>
+        {api.appStore && <Button size="md" onClick={() => void api.invoke('data.revokeAIConsent').then(() => toast.success(t('data.aiConsentRevoked'))).catch((e: unknown) => toast.error((e as Error).message))}>
           {t('data.revokeAIConsent')}
         </Button>}
         <Button size="md" variant="ghost" className="text-danger!" icon={<Icon name="trash" size={15} />} onClick={() => setConfirm(true)}>
@@ -277,7 +277,7 @@ function AboutCard({ s, update }: { s: AppSettings; update: Upd }) {
             <AboutLink onClick={() => openLegal('aula')}>{t('about.licenseText')}</AboutLink>
             <AboutLink onClick={() => openURL(sourceCodeURL(current))}>{t('about.source')}</AboutLink>
             <AboutLink onClick={() => openLegal('third-party')}>{t('about.licenses')}</AboutLink>
-            {!info?.isMacAppStore && <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>}
+            {!api.appStore && <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>}
           </span>
         </div>
         <UpdateButtons state={upd} asked={asked} current={current} onAsk={() => setAsked(true)} />

@@ -5,7 +5,7 @@ import { canonicalJSON } from '../core/json'
 import { ResponseCollector } from '../core/toolCalls'
 import { abortReason, defaultHTTPOptions, linkedController, startIdleWatch, ActivityTracker, type HTTPOptions } from '../http/options'
 import { AIError } from '../errors'
-import { authorizeAIRequest } from '../consent'
+import { authorizeAIRequest, consentFetchInit, trackAIRequest } from '../consent'
 import { performStreaming, type ChatStreamDecoder } from '../http/streaming'
 import type { ErrorContext } from '../http/providerErrors'
 import type { CompleteOptions, ModelCapabilities } from '../model'
@@ -92,15 +92,17 @@ export interface AttemptArgs {
 export async function streamingAttempt(a: AttemptArgs): Promise<void> {
   const { controller, dispose } = linkedController(a.signal)
   let stopIdle: (() => void) | undefined
+  let untrack: (() => void) | undefined
   try {
-    // Ask before the first network write. In MAS, refuse automatic HTTP
-    // redirects so the client does not send the body to another endpoint.
+    // Se pregunta antes de escribir nada en la red. Con permiso obligatorio tampoco se siguen redirecciones, para que
+    // el cuerpo no acabe en otro destino, y la petición queda apuntada: retirar el permiso la corta.
     await authorizeAIRequest(a.url, a.context.provider, controller.signal)
+    untrack = trackAIRequest(controller)
     const tracker = new ActivityTracker()
     stopIdle = startIdleWatch(a.idleSec, tracker, () => controller.abort(a.idleError()))
     await performStreaming({
       url: a.url,
-      init: { method: 'POST', headers: a.headers, body: canonicalJSON(a.body), ...(process.mas === true ? { redirect: 'error' as const } : {}) },
+      init: { method: 'POST', headers: a.headers, body: canonicalJSON(a.body), ...consentFetchInit() },
       fetch: a.http.fetch,
       signal: controller.signal,
       decoder: a.decoder,
@@ -110,6 +112,7 @@ export async function streamingAttempt(a: AttemptArgs): Promise<void> {
     })
   } finally {
     stopIdle?.()
+    untrack?.()
     dispose()
   }
 }

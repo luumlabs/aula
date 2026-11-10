@@ -1,5 +1,5 @@
 // IPC de la capa de IA. La lógica vive en src/main/services/ai/service.ts (sin Electron, con pruebas); aquí solo se conecta.
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, dialog } from 'electron'
 import { handle, emit } from '../rpc'
 import { onSettingsChange } from '@main/services/settings'
 import { invalidArgs } from '@main/services/errors'
@@ -12,36 +12,41 @@ import { costMeter } from '@main/services/costs'
 import { registerCLIProviders } from '@main/services/agents/provider'
 import { installAIConsentPrompt } from '@main/services/ai/consent'
 import { tr } from '@shared/ai/i18n'
+import { getMainWindow } from '../window'
+import { edition } from '@main/services/edition'
 
 function refreshArg(args: unknown): boolean {
   return !!args && typeof args === 'object' && (args as { refresh?: unknown }).refresh === true
 }
 
 export function register(): void {
-  if (process.mas === true) installAIConsentPrompt(async ({ provider, origin }) => {
-    const window = BrowserWindow.getAllWindows().find(win => !win.isDestroyed() && win.isVisible())
-    // A background task cannot grant permission on the student's behalf.
-    if (!window) return false
+  if (edition.aiConsent) installAIConsentPrompt(async ({ provider, origin }, signal) => {
+    // Solo sobre la ventana principal y a la vista: una tarea en segundo plano no da el permiso por el estudiante,
+    // y la pregunta nunca aparece encima de una página de terceros (el navegador de plataformas).
+    const window = getMainWindow()
+    if (!window || window.isDestroyed() || !window.isVisible() || window.isMinimized()) return null
     const answer = await dialog.showMessageBox(window, {
+      signal,
       type: 'question',
       title: tr('Compartir con IA', 'Share with AI'),
       message: tr(`¿Permites compartir información con ${provider}?`, `Allow sharing information with ${provider}?`),
       detail: tr(
-        `Destino: ${origin}\n\nAula puede enviar tus preguntas, materiales, progreso y comunicaciones de plataformas educativas para ayudarte. Este proveedor puede enviar información a otros servicios; se aplican sus propias políticas.\n\nEl permiso dura hasta que cierres Aula. Puedes retirarlo en Ajustes → Privacidad y datos.`,
-        `Destination: ${origin}\n\nAula may send your questions, materials, progress and learning-platform communications to help you. This provider may share information with other services; its own policies apply.\n\nPermission lasts until you quit Aula. You can revoke it in Settings → Privacy and data.`
+        `Destino: ${origin}\n\nAula puede enviar tus preguntas, materiales, progreso y comunicaciones de plataformas educativas para ayudarte. Este proveedor puede enviar información a otros servicios; se aplican sus propias políticas.\n\nEl permiso dura hasta que cierres Aula. Puedes retirarlo en Ajustes → Privacidad y datos. Si eliges «Ahora no», Aula no volverá a preguntar por este destino durante unos minutos.`,
+        `Destination: ${origin}\n\nAula may send your questions, materials, progress and learning-platform communications to help you. This provider may share information with other services; its own policies apply.\n\nPermission lasts until you quit Aula. You can revoke it in Settings → Privacy and data. If you choose “Not now”, Aula won’t ask about this destination again for a few minutes.`
       ),
       buttons: [tr('Ahora no', 'Not now'), tr('Permitir durante esta sesión', 'Allow for this session')],
       defaultId: 0,
       cancelId: 0,
       noLink: true
     })
-    return answer.response === 1
+    // cerrado porque ya nadie esperaba la respuesta: ni permiso ni negativa
+    return signal.aborted ? null : answer.response === 1
   })
   // pruebas de extremo a extremo y demostraciones: IA simulada, sin red ni claves
   if (process.env.AULA_FAKE_AI === '1') setModelOverride(createFakeModel)
   // los agentes CLI (claude, codex, opencode) se usan a través del registro de proveedores
   try {
-    if (process.mas !== true) registerCLIProviders(registerProviderFactory)
+    if (edition.externalTools) registerCLIProviders(registerProviderFactory)
   } catch (err) {
     log.warn('IA: no se pudieron registrar los agentes CLI', err)
   }

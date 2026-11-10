@@ -19,21 +19,19 @@ interface PickerData {
   status: AIStatus | null
   providers: AIProviderView[]
   detection: AgentsDetection | null
-  appStore: boolean
 }
 
 function useAIData() {
-  const [data, setData] = useState<PickerData>({ status: null, providers: [], detection: null, appStore: false })
+  const [data, setData] = useState<PickerData>({ status: null, providers: [], detection: null })
   const [loading, setLoading] = useState(true)
   const load = async (refresh = false) => {
     setLoading(true)
-    const [status, providers, detection, info] = await Promise.all([
+    const [status, providers, detection] = await Promise.all([
       aiClient.status().catch(() => null),
       aiClient.providers().catch(() => [] as AIProviderView[]),
-      aiClient.detect(refresh).catch(() => null),
-      api.invoke('app.info').catch(() => null)
+      aiClient.detect(refresh).catch(() => null)
     ])
-    setData({ ...(isDemo() && !status && !detection ? demoData() : { status, providers, detection }), appStore: info?.isMacAppStore === true })
+    setData(isDemo() && !status && !detection ? demoData() : { status, providers, detection })
     setLoading(false)
   }
   useEffect(() => {
@@ -46,7 +44,9 @@ type OptionId = 'claude-cli' | 'codex-cli' | 'aula-local' | 'ollama' | 'lmstudio
 
 export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string) => void; compact?: boolean }) {
   const { t } = useTranslation('settings')
-  const { status, providers, detection, appStore, loading, reload } = useAIData()
+  const { status, providers, detection, loading, reload } = useAIData()
+  // la edición de la App Store no instala ni lanza herramientas externas: esas opciones no se ofrecen
+  const appStore = api.appStore
   const [busy, setBusy] = useState<string | null>(null)
   const [key, setKey] = useState('')
   const guessed = useMemo(() => guessProviderFromKey(key), [key])
@@ -456,7 +456,6 @@ function Option({ title, detail, ready, active, action, actionLabel, busy, logo,
 
 function demoData(): PickerData {
   return {
-    appStore: false,
     status: { activeProvider: null, auto: true, resolved: { providerId: 'claude-cli', label: 'Claude', kind: 'claude-cli', model: 'claude-sonnet' }, ready: true },
     providers: [],
     detection: {

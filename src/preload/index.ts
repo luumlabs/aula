@@ -14,6 +14,8 @@ ipcRenderer.on(EVENT_CHANNEL, (_e: IpcRendererEvent, event: string, payload: unk
 
 const bridge = {
   platform: process.platform,
+  /** Edición de la Mac App Store (la interfaz esconde lo que esa edición no puede hacer, sin esperar al proceso principal). */
+  appStore: (process as NodeJS.Process & { mas?: boolean }).mas === true,
   /**
    * Devuelve el sobre tal cual ({ ok, value } o { ok: false, error }): `contextBridge` solo copia el mensaje de un Error,
    * así que el código del error (`code`) se perdería si se lanzara aquí. La interfaz lo desenvuelve (lib/api.ts).

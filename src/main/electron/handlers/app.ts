@@ -12,6 +12,7 @@ import { secretProtection } from '../secrets'
 import { powerState } from '../power'
 import { noticeNeeded } from '@shared/ipc/power'
 import { postAppNotice, testNotification } from '../notifications'
+import { isAppStore } from '@main/services/edition'
 
 export function register(): void {
   handle('app.info', () => ({
@@ -22,7 +23,7 @@ export function register(): void {
     dataPath: paths.root(),
     locale: app.getLocale(),
     isPackaged: app.isPackaged,
-    isMacAppStore: process.mas === true,
+    isMacAppStore: isAppStore(),
     electron: process.versions.electron,
     secretProtection: secretProtection()
   }))

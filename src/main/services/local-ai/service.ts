@@ -32,6 +32,7 @@ import { AulaEngine, type RunningServer } from './engine'
 import { DEFAULT_FIT_POLICY, F16_FIT_POLICY, estimateFit, fitBudget, recommendedModels } from './fit'
 import { probeHardware } from './hardware'
 import { DEFAULT_ORIGINS, detectLocalServers, type ServerOrigins } from './servers'
+import { edition } from '@main/services/edition'
 
 export interface LocalAIServiceOptions {
   /** Carpeta de los modelos (`<datos>/Models`). */
@@ -186,7 +187,7 @@ export class LocalAIService {
 
   /** Descarga un modelo (y el motor si falta), lo comprueba y lo registra. Dos llamadas para el mismo modelo comparten descarga. */
   download(modelId: string): Promise<InstalledLocalModel> {
-    if (process.mas === true) return Promise.reject(new AulaError('unsupported', tr('Esta edición de la App Store no descarga el motor local de Aula.', 'This App Store edition does not download the Aula local engine.')))
+    if (!edition.externalTools) return Promise.reject(new AulaError('unsupported', tr('Esta edición de la App Store no descarga el motor local de Aula.', 'This App Store edition does not download the Aula local engine.')))
     const existing = this.downloads.get(modelId)
     if (existing) return existing.promise
     const card = catalogCard(modelId, this.catalog)

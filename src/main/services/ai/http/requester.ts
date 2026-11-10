@@ -1,5 +1,6 @@
 // Peticiones HTTP sencillas (sin streaming) con reintentos, plazo y errores claros (port de HTTPRequester.swift).
 // Las usan la lista de modelos y la prueba de conexión.
+import { consentFetchInit } from '../consent'
 import type { JSONValue } from '@shared/ai/json'
 import { AIError, isCancellation } from '../errors'
 import { arr, obj, str } from '../core/json'
@@ -29,7 +30,7 @@ export async function requestData(
     return await withRetry(options, ctx.provider, async () => {
       let res: Response
       try {
-        res = await options.fetch(url, { ...init, signal: controller.signal })
+        res = await options.fetch(url, { ...init, ...consentFetchInit(), signal: controller.signal })
       } catch (err) {
         if (controller.signal.aborted) throw abortReason(controller.signal)
         if (isCancellation(err)) throw err

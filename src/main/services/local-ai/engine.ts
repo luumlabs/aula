@@ -22,6 +22,7 @@ import { ArchiveError, extractArchive, readMarker } from './archive'
 import { Downloader, type FetchLike, type TransferProgress } from './downloader'
 import { LoopbackHTTP } from './loopback'
 import { ENGINE_DEFAULT_PORTS } from './servers'
+import { edition } from '@main/services/edition'
 
 export type EngineErrorKind = 'notInstalled' | 'unsupported' | 'badArchive' | 'signature' | 'startFailed' | 'modelMissing'
 
@@ -330,7 +331,7 @@ export class AulaEngine {
    * firma del ejecutable en macOS y solo entonces lo deja en su sitio. Nada se ejecuta antes de esas comprobaciones.
    */
   async install(progress: (p: TransferProgress) => void = () => undefined, signal?: AbortSignal): Promise<void> {
-    if (process.mas === true) throw new Error(tr('Esta edición de la App Store no descarga el motor local de Aula.', 'This App Store edition does not download the Aula local engine.'))
+    if (!edition.externalTools) throw new Error(tr('Esta edición de la App Store no descarga el motor local de Aula.', 'This App Store edition does not download the Aula local engine.'))
     if (this.isInstalled) return
     mkdirSync(this.folder, { recursive: true })
     const asset = await this.resolveAsset()
@@ -406,7 +407,7 @@ export class AulaEngine {
 
   /** Arranca (o reutiliza) el servidor con este modelo y contexto; si hay otro modelo, lo cambia. Los arranques van en fila. */
   start(options: StartOptions, signal?: AbortSignal): Promise<RunningServer> {
-    if (process.mas === true) return Promise.reject(new Error(tr('Esta edición de la App Store no ejecuta el motor local de Aula.', 'This App Store edition does not run the Aula local engine.')))
+    if (!edition.externalTools) return Promise.reject(new Error(tr('Esta edición de la App Store no ejecuta el motor local de Aula.', 'This App Store edition does not run the Aula local engine.')))
     const run = this.chain.then(
       () => this.startNow(options, signal),
       () => this.startNow(options, signal)

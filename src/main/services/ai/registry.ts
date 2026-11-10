@@ -30,6 +30,7 @@ import { OpenAICompatibleModel } from './providers/openai'
 import { AnthropicModel } from './providers/anthropic'
 import { baseURLParts, hostOf, isLocalOrPrivateHost, openAIModelsURL } from './http/endpoints'
 import { likelyChatModels, modelIDs, sortedUnique } from './http/requester'
+import { consentFetchInit } from './consent'
 import { tryParseJSON } from './core/json'
 import { configFromPreset, modernized, PROVIDER_PRESETS, presetById, type ProviderPreset } from './presets'
 import { cachedCatalog, providerCatalog } from './catalog/cache'
@@ -271,7 +272,7 @@ async function probeLocalServer(entry: ProviderEntry, deps: ProviderDeps): Promi
       const key = resolveDeps(deps).secrets.get(entry.provider.secretRef)
       if (key) headers.Authorization = `Bearer ${key.trim()}`
     }
-    const res = await http.fetch(url, { method: 'GET', headers, signal: ctl.signal })
+    const res = await http.fetch(url, { method: 'GET', headers, ...consentFetchInit(), signal: ctl.signal })
     if (res.status === 401 || res.status === 403) {
       return { available: false, reason: tr('El servidor pide una clave: pégala en los ajustes de IA.', 'The server asks for a key: paste it in AI settings.') }
     }

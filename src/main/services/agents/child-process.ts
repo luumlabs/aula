@@ -14,6 +14,7 @@ import { dirname, join, extname, delimiter } from 'node:path'
 import type { Readable } from 'node:stream'
 import { tr } from '@shared/ai/i18n'
 import { settingsPath } from '@shared/settings/sections'
+import { edition } from '@main/services/edition'
 
 const isWindows = process.platform === 'win32'
 
@@ -190,7 +191,7 @@ export class ChildProcessHandle {
 
   /** Lanza `executable` (sin shell). Lanza `SpawnError` con un motivo en español si no se puede. */
   static async spawn(executable: string, args: string[], options: SpawnOptions): Promise<ChildProcessHandle> {
-    if (process.mas === true) {
+    if (!edition.externalTools) {
       throw new SpawnError(tr('Esta edición de la App Store no ejecuta herramientas externas.', 'This App Store edition does not run external tools.'))
     }
     if (!isExecutableFile(executable)) {

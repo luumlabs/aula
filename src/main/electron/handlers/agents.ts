@@ -9,6 +9,7 @@ import { configureLocalAI, localAI, registerLocalProviders, type FetchLike } fro
 import { invalidateAvailability, registerProviderFactory } from '@main/services/ai/registry'
 import { emit, handle } from '../rpc'
 import { tr } from '@shared/ai/i18n'
+import { edition } from '@main/services/edition'
 
 function flagArg(args: unknown, key: string): boolean {
   return typeof args === 'object' && args !== null && (args as Record<string, unknown>)[key] === true
@@ -30,7 +31,7 @@ export function register(): void {
   const agents = agentsService()
 
   // los agentes CLI los registra el dominio «ai» (`registerCLIProviders`); el motor de Aula, aquí
-  if (process.mas !== true) registerLocalProviders(registerProviderFactory, local)
+  if (edition.externalTools) registerLocalProviders(registerProviderFactory, local)
   local.onProgress((event) => emit('local.progress', event))
 
   const changed = (): void => {

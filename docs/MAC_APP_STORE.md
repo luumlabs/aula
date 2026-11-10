@@ -18,10 +18,19 @@ direct-distribution build hook still refuses to package an MAS app, so this bran
 The prototype also adds a session-only, revocable prompt before OpenAI-compatible and Anthropic chat requests,
 including automatic requests. It displays the destination origin, defaults to declining, requires a visible app window,
 and blocks automatic redirects. Consent is rechecked before retries and denied if the prompt is unavailable; a
-revocation during a pending prompt cannot grant access. These controls have unit and transport tests but no real MAS
-sandbox or accessibility testing. They do not yet establish complete coverage of every network/data path: provider
-model-list and availability checks, web/research requests, platform connections and all third-party disclosures still
-need review before submission.
+revocation during a pending prompt cannot grant access. The prompt only ever appears on Aula's main window; a request
+waits at most two minutes for an answer and can be cancelled meanwhile (the prompt then closes itself); "Not now" is
+remembered for ten minutes per destination; and resetting permissions in Settings also stops requests already in
+flight. Provider model-list and availability checks carry no study content, so they do not prompt, but in this edition
+they refuse redirects too, so a key never follows one to another origin. These controls have unit and transport tests
+but no real MAS sandbox or accessibility testing. They do not yet establish complete coverage of every network/data
+path: web/research requests, platform connections and all third-party disclosures still need review before submission.
+
+What the store edition may do is decided in one module, `src/main/services/edition.ts` (`selfUpdates`,
+`externalTools`, `aiConsent`); nothing else reads `process.mas`. `edition.test.ts` fails if a new file checks
+`process.mas` directly or launches a process outside the modules that already honour the edition, so a new feature
+cannot slip past the boundary unnoticed. The interface reads the edition synchronously from the preload bridge
+(`api.appStore`), so store-only restrictions never depend on a call that could fail.
 
 `docs/PRIVACY-DRAFT.md` is a draft only. A store candidate still needs complete validation of consent and every data
 flow, a final published policy matching the shipped features, profiles and
