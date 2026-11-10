@@ -165,7 +165,8 @@
     "fixSignIn": "Iniciar sesión",
     "fixAI": "Elegir en Ajustes",
     "fixRetry": "Reintentar",
-    "fixBudget": "Ajustar"
+    "fixBudget": "Ajustar",
+    "onMac": "Se arregla en Aula, en tu Mac."
   },
   "automations": {
     "yours": "Tus automatizaciones",

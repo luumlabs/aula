@@ -179,7 +179,7 @@ export default function CalendarScreen() {
           </motion.h1>
           <p className="t-callout text-text2 mt-1">{summary}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <IconButton label={t('prev')} onClick={() => step(-1)}>
             <Icon name="chevron-left" size={16} />
           </IconButton>

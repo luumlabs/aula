@@ -3,7 +3,7 @@
 // siempre a una sección que existe. Si cambias un título en settings.json, cámbialo aquí (lo comprueba una prueba).
 import { aiLocale, type AILocale } from '../ai/i18n'
 
-export type SettingsSection = 'ai' | 'platforms' | 'memory' | 'data' | 'about' | 'appearance' | 'general' | 'persistent'
+export type SettingsSection = 'ai' | 'platforms' | 'memory' | 'data' | 'about' | 'appearance' | 'general' | 'persistent' | 'devices'
 
 export const SETTINGS_TITLE: Record<AILocale, string> = { es: 'Ajustes', en: 'Settings' }
 
@@ -15,7 +15,8 @@ export const SETTINGS_SECTION_NAMES: Record<SettingsSection, Record<AILocale, st
   about: { es: 'Acerca de Aula', en: 'About Aula' },
   appearance: { es: 'Apariencia', en: 'Appearance' },
   general: { es: 'Idioma y avisos', en: 'Language and reminders' },
-  persistent: { es: 'Aula siempre activa', en: 'Aula always on' }
+  persistent: { es: 'Aula siempre activa', en: 'Aula always on' },
+  devices: { es: 'Aula en tus dispositivos', en: 'Aula on your devices' }
 }
 
 /** «Ajustes → Tu IA» / «Settings → Your AI» (en el idioma de la interfaz si no se indica otro). */

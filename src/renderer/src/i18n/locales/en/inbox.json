@@ -165,7 +165,8 @@
     "fixSignIn": "Sign in",
     "fixAI": "Choose in Settings",
     "fixRetry": "Try again",
-    "fixBudget": "Adjust"
+    "fixBudget": "Adjust",
+    "onMac": "Fix it in Aula on your Mac."
   },
   "automations": {
     "yours": "Your automations",

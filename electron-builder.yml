@@ -72,6 +72,10 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # «Aula en tus dispositivos»: el componente de Tailscale (native/tsnet/build.sh lo deja universal), en Resources/bin.
+  # Se firma con el resto de la app. Si no se compiló, el paquete sale sin él y Ajustes lo dice («no trae la red privada»).
+  extraResources:
+    - { from: native/tsnet/bin, to: bin, filter: ["aula-tsnet"] }
   # el .zip (lo que descargan las actualizaciones) se llama como el .dmg: Aula-<v>-mac.zip
   artifactName: Aula-${version}-mac.${ext}
   target:

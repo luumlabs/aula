@@ -4,7 +4,8 @@
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { Button, Chip, EmptyState, Icon, IconButton, Menu, SegmentedTabs, TextField } from '@renderer/design'
+import { Button, Chip, EmptyState, Icon, IconButton, Menu, SegmentedTabs, TextField, cx } from '@renderer/design'
+import { useCompact } from '@renderer/app/shell/CompactTabs'
 import { useScreenTitle } from '@renderer/app/title'
 import { useRpc, useRpcEvent } from '@renderer/lib/useRpc'
 import { useSettings } from '@renderer/lib/settings'
@@ -44,9 +45,23 @@ export default function InboxScreen() {
   const entries = useMemo(() => inbox.data?.entries ?? [], [inbox.data])
   const unread = inbox.data?.unread ?? 0
   const items = snap.data?.items ?? []
+  // en el teléfono: primero el interruptor de «Aula siempre activa» con lo próximo que hará, y debajo las novedades
+  const phone = useCompact()
+  const tabs = (
+    <SegmentedTabs value={ui.tab} onChange={(tab) => ui.set({ tab })} items={[
+      { id: 'inbox', label: t('tabs.inbox'), icon: <Icon name="inbox" size={14} />, ...(unread ? { badge: unread } : {}) },
+      { id: 'automations', label: t('tabs.automations'), icon: <Icon name="repeat" size={14} /> }
+    ]} />
+  )
 
   return (
-    <div className="@container flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pt-1 pb-24">
+    <div className={cx('@container flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-1 pb-24', phone ? 'px-4' : 'px-6')}>
+      {phone ? (
+        <div className="flex flex-col gap-3 pt-1">
+          {snap.data ? <ProactiveCard snapshot={snap.data} compact /> : <div className="h-[104px] skeleton rounded-[22px]" />}
+          <div className="self-start">{tabs}</div>
+        </div>
+      ) : (
       <motion.header initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.36 }} className="flex items-end justify-between gap-4 flex-wrap pt-3">
         <div className="flex items-center gap-4 min-w-0">
           <span className="grid place-items-center w-14 h-14 rounded-[16px] bg-surface border-[0.5px] border-line shadow-[var(--e1)] shrink-0">
@@ -57,13 +72,11 @@ export default function InboxScreen() {
             <p className="t-ui text-text2 mt-0.5">{unread > 0 ? `${t('subtitle.unread', { count: unread })} · ${t('subtitle.what')}` : t('subtitle.allRead')}</p>
           </div>
         </div>
-        <SegmentedTabs value={ui.tab} onChange={(tab) => ui.set({ tab })} items={[
-          { id: 'inbox', label: t('tabs.inbox'), icon: <Icon name="inbox" size={14} />, ...(unread ? { badge: unread } : {}) },
-          { id: 'automations', label: t('tabs.automations'), icon: <Icon name="repeat" size={14} /> }
-        ]} />
+        {tabs}
       </motion.header>
+      )}
 
-      <div className="grid grid-cols-12 gap-4 mt-6">
+      <div className={cx('grid grid-cols-12 gap-4', phone ? 'mt-3' : 'mt-6')}>
         <main className="col-span-12 @5xl:col-span-8 flex flex-col gap-4 min-w-0">
           {ui.tab === 'inbox' ? (
             inbox.error && !inbox.data ? (
@@ -72,7 +85,7 @@ export default function InboxScreen() {
               <ListSkeleton />
             ) : (
               <>
-                <Toolbar entries={entries} unread={unread} />
+                <Toolbar entries={entries} unread={unread} phone={phone} />
                 <InboxList entries={entries} items={items} chatLinked={snap.data?.chatLinked ?? false} />
               </>
             )
@@ -83,7 +96,7 @@ export default function InboxScreen() {
         <aside className="col-span-12 @5xl:col-span-4 flex flex-col gap-4">
           {snap.data ? (
             <>
-              <ProactiveCard snapshot={snap.data} />
+              {!phone && <ProactiveCard snapshot={snap.data} />}
               <UpNextCard snapshot={snap.data} />
               {ui.tab === 'inbox' && <AutomationsMini items={items} />}
             </>
@@ -98,7 +111,7 @@ export default function InboxScreen() {
 }
 
 /** Abiertas · Pospuestas · Archivadas, los tipos (con lo no leído de cada uno), la búsqueda y «Marcar todo como leído». */
-function Toolbar({ entries, unread }: { entries: InboxEntry[]; unread: number }) {
+function Toolbar({ entries, unread, phone }: { entries: InboxEntry[]; unread: number; phone?: boolean }) {
   const { t } = useTranslation('inbox')
   const ui = useInboxUI()
   const now = Date.now()
@@ -115,9 +128,10 @@ function Toolbar({ entries, unread }: { entries: InboxEntry[]; unread: number })
           { id: 'archived', label: t('views.archived') }
         ]} />
         <span className="flex-1" />
-        <div className="w-[220px] max-w-full">
+        {/* en el teléfono se busca con la lupa de arriba */}
+        {!phone && <div className="w-[220px] max-w-full">
           <TextField icon={<Icon name="search" size={14} />} placeholder={t('actions.search')} aria-label={t('actions.search')} value={ui.query} onChange={(e) => ui.set({ query: e.target.value })} className="h-8! text-[13px]!" />
-        </div>
+        </div>}
         {unread > 0 && ui.view === 'open' && <Button size="sm" variant="ghost" icon={<Icon name="check" size={14} />} onClick={inboxOps.markAllRead}>{t('actions.markAllRead')}</Button>}
         <Menu align="end" items={[
           { label: ui.byKind ? t('actions.groupByDay') : t('actions.groupByKind'), icon: <Icon name="layers" size={14} />, onSelect: () => ui.set({ byKind: !ui.byKind }) },
@@ -125,7 +139,7 @@ function Toolbar({ entries, unread }: { entries: InboxEntry[]; unread: number })
         ]} trigger={(open) => <IconButton size="sm" label={t('actions.more')} onClick={open}><Icon name="more" size={16} /></IconButton>} />
       </div>
       {kinds.length > 1 && (
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('filters.label')}>
+        <div className={phone ? '-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&>*]:shrink-0' : 'flex flex-wrap gap-1.5'} role="group" aria-label={t('filters.label')}>
           <Chip active={ui.filter === 'all'} onClick={() => ui.set({ filter: 'all' })}>{t('filters.all')}</Chip>
           {ui.view === 'open' && unreadOf() > 0 && <Chip active={ui.filter === 'unread'} onClick={() => ui.set({ filter: 'unread' })}>{t('filters.unread')} <span className="tabular opacity-70">{unreadOf()}</span></Chip>}
           {kinds.map((k) => (

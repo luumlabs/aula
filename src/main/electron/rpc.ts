@@ -16,7 +16,10 @@ import { log } from '@main/services/log'
 import { userFiles } from '@main/services/userFiles'
 
 export interface RpcContext {
+  /** La ventana que llama. Un dispositivo a distancia no tiene ventana: sus métodos (remote/policy.ts) no la usan. */
   sender: WebContents
+  /** El dispositivo emparejado que llama, si la petición llega por el servidor remoto. */
+  remote?: { deviceId: string }
 }
 
 type Handler<M extends RpcMethod> = (args: RpcArgs<M>, ctx: RpcContext) => Promise<RpcResult<M>> | RpcResult<M>
@@ -36,11 +39,37 @@ export function trustWebContents(wc: WebContents): void {
   wc.once('destroyed', () => trustedSenders.delete(wc.id))
 }
 
-/** Envía un evento a todas las ventanas de la app. */
+const emitTaps = new Set<(event: string, payload: unknown) => void>()
+
+/** Envía un evento a todas las ventanas de la app (y a los dispositivos a distancia que escuchan). */
 export function emit<E extends RpcEvent>(event: E, payload: RpcPayload<E>): void {
   for (const win of BrowserWindow.getAllWindows()) {
     const wc = win.webContents
     if (!wc.isDestroyed() && trustedSenders.has(wc.id)) wc.send(EVENT_CHANNEL, event, payload)
+  }
+  for (const tap of emitTaps) { try { tap(event, payload) } catch (err) { log.warn('[rpc] oyente de eventos', err) } }
+}
+
+/** Recibe una copia de cada evento (el servidor remoto los reenvía a los dispositivos). Devuelve cómo dejar de recibir. */
+export function onEmit(tap: (event: string, payload: unknown) => void): () => void {
+  emitTaps.add(tap)
+  return () => { emitTaps.delete(tap) }
+}
+
+/**
+ * Una llamada de un dispositivo a distancia, ya autenticado y con el método permitido (remote/policy.ts lo decide antes).
+ * Mismo sobre que la ventana: `{ ok, value }` o `{ ok: false, error }`.
+ */
+export async function dispatchRemote(method: string, args: unknown, deviceId: string): Promise<RpcEnvelope<unknown>> {
+  const fn = handlers.get(method)
+  if (!fn) return { ok: false, error: { message: `Método desconocido: ${method}`, code: 'unknown_method' } }
+  try {
+    const value = await fn(args as never, { sender: undefined as unknown as WebContents, remote: { deviceId } })
+    return { ok: true, value }
+  } catch (err) {
+    const info = toErrorInfo(err)
+    if (!(err instanceof AulaError) || info.code === 'internal') log.error(`[rpc remoto] ${method}`, err)
+    return { ok: false, error: info }
   }
 }
 

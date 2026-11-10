@@ -7,6 +7,7 @@ import type { DocumentEntry, DocumentPageText } from '@shared/documents'
 import { timecode } from '@shared/ingest'
 import { cx, Icon } from '@renderer/design'
 import { useReader } from './store'
+import { packAssetUrl } from '@renderer/lib/api'
 
 interface Span { number: number; start: number; end: number }
 
@@ -14,7 +15,7 @@ interface Span { number: number; start: number; end: number }
 function useSpans(entry: DocumentEntry): Span[] | null {
   const [spans, setSpans] = useState<Span[] | null>(null)
   const ref = entry.ref
-  const url = ref.kind === 'source' ? `aula-asset://pack/${encodeURIComponent(ref.packId)}/sources/${encodeURIComponent(ref.sourceId)}/pages.json` : null
+  const url = ref.kind === 'source' ? packAssetUrl(ref.packId, `sources/${ref.sourceId}/pages.json`) : null
   useEffect(() => {
     if (!url) { setSpans([]); return }
     let alive = true

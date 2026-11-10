@@ -1,13 +1,14 @@
 // Barra lateral: Hoy, Aula, Calendario, Herramientas…, tus cursos y «Nuevo curso con Aula». Vive directamente sobre el vidrio de
 // la ventana (sin panel propio): el papel de la derecha es la única hoja, así no asoman esquinas del fondo entre los dos.
 // Se pliega a solo iconos (con una transición CSS del ancho, sin JavaScript por fotograma). La fila elegida se desliza.
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { create } from 'zustand'
 import { Icon, Tooltip, cx, spring, AulaMark, useTheme, type IconName } from '@renderer/design'
 import { useNav, navigate, type Route } from '../router'
 import { SidebarCourses } from './SidebarCourses'
+import { useInboxCount } from './inboxCount'
 import { KeychainNotice } from './KeychainNotice'
 import { UpdateNotice } from './UpdateNotice'
 import { api } from '@renderer/lib/api'
@@ -115,7 +116,8 @@ export function Sidebar({ todayCount = 0 }: { todayCount?: number }) {
           </span>
           {!collapsed && <span className="truncate">{t('nav.newCourse')}</span>}
         </button>
-        {!collapsed && (
+        {/* los ajustes (la IA, las claves, las plataformas) se cambian en el Mac */}
+        {!collapsed && !api.remote && (
           <button onClick={() => navigate({ name: 'settings' })} className={cx('no-drag grid place-items-center w-8 h-8 rounded-[10px] hover:bg-fill1', route.name === 'settings' ? 'text-text bg-fill2' : 'text-text2 hover:text-text')} aria-label={t('nav.settings')} title={t('nav.settings')}>
             <Icon name="settings" size={17} />
           </button>
@@ -140,24 +142,6 @@ export function SidebarToggle({ className }: { className?: string }) {
       <Icon name="inspector" size={17} style={{ transform: 'scaleX(-1)' }} />
     </button>
   )
-}
-
-/** Novedades sin leer (se actualiza con 'automations.inboxChanged'). */
-function useInboxCount(): number {
-  const [n, setN] = useState(0)
-  useEffect(() => {
-    let alive = true
-    api
-      .invoke('automations.inboxCount')
-      .then((v) => alive && setN(v.unread))
-      .catch(() => {})
-    const off = api.on('automations.inboxChanged', (e) => setN(e.unread))
-    return () => {
-      alive = false
-      off()
-    }
-  }, [])
-  return n
 }
 
 /** «f(x)» en serif cursiva, como el botón de herramientas de la app original. */

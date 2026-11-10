@@ -89,6 +89,8 @@ export const ICON_PATHS = {
   "browser": "<rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3.5\"/><path d=\"M3.5 9h17\"/><circle cx=\"6.75\" cy=\"6.75\" r=\"0.8\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"9.25\" cy=\"6.75\" r=\"0.8\" fill=\"currentColor\" stroke=\"none\"/>",
   "globe": "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z\"/>",
   "computer": "<rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"11.5\" rx=\"3\"/><path d=\"M9 20h6M12 16v4\"/>",
+  "tablet": "<rect x=\"4.75\" y=\"3.5\" width=\"14.5\" height=\"17\" rx=\"3\"/><path d=\"M10.5 17.6h3\"/>",
+  "phone": "<rect x=\"7.25\" y=\"3\" width=\"9.5\" height=\"18\" rx=\"2.75\"/><path d=\"M10.75 18.1h2.5\"/>",
   "laptop": "<rect x=\"4.5\" y=\"5.5\" width=\"15\" height=\"10.5\" rx=\"2.5\"/><path d=\"M2.75 19.25h18.5\"/>",
   "plug": "<path d=\"M9 3.5V8M15 3.5V8M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM12 17v3.5\"/>",
   "flow": "<rect x=\"3.5\" y=\"3.5\" width=\"7\" height=\"6\" rx=\"1.75\"/><rect x=\"13.5\" y=\"14.5\" width=\"7\" height=\"6\" rx=\"1.75\"/><path d=\"M7 9.5v4a2 2 0 0 0 2 2h4.5\"/>",
