@@ -1,17 +1,24 @@
-// Release-only checks for the direct-download Mac build. No keychain mutations or secret output.
-// `beforePack` also protects `npm run dist:mac`; `afterSign` runs after electron-builder's notarization.
+// Comprobaciones de una versión pública de macOS (descarga directa). No tocan el llavero ni imprimen secretos.
+// `beforePack` protege también `npm run dist:mac`; `afterSign` se ejecuta tras la notarización de electron-builder.
+// Para probar la app empaquetada sin certificado de Apple: `npm run pack:mac:dev` (solo la carpeta, firma ad hoc).
 const { spawnSync } = require('node:child_process')
 const { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } = require('node:fs')
 const { tmpdir } = require('node:os')
-const { join, resolve } = require('node:path')
+const { basename, join, resolve } = require('node:path')
+const { fromBuilder } = require('./builder-deps.cjs')
 
 const BUNDLE_ID = 'com.luumlabs.aula'
+const JIT_ENTITLEMENT = 'com.apple.security.cs.allow-jit'
 
 function run(command, args) {
   const result = spawnSync(command, args, { encoding: 'utf8', timeout: 120_000 })
-  // Command arguments contain no credentials. Keep subprocess diagnostics out of the error to avoid accidental leaks.
-  if (result.error || result.status !== 0) throw new Error(`Mac release check failed: ${command} ${args[0] || ''}`)
-  return String(result.stdout || '') + String(result.stderr || '')
+  const output = String(result.stdout || '') + String(result.stderr || '')
+  if (result.error || result.status !== 0) {
+    // Estos comandos (codesign, spctl, stapler, hdiutil…) no reciben ni imprimen credenciales: su salida dice qué falló.
+    const detail = (result.error ? String(result.error.message) : output).trim().slice(-1500)
+    throw new Error(`Mac release check failed: ${command} ${args[0] || ''}${detail ? `\n${detail}` : ''}`)
+  }
+  return output
 }
 
 function expectedTeam(env = process.env) {
@@ -22,10 +29,10 @@ function expectedTeam(env = process.env) {
 }
 
 function requireNotarization(env) {
-  // Xcode can submit with its already authenticated developer account. The afterSign hook
-  // must still wait for Apple and validate the stapled app before packaging (see below).
+  // Xcode puede enviar con la cuenta de desarrollador en la que ya tiene sesión. El hook afterSign
+  // espera igualmente a Apple y valida la app con su ticket antes de empaquetar (más abajo).
   if (env.AULA_XCODE_NOTARIZE === '1') return
-  // Follow electron-builder 26's credential precedence, including rejecting partial first-choice credentials.
+  // Mismo orden de credenciales que electron-builder 26; unas credenciales a medias de la primera opción se rechazan.
   if (env.APPLE_ID || env.APPLE_APP_SPECIFIC_PASSWORD) {
     if (!env.APPLE_ID || !env.APPLE_APP_SPECIFIC_PASSWORD) {
       throw new Error('Notarization needs both APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD.')
@@ -61,12 +68,12 @@ function preflight(config, { env = process.env, platform = process.platform, exe
   if (platform !== 'darwin') throw new Error('A public Mac release must be built and verified on macOS.')
   assertConfiguration(config, env)
   const team = expectedTeam(env)
-  if (env.AULA_MAC_ADHOC || env.CSC_IDENTITY_AUTO_DISCOVERY === 'false') {
-    throw new Error('Ad-hoc signing and disabled signing discovery are not allowed for a public Mac release.')
+  if (env.AULA_MAC_ADHOC || env.AULA_MAC_DEV_BUILD || env.CSC_IDENTITY_AUTO_DISCOVERY === 'false') {
+    throw new Error('Ad-hoc signing, development builds and disabled signing discovery are not allowed for a public Mac release.')
   }
   if (env.AULA_AUDIT_BUILD) throw new Error('An audit build cannot be distributed.')
   requireNotarization(env)
-  // CSC_LINK is imported by electron-builder into its temporary keychain. Check the resulting app after signing.
+  // electron-builder importa CSC_LINK a su llavero temporal: en ese caso se comprueba la app ya firmada.
   if (!env.CSC_LINK) {
     const identities = exec('/usr/bin/security', ['find-identity', '-v', '-p', 'codesigning'])
     const qualifier = config.mac.identity || env.CSC_NAME
@@ -83,6 +90,17 @@ function signingRequirement(team, bundle = true) {
   return `${bundle ? `identifier "${BUNDLE_ID}" and ` : ''}anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = "${team}"`
 }
 
+/** La app y cada Helper de Electron necesitan JIT con hardened runtime: sin él, sus procesos no arrancan. */
+function verifyEntitlements(app, exec) {
+  const frameworks = join(app, 'Contents', 'Frameworks')
+  const helpers = existsSync(frameworks) ? readdirSync(frameworks).filter(name => name.endsWith('.app')).map(name => join(frameworks, name)) : []
+  const granted = new RegExp(`<key>${JIT_ENTITLEMENT.replace(/\./g, '\\.')}</key>\\s*<true\\s*/>`)
+  for (const bundle of [app, ...helpers]) {
+    const entitlements = exec('/usr/bin/codesign', ['--display', '--entitlements', '-', '--xml', bundle])
+    if (!granted.test(entitlements)) throw new Error(`The signed app lacks the ${JIT_ENTITLEMENT} entitlement: ${basename(bundle)}`)
+  }
+}
+
 function verifySignature(appPath, { env = process.env, version, exec = run } = {}) {
   const team = expectedTeam(env)
   const app = resolve(appPath)
@@ -97,6 +115,7 @@ function verifySignature(appPath, { env = process.env, version, exec = run } = {
   if (plist.CFBundleIdentifier !== BUNDLE_ID || (version && plist.CFBundleShortVersionString !== version)) {
     throw new Error('The signed app has the wrong bundle ID or version.')
   }
+  verifyEntitlements(app, exec)
   return app
 }
 
@@ -124,34 +143,86 @@ function verifyRelease(folder, version, { env = process.env, platform = process.
     throw new Error('The release directory contains Mac artifacts from a different version.')
   }
   const temp = mkdtempSync(join(tmpdir(), 'aula-mac-verify-'))
-  let mounted = false
   const mount = join(temp, 'image')
+  let mounted = false
+  let failure
   try {
     const extracted = join(temp, 'zip')
     exec('/usr/bin/ditto', ['-x', '-k', zip, extracted])
     verifyApp(onlyApp(extracted), { env, version, exec })
-    exec('/usr/bin/codesign', ['--verify', '--strict', `-R=${signingRequirement(team, false)}`, dmg])
-    // Verify the actual app delivered by the DMG too, not an unrelated staging copy left beside it.
+    // Sin firma (electron-builder.yml → dmg.sign: false), Gatekeeper evalúa la app notarizada que trae el DMG.
+    // Un DMG firmado se evalúa él mismo: tiene que ser del equipo y llevar su propio ticket de notarización.
+    if (isSigned(dmg, exec)) {
+      exec('/usr/bin/codesign', ['--verify', '--strict', `-R=${signingRequirement(team, false)}`, dmg])
+      exec('/usr/bin/xcrun', ['stapler', 'validate', dmg])
+    }
+    // También se comprueba la app que entrega el DMG, no una copia cualquiera que haya quedado a su lado.
     exec('/usr/bin/hdiutil', ['attach', '-readonly', '-nobrowse', '-noautoopen', '-mountpoint', mount, dmg])
     mounted = true
     verifyApp(onlyApp(mount), { env, version, exec })
-  } finally {
-    if (mounted) {
-      // Never recursively remove the temporary directory until the image has detached successfully.
-      exec('/usr/bin/hdiutil', ['detach', mount])
+  } catch (error) {
+    failure = error
+  }
+  if (mounted) {
+    try {
+      detach(mount, exec)
+    } catch (error) {
+      // La carpeta temporal no se borra con la imagen aún montada; el fallo de la comprobación, si lo hubo, va primero.
+      if (!failure) throw error
+      failure.message += `\n(the disk image is still mounted at ${mount})`
+      throw failure
     }
-    rmSync(temp, { recursive: true, force: true })
+  }
+  rmSync(temp, { recursive: true, force: true })
+  if (failure) throw failure
+}
+
+function isSigned(file, exec) {
+  try {
+    exec('/usr/bin/codesign', ['--verify', '--strict', file])
+    return true
+  } catch {
+    return false
   }
 }
 
-function beforePack(context) {
+/** Desmonta la imagen; si sigue ocupada (Gatekeeper la acaba de leer), la fuerza. */
+function detach(mount, exec) {
+  try {
+    exec('/usr/bin/hdiutil', ['detach', mount])
+  } catch {
+    exec('/usr/bin/hdiutil', ['detach', '-force', mount])
+  }
+}
+
+/** Compilación de prueba sin certificado de Apple: solo la carpeta de la app, con firma ad hoc y sin notarizar. */
+function isDevBuild(env = process.env) {
+  return env.AULA_MAC_DEV_BUILD === '1'
+}
+
+function assertDevBuild(context) {
+  const mac = (context.packager && context.packager.platformSpecificBuildOptions) || {}
+  // con `--dir`, electron-builder pasa en macOS una lista de destinos vacía: cualquier destino sería un instalador
+  if ((context.targets || []).some(target => target.name !== 'dir')) {
+    throw new Error('AULA_MAC_DEV_BUILD=1 only builds the unpacked app folder (electron-builder --mac --dir), never a DMG or ZIP.')
+  }
+  if (mac.identity !== '-' || mac.notarize !== false) {
+    throw new Error('AULA_MAC_DEV_BUILD=1 needs an ad-hoc, non-notarized build: use `npm run pack:mac:dev`.')
+  }
+}
+
+function beforePack(context, options) {
+  const env = (options && options.env) || process.env
   if (context.electronPlatformName === 'mas') throw new Error('The App Store build needs its own sandboxed configuration and provisioning profile.')
   if (context.electronPlatformName !== 'darwin') return
-  preflight({ ...context.packager.config, mac: context.packager.platformSpecificBuildOptions })
+  if (isDevBuild(env)) return assertDevBuild(context)
+  preflight({ ...context.packager.config, mac: context.packager.platformSpecificBuildOptions }, { env })
 }
 
 async function afterSign(context) {
   if (context.electronPlatformName !== 'darwin') return
+  // Una compilación de prueba (ad hoc, solo carpeta) no se notariza ni se distribuye: beforePack ya comprobó que lo es.
+  if (isDevBuild()) return
   const app = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`)
   const version = context.packager.appInfo.version
   if (process.env.AULA_XCODE_NOTARIZE === '1') {
@@ -162,15 +233,15 @@ async function afterSign(context) {
   verifyApp(app, { version })
 }
 
-module.exports = { expectedTeam, requireNotarization, assertConfiguration, preflight, signingRequirement, verifySignature, verifyApp, verifyRelease, beforePack, afterSign }
+module.exports = { expectedTeam, requireNotarization, assertConfiguration, preflight, signingRequirement, verifyEntitlements, verifySignature, verifyApp, verifyRelease, beforePack, afterSign }
 
 if (require.main === module) {
   try {
     const [mode, folder, version] = process.argv.slice(2)
     if (mode === '--verify-release' && folder && version) verifyRelease(folder, version)
     else if (mode === '--preflight') {
-      const config = require('js-yaml').load(readFileSync('electron-builder.yml', 'utf8'))
-      // release-local.sh applies this same override to electron-builder when using Xcode.
+      const config = fromBuilder('js-yaml').load(readFileSync('electron-builder.yml', 'utf8'))
+      // release-local.sh aplica este mismo ajuste a electron-builder cuando se notariza con Xcode.
       if (process.env.AULA_XCODE_NOTARIZE === '1') config.mac.notarize = false
       preflight(config)
     }

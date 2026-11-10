@@ -25,7 +25,7 @@ describe('Xcode notarization gate', () => {
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
   })
 
-  function fixture(options: { changedCode?: boolean; changedUnpacked?: boolean; changedArchCode?: boolean; changedArchUnpacked?: boolean; addedArchive?: boolean; removedArchive?: boolean; rejected?: boolean; failFinalVerification?: boolean } = {}) {
+  function fixture(options: { flaky?: number; changedCode?: boolean; changedUnpacked?: boolean; changedArchCode?: boolean; changedArchUnpacked?: boolean; addedArchive?: boolean; removedArchive?: boolean; rejected?: boolean; failFinalVerification?: boolean } = {}) {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'aula-xcode-test-'))
@@ -45,6 +45,7 @@ describe('Xcode notarization gate', () => {
     const runProcess = vi.fn(async (args: string[]) => {
       if (args[0] === '-exportArchive') return { code: 0, tail: 'uploaded' }
       if (options.rejected) return { code: 65, tail: 'error: notarization was rejected' }
+      if (options.flaky && exports < options.flaky) { exports++; return { code: 65, tail: 'error: La solicitud no pudo completarse.' } }
       if (exports++ === 0) return { code: 65, tail: 'error: Archive "Aula.xcarchive" is processing and not ready for distribution.' }
       const archive = args[args.indexOf('-archivePath') + 1]
       const exportDir = args[args.indexOf('-exportPath') + 1]
@@ -83,6 +84,16 @@ describe('Xcode notarization gate', () => {
     expect(f.verifyApp).toHaveBeenCalledTimes(2)
     expect(readFileSync(join(f.app, 'marker'), 'utf8')).toBe('notarized')
     expect(existsSync(`${f.app}.before-xcode-notarization`)).toBe(false)
+  })
+
+  it('retries a few unexplained failures (another Xcode language, a network blip) before giving up', async () => {
+    const f = fixture({ flaky: 2 })
+    await f.invoke()
+    expect(f.wait).toHaveBeenCalledTimes(2)
+    expect(readFileSync(join(f.app, 'marker'), 'utf8')).toBe('notarized')
+    const rejected = fixture({ rejected: true })
+    await expect(rejected.invoke()).rejects.toThrow('notarization was rejected')
+    expect(rejected.runProcess).toHaveBeenCalledTimes(4)
   })
 
   it('leaves the build untouched if Apple rejects it or returns different app code', async () => {

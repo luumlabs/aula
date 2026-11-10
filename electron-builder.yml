@@ -81,7 +81,9 @@ mac:
     - target: zip
       arch: [universal]
 dmg:
-  sign: true
+  # Sin firmar: Gatekeeper evalúa entonces la app notarizada de dentro. Un DMG firmado tendría que notarizarse y llevar
+  # su propio ticket (scripts/build/mac-release-preflight.cjs lo exige si alguna vez se firma).
+  sign: false
   artifactName: Aula-${version}-mac.${ext}
   contents:
     - { x: 150, y: 190 }

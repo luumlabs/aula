@@ -325,7 +325,7 @@ replace itself in `/Applications`, can only be tried by hand (a test macOS accou
 `/Applications/Aula.app` or with your own `HOME`, and delete the signed rehearsal files and the TLS key afterwards.
 The installed app refuses `--remote-debugging-port` (see [What's hardened](#whats-hardened-in-the-package)): to drive a
 packaged build with CDP (`scripts/dev/security-check.mjs`, measurements), build it with `AULA_AUDIT_BUILD=1 npm run build`
-(`release-local.sh` refuses that).
+(`release-local.sh` refuses that) and package it with `npx electron-builder --dir` (on macOS, `npm run pack:mac:dev`).
 
 ## Signing
 
@@ -359,16 +359,18 @@ Apple credentials and the expected Team ID; the output is checked again before u
 is why the preflight and artifact checks are required. `gatekeeperAssess: false` only avoids a premature assessment
 while signing, before the notarization ticket exists; it does not disable the final distribution checks.
 
-Both notarization paths must yield a notarized and stapled `Aula.app`, then create and sign the DMG. Neither path
-staple a separate ticket to the DMG. Describe this precisely as a signed DMG containing a notarized, stapled app.
+Both notarization paths must yield a notarized and stapled `Aula.app`, then create the DMG. The DMG itself is **not
+signed** (`dmg.sign: false`): Gatekeeper then assesses the notarized app it contains. A signed DMG is assessed on its
+own and would need its own notarization ticket, so the release check rejects a signed DMG that has none. Describe the
+download precisely as an unsigned DMG containing a notarized, stapled app.
 Before publishing, test the downloaded, quarantined DMG and first launch on a clean Mac, including offline use.
 Apple [recommends notarizing the outer distribution container](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
-If adding a DMG ticket, do it before generating its blockmap, SHA-512 metadata and Ed25519 signatures, or regenerate
-all of them afterwards; do not mutate an artifact after signing its update metadata.
+To follow that later, sign the DMG, notarize and staple it before generating its blockmap, SHA-512 metadata and
+Ed25519 signatures, or regenerate all of them afterwards; do not mutate an artifact after signing its update metadata.
 
 **Transition from the old local identity:** 0.1.3 checks that an update satisfies the running app's designated
 requirement. A Developer ID build cannot satisfy the previous self-signed certificate's requirement. Users must
-install the signed DMG manually once; the checks in `mac-install.ts` stay intact. Do not promise a seamless automatic
+install the DMG manually once; the checks in `mac-install.ts` stay intact. Do not promise a seamless automatic
 upgrade from those copies. A fully automatic transition would need a separately designed bridge release signed with
 the old identity and pinned to the verified Apple team. That bridge is not part of this release.
 
@@ -496,9 +498,19 @@ logos, add it to `THIRD_PARTY_NOTICES.md`.
 ## Smoke-testing a package locally
 
 ```bash
-npm run dist:linux            # or dist:mac / dist:win on that system
+npm run dist:linux            # or dist:win on that system
 ./release/Aula-0.1.0-linux-x86_64.AppImage --no-sandbox
 ```
+
+On macOS, `npm run dist:mac` is the release build: it needs the Developer ID certificate and notarization credentials
+described in [Signing](#signing). To try the packaged app without them (contributors, audit builds), use:
+
+```bash
+npm run build && npm run pack:mac:dev      # release/mac-<arch>/Aula.app: ad-hoc signed, not notarized
+```
+
+That build is only the unpacked app folder: it never produces a DMG or ZIP, and `release-local.sh` refuses to run
+with `AULA_MAC_DEV_BUILD` set, so it cannot end up in a release.
 
 Playwright cannot drive the packaged app (the fuses disable the inspector): test it by hand or with screenshots
 (`scripts/dev/packaged-shot.sh`). A copy built with `electron-builder --dir` has no `app-update.yml`; it still checks
