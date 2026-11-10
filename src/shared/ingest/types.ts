@@ -14,11 +14,37 @@ export type SourceKind =
   | 'rtf'
   | 'image'
   | 'web'
+  /** Grabación de audio (una clase, un pódcast): su texto es la transcripción, por tramos con su minuto. */
+  | 'audio'
+  /** Vídeo: se transcribe lo que se dice (no se leen los fotogramas). */
+  | 'video'
   | 'unknown'
 
 export const SOURCE_KINDS: readonly SourceKind[] = [
-  'pdf', 'docx', 'pptx', 'xlsx', 'epub', 'html', 'markdown', 'text', 'rtf', 'image', 'web', 'unknown'
+  'pdf', 'docx', 'pptx', 'xlsx', 'epub', 'html', 'markdown', 'text', 'rtf', 'image', 'web', 'audio', 'video', 'unknown'
 ]
+
+/** ¿Es una grabación? Sus «páginas» son tramos de tiempo y se cita por el minuto, no por la página. */
+export const isMediaKind = (kind: string): boolean => kind === 'audio' || kind === 'video'
+
+/** Un instante como se dice en voz alta: «41:20», o «1:02:05» a partir de una hora. */
+export function timecode(seconds: number): string {
+  const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const two = (n: number): string => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`
+}
+
+/** De «41:20», «1:02:05» o «2480» a segundos; undefined si no es un instante. */
+export function parseTimecode(text: string): number | undefined {
+  const t = text.trim()
+  if (/^\d+(\.\d+)?$/.test(t)) return Number(t)
+  const m = /^(?:(\d{1,3}):)?(\d{1,3}):(\d{2})(?:[.,](\d{1,3}))?$/.exec(t)
+  if (!m) return undefined
+  const frac = m[4] ? Number(`0.${m[4]}`) : 0
+  return Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + frac
+}
 
 /**
  * Una «página» de una fuente: página de PDF, diapositiva, hoja de cálculo, capítulo de EPUB…
@@ -41,6 +67,10 @@ export interface SourcePage {
   ocrConfidence?: number
   /** El OCR de esta página tiene poca confianza (< 0,5): conviene revisar el texto. */
   lowConfidence?: boolean
+  /** En una grabación: el segundo en el que empieza este tramo… */
+  start?: number
+  /** …y en el que termina. */
+  end?: number
 }
 
 /** Documento ya leído: texto por páginas, metadatos y advertencias (`SourceDocument` de Swift). */
@@ -65,6 +95,9 @@ export interface SourceChunk {
   pageEnd?: number
   heading?: string
   text: string
+  /** En una grabación: los segundos en los que empieza y termina lo que dice este fragmento. */
+  start?: number
+  end?: number
 }
 
 /** Material registrado en el curso (`pack.json → sources[]`, `SourceMeta` de Swift). */
@@ -84,6 +117,8 @@ export interface SourceMeta {
   trust: SourceTrust
   note?: string
   warnings: string[]
+  /** Duración de una grabación, en segundos. */
+  duration?: number
 }
 
 export type SourceTrust = 'official' | 'book' | 'notes' | 'web' | 'canvas' | 'other'
@@ -117,6 +152,8 @@ export interface SourceHit {
   sourceTitle?: string
   page?: number
   pageEnd?: number
+  /** En una grabación: el segundo en el que empieza el fragmento. */
+  start?: number
   heading?: string
   /** ≈ 200 caracteres alrededor de la coincidencia, con los términos en `**negrita**` (los `*` del texto llegan como `∗`). */
   snippet: string
@@ -134,9 +171,13 @@ export interface PageRasterizer {
   imageToPng?(image: Uint8Array, maxDimension: number): Promise<Uint8Array | null>
 }
 
-/** Cómo citar una ubicación de este tipo de fuente («p. 3», «diapositiva 3», «hoja 2», «cap. 5»). */
-export function locationLabel(kind: SourceKind, page: number, language = 'es'): string {
+/**
+ * Cómo citar una ubicación de este tipo de fuente («p. 3», «diapositiva 3», «hoja 2», «cap. 5»). Una grabación se cita
+ * por el minuto («41:20») si se conoce (`start`, en segundos); si no, por el tramo.
+ */
+export function locationLabel(kind: SourceKind, page: number, language = 'es', start?: number): string {
   const n = String(page)
+  if (isMediaKind(kind)) return start !== undefined ? timecode(start) : language.toLowerCase().startsWith('en') ? `part ${n}` : `tramo ${n}`
   const en = language.toLowerCase().startsWith('en')
   switch (kind) {
     case 'pptx': return en ? `slide ${n}` : `diapositiva ${n}`

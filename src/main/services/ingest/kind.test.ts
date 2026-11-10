@@ -59,7 +59,8 @@ describe('detectKind', () => {
     expect(detectKind(tmp.write('d', bytes('BM', [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0], 'x'.repeat(40))))).toBe('image')
     expect(detectKind(tmp.write('e', bytes('RIFF', [0x10, 0, 0, 0], 'WEBPVP8 ', Array(32).fill(0))))).toBe('image')
     expect(detectKind(tmp.write('f', bytes([0, 0, 0, 0x18], 'ftypheic', Array(32).fill(0))))).toBe('image')
-    expect(detectKind(tmp.write('g', bytes([0, 0, 0, 0x18], 'ftypisom', Array(32).fill(0))))).toBe('unknown')
+    // un MP4 ya no es «desconocido»: es una grabación (vídeo si nada dice que solo lleva audio)
+    expect(detectKind(tmp.write('g', bytes([0, 0, 0, 0x18], 'ftypisom', Array(32).fill(0))))).toBe('video')
   })
 
   it('los Office antiguos (OLE) no se reconocen', () => {

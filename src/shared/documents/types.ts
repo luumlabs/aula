@@ -21,8 +21,8 @@ export type DocumentRef =
 /** De dónde viene, para la biblioteca. */
 export type DocumentOrigin = DocumentRef['kind']
 
-/** Cómo se lee: páginas de PDF dibujadas, una foto, o el texto con la letra de lectura. */
-export type DocumentMode = 'pdf' | 'image' | 'text'
+/** Cómo se lee: páginas de PDF dibujadas, una foto, el texto con la letra de lectura, o una grabación con su transcripción. */
+export type DocumentMode = 'pdf' | 'image' | 'text' | 'media'
 
 /** Una entrada de la biblioteca de documentos. */
 export interface DocumentEntry {

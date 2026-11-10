@@ -1,6 +1,7 @@
 // Materiales: las fuentes del curso (apuntes, libro, exámenes de repaso, web…) con su tipo, páginas y procedencia; abrir el
 // original, leer el texto que extrajo Aula (por páginas) y añadir más: se leen al instante y pasan al curso en cuanto están
 // leídos (aunque se salga de la pestaña); «Ampliar el curso con ellos» es un paso opcional (J2-7).
+import { timecode } from '@shared/ingest'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
@@ -150,7 +151,8 @@ export function MaterialsTab({ pack }: { pack: Pack }) {
                       <span className="block t-callout font-medium truncate">{s.title}</span>
                       <span className="mt-0.5 flex flex-wrap items-center gap-x-1 t-footnote">
                         <span className="uppercase tracking-wide">{s.kind}</span>
-                        {s.pages > 0 && <span>· {t('tab.materials.pages', { count: s.pages })}</span>}
+                        {/* una grabación dice cuánto dura, no cuántas páginas tiene */}
+                        {s.duration ? <span>· {timecode(s.duration)}</span> : s.pages > 0 && <span>· {t('tab.materials.pages', { count: s.pages })}</span>}
                         <span>· <span style={{ color: TRUST_TONE[s.trust] }}>{t(`tab.materials.trust.${s.trust}`)}</span></span>
                         <span>· {fmtDate(s.addedAt, { day: 'numeric', month: 'short' })}</span>
                         {s.status === 'processing' && <span className="inline-flex items-center gap-1 text-text2">· <Spinner size={10} /> {t('tab.materials.reading')}</span>}
@@ -239,7 +241,10 @@ function ReaderDrawer({ pack, source, onClose }: { pack: Pack; source: SourceMet
         ) : (
           pages.map((p, i) => (
             <section key={i} className="flex flex-col gap-2">
-              {p.page !== undefined && <div className="t-eyebrow">{t('tab.materials.page', { n: p.page })}</div>}
+              {/* en una grabación, el minuto en que se dice (y un toque lo abre ahí) */}
+              {p.chunks[0]?.start !== undefined && source
+                ? <button type="button" className="t-eyebrow self-start text-accent-text hover:underline underline-offset-2" onClick={() => openCourseSource(pack.id, source.id, undefined, p.chunks[0].start)}>{timecode(p.chunks[0].start)}</button>
+                : p.page !== undefined && <div className="t-eyebrow">{t('tab.materials.page', { n: p.page })}</div>}
               {p.chunks.map((c) => (
                 <div key={c.id}>
                   {c.heading && <div className="t-headline mb-1">{c.heading}</div>}

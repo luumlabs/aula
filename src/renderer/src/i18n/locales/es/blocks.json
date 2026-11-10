@@ -16,7 +16,8 @@
     "page": "p. {{page}}",
     "pages": "p. {{from}}–{{to}}",
     "yours": "De tus materiales",
-    "open": "Abrir este material"
+    "open": "Abrir este material",
+    "listen": "Escuchar ese momento ({{time}})"
   },
   "recap": {
     "title": "Lo esencial"

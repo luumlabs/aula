@@ -4,6 +4,7 @@
 //   sources/<id>/pages.json      texto por página, figuras y páginas que necesitan OCR (la app Swift lo ignora)
 //   pack.json → sources[]        registro del material (con cerrojo y escritura atómica)
 //   sources/index.json           índice de búsqueda, reconstruido
+import { isMediaKind } from '@shared/ingest'
 import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { IDs } from '@engine/base/ids'
@@ -91,6 +92,8 @@ export function saveIngestedSource(packDir: string, result: IngestResult, option
     trust: options.trust ?? 'other',
     warnings: result.warnings.slice(0, 4)
   }
+  const duration = Number(result.metadata.duration)
+  if (isMediaKind(result.kind) && Number.isFinite(duration) && duration > 0) meta.duration = Math.round(duration)
   if (options.note) meta.note = options.note
   if (options.url) meta.url = options.url
   if (options.originalPath) {

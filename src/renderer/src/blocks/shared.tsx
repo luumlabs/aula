@@ -1,5 +1,6 @@
 // Piezas comunes de los bloques: texto de lectura, fórmula en pantalla, rótulos, pies, el marco de las figuras, la memoria
 // de los bloques interactivos y los ganchos de movimiento (que respetan «Reducir movimiento» y la impresión).
+import { timecode } from '@shared/ingest'
 import { memo, useEffect, useLayoutEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
 import { motion, useInView } from 'motion/react'
 import { useTranslation } from 'react-i18next'
@@ -199,18 +200,20 @@ export function SourceLink({ source, ctx }: { source: SourceRef; ctx: BlockConte
   const t = useBlocksT()
   const title = ctx.sourceTitle?.(source.source)
   const short = title && Array.from(title).length > 48 ? Array.from(title).slice(0, 48).join('') + '…' : title
-  const page = source.page === undefined ? undefined : source.pageEnd !== undefined && source.pageEnd !== source.page ? t('source.pages', { from: source.page, to: source.pageEnd }) : t('source.page', { page: source.page })
+  // una grabación se cita por el minuto en que se dice («Clase 3 · 41:20»)
+  const moment = source.at === undefined ? undefined : source.atEnd !== undefined ? `${timecode(source.at)}–${timecode(source.atEnd)}` : timecode(source.at)
+  const page = moment ?? (source.page === undefined ? undefined : source.pageEnd !== undefined && source.pageEnd !== source.page ? t('source.pages', { from: source.page, to: source.pageEnd }) : t('source.page', { page: source.page }))
   const text = short && page ? `${short} · ${page}` : short ?? (page ? `${t('source.yours')} · ${page}` : t('source.yours'))
   const open = ctx.onOpenSource && ctx.mode !== 'print' ? ctx.onOpenSource : undefined
   const body = (
     <>
-      <Icon name="file-text" size={13} />
+      <Icon name={moment ? 'audio' : 'file-text'} size={13} />
       <span className="truncate">{text}</span>
     </>
   )
   if (!open) return <span className="inline-flex max-w-full items-center gap-1.5 t-ui text-text2">{body}</span>
   return (
-    <button type="button" onClick={() => open(source)} title={t('source.open')} className="inline-flex max-w-full items-center gap-1.5 t-ui text-accent-text rounded-[6px] hover:underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-accent-line">
+    <button type="button" onClick={() => open(source)} title={moment ? t('source.listen', { time: moment }) : t('source.open')} className="inline-flex max-w-full items-center gap-1.5 t-ui text-accent-text rounded-[6px] hover:underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-accent-line">
       {body}
     </button>
   )

@@ -2,6 +2,11 @@
 // `@main/services/assistant` y `@main/services/memory`; aquí se validan los argumentos, se emiten los eventos a la interfaz y se pone
 // lo que solo tiene Electron: el navegador de la plataforma (solo lectura), las imágenes (`nativeImage`), el equipo que crea cursos
 // y la navegación. Las automatizaciones dejan sus mensajes en «Novedades de Aula» por `setInboxChatSink`.
+import { timecode } from '@shared/ingest'
+import { readHead } from '@main/services/ingest/kind'
+import { transcriptPages } from '@main/services/ingest/extract/media'
+import { pickTranscriptionEngine } from '@main/services/media/engines'
+import { transcribeRecording } from '@main/services/media/transcribe'
 import { app, nativeImage } from 'electron'
 import { MAX_MESSAGE_CHARS, type AssistantMessage, type AssistantRef, type AssistantThread, type TutorContext } from '@shared/assistant/types'
 import type { AssistantThreadView } from '@shared/ipc/assistant'
@@ -255,7 +260,7 @@ export function register(): void {
     platform: platformReader,
     team: courseTeam,
     control: appControl,
-    media: { jpeg, thumbnail }
+    media: { jpeg, thumbnail, transcribe: transcribeAttachment }
   })
   // «Novedades de Aula»: las automatizaciones dejan aquí sus mensajes
   setInboxChatSink({ postSystemMessage: (threadId: string, message: AssistantMessage) => assistantService().postSystemMessage(threadId, message) })
@@ -361,4 +366,14 @@ export function register(): void {
     return memoryStatus()
   })
   handle('memory.export', () => ({ fileName: `Aula-memoria-${new Date().toISOString().slice(0, 10)}.json`, json: memoryService().exportJSON() }))
+}
+
+/** Transcribe un audio o vídeo adjuntado al chat con el mismo servicio que los materiales de un curso. */
+async function transcribeAttachment(path: string, language: string): Promise<{ text: string; duration?: number } | undefined> {
+  const head = readHead(path, 64)
+  if (!head) return undefined
+  const t = await transcribeRecording(path, { head, engine: pickTranscriptionEngine(), language })
+  // con los minutos delante de cada tramo: el chat puede decir en qué momento se habló de algo
+  const text = transcriptPages(t.segments).map((p) => `[${timecode(p.start ?? 0)}] ${p.text}`).join('\n')
+  return { text, ...(t.duration !== undefined ? { duration: t.duration } : {}) }
 }

@@ -262,5 +262,11 @@
     "savedInCourse": "Saved in the course: you’ll find it in Documents.",
     "show": "Show",
     "saveFailed": "Couldn’t save"
+  },
+  "media": {
+    "transcript": "Transcript",
+    "playFrom": "Play from {{time}}",
+    "cannotPlay": "This computer can’t play the recording, but everything that is said is here.",
+    "empty": "Nothing was transcribed from this recording."
   }
 }

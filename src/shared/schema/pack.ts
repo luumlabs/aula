@@ -103,10 +103,12 @@ export interface SourceMeta {
   trust: SourceTrust
   note?: string
   warnings: string[]
+  /** Duración de una grabación (audio o vídeo), en segundos. */
+  duration?: number
 }
 
-/** Fragmento de texto de una fuente (para buscar y citar). */
-export interface SourceChunk { id: string; sourceID: ItemID; ordinal: number; page?: number; pageEnd?: number; heading?: string; text: string }
+/** Fragmento de texto de una fuente (para buscar y citar). En una grabación, `start` y `end` son sus segundos. */
+export interface SourceChunk { id: string; sourceID: ItemID; ordinal: number; page?: number; pageEnd?: number; heading?: string; text: string; start?: number; end?: number }
 
 export interface GenerationRecord {
   id: string
@@ -269,7 +271,7 @@ export function decodeSourceMeta(raw: unknown): SourceMeta | undefined {
     id: flexStr(c, 'id') ?? IDs.short(6), title: flexStr(c, 'title') ?? 'Fuente', kind: str(c, 'kind') ?? 'text', filename: str(c, 'filename'), url: str(c, 'url'),
     addedAt: date(c, 'addedAt') ?? nowISO(), pages: int(c, 'pages') ?? 0, characters: int(c, 'characters') ?? 0,
     status: swiftEnum(c, 'status', SOURCE_STATUSES, 'ready', 'ready', 'ready'), trust: swiftEnum(c, 'trust', SOURCE_TRUSTS, 'other', 'other', 'other'),
-    note: str(c, 'note'), warnings: strings(c, 'warnings')
+    note: str(c, 'note'), warnings: strings(c, 'warnings'), duration: num(c, 'duration')
   })
 }
 
@@ -281,7 +283,8 @@ export function decodeSourceChunk(raw: unknown): SourceChunk | undefined {
   const opt = <T>(v: unknown, f: (x: unknown) => T | undefined): T | undefined | null => (v === undefined || v === null ? undefined : f(v) ?? null)
   const page = opt(raw.page, vInt), pageEnd = opt(raw.pageEnd, vInt), heading = opt(raw.heading, vStr)
   if (page === null || pageEnd === null || heading === null) return undefined
-  return prune({ id, sourceID, ordinal, page, pageEnd, heading, text })
+  const time = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined)
+  return prune({ id, sourceID, ordinal, page, pageEnd, heading, text, start: time(raw.start), end: time(raw.end) })
 }
 
 export function decodeGenerationRecord(raw: unknown): GenerationRecord | undefined {
@@ -374,8 +377,8 @@ export function encodeBlueprint(v: ExamBlueprint): JSONObject {
 }
 
 export const encodeSourceMeta = (v: SourceMeta): JSONObject =>
-  pickKeys(v, ['id', 'title', 'kind', 'filename', 'url', 'addedAt', 'pages', 'characters', 'status', 'trust', 'note', 'warnings'])
-export const encodeSourceChunk = (v: SourceChunk): JSONObject => pickKeys(v, ['id', 'sourceID', 'ordinal', 'page', 'pageEnd', 'heading', 'text'])
+  pickKeys(v, ['id', 'title', 'kind', 'filename', 'url', 'addedAt', 'pages', 'characters', 'status', 'trust', 'note', 'warnings', 'duration'])
+export const encodeSourceChunk = (v: SourceChunk): JSONObject => pickKeys(v, ['id', 'sourceID', 'ordinal', 'page', 'pageEnd', 'heading', 'text', 'start', 'end'])
 export const encodeGenerationRecord = (v: GenerationRecord): JSONObject =>
   pickKeys(v, ['id', 'date', 'provider', 'model', 'summary', 'promptTokens', 'completionTokens', 'status'])
 

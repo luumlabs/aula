@@ -1,4 +1,5 @@
 // Detección del tipo de una fuente (port de SourceKindDetection.swift): firma de los primeros bytes, extensión y contenido.
+import { mediaKindForExtension, mediaSignature } from '../media/formats'
 import { closeSync, openSync, readSync, realpathSync, statSync } from 'node:fs'
 import { extname } from 'node:path'
 import type { SourceKind } from '@shared/ingest'
@@ -32,7 +33,7 @@ export function kindForExtension(ext: string): SourceKind | null {
     case 'rtf': return 'rtf'
     case 'png': case 'jpg': case 'jpeg': case 'jpe': case 'jfif': case 'heic': case 'heif': case 'tif': case 'tiff': case 'webp': case 'gif': case 'bmp': case 'avif':
       return 'image'
-    default: return TEXT_EXTENSIONS.has(ext) ? 'text' : null
+    default: return mediaKindForExtension(ext) ?? (TEXT_EXTENSIONS.has(ext) ? 'text' : null)
   }
 }
 
@@ -156,6 +157,10 @@ export function detectKind(path: string): SourceKind {
     case 'zip': return refineZip(path, byExtension)
     default: break
   }
+  // 1b. Grabaciones (MP4, MP3, WAV, WebM…): la firma dice que lo es; que sea solo audio o vídeo lo afina la extensión
+  const media = mediaSignature(head)
+  const namedMedia = byExtension === 'audio' || byExtension === 'video'
+  if (media && (namedMedia || !media.weak)) return namedMedia ? byExtension : media.audioOnly ? 'audio' : 'video'
   // 2. Extensión conocida (sin firma binaria: texto, HTML… o un archivo dañado que el extractor explicará)
   if (byExtension) return byExtension
   // 3. Extensiones de texto que el sistema conoce

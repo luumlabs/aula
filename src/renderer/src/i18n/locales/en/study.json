@@ -616,9 +616,9 @@
         "other": "Other"
       },
       "addTitle": "Add materials",
-      "addBody": "Notes, slides, past exams or photos: Aula reads them right away, and the tutor cites them.",
+      "addBody": "Notes, slides, past exams, photos or a class recording: Aula reads them (or transcribes them) and the tutor cites them.",
       "drop": "Drop files here or choose them",
-      "kinds": "PDF, Word, PowerPoint, images, EPUB…",
+      "kinds": "PDF, Word, PowerPoint, images, EPUB, and class recordings (audio or video)…",
       "use": "Expand the course with them",
       "addFailed": "The files couldn’t be added",
       "openFailed": "The original couldn’t be opened",

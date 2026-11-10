@@ -1,5 +1,6 @@
 // Piezas compartidas de los modos de estudio: el contexto de los bloques del curso, anotar un resultado en el progreso
 // (con el motor, al instante) y salir al curso.
+import { openCourseSource } from '../documents/lib'
 import { useMemo } from 'react'
 import type { Exercise, Pack } from '@shared/schema'
 import { recordAttempt, recordStudyTime, type AttemptRecord } from '@engine/study'
@@ -22,7 +23,8 @@ export function useBlockCtx(pack: Pack, skillId?: string, extra: Partial<BlockCo
         skillId,
         hue: pack.hue,
         sourceTitle: (id) => pack.sources.find((s) => s.id === id)?.title,
-        onOpenSource: () => navigate({ name: 'course', id: pack.id, tab: 'materials' }),
+        // la cita abre el material en su página, o la grabación en su minuto; si ya no está, la lista de materiales
+        onOpenSource: (ref) => (pack.sources.some((s) => s.id === ref.source) ? openCourseSource(pack.id, ref.source, ref.page, ref.at) : navigate({ name: 'course', id: pack.id, tab: 'materials' })),
         exactText: isLanguageCourse(pack),
         ...extra
       }),

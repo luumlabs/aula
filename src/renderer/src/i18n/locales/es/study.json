@@ -616,9 +616,9 @@
         "other": "Otro"
       },
       "addTitle": "Añadir materiales",
-      "addBody": "Apuntes, diapositivas, exámenes de repaso o fotos: Aula los lee al momento, y el tutor los cita.",
+      "addBody": "Apuntes, diapositivas, exámenes de repaso, fotos o la grabación de una clase: Aula los lee (o los transcribe) y el tutor los cita.",
       "drop": "Suelta archivos aquí o elígelos",
-      "kinds": "PDF, Word, PowerPoint, imágenes, EPUB…",
+      "kinds": "PDF, Word, PowerPoint, imágenes, EPUB, y grabaciones de clase (audio o vídeo)…",
       "use": "Ampliar el curso con ellos",
       "addFailed": "No se pudieron añadir los archivos",
       "openFailed": "No se pudo abrir el original",

@@ -4,6 +4,7 @@ import type { JSONObject } from '@engine/base/json'
 import {
   bool, enumOf, flexStr, int, isObj, list, num, pickKeys, prune, str, strictPoints, vInt, vStr, type ItemID, type Obj
 } from './coding'
+import { parseTimecode, timecode } from '../ingest/types'
 
 /** Referencia a un pasaje de las fuentes del usuario («el libro, p. 83»). */
 export interface SourceRef {
@@ -15,6 +16,10 @@ export interface SourceRef {
   chunk?: string
   /** Cita corta textual. */
   quote?: string
+  /** En una grabación (audio o vídeo): el segundo en el que se dice («Clase 3, 41:20»)… */
+  at?: number
+  /** …y, si es un tramo, en el que termina. */
+  atEnd?: number
 }
 
 /** Decodificación estricta (sin `init(from:)` propio en Swift): un campo con el tipo equivocado invalida la referencia. */
@@ -26,13 +31,22 @@ export function decodeSourceRef(raw: unknown): SourceRef | undefined {
   const optStr = (k: string): string | undefined | null => (raw[k] === undefined || raw[k] === null ? undefined : vStr(raw[k]) ?? null)
   const page = optInt('page'), pageEnd = optInt('pageEnd'), chunk = optStr('chunk'), quote = optStr('quote')
   if (page === null || pageEnd === null || chunk === null || quote === null) return undefined
-  return prune({ source, page, pageEnd, chunk, quote })
+  // el instante admite segundos (2480) o lo que escribe una persona («41:20»); uno que no se entiende se ignora, sin perder la cita
+  const at = secondsOf(raw.at ?? raw.time ?? raw.timestamp), atEnd = secondsOf(raw.atEnd)
+  return prune({ source, page, pageEnd, chunk, quote, at, atEnd: at !== undefined && atEnd !== undefined && atEnd > at ? atEnd : undefined })
 }
 
-export const encodeSourceRef = (v: SourceRef): JSONObject => pickKeys(v, ['source', 'page', 'pageEnd', 'chunk', 'quote'])
+function secondsOf(v: unknown): number | undefined {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? parseTimecode(v) : undefined
+  return n !== undefined && Number.isFinite(n) && n >= 0 && n < 360_000 ? Math.floor(n) : undefined
+}
+
+export const encodeSourceRef = (v: SourceRef): JSONObject => pickKeys(v, ['source', 'page', 'pageEnd', 'chunk', 'quote', 'at', 'atEnd'])
 
 /** Texto de la cita («p. 12», «p. 12–14», «fuente»). */
 export function sourceRefLabel(r: SourceRef, words: { page: string; source: string } = { page: 'p.', source: 'fuente' }): string {
+  // una grabación se cita por el minuto
+  if (r.at !== undefined) return r.atEnd !== undefined ? `${timecode(r.at)}–${timecode(r.atEnd)}` : timecode(r.at)
   if (r.page !== undefined) {
     if (r.pageEnd !== undefined && r.pageEnd !== r.page) return `${words.page} ${r.page}–${r.pageEnd}`
     return `${words.page} ${r.page}`

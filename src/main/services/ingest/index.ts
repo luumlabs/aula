@@ -3,7 +3,8 @@
 // Todo se puede cancelar con `signal` e informa del progreso con `onProgress(fracción 0…1, mensaje)`. Si hay un lector
 // aparte (`setIngestRunner`, el proceso de utilidad de Electron), la lectura se hace allí; el guardado, siempre aquí.
 import type { IngestInput, IngestResult, SourceDocument, SourceTrust } from '@shared/ingest'
-import { fullText } from '@shared/ingest'
+import { fullText, isMediaKind } from '@shared/ingest'
+import { detectKind } from './kind'
 import { chunkDocument, type ChunkOptions } from './chunker'
 import { checkCancelled } from './errors'
 import { L } from './messages'
@@ -29,13 +30,24 @@ export function resultFromDocument(doc: SourceDocument, options: Pick<IngestCall
   const title = options.title !== undefined && options.title.trim() ? tidyTitle(options.title, doc.title) : doc.title
   const sourceID = options.sourceID ?? newSourceID(title)
   const named = { ...doc, title }
+  const chunks = chunkDocument(named, sourceID, options.chunk)
+  // en una grabación cada fragmento sabe en qué segundos cae (los de su primer y su último tramo)
+  if (isMediaKind(doc.kind)) {
+    const pageAt = new Map(doc.pages.map((p) => [p.number, p]))
+    for (const c of chunks) {
+      const first = c.page !== undefined ? pageAt.get(c.page) : undefined
+      const last = pageAt.get(c.pageEnd ?? c.page ?? -1) ?? first
+      if (first?.start !== undefined) c.start = first.start
+      if (last?.end !== undefined) c.end = last.end
+    }
+  }
   return {
     sourceID,
     kind: doc.kind,
     title,
     pages: doc.pages,
     text: fullText(doc),
-    chunks: chunkDocument(named, sourceID, options.chunk),
+    chunks,
     warnings: doc.warnings,
     metadata: doc.metadata,
     pagesNeedingOCR: doc.pages.filter((p) => p.needsOCR).map((p) => p.number)
@@ -60,11 +72,17 @@ export function ingestText(text: string, title = '', options: Pick<IngestCallOpt
 /** Documento de cualquier entrada (archivo, dirección o texto), sin fragmentar. Usa el lector aparte si lo hay. */
 export async function readInput(input: IngestInput, options: Partial<IngestOptions> = {}): Promise<SourceDocument> {
   const runner = ingestRunner()
-  if (runner && canDelegate(options)) {
+  // una grabación se transcribe aquí: el servicio de transcripción (red y clave) vive en este proceso, no en el lector aparte
+  if (runner && canDelegate(options) && !isRecording(input)) {
     checkCancelled(options.signal)
     return runner.read(input, options)
   }
   return readInputHere(input, options)
+}
+
+function isRecording(input: IngestInput): boolean {
+  if (input.type !== 'file') return false
+  try { return isMediaKind(detectKind(input.path)) } catch { return false }
 }
 
 /** Lee cualquier entrada (archivo, dirección o texto). */

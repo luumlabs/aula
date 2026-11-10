@@ -1,5 +1,6 @@
 // Canal de lectura (port de Ingest.swift y de `WebIngest` de WebFetcher.swift): comprueba el archivo, detecta su tipo, llama
 // al extractor y aplica los retoques comunes (límite de páginas, título razonable, metadatos y avisos acotados).
+import { extractMedia } from './extract/media'
 import { randomUUID } from 'node:crypto'
 import { accessSync, constants, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -84,6 +85,7 @@ export async function readDocument(requested: string, partial: Partial<IngestOpt
       break
     }
     case 'image': doc = await extractImage(path, ctx); break
+    case 'audio': case 'video': doc = await extractMedia(path, kind, ctx); break
     case 'web': return readWeb(requested, options)
     case 'unknown':
       if (isPasswordProtectedOffice(path)) throw passwordProtected(name)
