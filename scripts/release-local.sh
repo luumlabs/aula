@@ -143,6 +143,8 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then die "La etiqueta 
 node scripts/release-sign.mjs --check-key || die "Sin la clave de firma de las actualizaciones no se puede publicar (docs/PUBLISHING.md)."
 # nunca una compilación de auditoría (acepta --remote-debugging-port, src/main/electron/debug-guard.ts)
 [ -z "${AULA_AUDIT_BUILD:-}" ] || die "AULA_AUDIT_BUILD está puesto: eso es para auditar, nunca para publicar. Quítalo (unset AULA_AUDIT_BUILD)."
+# ni una compilación de prueba de macOS (firma ad hoc, solo carpeta: npm run pack:mac:dev)
+[ -z "${AULA_MAC_DEV_BUILD:-}" ] || die "AULA_MAC_DEV_BUILD está puesto: eso es para probar la app empaquetada, nunca para publicar. Quítalo (unset AULA_MAC_DEV_BUILD)."
 # Antes de compilar, comprueba los requisitos de firma y notarización de macOS (sin tocar el llavero).
 for p in "${ONLY[@]}"; do
   [ "$p" = mac ] || continue
@@ -179,8 +181,8 @@ for p in "${ONLY[@]}"; do
   case "$p" in
     mac) [ "$(uname)" = Darwin ] || die "El instalador de macOS solo se puede compilar (y firmar) en un Mac."
          MAC_OPTS=()
-         # Xcode's signed-in account can submit to Apple without a separate notarytool key.
-         # The required afterSign hook submits, waits and verifies the ticket before installers exist.
+         # La cuenta con sesión en Xcode puede enviar a Apple sin una clave aparte de notarytool.
+         # El hook afterSign, obligatorio, envía, espera y comprueba el ticket antes de que existan los instaladores.
          if [ "${AULA_XCODE_NOTARIZE:-}" = 1 ]; then MAC_OPTS=(-c.mac.notarize=false); fi
          npx electron-builder --mac --publish never -c.directories.output="$OUT" ${MAC_OPTS[@]+"${MAC_OPTS[@]}"}
          node scripts/build/mac-release-preflight.cjs --verify-release "$OUT" "$VERSION" ;;

@@ -77,6 +77,7 @@ download its `.deb` from the [releases](https://github.com/luumlabs/aula/release
 |---|---|
 | macOS can't verify the developer, or there's no *Open* button | Check that you downloaded the published signed release. Report a signature or notarization warning before proceeding; the candidate is not yet distributed. |
 | macOS says the app is damaged | Download the signed release again from the project and report the warning if it persists. |
+| Aula 0.1.3 or earlier won't open (those versions aren't notarized by Apple) | On macOS 15 or later, try to open it, then go to *System Settings → Privacy & Security* and click *Open Anyway*. On macOS 13 and 14, right-click Aula and choose *Open*. If macOS says it is damaged, move Aula to *Applications* and run `xattr -dr com.apple.quarantine /Applications/Aula.app` in Terminal. |
 | macOS doesn't install an update | Check that Aula is in *Applications*, not in *Downloads* or running from the .dmg. *Settings → About* says what went wrong and lets you try again or download the update. |
 | The AppImage doesn't start | Make it executable (`chmod +x`). It needs FUSE 2: `sudo apt install libfuse2` (on Ubuntu 24.04 and later, `libfuse2t64`). |
 | Ubuntu 23.10 or later, with the AppImage | Ubuntu restricts the user namespaces that Chromium's sandbox needs, so the AppImage starts with that sandbox turned off. Aula still works, but the pages it opens (your study platform, for example) are less isolated. On x64, use the `.deb` instead: it keeps the sandbox on by installing the AppArmor profile Ubuntu needs. |
@@ -293,7 +294,8 @@ npm run dev                 # the app with hot reload
 | `npm test` | Unit tests (vitest) |
 | `npm run build` | Builds into `out/` |
 | `npm run e2e` | Builds and runs the end-to-end tests on the real Electron app with a simulated AI (on Linux, prefix it with `xvfb-run -a`) |
-| `npm run dist:mac` · `dist:win` · `dist:linux` | Installers into `release/` |
+| `npm run dist:mac` · `dist:win` · `dist:linux` | Installers into `release/` (`dist:mac` needs Aula's Apple Developer ID certificate) |
+| `npm run pack:mac:dev` | After `npm run build`: the packaged Mac app in `release/`, ad-hoc signed, to try it without a certificate |
 
 Handy environment variables: `AULA_HOME` (use another data folder), `AULA_FAKE_AI=1` (a simulated AI, for tests) and
 `AULA_NO_UPDATES=1`. Publishing a release is described in [`docs/PUBLISHING.md`](docs/PUBLISHING.md).

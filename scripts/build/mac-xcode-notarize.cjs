@@ -1,12 +1,16 @@
-// Optional notarization through the developer account already signed in to Xcode.
-// Nothing is packaged until Apple has returned an app with a valid, stapled ticket.
+// Notarización opcional con la cuenta de desarrollador en la que Xcode ya tiene sesión.
+// No se empaqueta nada hasta que Apple devuelve una app con un ticket válido y grapado.
 const { createHash } = require('node:crypto')
 const { spawn, spawnSync } = require('node:child_process')
 const { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, writeFileSync } = require('node:fs')
 const { tmpdir } = require('node:os')
 const { basename, dirname, join, resolve } = require('node:path')
 const { setTimeout: delay } = require('node:timers/promises')
-const plist = require('plist')
+const { fromBuilder } = require('./builder-deps.cjs')
+const plist = fromBuilder('plist')
+
+// Fallos seguidos sin explicación que se toleran al preguntar a Apple antes de darlo por rechazado.
+const MAX_UNEXPLAINED = 3
 
 function isProcessing(output) {
   return /is processing and not ready for distribution/i.test(output)
@@ -35,9 +39,8 @@ function treeDigest(root) {
 
 function appResourcesDigest(app) {
   const resources = join(app, 'Contents', 'Resources')
-  // Universal Electron apps can use separate app-x64.asar and app-arm64.asar
-  // archives alongside a small app.asar entry point. Compare every archive
-  // and unpacked tree, including their names, before accepting the export.
+  // Una app universal de Electron puede llevar app-x64.asar y app-arm64.asar junto a un app.asar pequeño de entrada.
+  // Se comparan todos los archivos y carpetas desempaquetadas, con sus nombres, antes de aceptar lo exportado.
   const names = readdirSync(resources).filter(name => name.endsWith('.asar') || name.endsWith('.asar.unpacked')).sort()
   if (!names.includes('app.asar')) throw new Error('The signed Aula app is missing app.asar.')
   return JSON.stringify(names.map(name => {
@@ -126,10 +129,17 @@ async function notarizeWithXcode(appPath, {
     console.log('Apple is processing the notarization request; no release artifact will be created until it passes.')
     const deadline = now() + 60 * 60_000
     let received = false
+    let unexplained = 0
     while (now() < deadline) {
       const result = await runProcess(['-exportNotarizedApp', '-archivePath', archive, '-exportPath', exported], 2 * 60_000)
       if (result.code === 0 && !result.timedOut) { received = true; break }
-      if (result.timedOut || !isProcessing(result.tail)) throw new Error('Apple did not return a notarized Aula app. Check the archive in Xcode Organizer.')
+      // El aviso de «sigue procesando» depende del idioma y la versión de Xcode, y la consulta puede fallar por la red:
+      // un fallo sin explicación se reintenta unas pocas veces antes de darlo por rechazado.
+      if (!result.timedOut && isProcessing(result.tail)) unexplained = 0
+      else if (++unexplained >= MAX_UNEXPLAINED) {
+        const detail = String(result.tail || '').trim().slice(-600)
+        throw new Error(`Apple did not return a notarized Aula app. Check the archive in Xcode Organizer.${detail ? `\n${detail}` : ''}`)
+      }
       await wait(20_000)
     }
     if (!received) throw new Error('Apple is still processing Aula after one hour. Check the archive in Xcode Organizer.')
@@ -142,8 +152,8 @@ async function notarizeWithXcode(appPath, {
     runTool('/usr/bin/xcrun', ['stapler', 'staple', notarized])
     verifyApp(notarized, { version })
 
-    // Keep the original until the copied, notarized app has passed the same verification in its
-    // final packaging location. Restore it if anything fails; no DMG/ZIP is produced on failure.
+    // El original se conserva hasta que la copia notarizada pasa la misma comprobación en su sitio definitivo.
+    // Si algo falla se restaura, y no se genera ningún DMG ni ZIP.
     const backup = `${app}.before-xcode-notarization`
     if (existsSync(backup)) throw new Error('A previous notarization backup already exists; inspect it before continuing.')
     renameSync(app, backup)

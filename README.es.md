@@ -75,6 +75,7 @@ descarga su `.deb` de las [versiones publicadas](https://github.com/luumlabs/aul
 |---|---|
 | macOS no puede verificar al desarrollador, o no aparece *Abrir* | Comprueba que descargaste la versión firmada publicada. Comunica cualquier aviso de firma o notarización antes de continuar; la candidata aún no se distribuye. |
 | macOS dice que la app está dañada | Descarga de nuevo la versión firmada desde el proyecto y comunica el aviso si continúa. |
+| Aula 0.1.3 o anterior no se abre (esas versiones no están notarizadas por Apple) | En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. Si macOS dice que está dañada, mueve Aula a *Aplicaciones* y ejecuta `xattr -dr com.apple.quarantine /Applications/Aula.app` en el Terminal. |
 | macOS no instala una actualización | Comprueba que Aula está en *Aplicaciones* y no en *Descargas* ni abierta desde el .dmg. *Ajustes → Acerca de* explica qué pasó y te deja reintentarlo o descargar la actualización. |
 | La AppImage no arranca | Hazla ejecutable (`chmod +x`). Necesita FUSE 2: `sudo apt install libfuse2` (en Ubuntu 24.04 y posteriores, `libfuse2t64`). |
 | Ubuntu 23.10 o posterior, con la AppImage | Ubuntu restringe los espacios de nombres de usuario que necesita el aislamiento (*sandbox*) de Chromium, así que la AppImage arranca con ese aislamiento apagado. Aula funciona igual, pero las páginas que abre (tu plataforma de estudio, por ejemplo) quedan menos aisladas. En x64, mejor instala el `.deb`: mantiene el aislamiento porque instala el perfil de AppArmor que Ubuntu necesita. |
@@ -293,7 +294,8 @@ npm run dev                 # la app con recarga en caliente
 | `npm test` | Pruebas unitarias (vitest) |
 | `npm run build` | Compila en `out/` |
 | `npm run e2e` | Compila y pasa las pruebas de extremo a extremo con la app Electron real y una IA simulada (en Linux, ponle delante `xvfb-run -a`) |
-| `npm run dist:mac` · `dist:win` · `dist:linux` | Instaladores en `release/` |
+| `npm run dist:mac` · `dist:win` · `dist:linux` | Instaladores en `release/` (`dist:mac` necesita el certificado Developer ID de Apple de Aula) |
+| `npm run pack:mac:dev` | Tras `npm run build`: la app de Mac empaquetada en `release/`, con firma ad hoc, para probarla sin certificado |
 
 Variables de entorno útiles: `AULA_HOME` (otra carpeta de datos), `AULA_FAKE_AI=1` (una IA simulada, para pruebas) y
 `AULA_NO_UPDATES=1`. Cómo publicar una versión está en [`docs/PUBLISHING.md`](docs/PUBLISHING.md).

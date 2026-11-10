@@ -29,6 +29,7 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
+    "pack:mac:dev": "AULA_MAC_DEV_BUILD=1 electron-builder --mac --dir -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

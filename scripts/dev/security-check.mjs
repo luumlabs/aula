@@ -48,7 +48,7 @@ if (exe) {
   if (!browser && exitCode !== null) {
     // la app de release no abre CDP (src/main/electron/debug-guard.ts): es lo que tiene que pasar
     check('la app empaquetada rechaza --remote-debugging-port (sale sin abrir CDP)', exitCode === 1, `código ${exitCode}`)
-    console.log('  (para comprobar el resto, una compilación de auditoría: AULA_AUDIT_BUILD=1 npm run build && npx electron-builder --dir)')
+    console.log('  (para comprobar el resto, una compilación de auditoría: AULA_AUDIT_BUILD=1 npm run build && npx electron-builder --dir; en macOS, npm run pack:mac:dev)')
     process.exit(bad ? 1 : 0)
   }
   if (!browser) throw new Error('No se pudo conectar con la app empaquetada')
