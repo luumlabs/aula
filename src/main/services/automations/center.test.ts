@@ -2,6 +2,8 @@
 // AutomationTests.swift y AutomationV2Tests.swift): una asignación nueva se avisa UNA vez, la sesión caducada se avisa sin
 // abrir nunca la ventana, recuperación con tope, reintentos, presupuesto, rutinas sin IA, bandeja y seguimientos.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import type { PackSummary } from '@shared/schema/library'
+import type { AutomationStudio } from './env'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -107,8 +109,12 @@ class Env implements AutomationEnvironment {
   withdrawn: string[] = []
   timeZone() { return TZ }
   async events(from: Date, to: Date) { return this.events_.filter((e) => e.start >= from && e.start <= to) }
-  packs() { return [] }
-  packIDForEvent() { return undefined }
+  packs_: PackSummary[] = []
+  packOf: Record<string, string> = {}
+  studio_: AutomationStudio | null = null
+  packs() { return this.packs_ }
+  packIDForEvent(id: string) { return this.packOf[id] }
+  studio() { return this.studio_ }
   async studySummary() { return null }
   async model() { return this.model_ }
   language(): 'es' { return 'es' }
@@ -126,10 +132,67 @@ function setup(start: number) {
   return { env, center, run }
 }
 
-const quietOff = (): ProactiveSettings => ({ ...defaultProactiveSettings(), enabled: true, quiet: { enabled: false, from: '22:30', to: '07:30' }, morningBrief: false, platformCheck: false, deadlineReminders: false, examOffers: false, weeklySummary: false })
+const quietOff = (): ProactiveSettings => ({ ...defaultProactiveSettings(), enabled: true, quiet: { enabled: false, from: '22:30', to: '07:30' }, morningBrief: false, platformCheck: false, deadlineReminders: false, prepareAhead: false, examOffers: false, weeklySummary: false })
 const ev = (id: string, title: string, kind: string, start: number, course?: string): RoutineEvent => ({ id, title, kind, start: new Date(start), allDay: false, ...(course ? { course } : {}), origin: 'own' })
 
 // MARK: Pruebas
+
+describe('adelantar trabajo', () => {
+  const prepareOnly = (): ProactiveSettings => ({ ...quietOff(), prepareAhead: true })
+
+  it('sin nada cerca la pasada no llama a la IA; con una prueba mañana, deja el repaso hecho y no lo repite', async () => {
+    const { env, center, run } = setup(at(2026, 10, 12, 8, 30))
+    const asked: string[] = []
+    const reviews: Array<{ courseID: string; instruction: string }> = []
+    env.packs_ = [{ id: 'calculo', title: 'Cálculo I', icon: 'math', hue: 0.6 } as unknown as PackSummary]
+    env.studio_ = { createReview: async (r) => { reviews.push(r); return { runID: 'run-1' } }, saveGuide: async () => ({ docKey: 'saved:calculo:g1' }) }
+    env.model_ = scripted((_req, results, step) => {
+      if (step === 0) return { calls: [{ name: 'prepare_review', args: { event_id: 'own:prueba', title: 'Repaso para la prueba de mañana: límites', instruction: 'Límites laterales y continuidad, con 8 ejercicios tipo examen.', why: 'la prueba es mañana' } }] }
+      if (step === 1) return { calls: [{ name: 'report_check', args: { summary: (JSON.parse(results[0]) as { ok: boolean }).ok ? 'Mañana tienes la prueba de límites: te dejé un repaso corto en Cálculo I.' : 'No pude.', items: [{ key: 'own:prueba', title: 'Prueba de límites', kind: 'exam' }], important: true } }] }
+      return { text: 'ok' }
+    }, asked)
+    await center.setProactive(prepareOnly())
+    await center.waitIdle()
+    // nada cerca: ni una llamada a la IA
+    await run(at(2026, 10, 12, 11, 0, 30))
+    expect(asked).toEqual([])
+    expect(reviews).toEqual([])
+    // aparece una prueba para mañana, con curso en Aula
+    env.events_ = [ev('own:prueba', 'Prueba de límites', 'quiz', at(2026, 10, 13, 12, 0), 'MAT 101'), ev('own:lejos', 'Examen final', 'exam', at(2026, 10, 30, 9, 0))]
+    env.packOf = { 'own:prueba': 'calculo', 'own:lejos': 'calculo' }
+    center.invalidateEvents()
+    await run(at(2026, 10, 12, 14, 0, 30))
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toContain('event_id=own:prueba')
+    expect(asked[0]).toContain('prepare_review')
+    expect(asked[0]).not.toContain('own:lejos')
+    expect(reviews).toEqual([{ courseID: 'calculo', instruction: expect.stringContaining('Límites laterales') }])
+    const told = env.chats.find((c) => c.message.text.includes('te dejé un repaso'))
+    expect(told?.message.cards.some((k) => k.actions.some((x) => x.kind === 'open' && x.ref?.courseID === 'calculo'))).toBe(true)
+    // la siguiente pasada: ya está hecho, no se repite ni se gasta
+    await run(at(2026, 10, 12, 17, 0, 30))
+    expect(asked).toHaveLength(1)
+    expect(reviews).toHaveLength(1)
+  })
+
+  it('una entrega cercana sin curso en Aula: la guía llega entera en el mensaje', async () => {
+    const { env, center, run } = setup(at(2026, 10, 12, 8, 30))
+    const guide = '## Qué piden\n' + 'Un informe de laboratorio con introducción, método, resultados y conclusiones. '.repeat(5)
+    env.studio_ = { createReview: async () => ({ runID: 'r' }), saveGuide: async () => ({ docKey: 'x' }) }
+    env.events_ = [ev('own:informe', 'Informe de laboratorio', 'assignment', at(2026, 10, 14, 23, 0), 'QUI 110')]
+    env.model_ = scripted((_req, _results, step) => {
+      if (step === 0) return { calls: [{ name: 'save_guide', args: { event_id: 'own:informe', title: 'Guía para el informe de laboratorio', markdown: guide } }] }
+      if (step === 1) return { calls: [{ name: 'report_check', args: { summary: 'El informe vence el miércoles: te dejé una guía para organizarlo.', items: [], important: true } }] }
+      return { text: 'ok' }
+    })
+    await center.setProactive(prepareOnly())
+    await center.waitIdle()
+    await run(at(2026, 10, 12, 11, 0, 30))
+    const told = env.chats.find((c) => c.message.text.includes('te dejé una guía'))
+    expect(told?.message.text).toContain('## Guía para el informe de laboratorio')
+    expect(told?.message.text).toContain('introducción, método, resultados')
+  })
+})
 
 describe('una revisión completa', () => {
   it('aparece una asignación nueva → se avisa una sola vez; la sesión caducada, sin abrir nunca la ventana', async () => {
@@ -265,7 +328,7 @@ describe('«Aula siempre activa»', () => {
     const offer = env.chats.find((c) => c.message.cards.some((k) => k.actions.some((x) => x.kind === 'prepareCourse' && x.value === 'own:parcial')))
     expect(offer?.message.text).toContain('Parcial de Química')
     expect(env.notices.some((n) => n.title === '¿Preparo «Parcial de Química»?')).toBe(true)
-    expect(new Set((await center.items()).map((i) => i.automation.routine))).toEqual(new Set(['morningBrief', 'platformCheck', 'deadlineReminders', 'examOffers', 'weeklySummary']))
+    expect(new Set((await center.items()).map((i) => i.automation.routine))).toEqual(new Set(['morningBrief', 'platformCheck', 'prepareAhead', 'deadlineReminders', 'examOffers', 'weeklySummary']))
     // la oferta no se repite; sin IA, el resumen de la mañana sale igual
     await run(at(2026, 10, 13, 7, 46, 30))
     expect(env.chats.filter((c) => c.message.cards.some((k) => k.actions.some((x) => x.kind === 'prepareCourse'))).length).toBe(1)

@@ -1,6 +1,7 @@
 // Una revisión con IA (AutomationRunner.swift): arma las herramientas de solo lectura, las instrucciones y el bucle de agente,
 // vigila el presupuesto que le queda (se corta a mitad si lo pasa) y traduce los fallos a «pasajero / del proveedor /
 // presupuesto / detenida».
+import type { PrepareCandidate } from '@shared/automations'
 import { emptyUsage, usageTotal, type Usage } from '@shared/ai/types'
 import { tr } from '@shared/ai/i18n'
 import type { AssistantCard } from '@shared/assistant/types'
@@ -51,6 +52,10 @@ export interface AutomationAgentOutput {
   signIn?: { site: string; accountId: string }
   cards: AssistantCard[]
   created: string[]
+  /** Eventos para los que dejó algo hecho (adelantar trabajo). */
+  prepared: string[]
+  /** Guías que van enteras en el mensaje (no había curso donde guardarlas). */
+  guides: Array<{ title: string; markdown: string }>
   tokens: number
   estimated: boolean
   provider: string
@@ -73,6 +78,8 @@ export interface RunOptions {
   events: readonly RoutineEvent[]
   study: HomeSummary | null
   followup?: (draft: { title: string; instruction: string; when: Date }) => Promise<{ id: string; at: string }>
+  /** Adelantar trabajo: los eventos que el planificador eligió para esta pasada. */
+  candidates?: readonly PrepareCandidate<RoutineEvent>[]
   signal?: AbortSignal
 }
 
@@ -92,13 +99,15 @@ async function runInner(o: RunOptions): Promise<AutomationAgentOutput> {
   const tab = 'automation-' + a.id.slice(0, 40)
   const packs = o.env.packs()
   const tools = automationTools({
-    automation: a, log, events: o.events, study: o.study, packs, platforms: ready ? platforms : null, accounts, tab, now: o.now, followup: o.followup
+    automation: a, log, events: o.events, study: o.study, packs, platforms: ready ? platforms : null, accounts, tab, now: o.now, followup: o.followup,
+    studio: o.env.studio?.() ?? null, candidates: o.candidates
   })
   const system = systemPrompt(o.env.language())
   const prompt = turnPrompt(a, {
     why: o.why, previous: o.previous, known: o.state.seen, baseline: !o.state.baselineDone, platforms: a.capabilities.includes('platform') ? accounts.map((x) => ({ label: x.label, url: x.url })) : [],
     browserReady: ready, browserProblem: problem ?? undefined, courses: packs.map((p) => ({ id: p.id, title: p.title, examDate: p.examDate })),
-    dailyMinutes: o.study?.today.minutesGoal ?? 60, proactive: o.proactive, now: o.now, tz
+    dailyMinutes: o.study?.today.minutesGoal ?? 60, proactive: o.proactive, now: o.now, tz,
+    candidates: (o.candidates ?? []).map((c) => ({ eventID: c.event.id, title: c.event.title, kind: c.kind, eventKind: c.event.kind, start: c.event.start, hoursLeft: c.hoursLeft, course: packs.find((p) => p.id === c.packID)?.title ?? c.event.course, courseID: c.packID, url: c.event.url }))
   })
   const provider = [o.model.providerName, o.model.model].filter((x) => !!x).join(' · ')
   // lo gastado hasta ahora: el acumulado que da el proveedor o, si aún no dijo nada, una estimación por pasos
@@ -162,7 +171,7 @@ async function runInner(o: RunOptions): Promise<AutomationAgentOutput> {
   }
   return {
     summary, findings: report?.items ?? [], conditionMet: report?.conditionMet ?? false, important: report?.important ?? false,
-    skipped: [...(report?.skipped ?? []), ...log.blocked], ...(signIn ? { signIn } : {}), cards: log.cards, created: log.created,
+    skipped: [...(report?.skipped ?? []), ...log.blocked], ...(signIn ? { signIn } : {}), cards: log.cards, created: log.created, prepared: log.prepared, guides: log.guides,
     tokens, estimated, provider, reported: !!report, pages: log.pages
   }
 }

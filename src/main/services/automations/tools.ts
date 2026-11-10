@@ -9,7 +9,8 @@ import { parseISODate } from '@engine/calendar/time'
 import { tr } from '@shared/ai/i18n'
 import type { Automation, AutomationFinding } from '@shared/automations'
 import type { AgentTool } from '../ai'
-import type { AutomationPlatformAccount, AutomationPlatforms } from './env'
+import type { PrepareCandidate } from '@shared/automations'
+import type { AutomationPlatformAccount, AutomationPlatforms, AutomationStudio } from './env'
 import type { RoutineEvent } from './routines'
 import { actionsCard, cardAction } from './routines'
 import { clip } from './texts'
@@ -31,6 +32,10 @@ export class RunLog {
   readonly blocked: string[] = []
   readonly cards: AssistantCard[] = []
   readonly created: string[] = []
+  /** Eventos para los que esta pasada dejó algo hecho (un repaso, una guía): no se vuelven a adelantar. */
+  readonly prepared: string[] = []
+  /** Guías que no tuvieron curso donde guardarse: van enteras en el mensaje. */
+  readonly guides: Array<{ title: string; markdown: string }> = []
   pages = 0
   report?: AutomationReport
 
@@ -102,6 +107,9 @@ export interface ToolsContext {
   now: Date
   /** Programa un seguimiento (solo con «Aula siempre activa»). Devuelve cuándo quedó. */
   followup?: (draft: { title: string; instruction: string; when: Date }) => Promise<{ id: string; at: string }>
+  /** Adelantar trabajo: con qué crear y para qué eventos (los que eligió el planificador). */
+  studio?: AutomationStudio | null
+  candidates?: readonly PrepareCandidate<RoutineEvent>[]
 }
 
 export function reportCheckTool(log: RunLog): AgentTool {
@@ -269,6 +277,98 @@ function followupTool(c: ToolsContext): AgentTool {
   }
 }
 
+// MARK: Adelantar trabajo
+
+/** El evento de esta pasada al que se refiere la herramienta (solo los que eligió el planificador). */
+function candidateFor(c: ToolsContext, eventID: string | undefined, kind: PrepareCandidate['kind']): PrepareCandidate<RoutineEvent> | { error: string } {
+  const list = (c.candidates ?? []).filter((x) => x.kind === kind)
+  const found = list.find((x) => x.event.id === eventID)
+  if (found) return found
+  return { error: `Unknown event_id for a ${kind}. Use one of: ${list.map((x) => `${x.event.id} («${x.event.title}»)`).join(', ') || 'none in this pass'}.` }
+}
+
+function prepareReviewTool(c: ToolsContext): AgentTool {
+  return {
+    name: 'prepare_review',
+    description: "Create NOW, on your own, a short review inside the student's Aula course for an exam or quiz that is close (a compact lesson of what matters most plus exam-style practice). It runs in the background and the student finds it ready in the course. One per event.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'the exam or quiz this review is for (from the list you were given)' },
+        title: { type: 'string', description: 'short, in the student\'s language, e.g. «Repaso para la prueba de mañana: límites»' },
+        instruction: { type: 'string', description: 'precise instruction for the course team: which topics (the weakest and the ones the exam covers), what to include (key ideas, a worked example of each type, 8–10 exam-style exercises), and that it must be SHORT (one lesson)' },
+        why: { type: 'string', description: 'one line for the student: why you made it (e.g. «porque la prueba es mañana y derivadas es lo que más te cuesta»)' }
+      },
+      required: ['event_id', 'title', 'instruction']
+    },
+    async run(args) {
+      if (!c.studio) return out({ ok: false, error: 'Creating reviews is not available here.' })
+      const cand = candidateFor(c, str(args.event_id), 'review')
+      if ('error' in cand) return out({ ok: false, error: cand.error })
+      if (c.log.prepared.includes(cand.event.id)) return out({ ok: false, error: 'You already prepared something for this event in this pass.' })
+      const pack = c.packs.find((p) => p.id === cand.packID)
+      const instruction = str(args.instruction)
+      if (!pack || !instruction) return out({ ok: false, error: !pack ? 'That event has no Aula course.' : "Missing 'instruction'." })
+      const title = clip(str(args.title) ?? tr(`Repaso: ${cand.event.title}`, `Review: ${cand.event.title}`), 120)
+      try {
+        await c.studio.createReview({ courseID: pack.id, instruction: `${title}\n\n${clip(instruction, 2400)}` })
+      } catch (err) {
+        return out({ ok: false, error: err instanceof Error ? err.message : String(err) })
+      }
+      c.log.prepared.push(cand.event.id)
+      c.log.created.push(tr(`Repaso en «${pack.title}»: ${title}`, `Review in “${pack.title}”: ${title}`))
+      c.log.cards.push(actionsCard(title, [
+        cardAction('open', tr('Abrir el curso', 'Open the course'), { symbol: 'course', prominent: true, ref: { kind: 'course', courseID: pack.id, title: pack.title, icon: pack.icon, hue: pack.hue } }),
+        cardAction('openCalendar', tr('Ver en el calendario', 'See in the calendar'), { symbol: 'calendar', value: cand.event.id })
+      ], { detail: str(args.why) ? clip(str(args.why)!, 200) : pack.title, icon: 'refine' }))
+      return out({ ok: true, note: 'The review is being created in the course now; it will be ready in a few minutes. Tell the student in the summary what you made and why.' })
+    }
+  }
+}
+
+function saveGuideTool(c: ToolsContext): AgentTool {
+  return {
+    name: 'save_guide',
+    description: "Save NOW, on your own, a guide that helps the student get an assignment done: what is being asked, what to review first (with the course lessons that cover it), a step-by-step plan with times, a checklist and common mistakes. NEVER the assignment itself: no answers, no drafted text to hand in. One per event.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'the assignment this guide is for (from the list you were given)' },
+        title: { type: 'string', description: 'short, in the student\'s language, e.g. «Guía para la entrega: Práctica 3»' },
+        markdown: { type: 'string', description: 'the guide, 250–700 words, Markdown with ## headings, in the student\'s language' },
+        why: { type: 'string', description: 'one line for the student: why you made it' }
+      },
+      required: ['event_id', 'title', 'markdown']
+    },
+    async run(args) {
+      const cand = candidateFor(c, str(args.event_id), 'guide')
+      if ('error' in cand) return out({ ok: false, error: cand.error })
+      if (c.log.prepared.includes(cand.event.id)) return out({ ok: false, error: 'You already prepared something for this event in this pass.' })
+      const markdown = str(args.markdown)?.trim() ?? ''
+      if (markdown.length < 200) return out({ ok: false, error: 'The guide is too short to help: write the plan, the checklist and what to review (250–700 words).' })
+      const title = clip(str(args.title) ?? tr(`Guía: ${cand.event.title}`, `Guide: ${cand.event.title}`), 120)
+      const pack = c.packs.find((p) => p.id === cand.packID)
+      const actions = []
+      let saved = false
+      if (pack && c.studio) {
+        try {
+          const r = await c.studio.saveGuide({ courseID: pack.id, title, markdown: clip(markdown, 12_000) })
+          actions.push(cardAction('openDocument', tr('Abrir la guía', 'Open the guide'), { symbol: 'file-text', prominent: true, value: r.docKey }))
+          saved = true
+        } catch { /* si no se pudo guardar, la guía va entera en el mensaje */ }
+      }
+      if (cand.event.url) actions.push(cardAction('openURL', tr('Abrir en la plataforma', 'Open on the platform'), { symbol: 'external', value: cand.event.url }))
+      actions.push(cardAction('ask', tr('Repasarla juntos', 'Go through it together'), { symbol: 'chat', prominent: !saved, value: tr(`Repasemos juntos la guía de la entrega «${cand.event.title}» y empecemos por el primer paso.`, `Let's go through the guide for the assignment “${cand.event.title}” and start with the first step.`) }))
+      c.log.prepared.push(cand.event.id)
+      c.log.created.push(tr(`Guía: ${title}`, `Guide: ${title}`))
+      // sin curso donde guardarla, la guía se entrega tal cual en el mensaje
+      if (!saved) c.log.guides.push({ title, markdown: clip(markdown, 12_000) })
+      c.log.cards.push(actionsCard(title, actions, { detail: str(args.why) ? clip(str(args.why)!, 200) : (pack?.title ?? cand.event.course), icon: 'checklist' }))
+      return out({ ok: true, saved, note: saved ? 'Saved in the course documents. Mention it in the summary.' : 'Kept: it will be delivered inside your message. Mention it in the summary.' })
+    }
+  }
+}
+
 /** Las herramientas de esta revisión según lo que puede mirar la automatización. */
 export function automationTools(c: ToolsContext): AgentTool[] {
   const a = c.automation
@@ -277,6 +377,7 @@ export function automationTools(c: ToolsContext): AgentTool[] {
   if (a.capabilities.includes('courses')) tools.push(studyTool(c))
   if (a.capabilities.includes('platform')) tools.push(...platformTools(c))
   if (a.capabilities.includes('study') && a.capabilities.includes('courses')) tools.push(offerReviewTool(c))
+  if (a.capabilities.includes('prepare') && c.candidates?.length) tools.push(prepareReviewTool(c), saveGuideTool(c))
   if (c.followup) tools.push(followupTool(c))
   tools.push(reportCheckTool(c.log))
   return tools

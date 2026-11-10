@@ -20,7 +20,7 @@ import { resolveActiveModel } from '../ai'
 import { log } from '../log'
 import { dataRoot, paths } from '../paths'
 import { AutomationCenter } from './center'
-import type { AutomationEnvironment, AutomationPlatforms, InboxChatSink } from './env'
+import type { AutomationEnvironment, AutomationPlatforms, InboxChatSink, AutomationStudio } from './env'
 import { StudyReminders, type StudyReminderNotice } from './reminders'
 import { AutomationStore } from './store'
 
@@ -34,6 +34,8 @@ export { runAutomationCheck, AutomationRunError } from './runner'
 /** Lo que pone el proceso principal de Electron (navegador, notificaciones, chat). */
 export interface AutomationHooks {
   platforms?: () => AutomationPlatforms | null
+  /** Lo que Aula puede crear sola al adelantar trabajo (la tubería de cursos y los documentos). */
+  studio?: () => AutomationStudio | null
   notify?: (n: AutomationNotice) => void
   withdraw?: (entryIDs: string[]) => void
   notifyReminder?: (n: StudyReminderNotice) => void
@@ -62,6 +64,7 @@ export function defaultEnvironment(): AutomationEnvironment {
     model: async () => { try { return await resolveActiveModel() } catch { return null } },
     language: () => aiLocale(),
     platforms: () => hooks.platforms?.() ?? null,
+    studio: () => hooks.studio?.() ?? null,
     chat: () => chatSink,
     notify: (n) => hooks.notify?.(n),
     withdraw: (ids) => hooks.withdraw?.(ids)

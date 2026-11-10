@@ -170,6 +170,7 @@ export function routineTitle(r: ProactiveRoutine): string {
     case 'platformCheck': return tr('Revisión de la plataforma', 'Platform check')
     case 'deadlineReminders': return tr('Recordatorios de entregas y exámenes', 'Deadline and exam reminders')
     case 'examOffers': return tr('Exámenes sin preparar', 'Exams to prepare')
+    case 'prepareAhead': return tr('Adelantar trabajo', 'Get ahead')
     case 'weeklySummary': return tr('Resumen semanal', 'Weekly summary')
   }
 }
@@ -181,6 +182,7 @@ export function routineOriginTitle(r: ProactiveRoutine): string {
     case 'platformCheck': return tr('Revisión de tu plataforma', 'Check of your platform')
     case 'deadlineReminders': return tr('Recordatorio', 'Reminder')
     case 'examOffers': return tr('Se acerca un examen', 'An exam is coming up')
+    case 'prepareAhead': return tr('Aula te adelantó trabajo', 'Aula got ahead for you')
     case 'weeklySummary': return tr('Resumen semanal', 'Weekly summary')
   }
 }
@@ -190,6 +192,7 @@ export function routineDetail(r: ProactiveRoutine): string {
     case 'morningBrief': return tr('Tus clases de hoy, lo que vence pronto y qué estudiar hoy según el plan de cada curso.', "Today's classes, what's due soon and what to study today from each course's plan.")
     case 'platformCheck': return tr('Mira qué hay nuevo en tu plataforma (materiales, anuncios, la clase de hoy) y te prepara un repasito.', "Looks at what's new on your platform (materials, announcements, today's class) and prepares a quick review.")
     case 'deadlineReminders': return tr('Te avisa antes de cada entrega y examen, y te propone prepararlo juntos.', 'Reminds you before each deadline and exam, and offers to prepare it together.')
+    case 'prepareAhead': return tr('Si tienes una prueba o una entrega cerca, Aula se adelanta sola: te deja hecho un repaso corto en el curso o una guía para organizar la entrega, y te avisa.', 'If a quiz or a deadline is near, Aula gets ahead on its own: it leaves a short review in the course or a guide to plan the assignment, and tells you.')
     case 'examOffers': return tr('Si se acerca un examen y no tienes curso para él, te ofrece prepararlo con un clic.', "If an exam is coming up and you don't have a course for it, offers to prepare it in one click.")
     case 'weeklySummary': return tr('El domingo: cómo te fue la semana y qué viene.', 'On Sunday: how your week went and what is coming.')
   }
@@ -209,6 +212,7 @@ export function automationSymbol(a: Automation): string {
     case 'platformCheck': return 'inbox'
     case 'deadlineReminders': return 'bell'
     case 'examOffers': return 'exam'
+    case 'prepareAhead': return 'refine'
     case 'weeklySummary': return 'calendar'
   }
   if (a.origin === 'aula') return 'repeat'

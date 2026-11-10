@@ -34,7 +34,8 @@ export interface AutomationSchedule {
   eventKinds: CalendarEventKind[]
 }
 
-export const AUTOMATION_CAPABILITIES = ['platform', 'calendar', 'courses', 'web', 'study'] as const
+/** `prepare`: crear ayuda de estudio dentro de Aula sin pedirlo (un repaso en un curso, una guía). Solo la usa la rutina de adelantar trabajo. */
+export const AUTOMATION_CAPABILITIES = ['platform', 'calendar', 'courses', 'web', 'study', 'prepare'] as const
 /** Lo que una automatización puede mirar o hacer (siempre en SOLO LECTURA fuera de Aula). */
 export type AutomationCapability = (typeof AUTOMATION_CAPABILITIES)[number]
 export const DEFAULT_CAPABILITIES: AutomationCapability[] = ['platform', 'calendar', 'courses']
@@ -46,14 +47,14 @@ export type AutomationNotifyPolicy = (typeof NOTIFY_POLICIES)[number]
 /** Quién la creó: el estudiante, la IA (seguimiento) o una rutina de «Aula siempre activa». */
 export type AutomationOrigin = 'student' | 'aula' | 'routine'
 
-export const PROACTIVE_ROUTINES = ['morningBrief', 'platformCheck', 'deadlineReminders', 'examOffers', 'weeklySummary'] as const
+export const PROACTIVE_ROUTINES = ['morningBrief', 'platformCheck', 'prepareAhead', 'deadlineReminders', 'examOffers', 'weeklySummary'] as const
 export type ProactiveRoutine = (typeof PROACTIVE_ROUTINES)[number]
 
 /** Rutinas sin IA (no gastan nada): funcionan con la app abierta aunque «Aula siempre activa» esté apagada. */
 export const LIGHT_ROUTINES: readonly ProactiveRoutine[] = ['deadlineReminders', 'examOffers']
 /** ¿Necesita la IA? (las demás son deterministas). */
 export function routineUsesAI(r: ProactiveRoutine): boolean {
-  return r === 'morningBrief' || r === 'platformCheck' || r === 'weeklySummary'
+  return r === 'morningBrief' || r === 'platformCheck' || r === 'weeklySummary' || r === 'prepareAhead'
 }
 
 /** Una tarea automática. */
@@ -180,6 +181,8 @@ export interface ProactiveSettings {
   platformCheck: boolean
   platformCheckTime: TimeText
   platformCheckDays: number[]
+  /** Adelantar trabajo: preparar por su cuenta el repaso de un examen cercano o la guía de una entrega. */
+  prepareAhead: boolean
   deadlineReminders: boolean
   reminderHours: number[]
   examOffers: boolean
@@ -284,6 +287,10 @@ export interface AutomationBook {
   usage: Record<string, number>
   followups: Record<string, number>
   offeredEvents: string[]
+  /** Eventos para los que Aula ya adelantó algo (un repaso, una guía): no se repite. */
+  preparedEvents: string[]
+  /** Cuánto adelantó cada día («2026-11-10» → 2), para no pasarse. */
+  preparedPerDay: Record<string, number>
   readUpdatesAt?: ISODate
   budgetNotifiedDay?: string
   lastTick?: ISODate

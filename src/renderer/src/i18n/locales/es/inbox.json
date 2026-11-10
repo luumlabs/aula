@@ -128,7 +128,9 @@
     "runsLeft_other": "Hoy queda para unas {{count}} revisiones más.",
     "exhausted": "Hoy ya se usó lo previsto. Lo urgente sigue llegando con una reserva; lo demás vuelve mañana.",
     "upNext": "Lo próximo",
-    "upNextEmpty": "Cuando actives «Aula siempre activa», aquí verás lo que hará y cuándo."
+    "upNextEmpty": "Cuando actives «Aula siempre activa», aquí verás lo que hará y cuándo.",
+    "moreDetail": "Qué hace y cuándo",
+    "lessDetail": "Ocultar el detalle"
   },
   "routines": {
     "morningBrief": "Resumen de la mañana",
@@ -142,7 +144,10 @@
     "examOffersDetail": "Si se acerca un examen sin curso, te ofrece prepararlo.",
     "weeklySummaryDetail": "Cómo te fue la semana y qué viene.",
     "examOffersWhen_one": "≤ {{count}} día",
-    "examOffersWhen_other": "≤ {{count}} días"
+    "examOffersWhen_other": "≤ {{count}} días",
+    "prepareAhead": "Adelantar trabajo",
+    "prepareAheadDetail": "Si hay una prueba o una entrega cerca, te deja hecho un repaso o una guía.",
+    "prepareAheadWhen": "cada 3 h"
   },
   "health": {
     "paused": "En pausa",
@@ -284,7 +289,7 @@
     "day": "el {{day}} a las {{time}}"
   },
   "settingsCard": {
-    "hint": "Te resume el día, te avisa de entregas y exámenes, revisa tu plataforma y te prepara repasos, aunque cierres la ventana. En tu plataforma solo lee: nunca entrega, empieza exámenes, envía mensajes ni cambia nada.",
+    "hint": "Enciéndela y Aula sigue trabajando por ti aunque cierres la ventana. No hay nada más que configurar.",
     "style": "Estilo",
     "styles": {
       "quiet": "Discreta",
@@ -306,6 +311,13 @@
     "openAtLoginHint": "Al cerrar la ventana, Aula sigue en la bandeja haciendo lo programado.",
     "followups": "Que Aula se programe seguimientos",
     "followupsHint": "«Esta noche miro si el profesor subió las diapositivas y te aviso». Gastan del mismo presupuesto.",
-    "manage": "Rutinas y automatizaciones"
+    "manage": "Rutinas y automatizaciones",
+    "does": [
+      "Revisa tu plataforma y tu calendario, y te avisa de lo que viene.",
+      "Si hay una prueba o una entrega cerca, te deja hecho un repaso corto o una guía para organizarla.",
+      "Solo lee tu plataforma: nunca entrega, escribe ni cambia nada allí."
+    ],
+    "more": "Más opciones",
+    "less": "Menos opciones"
   }
 }

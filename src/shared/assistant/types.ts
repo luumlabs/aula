@@ -50,6 +50,8 @@ export interface AssistantFact {
 export type AssistantCardActionKind =
   | 'ask' | 'open' | 'openURL' | 'prepareCourse' | 'adjustCourse' | 'extendCourse' | 'signIn' | 'runAutomation' | 'openAutomation'
   | 'pauseAutomation' | 'cancelAutomation' | 'openToday' | 'openCalendar' | 'openSettings' | 'dismiss' | 'neverForEvent'
+  /** Abre un documento en el lector (`value` = su clave: una guía que Aula dejó hecha). */
+  | 'openDocument'
 
 export interface AssistantCardAction {
   id: string

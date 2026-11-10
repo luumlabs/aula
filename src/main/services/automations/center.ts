@@ -20,8 +20,9 @@ import { isSampleCourse } from '@shared/samples'
 import { settingsPath } from '@shared/settings/sections'
 import type { AssistantCard, AssistantMessage } from '@shared/assistant/types'
 import type { HomeSummary } from '@shared/ipc/home'
+import type { PrepareCandidate } from '@shared/automations'
 import {
-  AutomationPlanner, DEFAULT_CAPABILITIES, LIGHT_ROUTINES, NIGHT_QUIET, PROACTIVE_ROUTINES, UPDATES_THREAD, applyStyle, compareFindings, countsAsUnread,
+  AutomationPlanner, DEFAULT_CAPABILITIES, LIGHT_ROUTINES, NIGHT_QUIET, PREPARE_PER_DAY, PREPARE_RULES, PROACTIVE_ROUTINES, UPDATES_THREAD, applyStyle, compareFindings, countsAsUnread, prepareCandidates,
   dayKey, defaultProactiveSettings, effectiveStart, emptyAutomationState, findingIdentity, inboxDedupeKey, limitsOf, markCustomIfEdited, matchesSwiftFilter,
   previewLine, proactiveIsActive, quietContains, quietEnd, routineID, routineSchedule, routineUsesAI, scheduleIsValid, trimInbox, unreadCount, withRoutine,
   type Automation, type AutomationBook, type AutomationDraft, type AutomationFinding, type AutomationHealthIssue, type AutomationItemView, type AutomationNotice,
@@ -306,6 +307,8 @@ export class AutomationCenter {
     this.book.usage = keep(this.book.usage)
     this.book.followups = keep(this.book.followups)
     if (this.book.offeredEvents.length > 300) this.book.offeredEvents = this.book.offeredEvents.slice(-300)
+    if (this.book.preparedEvents.length > 300) this.book.preparedEvents = this.book.preparedEvents.slice(-300)
+    this.book.preparedPerDay = keep(this.book.preparedPerDay)
     pruneLedger(this.book.notices, now)
     this.book.announced = Object.fromEntries(Object.entries(this.book.announced).filter(([, d]) => now - Date.parse(d) < 30 * DAY))
     if (this.book.recentCosts.length > 12) this.book.recentCosts = this.book.recentCosts.slice(-12)
@@ -436,6 +439,17 @@ export class AutomationCenter {
     if ((a.routine === 'morningBrief' || a.routine === 'weeklySummary') && (!model || !bud.allows(prio) || aiPaused)) {
       return this.runFallback(a, job, now, aiPaused ? this.book.aiPauseReason : undefined)
     }
+    // adelantar trabajo: primero se mira (sin IA) si hay algo cerca que lo merezca; si no, la pasada no gasta nada
+    let candidates: PrepareCandidate<RoutineEvent>[] | undefined
+    if (a.routine === 'prepareAhead') {
+      candidates = await this.prepareCandidatesNow(now)
+      if (!candidates.length) {
+        const st = { ...this.state(a.id), lastChecked: iso(now), lastOutcome: 'nothingNew' as AutomationOutcome, lastSummary: tr('Nada cerca que adelantar.', 'Nothing close to get ahead on.') }
+        this.book.states[a.id] = st
+        this.store.saveBook(this.book)
+        return
+      }
+    }
     const run = this.newRun(a, job.trigger, job.slots[job.slots.length - 1]?.at, now)
     if (aiPaused) {
       // el proveedor sigue en pausa: se reintenta cuando se reanude, sin gastar un intento
@@ -462,14 +476,34 @@ export class AutomationCenter {
         : undefined
       const out = await runAutomationCheck({
         automation: a, why: this.why(job), state, previous, proactive: this.proactive, now: new Date(now), maxTokens: bud.allowance(prio),
-        env: this.env, model, events, study, followup, signal: abort.signal
+        env: this.env, model, events, study, followup, candidates, signal: abort.signal
       })
+      if (out.prepared.length) {
+        // ya está hecho: no se repite para ese examen o esa entrega, y cuenta en lo adelantado hoy
+        const day = dayKey(this.now(), this.tz)
+        for (const id of out.prepared) if (!this.book.preparedEvents.includes(id)) this.book.preparedEvents.push(id)
+        this.book.preparedPerDay[day] = (this.book.preparedPerDay[day] ?? 0) + out.prepared.length
+      }
       await this.deliverResult(a, job, run, state, out)
     } catch (err) {
       await this.handleFailure(a, job, run, state, err)
     } finally {
       this.aborts.delete(a.id)
     }
+  }
+
+  /** Lo que hay cerca y aún no se adelantó, sin pasar de lo que Aula adelanta en un día. */
+  private async prepareCandidatesNow(now: number): Promise<PrepareCandidate<RoutineEvent>[]> {
+    const left = PREPARE_PER_DAY - (this.book.preparedPerDay[dayKey(now, this.tz)] ?? 0)
+    if (left <= 0 || !this.env.studio?.()) return []
+    this.invalidateEvents()
+    const events = await this.events(now)
+    const packs = new Set(this.env.packs().map((p) => p.id))
+    const packFor = (e: RoutineEvent): string | undefined => {
+      const id = e.packID ?? this.env.packIDForEvent(e.id)
+      return id && packs.has(id) ? id : undefined
+    }
+    return prepareCandidates(events, new Set(this.book.preparedEvents), packFor, now, { ...PREPARE_RULES, max: Math.min(PREPARE_RULES.max, left) })
   }
 
   /** Lo que encontró una revisión con IA: novedades, historial, aviso y entrada en la bandeja. */
@@ -688,6 +722,8 @@ export class AutomationCenter {
     if (a.routine === 'morningBrief') cards.push(morningCard())
     if (a.routine === 'weeklySummary') cards.push(weeklyCard())
     let text = out.summary
+    // una guía sin curso donde guardarse llega entera aquí
+    for (const g of out.guides) text += `\n\n---\n\n## ${g.title}\n\n${g.markdown}`
     if (completed) text += '\n\n' + tr('_Ya está: dejo de revisarlo. Si quieres que siga, reactívalo en Automatizaciones._', "_Done: I'll stop checking. If you want me to keep going, turn it back on in Automations._")
     const notices: string[] = []
     if (out.skipped.length) notices.push(tr(`Por seguridad no hice nada en tu plataforma: ${list(out.skipped.slice(0, 3))}`, `For safety I didn't do anything on your platform: ${list(out.skipped.slice(0, 3))}`))
@@ -1331,6 +1367,7 @@ export class AutomationCenter {
         case 'platformCheck': w = tr(`${weekdaysPhrase(p.platformCheckDays)} a las ${timeDisplay(p.platformCheckTime)}`, `${weekdaysPhrase(p.platformCheckDays)} at ${timeDisplay(p.platformCheckTime)}`); break
         case 'deadlineReminders': w = scheduleSummary(routineSchedule(p, r), this.tz).toLowerCase(); break
         case 'examOffers': w = tr(`cuando falten ${p.examOfferDays} días o menos`, `when ${p.examOfferDays} days or fewer are left`); break
+        case 'prepareAhead': w = tr('cuando haya una prueba o una entrega cerca', 'when a quiz or a deadline is near'); break
         case 'weeklySummary': w = tr(`los ${weekdayName(p.weeklyDay)} a las ${timeDisplay(p.weeklyTime)}`, `on ${weekdayName(p.weeklyDay)}s at ${timeDisplay(p.weeklyTime)}`); break
       }
       lines.push(`- **${routineTitle(r)}** · ${w}: ${routineDetail(r)}`)
@@ -1387,5 +1424,6 @@ export function routineCapabilities(r: ProactiveRoutine): Automation['capabiliti
     case 'morningBrief': case 'weeklySummary': return ['calendar', 'courses']
     case 'platformCheck': return ['platform', 'calendar', 'courses', 'study']
     case 'deadlineReminders': case 'examOffers': return ['calendar']
+    case 'prepareAhead': return ['platform', 'calendar', 'courses', 'study', 'prepare']
   }
 }

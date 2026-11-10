@@ -42,6 +42,17 @@ export interface InboxChatSink {
   postSystemMessage(threadId: string, message: AssistantMessage): Promise<string | undefined | void> | string | undefined | void
 }
 
+/**
+ * Lo que Aula puede CREAR por su cuenta al adelantar trabajo: solo ayuda de estudio y solo dentro de Aula (nunca toca la
+ * plataforma del estudiante ni entrega nada). Lo arma el proceso principal con la tubería de cursos y los documentos.
+ */
+export interface AutomationStudio {
+  /** Amplía un curso con un repaso corto (lección y práctica). Vuelve cuando el trabajo ARRANCA; sigue en segundo plano. */
+  createReview(input: { courseID: string; instruction: string }): Promise<{ runID: string }>
+  /** Guarda una guía (Markdown) entre los documentos de un curso. Devuelve la clave para abrirla en el lector. */
+  saveGuide(input: { courseID: string; title: string; markdown: string }): Promise<{ docKey: string }>
+}
+
 export interface AutomationEnvironment {
   /** Zona del estudiante (la del sistema, ahora: si cambia, las horas siguen siendo las locales). */
   timeZone(): string
@@ -55,6 +66,8 @@ export interface AutomationEnvironment {
   model(): Promise<ChatModel | null>
   language(): 'es' | 'en'
   platforms(): AutomationPlatforms | null
+  /** Para adelantar trabajo; `null` (o sin definir) = esta instalación no puede crear nada sola. */
+  studio?(): AutomationStudio | null
   chat(): InboxChatSink | null
   /** Publica una notificación del sistema (ya decidida: nivel, sonido, grupo). */
   notify(n: AutomationNotice): void
