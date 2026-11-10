@@ -59,7 +59,7 @@ export function turnPrompt(a: Automation, c: TurnContext): string {
   if (c.previous) {
     const prev = plainText(c.previous.summary).slice(0, 400)
     s += `Last check: ${c.previous.started} — ${prev || '(no summary)'}\n`
-  } else {
+  } else if (a.routine !== 'prepareAhead') {
     s += 'This is the FIRST check of this task: describe briefly what is there now and say you will keep an eye on it.\n'
   }
   if (c.known.length) {

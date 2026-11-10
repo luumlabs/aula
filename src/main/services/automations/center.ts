@@ -547,7 +547,9 @@ export class AutomationCenter {
     const message = this.composeMessage(a, run, out, cmp.new, cmp.changed, st.completed && outcome === 'conditionMet')
     const kind = this.inboxKind(a, !!out.signIn && !cmp.new.length && !cmp.changed.length)
     const notice = notify ? this.noticeFor(a, out, fresh.length ? fresh : cmp.new, cmp.changed, kind, signInNotice, end) : null
-    const title = headline(cmp.new, cmp.changed) ?? (out.signIn ? tr(`Inicia sesión otra vez en ${out.signIn.site}`, `Sign in again to ${out.signIn.site}`) : a.routine ? routineTitle(a.routine) : a.title)
+    // lo que Aula adelantó se titula con lo que dejó hecho («Repaso para la prueba de mañana»), no con un recuento de novedades
+    const prepared = a.routine === 'prepareAhead' ? out.cards.find((c) => c.title.trim() !== '')?.title : undefined
+    const title = prepared ?? headline(cmp.new, cmp.changed) ?? (out.signIn ? tr(`Inicia sesión otra vez en ${out.signIn.site}`, `Sign in again to ${out.signIn.site}`) : a.routine ? routineTitle(a.routine) : a.title)
     // «nada nuevo» (sin aviso) queda ya leído: está para consultarlo, no para molestar; lo que ya avisó otra, también
     const quietResult = !notice && (outcome === 'nothingNew' || outcome === 'done') && a.notify === 'news'
     const alreadyTold = !notice && outcome === 'news' && a.notify !== 'chatOnly'
@@ -686,6 +688,7 @@ export class AutomationCenter {
       case 'platformCheck': return 'platform'
       case 'deadlineReminders': return 'reminder'
       case 'examOffers': return 'offer'
+      case 'prepareAhead': return 'followup'
     }
     if (a.origin === 'aula') return 'followup'
     return a.capabilities.includes('platform') ? 'platform' : 'automation'
@@ -703,7 +706,8 @@ export class AutomationCenter {
     const cards: AssistantCard[] = [...out.cards]
     const fresh = [...news, ...changed]
     const started = Date.parse(run.started)
-    if (fresh.length) {
+    // al adelantar trabajo no hay «novedades encontradas» que listar: lo que importa es la tarjeta de lo que quedó hecho
+    if (fresh.length && a.routine !== 'prepareAhead') {
       const facts = fresh.slice(0, 6).map((f) => ({ label: findingKindTitle(f.kind), value: [f.title, f.due ? when(Date.parse(f.due), false, started, this.tz) : null].filter(Boolean).join(' · ') }))
       const actions = []
       const task = fresh.find((f) => f.kind === 'assignment')
