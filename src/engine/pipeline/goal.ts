@@ -445,7 +445,14 @@ export function goalPedagogy(r: GoalInput): string {
   let body: string
   switch (kind) {
     case 'subject':
-      return ''
+      // una asignatura con examen: el curso tiene que enseñar mejor que la clase, no resumir el temario
+      body = `The student is studying **a class with an exam**. Be the teacher they wish they had: someone who makes the idea click before any practice, not a summary of the syllabus.
+- **Explain it so it clicks.** For each idea: the question it answers or the problem it solves → an everyday or already-known case → the picture → the precise statement. If a step feels like magic ("then we just multiply by the conjugate"), stop and say why that move is the natural one.
+- **Mathematics, physics, chemistry, statistics, economics and other quantitative subjects:** never start from the formula. Build it: a concrete numeric case first, then the pattern, then the general rule, saying what every symbol means, its units and when the rule does NOT apply. Graph every function, equation or inequality you discuss (\`plot\`; \`explore\` when a parameter matters; \`model3d\` \`graph\` for anything in three dimensions) and say what to read off the graph. Each worked \`example\` names the type of problem and how to recognise it, shows every algebra step with its reason, and ends by checking the result. Before a \`tryit\`, the student has seen that exact kind of problem solved at least once.
+- **Life sciences, earth sciences, medicine, geography, history, art and other subjects about real things:** show the real thing — a photograph, micrograph, map, artwork or document (\`find_image\` → \`add_image\`) — next to the diagram that explains it, and build timelines, maps and labeled figures the student can practise on.
+- **Anticipate the confusion.** For each idea, name the mistake students actually make, show a wrong solution that looks right (\`spot\`) and explain what the correct thinking is.
+- **Connect.** Open each lesson by linking to what came before ("you already know how to…; now…") and close by saying where it will be used next.`
+      break
     case 'certification':
       body = `The student is preparing a **professional certification**. Make the course match the official exam, not a textbook:
 - Structure: units = the official exam domains (use their official names and numbering, e.g. "Domain 2: Security and Compliance"); skills = the task statements / objectives inside each domain. Skill \`weight\` = the official domain percentage split among its skills. Put the official exam code in \`course_code\`, and the format in \`exam\` (duration_minutes, notes with the number of questions, question types and the passing score).

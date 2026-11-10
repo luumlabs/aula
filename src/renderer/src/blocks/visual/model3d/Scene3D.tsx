@@ -7,9 +7,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, Environment, Html as DreiHtml, Lightformer, Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Label3D, Model3DBlock, Solid3D } from '@shared/schema/visual'
+import type { Graph3D, Label3D, Model3DBlock, Solid3D } from '@shared/schema/visual'
 import { covalentRadius, elementSymbol, keyBondAngles, vdwRadius, type Molecule, type Vec3 } from '../lib/molecules'
 import { dimensionLabels, faceTriangles, polyEdges, polyhedron, solidRadius } from '../lib/solids'
+import { axisNumber, layoutGraph, type GraphLayout, type OfT, type XY } from '../lib/graph3d'
+import { compileFn } from '../../plot/evaluate'
 import { disposeObject3D, ReleaseGL } from '@renderer/lib/glRelease'
 import { useAmbient } from '@renderer/design/ambient'
 
@@ -58,8 +60,9 @@ function atomRadius(el: string, style: Scene3DProps['style']): number {
 }
 
 /** Centro y radio de lo que hay (moléculas, sólidos, etiquetas y el modelo, que se lleva a radio 3). */
-function sceneBounds(b: Model3DBlock, m: Molecule | undefined, style: Scene3DProps['style'], hasModel: boolean): { center: Vec3; radius: number } {
+function sceneBounds(b: Model3DBlock, m: Molecule | undefined, style: Scene3DProps['style'], hasModel: boolean, graph?: GraphLayout): { center: Vec3; radius: number } {
   const pts: Array<{ p: Vec3; r: number }> = []
+  if (graph) pts.push({ p: graph.center, r: graph.radius })
   if (m) for (const a of m.atoms.slice(0, 600)) pts.push({ p: [a.x, a.y, a.z], r: atomRadius(elementSymbol(a.element), style) + 0.2 })
   for (const s of b.solids) pts.push({ p: [s.x, s.y, s.z], r: solidRadius(s) + (s.dims || s.label ? 0.6 : 0.1) })
   for (const l of b.labels) pts.push({ p: [l.x, l.y, l.z], r: 0.4 })
@@ -74,7 +77,8 @@ function sceneBounds(b: Model3DBlock, m: Molecule | undefined, style: Scene3DPro
 
 export default function Scene3D(props: Scene3DProps) {
   const { block, molecule, style, palette, print, active, modelUrl } = props
-  const { center, radius } = useMemo(() => sceneBounds(block, molecule, style, !!modelUrl), [block, molecule, style, modelUrl])
+  const graph = useMemo(() => (block.graph ? layoutGraph(block.graph, compileXY, compileT) : undefined), [block.graph])
+  const { center, radius } = useMemo(() => sceneBounds(block, molecule, style, !!modelUrl, graph), [block, molecule, style, modelUrl, graph])
   const dist = (radius / Math.sin((19 * Math.PI) / 180)) * 1.06
   const dir = new THREE.Vector3(0.28, 0.32, 0.9).normalize()
   const camPos: Vec3 = [dir.x * dist, dir.y * dist, dir.z * dist]
@@ -100,6 +104,7 @@ export default function Scene3D(props: Scene3DProps) {
           <group position={[-center[0], -center[1], -center[2]]}>
             {molecule && <MoleculeView m={molecule} style={style} labels={props.showLabels} angles={props.showAngles} lonePairs={block.lonePairs} palette={palette} formatNumber={props.formatNumber} />}
             {block.solids.map((s, i) => <SolidView key={i} s={s} index={i} palette={palette} formatNumber={props.formatNumber} />)}
+            {block.graph && graph && <GraphView g={block.graph} layout={graph} palette={palette} formatNumber={props.formatNumber} />}
             {block.labels.map((l, i) => <SceneLabel key={`l${i}`} l={l} />)}
             {modelUrl && <ExternalModel url={modelUrl} asset={block.asset ?? ''} palette={palette} onError={props.onModelError} />}
           </group>
@@ -354,6 +359,131 @@ function SceneLabel({ l }: { l: Label3D }) {
     <Html position={[l.x, l.y, l.z]} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
       <span className="block rounded-[7px] bg-raised/90 px-2 text-[12.5px] leading-[18px] font-medium text-text shadow-[var(--e1)] whitespace-nowrap">{l.text.replace(/\$/g, '')}</span>
     </Html>
+  )
+}
+
+// MARK: Gráfica en ejes 3D
+
+/** z = f(x, y): una compilación por fila (y fija), que es lo que sabe hacer el evaluador de las gráficas 2D. */
+function compileXY(expr: string): XY | null {
+  if (!compileFn(expr, 'x', { y: 0 })) return null
+  const rows = new Map<number, ReturnType<typeof compileFn>>()
+  return (x, y) => {
+    let f = rows.get(y)
+    if (f === undefined) { f = compileFn(expr, 'x', { y }); rows.set(y, f) }
+    return f ? f(x) : null
+  }
+}
+const compileT = (expr: string): OfT | null => compileFn(expr, 't')
+
+const GRAPH_COLORS = ['blue', 'terracotta', 'teal', 'amber', 'green', 'rose']
+function graphColor(palette: ScenePalette, name: string | undefined, index: number): string {
+  const c = (name ?? '').trim().toLowerCase()
+  if (!c) return palette.color(GRAPH_COLORS[index % GRAPH_COLORS.length], 'var(--viz-blue)')
+  if (c === 'accent') return palette.color('accent', 'var(--accent)')
+  if (c === 'gray' || c === 'grey' || c === 'gris' || c === 'ink') return palette.text2
+  if (c === 'red' || c === 'rojo' || c === 'orange') return palette.color('terracotta', 'var(--viz-terracotta)')
+  return palette.color(c, 'var(--viz-blue)')
+}
+
+/** Flecha: una varilla y una punta de cono orientada. */
+function Arrow({ from, to, color, radius = 0.035 }: { from: THREE.Vector3; to: THREE.Vector3; color: string; radius?: number }) {
+  const d = to.clone().sub(from)
+  const len = d.length()
+  if (len < 1e-6) return null
+  const head = Math.min(0.34, len * 0.4)
+  const neck = to.clone().sub(d.clone().setLength(head))
+  const q = new THREE.Quaternion().setFromUnitVectors(Y, d.clone().normalize())
+  return (
+    <group>
+      <Bond from={from} to={neck} radius={radius} color={color} />
+      <mesh position={neck.clone().add(to).multiplyScalar(0.5)} quaternion={q}>
+        <coneGeometry args={[radius * 3.1, head, 20]} />
+        <meshStandardMaterial color={color} roughness={0.5} metalness={0} />
+      </mesh>
+    </group>
+  )
+}
+
+function GraphLabel({ at, children, strong }: { at: THREE.Vector3; children: ReactNode; strong?: boolean }) {
+  return (
+    <Html position={at} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
+      <span className={strong ? 'block rounded-[7px] bg-raised/90 px-2 text-[12.5px] leading-[18px] font-medium text-text shadow-[var(--e1)] whitespace-nowrap' : 'block px-1 text-[11.5px] leading-[15px] font-medium text-text2 whitespace-nowrap'}>{children}</span>
+    </Html>
+  )
+}
+
+function GraphView({ g, layout, palette, formatNumber }: { g: Graph3D; layout: GraphLayout; palette: ScenePalette; formatNumber: (v: number) => string }) {
+  const at = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(...layout.toScene(x, y, z))
+  const meshes = useMemo(() => layout.surfaces.map((m) => {
+    if (!m || !m.indices.length) return null
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(m.positions, 3))
+    geo.setIndex(new THREE.BufferAttribute(m.indices, 1))
+    geo.computeVertexNormals()
+    const grid = new THREE.BufferGeometry()
+    grid.setAttribute('position', new THREE.BufferAttribute(m.grid, 3))
+    return { geo, grid }
+  }), [layout])
+  useEffect(() => () => { for (const m of meshes) { m?.geo.dispose(); m?.grid.dispose() } }, [meshes])
+  const tubes = useMemo(() => layout.curves.map((p) => (p.length > 1 ? new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p.map((q) => new THREE.Vector3(...q))), Math.min(400, p.length * 2), 0.04, 10, false) : null)), [layout])
+  useEffect(() => () => { for (const t of tubes) t?.dispose() }, [tubes])
+  const [ox, oy, oz] = layout.origin
+  const axis = palette.text2
+  const pad = 0.06
+  const ends: Array<{ from: THREE.Vector3; to: THREE.Vector3; name: string; lo: number; hi: number }> = [
+    { from: at(g.xMin, oy, oz), to: at(g.xMax + (g.xMax - g.xMin) * pad, oy, oz), name: g.xLabel ?? 'x', lo: g.xMin, hi: g.xMax },
+    { from: at(ox, g.yMin, oz), to: at(ox, g.yMax + (g.yMax - g.yMin) * pad, oz), name: g.yLabel ?? 'y', lo: g.yMin, hi: g.yMax },
+    { from: at(ox, oy, layout.zMin), to: at(ox, oy, layout.zMax + (layout.zMax - layout.zMin) * pad), name: g.zLabel ?? 'z', lo: layout.zMin, hi: layout.zMax }
+  ]
+  return (
+    // girada un poco: se ven a la vez el eje x y el eje y, como en la pizarra
+    <group rotation={[0, -0.5, 0]}>
+      {meshes.map((m, i) => m && (
+        <group key={`s${i}`}>
+          <mesh geometry={m.geo}>
+            <meshStandardMaterial color={graphColor(palette, g.surfaces[i].color, i)} roughness={0.72} metalness={0} side={THREE.DoubleSide} transparent opacity={Math.min(1, Math.max(0.15, g.surfaces[i].opacity ?? 0.9))} polygonOffset polygonOffsetFactor={1} polygonOffsetUnits={1} />
+          </mesh>
+          <lineSegments geometry={m.grid}>
+            <lineBasicMaterial color={palette.text} transparent opacity={palette.dark ? 0.3 : 0.24} />
+          </lineSegments>
+        </group>
+      ))}
+      {tubes.map((t, i) => t && (
+        <mesh key={`c${i}`} geometry={t}>
+          <meshStandardMaterial color={graphColor(palette, g.curves[i].color, i + 1)} roughness={0.45} metalness={0} />
+        </mesh>
+      ))}
+      {g.curves.map((c, i) => c.label && layout.curves[i].length > 0 && <GraphLabel key={`cl${i}`} at={new THREE.Vector3(...layout.curves[i][layout.curves[i].length - 1])} strong>{c.label.replace(/\$/g, '')}</GraphLabel>)}
+      {g.vectors.map((v, i) => {
+        const color = graphColor(palette, v.color, i + 2)
+        const to = at(...v.to)
+        return (
+          <group key={`v${i}`}>
+            <Arrow from={at(...v.from)} to={to} color={color} radius={0.045} />
+            {v.label && <GraphLabel at={to.clone().add(new THREE.Vector3(0, 0.26, 0))} strong>{v.label.replace(/\$/g, '')}</GraphLabel>}
+          </group>
+        )
+      })}
+      {g.points.map((p, i) => {
+        const pos = at(p.x, p.y, p.z)
+        return (
+          <group key={`p${i}`}>
+            <mesh position={pos}><sphereGeometry args={[0.085, 20, 16]} /><meshStandardMaterial color={graphColor(palette, p.color ?? 'accent', i)} roughness={0.4} /></mesh>
+            {p.label && <GraphLabel at={pos.clone().add(new THREE.Vector3(0, 0.26, 0))} strong>{p.label.replace(/\$/g, '')}</GraphLabel>}
+          </group>
+        )
+      })}
+      {g.axes && ends.map((e, i) => (
+        <group key={`a${i}`}>
+          <Arrow from={e.from} to={e.to} color={axis} radius={0.018} />
+          <GraphLabel at={e.to.clone().add(e.to.clone().sub(e.from).setLength(0.22))} strong>{e.name.replace(/\$/g, '')}</GraphLabel>
+          <GraphLabel at={e.from.clone().add(e.from.clone().sub(e.to).setLength(0.2))}>{axisNumber(e.lo, formatNumber)}</GraphLabel>
+          <GraphLabel at={e.to.clone().sub(e.to.clone().sub(e.from).multiplyScalar(pad / (1 + pad))).add(new THREE.Vector3(0, -0.2, 0))}>{axisNumber(e.hi, formatNumber)}</GraphLabel>
+        </group>
+      ))}
+      {g.surfaces.map((s, i) => s.label && layout.surfaces[i] && <GraphLabel key={`sl${i}`} at={new THREE.Vector3(layout.surfaces[i]!.positions[0], layout.surfaces[i]!.positions[1] + 0.3, layout.surfaces[i]!.positions[2])} strong>{s.label.replace(/\$/g, '')}</GraphLabel>)}
+    </group>
   )
 }
 

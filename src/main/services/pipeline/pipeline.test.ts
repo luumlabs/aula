@@ -29,10 +29,13 @@ const Fixture = {
   plan: { title: 'Aritmética', subject: 'Matemáticas', language: 'es', icon: 'function', hue: 0.6, exam: { title: 'Parcial 1', date: '2026-11-02', duration_minutes: 60, total_points: 100 }, guidance: 'Fracciones simplificadas.',
     units: [{ id: 'u1', title: 'Operaciones', skills: [{ id: 'suma', title: 'Sumar', objectives: ['Sumar enteros'], weight: 50, minutes: 15 }, { id: 'resta', title: 'Restar', objectives: ['Restar enteros'], prerequisites: ['suma'], weight: 50, minutes: 15 }] }] },
   skillID: (task: AgentTask): string => skillIDIn(task.prompt) ?? '',
+  // como pide la guía: se explica y se enseña con una figura antes del ejemplo resuelto y de las preguntas
   lesson: (id: string, tryIt = true): Obj => ({ blocks: [`# ${id}`,
+    'Sumar es juntar dos cantidades en una sola. Imagina dos montones de fichas: los juntas, las cuentas todas y ese total es la suma. En la recta numérica es un paseo: empiezas en el primer número y das hacia la derecha tantos pasos como diga el segundo. Donde llegues, esa es la respuesta, sin importar por cuál de los dos números empieces.',
+    { type: 'numberline', min: 0, max: 8, points: [{ value: '2', label: '2' }, { value: '5', label: '5' }], caption: 'Desde 2, tres pasos a la derecha: llegas a 5.' },
+    { type: 'callout', kind: 'definition', title: 'Suma', md: 'Combinar cantidades.' }, { type: 'math', tex: 'a+b=c', label: 'Suma' },
+    { type: 'example', problem: 'Calcula $2+3$.', steps: [{ md: 'Empieza en 2', note: 'El primer sumando' }, { md: 'Cuenta 3 más: 3, 4, 5', note: 'Contar' }], answer: '$5$' },
     { type: 'predict', question: '¿Cuánto es 2+2?', options: [{ md: '4', correct: true, why: 'Suma básica' }, { md: '5', correct: false, why: 'Error de conteo' }], explanation: 'Es 4.' },
-    'Una idea sencilla.', { type: 'callout', kind: 'definition', title: 'Suma', md: 'Combinar cantidades.' }, { type: 'math', tex: 'a+b=c', label: 'Suma' },
-    { type: 'example', problem: 'Calcula $2+3$.', steps: [{ md: 'Sumar', note: 'Contar' }], answer: '$5$' },
     ...(tryIt ? [{ type: 'tryit', exerciseIDs: [`${id}-e1`, `${id}-e2`] }] : ['Otra idea.']),
     { type: 'callout', kind: 'mistake', md: 'No olvides llevar.' }, { type: 'recap', points: ['Sumar combina', 'Practica'] }] }),
   exercises: (count: number, from = 1): Obj => {

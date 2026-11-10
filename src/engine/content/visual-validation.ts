@@ -6,7 +6,7 @@ import {
   effectiveAspect, effectiveLabelMode, FigureGeometry, HistoricalDate, labelAnswerParts, MODEL_EXTENSIONS, SimulationPresets, SOLID_SHAPES,
   cardTargetPart, simulationSymbolNames,
   type AnswerOf, type CardFigure, type ContentIssue, type DiagramBlock, type FigureLayer, type FigurePart, type IssueSeverity, type LabeledBlock, type MapBlock,
-  type Model3DBlock, type SimulationBlock, type Slide, type SourceRef, type TimelineBlock
+  type Graph3D, type Model3DBlock, type SimulationBlock, type Slide, type SourceRef, type TimelineBlock
 } from '@shared/schema'
 import { freeVariables } from '@engine/math/core/expr'
 import type { ContentValidator } from './validator'
@@ -187,9 +187,10 @@ export function checkCardFigure(v: ContentValidator, f: CardFigure, path: string
 export function checkModel3D(v: ContentValidator, m: Model3DBlock, path: string): ContentIssue[] {
   const out: ContentIssue[] = []
   const formula = m.formula ?? ''
-  if (!m.atoms.length && !m.solids.length && m.asset === undefined && !formula) {
-    out.push(issue('error', path, 'El visor 3D necesita algo que mostrar: `formula` (molécula), `atoms` + `bonds`, `solids` o `asset` (modelo de add_model).'))
+  if (!m.atoms.length && !m.solids.length && m.asset === undefined && !formula && !m.graph) {
+    out.push(issue('error', path, 'El visor 3D necesita algo que mostrar: `formula` (molécula), `atoms` + `bonds`, `solids`, `graph` (superficies z = f(x, y), curvas, vectores, puntos) o `asset` (modelo de add_model).'))
   }
+  if (m.graph) out.push(...checkGraph3D(v, m.graph, path + '.graph'))
   const built = formula ? buildMolecule(formula) : undefined
   if (!m.atoms.length && formula && !m.solids.length && m.asset === undefined && !built) {
     out.push(issue('error', path + '.formula', `No sé construir «${formula}» en 3D. Las de un átomo central (CH4, NH3, H2O, SF6, SO4^2-…) y las de la biblioteca (agua, etanol, benceno, ácido acético, NaCl…) salen solas; para otras escribe \`atoms\` (elemento y x, y, z en Å) y \`bonds\`.`))
@@ -220,6 +221,32 @@ export function checkModel3D(v: ContentValidator, m: Model3DBlock, path: string)
   }
   if (!m.alt.trim() && m.caption === undefined) out.push(issue('warning', path + '.alt', 'Falta `alt` o `caption`: describe el modelo para quien no lo ve.'))
   m.labels.forEach((l, i) => out.push(...latexIssues(l.text, `${path}.labels[${i}]`)))
+  return out
+}
+
+/** Gráfica en ejes 3D: expresiones que se entienden, intervalos con sentido y números finitos. */
+export function checkGraph3D(v: ContentValidator, g: Graph3D, path: string): ContentIssue[] {
+  const out: ContentIssue[] = []
+  const finite = (...n: number[]): boolean => n.every((x) => Number.isFinite(x) && Math.abs(x) < 1e6)
+  if (!finite(g.xMin, g.xMax, g.yMin, g.yMax) || g.xMin >= g.xMax || g.yMin >= g.yMax) out.push(issue('error', path, 'El dominio no es válido: xMin < xMax e yMin < yMax (números finitos).'))
+  if (g.zMin !== undefined && g.zMax !== undefined && g.zMin >= g.zMax) out.push(issue('error', path, 'zMin debe ser menor que zMax.'))
+  const xy = new Set(['x', 'y'])
+  g.surfaces.forEach((s, i) => {
+    const e = v.math.checkExpression(s.expr, xy)
+    if (e) out.push(issue('error', `${path}.surfaces[${i}].expr`, `Expresión «${s.expr}» no válida: ${e}. Es z = f(x, y) en sintaxis de calculadora: x^2 + y^2, sin(x)*cos(y), sqrt(9 - x^2 - y^2), exp(-(x^2 + y^2)).`))
+    if (s.opacity !== undefined && !(s.opacity > 0 && s.opacity <= 1)) out.push(issue('warning', `${path}.surfaces[${i}].opacity`, 'opacity va de 0 a 1.'))
+  })
+  const t = new Set(['t'])
+  g.curves.forEach((c, i) => {
+    for (const [n, s] of [['x', c.x], ['y', c.y], ['z', c.z]] as const) { const e = v.math.checkExpression(s, t); if (e) out.push(issue('error', `${path}.curves[${i}].${n}`, `Expresión «${s}» no válida: ${e} (la variable es t).`)) }
+    if (!finite(c.tMin, c.tMax) || c.tMin >= c.tMax) out.push(issue('error', `${path}.curves[${i}]`, 'tMin debe ser menor que tMax.'))
+  })
+  g.vectors.forEach((a, i) => {
+    if (!finite(...a.from, ...a.to)) out.push(issue('error', `${path}.vectors[${i}]`, 'Las componentes deben ser números finitos: {"from":[0,0,0],"to":[1,2,3]}.'))
+    else if (a.from.every((x, k) => x === a.to[k])) out.push(issue('error', `${path}.vectors[${i}]`, 'El vector no tiene longitud (from y to coinciden).'))
+  })
+  g.points.forEach((p, i) => { if (!finite(p.x, p.y, p.z)) out.push(issue('error', `${path}.points[${i}]`, 'Coordenadas no válidas.')) })
+  for (const [i, l] of [...g.surfaces, ...g.curves, ...g.vectors, ...g.points].entries()) if (l.label) out.push(...latexIssues(l.label, `${path}.label[${i}]`))
   return out
 }
 

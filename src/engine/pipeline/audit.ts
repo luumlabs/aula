@@ -17,7 +17,7 @@ const L = (lang: Lang, es: string, en: string): string => (lang === 'en' ? en : 
  * Auditoría independiente de la IA: errores del validador + mínimos de cobertura. Lista vacía = habilidad lista.
  * `validatorIssues` son los del validador ligado al curso (`checkSkill`).
  */
-export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, validatorIssues: readonly ContentIssue[], lang: Lang = 'es'): AuditProblem[] {
+export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, validatorIssues: readonly ContentIssue[], lang: Lang = 'es', options: { teaching?: boolean } = {}): AuditProblem[] {
   if (!skill) return [{ forAI: 'The skill has no content yet.', forUser: L(lang, 'Aún no tiene contenido.', 'It has no content yet.') }]
   const out: AuditProblem[] = []
   for (const i of validatorIssues) {
@@ -48,6 +48,8 @@ export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, val
       forUser: L(lang, `Faltan tarjetas: tiene ${skill.cards.length} y se piden al menos ${d.minCards}.`, `Flashcards are missing: it has ${skill.cards.length} and at least ${d.minCards} are required.`)
     })
   }
+  // solo al crear o ampliar un curso: un curso ya hecho no pasa a «pendiente de corregir» por reglas nuevas
+  if (options.teaching) out.push(...teachingProblems(skill.lesson, d.minVisuals, lang))
   const known = new Set(skill.exercises.map((e) => e.id))
   for (const b of skill.lesson) {
     if (b.type !== 'tryit') continue
@@ -58,6 +60,72 @@ export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, val
         forUser: L(lang, `Un bloque de práctica apunta a un ejercicio que no existe («${t}»).`, `A practice block points to an exercise that doesn't exist (“${t}”).`)
       })
     }
+  }
+  return out
+}
+
+/** Bloques que enseñan con una figura (no cuentan las tablas ni las fórmulas: son texto ordenado). */
+export const VISUAL_BLOCK_TYPES: readonly string[] = ['plot', 'explore', 'chart', 'diagram', 'drawing', 'image', 'labeled', 'model3d', 'simulation', 'map', 'timeline', 'numberline']
+/** Bloques que piden algo al estudiante o le enseñan a hacerlo paso a paso: antes tiene que venir la explicación. */
+const PRACTICE_BLOCK_TYPES: readonly string[] = ['example', 'tryit', 'predict', 'spot']
+/** Texto seguido que una lección aguanta sin nada que mirar o hacer. */
+export const MAX_TEXT_RUN = 4
+/** Explicación mínima (caracteres) antes del primer ejemplo o pregunta. */
+export const MIN_EXPLANATION_CHARS = 280
+
+const explanationOf = (b: Block): string => (b.type === 'text' || b.type === 'callout' ? b.md : b.type === 'math' ? b.tex : '') ?? ''
+
+/**
+ * Lo que hace que una lección enseñe y no sea solo texto: figuras, ningún muro de párrafos y la explicación ANTES de pedir
+ * nada. Cada hallazgo le dice al modelo cómo arreglarlo (vuelve en el siguiente intento de la habilidad).
+ */
+export function teachingProblems(lesson: readonly Block[], minVisuals: number, lang: Lang = 'es'): AuditProblem[] {
+  if (!lesson.length) return []
+  const out: AuditProblem[] = []
+  const types = lesson.map(blockTypeName)
+  const visuals = types.filter((t) => VISUAL_BLOCK_TYPES.includes(t)).length
+  if (visuals < minVisuals) {
+    out.push({
+      forAI: `lesson: only ${visuals} visual block${visuals === 1 ? '' : 's'}; it needs at least ${minVisuals}. A lesson that is only text does not teach. Add the figure that makes THIS idea visible, right where the text explains it: \`plot\`/\`explore\` (a relationship between quantities; \`explore\` lets the student move a parameter), \`model3d\` (a solid, a molecule, a surface z = f(x, y), vectors or a curve in space), \`diagram\` with \`steps\` (a process or a method), \`chart\` (data), \`numberline\`, \`drawing\` (a geometric figure), \`timeline\`, \`map\`, \`simulation\`, or — for anything that exists in the world — a real picture: \`find_image\` then \`add_image\`, placed as an \`image\` or \`labeled\` block. Say in the text or the caption what to look at. Tables and formulas do not count as visuals.`,
+      forUser: L(lang, `A la lección le faltan figuras (tiene ${visuals}; se piden al menos ${minVisuals}).`, `The lesson needs more figures (it has ${visuals}; at least ${minVisuals} are required).`)
+    })
+  }
+  let run = 0
+  let longest = 0
+  for (const t of types) {
+    run = t === 'text' ? run + 1 : 0
+    longest = Math.max(longest, run)
+  }
+  if (longest > MAX_TEXT_RUN) {
+    out.push({
+      forAI: `lesson: ${longest} \`text\` blocks in a row. Never more than ${MAX_TEXT_RUN}: after a couple of paragraphs give the student something to look at or do (a visual block, a \`callout\`, an \`example\`, a \`predict\`). Turn a description into a figure and a list of cases into a \`table\` or \`compare\`.`,
+      forUser: L(lang, `La lección tiene ${longest} párrafos seguidos sin nada que mirar o hacer.`, `The lesson has ${longest} paragraphs in a row with nothing to look at or do.`)
+    })
+  }
+  const first = types.findIndex((t) => PRACTICE_BLOCK_TYPES.includes(t))
+  if (first >= 0) {
+    const explained = lesson.slice(0, first).reduce((n, b) => n + explanationOf(b).replace(/^#+ .*$/gm, '').trim().length, 0)
+    if (explained < MIN_EXPLANATION_CHARS) {
+      out.push({
+        forAI: `lesson: the first \`${types[first]}\` (block ${first + 1}) comes before the idea has been explained. Teach first: say in plain words what the idea is and why it works, show it (a concrete case or a figure), define every term and symbol, and only then give the worked \`example\` and the questions. Move or add that explanation before block ${first + 1}.`,
+        forUser: L(lang, 'La lección pregunta o pone un ejemplo antes de explicar la idea.', 'The lesson asks a question or shows an example before explaining the idea.')
+      })
+    }
+  }
+  const example = types.indexOf('example')
+  const tryit = types.indexOf('tryit')
+  if (tryit >= 0 && (example < 0 || tryit < example)) {
+    out.push({
+      forAI: 'lesson: a `tryit` comes before any worked `example`. Show the method fully worked (every step with its reason) before asking the student to do it alone.',
+      forUser: L(lang, 'La lección pide practicar antes de mostrar un ejemplo resuelto.', 'The lesson asks for practice before showing a worked example.')
+    })
+  }
+  for (const [i, b] of lesson.entries()) {
+    if (b.type !== 'example' || b.steps.length >= 2) continue
+    out.push({
+      forAI: `lesson: the \`example\` at block ${i + 1} has ${b.steps.length} step${b.steps.length === 1 ? '' : 's'}. A worked example shows the reasoning: break it into small steps and give each one a \`note\` with the rule or reason used.`,
+      forUser: L(lang, 'Un ejemplo resuelto no muestra sus pasos.', 'A worked example does not show its steps.')
+    })
   }
   return out
 }

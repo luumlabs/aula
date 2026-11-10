@@ -159,6 +159,11 @@ const raw: Record<string, unknown[]> = {
     }
   ],
   model3d: [
+    { id: 'x-graf1', type: 'model3d', title: 'Paraboloide $z = x^2 + y^2$ y su plano tangente', alt: 'Un paraboloide y el plano tangente en un punto', autoRotate: false,
+      graph: { xMin: -2, xMax: 2, yMin: -2, yMax: 2, zMin: 0, zMax: 6, surfaces: [{ expr: 'x^2 + y^2', color: 'blue' }, { expr: '2x + 2y - 2', color: 'amber', opacity: 0.55 }], points: [{ x: 1, y: 1, z: 2, label: '(1, 1, 2)' }], vectors: [{ from: [1, 1, 2], to: [1.6, 1.6, 1.4], label: 'n', color: 'accent' }] } },
+    { id: 'x-graf2', type: 'model3d', title: 'Una silla de montar: $z = x^2 - y^2$', alt: 'Paraboloide hiperbólico', autoRotate: false, graph: { surfaces: ['x^2 - y^2'], xMin: -2, xMax: 2, yMin: -2, yMax: 2 } },
+    { id: 'x-graf3', type: 'model3d', title: 'Suma de vectores y una hélice', alt: 'Dos vectores, su suma y una hélice', autoRotate: false,
+      graph: { xMin: -2, xMax: 3, yMin: -2, yMax: 3, zMin: 0, zMax: 4, vectors: [{ to: [2, 0, 1], label: 'u', color: 'blue' }, { to: [0, 2, 1], label: 'v', color: 'teal' }, { to: [2, 2, 2], label: 'u + v', color: 'accent' }], curves: [{ x: 'cos(t)', y: 'sin(t)', z: 't/3', tMin: 0, tMax: 12, color: 'amber', label: 'r(t)' }] } },
     { id: 'x-water', type: 'molecule', title: 'Molécula de agua', formula: 'H2O', lonePairs: true, caption: 'Los dos pares libres del oxígeno cierran el ángulo hasta 104,5°.' },
     { id: 'x-nh3', type: 'model3d', title: 'Amoniaco', formula: 'NH3', lonePairs: true },
     { id: 'x-ch4', type: 'model3d', title: 'Metano', formula: 'metano' },

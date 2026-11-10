@@ -589,7 +589,7 @@ export class GenerationPipeline {
     let pack: Pack | undefined
     try { pack = this.loadPack() } catch { pack = undefined }
     const issues = skill ? boundValidator(this.store).checkSkill(skill, pack) : []
-    return auditSkill(skill, this.state.request.depth, issues, this.lang())
+    return auditSkill(skill, this.state.request.depth, issues, this.lang(), { teaching: true })
   }
 
   problems(id: string): string[] {
