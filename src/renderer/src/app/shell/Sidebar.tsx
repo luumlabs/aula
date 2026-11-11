@@ -116,8 +116,8 @@ export function Sidebar({ todayCount = 0 }: { todayCount?: number }) {
           </span>
           {!collapsed && <span className="truncate">{t('nav.newCourse')}</span>}
         </button>
-        {/* los ajustes (la IA, las claves, las plataformas) se cambian en el Mac */}
-        {!collapsed && !api.remote && (
+        {/* también desde un dispositivo: allí Ajustes enseña solo lo de uso diario (las claves y las plataformas, en el Mac) */}
+        {!collapsed && (
           <button onClick={() => navigate({ name: 'settings' })} className={cx('no-drag grid place-items-center w-8 h-8 rounded-[10px] hover:bg-fill1', route.name === 'settings' ? 'text-text bg-fill2' : 'text-text2 hover:text-text')} aria-label={t('nav.settings')} title={t('nav.settings')}>
             <Icon name="settings" size={17} />
           </button>

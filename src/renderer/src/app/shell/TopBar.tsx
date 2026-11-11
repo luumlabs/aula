@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon, IconButton, Kbd, cx } from '@renderer/design'
-import { useNav } from '../router'
+import { navigate, useNav } from '../router'
 import { usePalette } from './CommandPalette'
 import { api } from '@renderer/lib/api'
 import { SidebarToggle, useSidebarState } from './Sidebar'
@@ -28,6 +28,12 @@ export function TopBar({ title, right, compact }: { title?: ReactNode; right?: R
         )}
         <div className={cx('min-w-0 flex-1 truncate font-serif text-[19px] font-medium tracking-[-0.2px]', !showBack && 'pl-2')}>{title}</div>
         {right && <div className="flex items-center gap-1.5">{right}</div>}
+        {/* sin barra lateral, los ajustes se abren desde «Hoy» (las cuatro pestañas de abajo se quedan como están) */}
+        {route.name === 'home' && (
+          <IconButton label={t('nav.settings')} size="sm" onClick={() => navigate({ name: 'settings' })}>
+            <Icon name="settings" size={18} />
+          </IconButton>
+        )}
         <IconButton label={t('search.placeholder')} size="sm" onClick={openPalette}>
           <Icon name="search" size={18} />
         </IconButton>

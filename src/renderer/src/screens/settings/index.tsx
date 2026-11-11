@@ -1,4 +1,7 @@
 // Ajustes: pocas tarjetas, claras. Todo viene activado por defecto salvo «Aula siempre activa».
+// Desde un dispositivo (iPad, iPhone) son los mismos ajustes, los de Aula en el Mac, pero solo lo de uso diario: las claves,
+// las plataformas, los dispositivos, los datos y las actualizaciones se llevan desde el Mac (y el servidor no deja otra cosa:
+// src/main/services/remote/policy.ts).
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fmtPercent } from '@renderer/lib/format'
@@ -11,6 +14,7 @@ import { useRpc } from '@renderer/lib/useRpc'
 import { useUpdateState } from '@renderer/lib/updates'
 import { api } from '@renderer/lib/api'
 import { AIPicker } from './AIPicker'
+import { AIChoices } from './AIChoices'
 import { PlatformsCard } from './Platforms'
 import { AutomationsSettingsCard } from './Automations'
 import { MemoryCard } from './Memory'
@@ -33,33 +37,37 @@ export default function SettingsScreen() {
     return () => clearTimeout(timer)
   }, [section, !!settings])
   if (!settings) return null
+  const remote = api.remote
   return (
-    <div className="@container flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-24">
-      <PageHeader title={t('title')} subtitle={t('subtitle')} className="mb-6" />
+    <div className="@container flex-1 min-h-0 overflow-y-auto px-6 max-[700px]:px-4 pt-2 pb-24">
+      <PageHeader title={t('title')} subtitle={remote ? t('remote.subtitle') : t('subtitle')} className="mb-6" />
       <Stagger className="grid grid-cols-12 gap-4">
         <StaggerItem className="col-span-12">
-          <SectionTitle title={t('ai.title')} detail={t('ai.auto')} className="px-1" data-settings-section="ai" />
-          <AIPicker />
+          <SectionTitle title={t('ai.title')} detail={remote ? t('ai.remote.detail') : t('ai.auto')} className="px-1" data-settings-section="ai" />
+          {remote ? <AIChoices /> : <AIPicker />}
         </StaggerItem>
         {/* plataformas y apariencia, una sobre otra, junto a «Aula siempre activa» (la más alta): sin huecos en las tarjetas */}
-        <div className="col-span-12 @5xl:col-span-7 flex flex-col gap-4">
-          <StaggerItem>
-            <PlatformsCard className="" />
-          </StaggerItem>
+        {/* en un dispositivo no hay plataformas: apariencia cabe al lado ya en un iPad apaisado, con su altura (sin estirarse) */}
+        <div className={cx('col-span-12 flex flex-col gap-4', remote ? '@3xl:col-span-7 self-start' : '@5xl:col-span-7')}>
+          {!remote && (
+            <StaggerItem>
+              <PlatformsCard className="" />
+            </StaggerItem>
+          )}
           <StaggerItem className="flex-1 flex flex-col">
             <AppearanceCard s={settings} update={update} />
           </StaggerItem>
         </div>
-        <StaggerItem className="col-span-12 @5xl:col-span-5">
+        <StaggerItem className={cx('col-span-12', remote ? '@3xl:col-span-5' : '@5xl:col-span-5')}>
           <AutomationsSettingsCard />
         </StaggerItem>
         {/* el resto en dos columnas que se reparten solas (cada tarjeta con su altura, sin estirarse) */}
         <div className="col-span-12 @4xl:columns-2 gap-4">
           {[
-            <DevicesCard key="devices" />,
+            ...(remote ? [] : [<DevicesCard key="devices" />]),
             <MemoryCard key="memory" />,
             <GeneralCard key="general" s={settings} update={update} />,
-            <DataCard key="data" s={settings} update={update} />,
+            ...(remote ? [] : [<DataCard key="data" s={settings} update={update} />]),
             <AboutCard key="about" s={settings} update={update} />
           ].map((card) => (
             <StaggerItem key={card.key} className="break-inside-avoid mb-4" data-settings-section={card.key ?? undefined}>
@@ -129,20 +137,23 @@ function AppearanceCard({ s, update }: { s: AppSettings; update: Upd }) {
             ]}
           />
         </div>
-        <div>
-          <div className="t-ui font-medium text-text2 mb-1.5">{t('appearance.cursor')}</div>
-          <SegmentedTabs
-            fill
-            size="sm"
-            value={s.general.cursor}
-            onChange={(v) => void update({ general: { cursor: v } })}
-            items={[
-              { id: 'sun', label: t('appearance.cursorSun') },
-              { id: 'system', label: t('appearance.cursorSystem') }
-            ]}
-          />
-          <div className="t-ui text-text3 mt-1.5">{t('appearance.cursorHint')}</div>
-        </div>
+        {/* el cursor es de la ventana del Mac: un dispositivo táctil no tiene */}
+        {!api.remote && (
+          <div>
+            <div className="t-ui font-medium text-text2 mb-1.5">{t('appearance.cursor')}</div>
+            <SegmentedTabs
+              fill
+              size="sm"
+              value={s.general.cursor}
+              onChange={(v) => void update({ general: { cursor: v } })}
+              items={[
+                { id: 'sun', label: t('appearance.cursorSun') },
+                { id: 'system', label: t('appearance.cursorSystem') }
+              ]}
+            />
+            <div className="t-ui text-text3 mt-1.5">{t('appearance.cursorHint')}</div>
+          </div>
+        )}
       </div>
     </Card>
   )
@@ -154,8 +165,8 @@ function GeneralCard({ s, update }: { s: AppSettings; update: Upd }) {
   return (
     <Card padded="lg" className="h-full">
       <SectionTitle title={t('general.title')} />
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <TextField label={t('general.name')} value={name} placeholder={t('general.namePlaceholder')} onChange={(e) => setName(e.target.value)} onBlur={() => name !== s.general.name && void update({ general: { name: name.trim() } })} />
+      <div className="mt-4 grid grid-cols-2 max-[700px]:grid-cols-1 gap-3">
+        <TextField label={t('general.name')} value={name} maxLength={80} placeholder={t('general.namePlaceholder')} onChange={(e) => setName(e.target.value)} onBlur={() => name !== s.general.name && void update({ general: { name: name.trim() } })} />
         <Select
           label={t('general.language')}
           value={s.general.language}
@@ -251,33 +262,46 @@ function AboutCard({ s, update }: { s: AppSettings; update: Upd }) {
   const upd = useUpdateState()
   const [asked, setAsked] = useState(false)
   const current = info?.version ?? ''
+  // desde un dispositivo: la versión y los avisos legales; las actualizaciones (y lo que abre ventanas) son del Mac
+  const remote = api.remote
   return (
     <Card padded="lg" className="h-full flex flex-col">
       <div className="flex items-center gap-3">
-        <AulaMark size={36} state={upd.status === 'checking' || upd.status === 'downloading' ? 'working' : 'idle'} />
+        <AulaMark size={36} state={!remote && (upd.status === 'checking' || upd.status === 'downloading') ? 'working' : 'idle'} />
         <div>
           <div className="t-title2">Aula</div>
           <div className="t-ui text-text3">{t('about.version', { version: info?.version ?? '—' })}</div>
         </div>
       </div>
-      <div className="mt-3">
-        <ToggleRow title={t('about.autoUpdate')} checked={s.data.autoUpdate} onChange={(v) => void update({ data: { autoUpdate: v } })} />
-      </div>
-      <UpdateStatus state={upd} asked={asked} current={current} />
-      {info?.secretProtection === 'basic' && <div className="t-footnote text-warning mt-2">{t('about.noKeyring')}</div>}
+      {!remote && (
+        <>
+          <div className="mt-3">
+            <ToggleRow title={t('about.autoUpdate')} checked={s.data.autoUpdate} onChange={(v) => void update({ data: { autoUpdate: v } })} />
+          </div>
+          <UpdateStatus state={upd} asked={asked} current={current} />
+          {info?.secretProtection === 'basic' && <div className="t-footnote text-warning mt-2">{t('about.noKeyring')}</div>}
+        </>
+      )}
       <div className="mt-auto pt-3 flex items-center justify-between gap-3">
         {/* avisos legales de la AGPL (§0, §5(d)): copyright, sin garantía, la licencia y el código de esta versión */}
         <div className="flex flex-col items-start gap-0.5 min-w-0" data-testid="about-legal">
           <span className="t-footnote text-text3">{t('about.copyright')}</span>
           <span className="t-footnote text-text3">{t('about.license')}</span>
-          <span className="flex flex-wrap items-center gap-x-3">
-            <AboutLink onClick={() => openLegal('aula')}>{t('about.licenseText')}</AboutLink>
-            <AboutLink onClick={() => openURL(sourceCodeURL(current))}>{t('about.source')}</AboutLink>
-            <AboutLink onClick={() => openLegal('third-party')}>{t('about.licenses')}</AboutLink>
-            <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>
-          </span>
+          {remote ? (
+            // un enlace de verdad: se abre en el dispositivo, no en el Mac
+            <a className="t-ui text-accent-text hover:underline" href={sourceCodeURL(current)} target="_blank" rel="noreferrer">
+              {t('about.source')}
+            </a>
+          ) : (
+            <span className="flex flex-wrap items-center gap-x-3">
+              <AboutLink onClick={() => openLegal('aula')}>{t('about.licenseText')}</AboutLink>
+              <AboutLink onClick={() => openURL(sourceCodeURL(current))}>{t('about.source')}</AboutLink>
+              <AboutLink onClick={() => openLegal('third-party')}>{t('about.licenses')}</AboutLink>
+              <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>
+            </span>
+          )}
         </div>
-        <UpdateButtons state={upd} asked={asked} current={current} onAsk={() => setAsked(true)} />
+        {!remote && <UpdateButtons state={upd} asked={asked} current={current} onAsk={() => setAsked(true)} />}
       </div>
     </Card>
   )

@@ -10,7 +10,7 @@ import { getSettings, resetSettingsCache, updateSettings } from '../settings'
 import { CostLedger, CostMeter, PriceBook, setCostMeter, defaultSpending } from '../costs'
 import { clearCatalogMemory } from './catalog/cache'
 import { invalidateAvailability } from './registry'
-import { aiProviderViews, aiStatus, ChatStreams, configureAI, providerModels, removeProviderKey, sanitizeChatMessages, setProviderKey, testProvider, type ChatDelta } from './service'
+import { aiChoices, aiProviderViews, aiStatus, ChatStreams, chooseAI, configureAI, providerModels, removeProviderKey, sanitizeChatMessages, setProviderKey, testProvider, type ChatDelta } from './service'
 import { jsonReply, mockFetch, MockChatModel, sseReply, step, testDeps, type MockReply, type RecordedRequest } from './testing/mocks'
 import type { RpcErrorInfo } from '@shared/ipc'
 
@@ -167,6 +167,89 @@ describe('configurar · la dirección y la clave', () => {
     await expect(configureAI({ providerId: 'custom', baseURL: 'https://api.example.com/v1', key: 42 }, { deps })).rejects.toMatchObject({ code: 'ai_missing_key' })
     expect(getSettings().ai.providers).toEqual([])
     await expect(configureAI({ providerId: 'ollama', key: KEY }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+  })
+})
+
+describe('elegir desde un dispositivo', () => {
+  it('la lista trae solo las IA listas, sin pistas de claves ni direcciones', async () => {
+    const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY })
+    await configureAI({ providerId: 'custom', baseURL: 'https://api.together.xyz/v1?token=secreto', model: 'meta-llama/Llama-4', key: KEY, activate: false }, { deps })
+    const choices = await aiChoices({ deps })
+    expect(choices.map((c) => c.id).sort()).toEqual(['custom', 'deepseek'])
+    const text = JSON.stringify(choices)
+    for (const secret of [KEY, 'fXYZ', 'sk-', 'secreto', 'https://', 'platform.deepseek.com']) expect(text, secret).not.toContain(secret)
+    for (const c of choices) expect(c).not.toHaveProperty('keyHint')
+    // el servicio propio se llama como su servidor; los conocidos traen sus modelos y sus niveles de razonamiento
+    expect(choices.find((c) => c.id === 'custom')).toMatchObject({ label: 'api.together.xyz', model: 'meta-llama/Llama-4', available: true })
+    const ds = choices.find((c) => c.id === 'deepseek')!
+    expect(ds.models?.map((m) => m.id)).toEqual(['deepseek-flash', 'deepseek-v4-pro'])
+    expect(ds.reasoningOptions.map((o) => o.value)).toContain('high')
+  })
+  it('elige una IA lista, y de ella un modelo de su lista y un razonamiento de los suyos', async () => {
+    const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY, 'ai.key.anthropic': 'sk-ant-1234567890abcdef' })
+    let st = await chooseAI({ providerId: 'deepseek' }, { deps })
+    expect(st).toMatchObject({ activeProvider: 'deepseek', ready: true, resolved: { providerId: 'deepseek', model: 'deepseek-flash' } })
+    st = await chooseAI({ providerId: 'anthropic' }, { deps })
+    expect(st.activeProvider).toBe('anthropic')
+    // el modelo y el razonamiento, sin cambiar la que está en uso
+    await chooseAI({ providerId: 'deepseek', model: 'deepseek-v4-pro', activate: false }, { deps })
+    await chooseAI({ providerId: 'deepseek', reasoning: 'high', activate: false }, { deps })
+    expect(getSettings().ai.activeProvider).toBe('anthropic')
+    expect(getSettings().ai.providers.find((p) => p.id === 'deepseek')).toMatchObject({ model: 'deepseek-v4-pro', reasoning: 'high' })
+    // '' vuelve al recomendado y al razonamiento del servicio
+    await chooseAI({ providerId: 'deepseek', model: '', reasoning: '', activate: false }, { deps })
+    const entry = getSettings().ai.providers.find((p) => p.id === 'deepseek')
+    expect(entry?.model).toBeUndefined()
+    expect(entry?.reasoning).toBeUndefined()
+  })
+  it('una IA que no está lista en el Mac no se puede elegir (sin clave, inventada, nueva o el modo automático)', async () => {
+    const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY })
+    await chooseAI({ providerId: 'deepseek' }, { deps })
+    const before = JSON.stringify(getSettings().ai)
+    await expect(chooseAI({ providerId: 'openai' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await expect(chooseAI({ providerId: 'ollama' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await expect(chooseAI({ providerId: 'claude-cli' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await expect(chooseAI({ providerId: 'custom' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await expect(chooseAI({ providerId: 'custom-nuevo' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await expect(chooseAI({ providerId: 'inventado' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await expect(chooseAI({ providerId: null }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    await expect(chooseAI({ providerId: '  ' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    await expect(chooseAI(null, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    await expect(chooseAI(['deepseek'], { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    // desactivada en el Mac: tampoco
+    await configureAI({ providerId: 'deepseek', enabled: false, activate: false }, { deps })
+    await expect(chooseAI({ providerId: 'deepseek' }, { deps })).rejects.toMatchObject({ code: 'ai_no_provider' })
+    await configureAI({ providerId: 'deepseek', enabled: true, activate: false }, { deps })
+    expect(JSON.parse(JSON.stringify(getSettings().ai)).activeProvider).toBe(JSON.parse(before).activeProvider)
+  })
+  it('ni direcciones, ni claves, ni ningún otro campo: se rechaza entero y no cambia nada', async () => {
+    const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY })
+    const before = JSON.stringify(getSettings().ai)
+    for (const extra of [{ baseURL: 'https://malo.example/v1' }, { key: 'sk-otra-1234567890abcdef' }, { label: 'Otro' }, { enabled: false }, { executable: '/usr/bin/true' }, { secretRef: 'ai.key.anthropic' }, { headers: { a: 'b' } }]) {
+      await expect(chooseAI({ providerId: 'deepseek', ...extra }, { deps }), JSON.stringify(extra)).rejects.toMatchObject({ code: 'invalid_args' })
+    }
+    await expect(chooseAI({ providerId: 'deepseek', activate: 'no' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    expect(JSON.stringify(getSettings().ai)).toBe(before)
+    expect(deps.secretsStore.get('ai.key.deepseek')).toBe(KEY)
+  })
+  it('un modelo que no es de su lista o un razonamiento que no tiene: no', async () => {
+    const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY })
+    await expect(chooseAI({ providerId: 'deepseek', model: 'gpt-6-sol' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    await expect(chooseAI({ providerId: 'deepseek', model: '../../otro' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    await expect(chooseAI({ providerId: 'deepseek', reasoning: 'muchísimo' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    await expect(chooseAI({ providerId: 'deepseek', reasoning: 'minimal' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    expect(getSettings().ai).toMatchObject({ activeProvider: null, providers: [] })
+  })
+  it('en el servicio propio, el modelo sale de la lista que da el servicio', async () => {
+    const mf = net((r) => (r.url.includes('/models') ? jsonReply({ data: [{ id: 'meta-llama/Llama-4' }, { id: 'qwen/qwen4' }] }) : sseReply(chatOK)))
+    const deps = testDeps(mf.fetch)
+    await configureAI({ providerId: 'custom', baseURL: 'https://api.together.xyz/v1', model: 'meta-llama/Llama-4', key: KEY }, { deps })
+    await chooseAI({ providerId: 'custom', model: 'qwen/qwen4' }, { deps })
+    expect(getSettings().ai.providers[0]).toMatchObject({ id: 'custom', baseURL: 'https://api.together.xyz/v1', model: 'qwen/qwen4' })
+    await expect(chooseAI({ providerId: 'custom', model: 'no-esta' }, { deps })).rejects.toMatchObject({ code: 'invalid_args' })
+    // la dirección y la clave siguen siendo las del Mac
+    expect(deps.secretsStore.get('ai.key.custom')).toBe(KEY)
+    expect(getSettings().ai.providers[0].baseURL).toBe('https://api.together.xyz/v1')
   })
 })
 

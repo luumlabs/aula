@@ -30,10 +30,10 @@ On the Mac (`src/main/electron/remote/`, `src/main/services/remote/`):
 - **Linking** (`devices.ts`): the Mac shows a one-time 6-digit code (10 minutes, 5 attempts). The device sends it once
   and gets a long random token; the Mac stores only its SHA-256. Tokens expire after 90 days unused and each device can
   be removed in Settings. The token travels as an `HttpOnly; SameSite=Strict` cookie (or `Authorization: Bearer`).
-- **What a device may ask for** (`policy.ts`): a closed allowlist. Studying, chat, calendar, inbox, documents and
-  creating courses are open; API keys and secrets, settings (except the always-on switch), anything that opens a
-  dialog or window on the Mac, export/delete-everything, updates and the remote access itself are refused before
-  reaching any handler. A method that is added later stays closed until it is listed.
+- **What a device may ask for** (`policy.ts`): a closed allowlist. Studying, chat, calendar, inbox, documents,
+  creating courses and the daily-use settings (below) are open; API keys and secrets, the rest of the settings,
+  anything that opens a dialog or window on the Mac, export/delete-everything, updates and the remote access itself
+  are refused before reaching any handler. A method that is added later stays closed until it is listed.
 - **Uploads** (`uploads.ts`): the device has no Mac paths. The bridge uploads the picked file and hands the app an
   `aula-upload://<id>/<name>` reference; the server swaps it for the path of the copy (in the system temp folder,
   swept after 7 days) and registers it as a file the student gave, exactly like a file dropped on the Mac window.
@@ -42,6 +42,32 @@ On the Mac (`src/main/electron/remote/`, `src/main/services/remote/`):
   belong to the **same Tailscale user**, proves to itself that the upstream is Aula (HMAC challenge on `/health`)
   before forwarding, and never uploads logs. Tailscale does not need to be installed on the Mac. The server also
   rejects any request whose `Host` is not this computer unless it carries the sidecar's per-launch key.
+
+## Settings on a device
+
+There is one Aula, on the Mac, so there is one set of settings: a change made on the iPad changes Aula everywhere
+(the Mac window and the other devices follow at once). On a device the Settings screen shows only the daily-use
+part, and the server enforces the same split (`policy.ts`): a device that sends anything else is refused, whatever
+its interface shows.
+
+| On a device | What can be done | How the server limits it |
+| --- | --- | --- |
+| **Your AI** | Choose among the AIs that are already ready on the Mac, and their model and reasoning level | `ai.choices` lists only ready providers, without key hints or addresses. `ai.choose` takes `providerId`, `model`, `reasoning`, `activate` and nothing else (a base URL, a key or any other field refuses the call); the provider must be ready on the Mac and the model must be one of its list (`chooseAI` in `services/ai/service.ts`). `ai.models` gives a provider's model list |
+| **Appearance** | Theme, text size, motion | `settings.update` with `general.theme`, `general.textScale` (0.85 to 1.3), `general.motion` |
+| **Language and reminders** | Name, language, daily reminder and its time | `general.name` (up to 80 characters), `general.language`, `general.reminders`, `general.reminderTime` (HH:mm) |
+| **Aula always on** | The switch and quiet hours | `persistent.enabled`, `persistent.quietHours` (`null` or `{ from, to }` in HH:mm) |
+| **What Aula remembers** | See, add, correct, forget one, pause | `memory.list`, `memory.status`, `memory.add`, `memory.edit`, `memory.pause`, and `memory.forget` with exactly one id |
+| **About** | The version, the legal notices and the link to the source code | `app.info` |
+
+A `settings.update` from a device is checked field by field against that list, each with its type and range, and
+is refused **whole** if it carries anything else (another section, another field, a wrong type): the good fields
+of a mixed patch are not applied.
+
+Only on the Mac (hidden on a device and refused by the server): adding or changing API keys, signing in to ChatGPT
+or Claude, downloading local models, the daily spending cap, a custom AI service or its address, **Your
+platforms**, **Aula on your devices**, **Privacy and data** (its switches, the data folder, export and delete
+everything), exporting or clearing the memory, forgetting several memories in one call, updates and automatic
+updates, "open at login" and the cursor (a touch device has none).
 
 ## Aula's browser, live
 
@@ -75,7 +101,8 @@ On the device, either:
 2. **Safari**, with the Tailscale app installed and connected on the device: open `http://aula-mac`, type the code,
    then *Share → Add to Home Screen* to get a full-screen icon. This needs no Xcode and works today.
 
-The Mac has to be awake with Aula open (or in the tray). Settings (the AI, keys, platforms) are changed on the Mac.
+The Mac has to be awake with Aula open (or in the tray). Settings opens on the device with the daily-use part (see
+*Settings on a device*); keys, platforms, devices and data are managed on the Mac.
 
 ## The iPhone / iPad app (`native/ios`)
 
@@ -170,6 +197,12 @@ Verified on a Mac, by tests in this repository:
   uploads (`src/main/services/remote/remote.test.ts`), and the sidecar (`native/tsnet/build.sh test`).
 - The interface from a browser at tablet and phone sizes against a running Aula: linking with the code, courses and
   lessons, live events, assets with ranges, uploads, the phone layout.
+- Settings on a device, against a running Aula with a second window linked as a device (tablet and phone sizes,
+  light and dark): the screen shows only the daily-use cards; the theme and the language chosen on the device change
+  the Mac's `settings.json` and the Mac window; adding, correcting and forgetting a memory reach the Mac; and the
+  server refuses `data.deleteAll`, `data.exportAll`, `memory.clear`, `memory.export`, `ai.configure`, `ai.setKey`, an
+  `ai.choose` with an address or for an AI that is not ready, and a `settings.update` with any field outside the list
+  (alone or mixed with a good one), leaving the Mac's settings untouched.
 - The Mac sidecar joining Tailscale's control plane up to "needs sign-in".
 - `native/ios/_verify/verify.sh`: the loopback forwarder at runtime (36 checks), the whole app compiled for macOS in
   Swift 6 mode against TailscaleKit built from source, and the app's Tailscale node started for real up to "needs

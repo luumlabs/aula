@@ -40,7 +40,7 @@ beforeAll(async () => {
 
   const { handle } = await import('../rpc')
   const note = (method: string) => (args: unknown, ctx: { remote?: { deviceId: string } }) => { seen.push({ method, args, device: ctx.remote?.deviceId }); return { src: 'aula-asset://pack/curso/assets/fig.png' } }
-  for (const m of ['courses.list', 'create.addFiles', 'settings.update', 'ai.setKey']) handle(m as never, note(m) as never)
+  for (const m of ['courses.list', 'create.addFiles', 'settings.update', 'ai.setKey', 'ai.configure', 'ai.choose', 'ai.choices', 'memory.add', 'memory.forget', 'memory.clear', 'memory.export', 'data.deleteAll', 'data.exportAll']) handle(m as never, note(m) as never)
 
   const { DeviceRegistry } = await import('@main/services/remote/devices')
   const { UploadStore } = await import('@main/services/remote/uploads')
@@ -113,11 +113,49 @@ describe('servidor remoto', () => {
     // también con la ficha en Authorization (la app nativa)
     expect((await rpc('courses.list', undefined, { authorization: `Bearer ${token}` })).ok).toBe(true)
     expect((await rpc('ai.setKey', { providerId: 'x', key: 'y' })).error?.code).toBe('forbidden')
-    expect((await rpc('settings.update', { general: { language: 'en' } })).error?.code).toBe('forbidden')
     expect((await rpc('settings.update', { persistent: { enabled: true } })).ok).toBe(true)
     expect(await rpc('app.setTheme', { theme: 'dark' })).toEqual({ ok: true, value: null })
     expect((await rpc('course.inventado')).error?.code).toBe('unknown_method')
     expect(seen.map((s) => s.method)).toEqual(['courses.list', 'courses.list', 'settings.update'])
+  })
+  it('Ajustes desde el dispositivo: lo de uso diario llega tal cual; lo del Mac se niega sin llegar', async () => {
+    seen = []
+    const denied = async (method: string, args?: unknown): Promise<void> => expect((await rpc(method, args)).error?.code, `${method} ${JSON.stringify(args)}`).toBe('forbidden')
+    // el idioma, el tema y las horas de silencio: sí
+    expect((await rpc('settings.update', { general: { language: 'en', theme: 'dark' } })).ok).toBe(true)
+    expect((await rpc('settings.update', { persistent: { quietHours: { from: '23:00', to: '07:00' } } })).ok).toBe(true)
+    // un campo del Mac anula el cambio entero, aunque venga con uno bueno
+    await denied('settings.update', { general: { theme: 'light' }, data: { memory: false } })
+    await denied('settings.update', { ai: { providers: [{ id: 'custom', baseURL: 'https://malo.example/v1' }] } })
+    await denied('settings.update', { ai: { dailyBudgetUSD: 0 } })
+    await denied('settings.update', { platforms: { keepSignedIn: false } })
+    await denied('settings.update', { persistent: { enabled: true, openAtLogin: true } })
+    await denied('settings.update', { general: { cursor: 'system' } })
+    await denied('settings.update', { general: { textScale: 3 } })
+    await denied('settings.update')
+    // la IA: elegir entre las listas, sí; configurar, dar una dirección o una clave, no
+    expect((await rpc('ai.choices')).ok).toBe(true)
+    expect((await rpc('ai.choose', { providerId: 'deepseek', model: 'deepseek-v4-pro' })).ok).toBe(true)
+    await denied('ai.choose', { providerId: 'custom', baseURL: 'https://malo.example/v1', key: 'sk-1234567890abcdef' })
+    await denied('ai.configure', { providerId: 'deepseek' })
+    await denied('ai.setKey', { providerId: 'openai', key: 'sk-1234567890abcdef' })
+    // la memoria: añadir y olvidar uno, sí; varios de golpe, borrarla entera o exportarla, no
+    expect((await rpc('memory.add', { text: 'Me cuesta la trigonometría' })).ok).toBe(true)
+    expect((await rpc('memory.forget', { ids: ['m1'] })).ok).toBe(true)
+    await denied('memory.forget', { ids: ['m1', 'm2'] })
+    await denied('memory.clear')
+    await denied('memory.export')
+    // los datos
+    await denied('data.deleteAll')
+    await denied('data.exportAll')
+    expect(seen.map((s) => [s.method, s.args])).toEqual([
+      ['settings.update', { general: { language: 'en', theme: 'dark' } }],
+      ['settings.update', { persistent: { quietHours: { from: '23:00', to: '07:00' } } }],
+      ['ai.choices', undefined],
+      ['ai.choose', { providerId: 'deepseek', model: 'deepseek-v4-pro' }],
+      ['memory.add', { text: 'Me cuesta la trigonometría' }],
+      ['memory.forget', { ids: ['m1'] }]
+    ])
   })
   it('eventos: lo que emite Aula llega por /events, una línea por evento', async () => {
     const res = await get('/events', { cookie })

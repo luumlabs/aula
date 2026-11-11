@@ -156,7 +156,7 @@ function HealthRow({ issue }: { issue: AutomationHealthIssue }) {
       title = t('health.failing', { title: issue.title }); detail = issue.message; fix = { label: t('health.fixRetry'), run: () => void inboxOps.runNow(issue.id) }
       break
   }
-  // desde un dispositivo: la IA, las plataformas y el presupuesto se arreglan en el Mac (allí están los ajustes)
+  // desde un dispositivo: la IA, las plataformas y el presupuesto se arreglan en el Mac (sus Ajustes solo traen lo de uso diario)
   if (api.remote && issue.kind === 'signIn') {
     // la sesión caducada sí se arregla desde aquí: en el navegador de Aula en vivo
     fix = { label: t('health.fixSignIn'), run: () => void signInHere() }

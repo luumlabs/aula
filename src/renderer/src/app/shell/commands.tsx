@@ -46,8 +46,13 @@ export function useBuiltinCommands(): void {
       registerCommands('builtin', () => [
         { id: 'new-course', group: 'actions', label: t('nav.newCourse'), icon: <Icon name="create" size={17} className="text-accent-text" />, keywords: ['crear', 'create', 'nuevo', 'new'], run: () => navigate({ name: 'create' }) },
         { id: 'theme-dark', group: 'actions', label: i18n.language === 'es' ? 'Modo oscuro' : 'Dark mode', icon: <Moon size={17} />, run: () => void useSettings.getState().update({ general: { theme: 'dark' } }) },
-        { id: 'import-course', group: 'actions', label: t('palette:actions.importCourse'), icon: <FolderInput size={17} />, keywords: ['aulapack', 'importar', 'import', 'curso', 'course'], run: importCourse },
-        { id: 'export-all', group: 'actions', label: t('settings:data.exportAll'), icon: <Archive size={17} />, keywords: ['exportar', 'export', 'copia', 'backup', 'datos', 'data'], run: exportEverything },
+        // importar un curso y exportar todo abren diálogos del Mac: desde un dispositivo no se ofrecen (ni se pueden pedir)
+        ...(api.remote
+          ? []
+          : [
+              { id: 'import-course', group: 'actions' as const, label: t('palette:actions.importCourse'), icon: <FolderInput size={17} />, keywords: ['aulapack', 'importar', 'import', 'curso', 'course'], run: importCourse },
+              { id: 'export-all', group: 'actions' as const, label: t('settings:data.exportAll'), icon: <Archive size={17} />, keywords: ['exportar', 'export', 'copia', 'backup', 'datos', 'data'], run: exportEverything }
+            ]),
         { id: 'memory', group: 'navigate', label: t('palette:actions.memory'), icon: <Brain size={17} />, keywords: ['memoria', 'memory', 'recuerda', 'remembers'], run: () => navigate({ name: 'settings', section: 'memory' }) },
         { id: 'theme-light', group: 'actions', label: i18n.language === 'es' ? 'Modo claro' : 'Light mode', icon: <Sun size={17} />, run: () => void useSettings.getState().update({ general: { theme: 'light' } }) },
         { id: 'go-home', group: 'navigate', label: t('nav.home'), icon: <House size={17} />, run: () => navigate({ name: 'home' }) },

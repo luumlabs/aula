@@ -1,6 +1,9 @@
 {
   "title": "Ajustes",
   "subtitle": "Todo viene encendido salvo «Aula siempre activa». Cambia solo lo que necesites.",
+  "remote": {
+    "subtitle": "Son los ajustes de Aula en tu Mac: lo que cambies aquí cambia en todas partes. Las claves, las plataformas, los dispositivos y los datos se gestionan en el Mac."
+  },
   "ai": {
     "logo": {
       "aula": "Modelo de Aula",
@@ -13,6 +16,12 @@
     "change": "Cambiar",
     "choose": "Elegir una IA",
     "auto": "Automática: Aula usa la mejor que tengas",
+    "remote": {
+      "detail": "Elige entre las que ya tienes listas en tu Mac",
+      "ready": "Lista en tu Mac",
+      "none": "No hay ninguna IA lista en tu Mac. Conecta una en Aula, en tu Mac: Ajustes → Tu IA.",
+      "hint": "Para conectar otra IA, cambiar una clave o poner un tope de gasto, abre Ajustes en tu Mac."
+    },
     "subscription": "Con tu suscripción",
     "subscriptionHint": "Sin claves ni pagos extra",
     "local": "Gratis en este ordenador",
@@ -241,9 +250,11 @@
   "memory": {
     "title": "Lo que Aula recuerda",
     "body": "Tus preferencias, exámenes y lo que te cuesta, para ayudarte mejor. Solo en este ordenador.",
+    "bodyRemote": "Tus preferencias, exámenes y lo que te cuesta, para ayudarte mejor. Se guarda solo en tu Mac.",
     "count_one": "{{count}} recuerdo",
     "count_other": "{{count}} recuerdos",
     "off": "Desactivada en Privacidad y datos",
+    "offRemote": "Desactivada: se enciende en tu Mac, en Privacidad y datos",
     "paused": "En pausa",
     "more": "Más",
     "resume": "Reanudar",

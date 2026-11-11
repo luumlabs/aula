@@ -140,6 +140,8 @@ async function tour(tag) {
   await go({ name: 'inbox' }, 2500)
   await snap(`${tag}-inbox`)
   await go({ name: 'create' }, 2000)
+  // los ajustes de un dispositivo (lo de uso diario): que la demostración también los enseñe
+  await go({ name: 'settings' }, 2500)
   // el chat: un cuestionario rápido con la IA simulada (lo que Aula contesta en la demostración)
   await go({ name: 'chat' }, 2500)
   const box = page.locator('textarea').first()

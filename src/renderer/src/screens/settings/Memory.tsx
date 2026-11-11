@@ -1,5 +1,6 @@
 // «Lo que Aula recuerda de ti»: los recuerdos por secciones, con buscar, corregir, olvidar, pausar, exportar y borrar todo.
 // El interruptor general es Ajustes → Datos → Memoria (settings.data.memory).
+// Desde un dispositivo: lo mismo menos exportar (guarda un archivo en el Mac) y borrarlo todo, que se hacen en el Mac.
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
@@ -50,11 +51,12 @@ export function MemoryCard() {
 
   const paused = !!status?.pausedUntil
   const disabled = status && !status.enabled
+  const remote = api.remote
   return (
     <Card padded="lg" className="h-full flex flex-col">
       <SectionTitle
         title={t('memory.title')}
-        detail={disabled ? t('memory.off') : paused ? t('memory.paused') : t('memory.count', { count: status?.active ?? 0 })}
+        detail={disabled ? t(remote ? 'memory.offRemote' : 'memory.off') : paused ? t('memory.paused') : t('memory.count', { count: status?.active ?? 0 })}
         action={
           <Menu
             trigger={(open) => (
@@ -66,13 +68,17 @@ export function MemoryCard() {
               paused
                 ? { label: t('memory.resume'), icon: <Icon name="play" size={15} />, onSelect: () => void run(() => api.invoke('memory.pause', { until: null })) }
                 : { label: t('memory.pauseDay'), icon: <Icon name="pause" size={15} />, onSelect: () => void run(() => api.invoke('memory.pause', { until: new Date(Date.now() + 86400000).toISOString() })) },
-              { label: t('memory.export'), icon: <Icon name="download" size={15} />, onSelect: () => void exportMemory() },
-              { label: t('memory.clear'), icon: <Icon name="trash" size={15} />, danger: true, separatorBefore: true, onSelect: () => setConfirmClear(true) }
+              ...(remote
+                ? []
+                : [
+                    { label: t('memory.export'), icon: <Icon name="download" size={15} />, onSelect: () => void exportMemory() },
+                    { label: t('memory.clear'), icon: <Icon name="trash" size={15} />, danger: true, separatorBefore: true, onSelect: () => setConfirmClear(true) }
+                  ])
             ]}
           />
         }
       />
-      <p className="t-ui text-text3 -mt-1 mb-3">{t('memory.body')}</p>
+      <p className="t-ui text-text3 -mt-1 mb-3">{t(remote ? 'memory.bodyRemote' : 'memory.body')}</p>
       <div className="flex gap-2 mb-3">
         <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('memory.search')} icon={<Icon name="search" size={15} />} className="flex-1" />
       </div>
@@ -109,7 +115,8 @@ export function MemoryCard() {
                                 {[t(`memory.sources.${m.source}`), m.courseTitle, fmtDate(m.updatedAt, { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
                               </div>
                             </div>
-                            <div className={cx('flex gap-0.5 opacity-0 group-hover/mem:opacity-100 focus-within:opacity-100 transition-opacity')}>
+                            {/* en una pantalla táctil no hay «pasar por encima»: los botones se ven siempre */}
+                            <div className={cx('flex gap-0.5 transition-opacity', !remote && 'opacity-0 group-hover/mem:opacity-100 focus-within:opacity-100')}>
                               <IconButton size="sm" label={t('memory.edit')} onClick={() => setEditing({ id: m.id, text: m.text })}>
                                 <Icon name="edit" size={14} />
                               </IconButton>

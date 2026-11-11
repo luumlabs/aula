@@ -1,6 +1,9 @@
 {
   "title": "Settings",
   "subtitle": "Everything is on by default except “Aula always on”. Change only what you need.",
+  "remote": {
+    "subtitle": "These are Aula’s settings on your Mac: what you change here changes everywhere. Keys, platforms, devices and data are managed on the Mac."
+  },
   "ai": {
     "logo": {
       "aula": "Aula model",
@@ -13,6 +16,12 @@
     "change": "Change",
     "choose": "Choose an AI",
     "auto": "Automatic: Aula uses the best one you have",
+    "remote": {
+      "detail": "Choose among the ones already set up on your Mac",
+      "ready": "Ready on your Mac",
+      "none": "No AI is ready on your Mac. Connect one in Aula on your Mac: Settings → Your AI.",
+      "hint": "To connect another AI, change a key or set a spending cap, open Settings on your Mac."
+    },
     "subscription": "With your subscription",
     "subscriptionHint": "No keys, no extra cost",
     "local": "Free on this computer",
@@ -241,9 +250,11 @@
   "memory": {
     "title": "What Aula remembers",
     "body": "Your preferences, exams and what you find hard, to help you better. Only on this computer.",
+    "bodyRemote": "Your preferences, exams and what you find hard, to help you better. Stored only on your Mac.",
     "count_one": "{{count}} memory",
     "count_other": "{{count}} memories",
     "off": "Turned off in Privacy and data",
+    "offRemote": "Off: turn it on from your Mac, in Privacy and data",
     "paused": "Paused",
     "more": "More",
     "resume": "Resume",

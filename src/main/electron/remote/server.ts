@@ -10,10 +10,11 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createReadStream, readFileSync, statSync } from 'node:fs'
 import type { AddressInfo } from 'node:net'
 import { PairingError, type DeviceRegistry, type RemoteDeviceView } from '@main/services/remote/devices'
-import { noopValue, remoteSettingsPatch, remoteVerdict, rewriteAssets } from '@main/services/remote/policy'
+import { noopValue, remoteCall, rewriteAssets } from '@main/services/remote/policy'
 import { pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from '@main/services/remote/bridge'
 import { UploadError, type UploadStore } from '@main/services/remote/uploads'
 import { log } from '@main/services/log'
+import { tr } from '@shared/ai/i18n'
 import { APP_CSP, mimeFor, resolveAppUrl, resolveAssetUrl } from '../protocol'
 import { dispatchRemote, onEmit } from '../rpc'
 
@@ -169,13 +170,9 @@ export class RemoteServer {
     if (body === undefined) return
     const call = body as { method?: unknown; args?: unknown } | null
     const method = typeof call?.method === 'string' ? call.method : ''
-    let args: unknown = call?.args ?? undefined
-    let verdict = remoteVerdict(method)
-    if (method === 'settings.update') {
-      const patch = remoteSettingsPatch(args)
-      if (patch) { args = patch; verdict = 'allow' }
-    }
-    if (verdict === 'deny') return this.json(res, 200, { ok: false, error: { message: 'Esto solo se puede hacer desde Aula en tu Mac.', code: 'forbidden' } })
+    // los métodos acotados (ajustes, olvidar un recuerdo, elegir la IA) pasan solo con los argumentos ya comprobados
+    const { verdict, args } = remoteCall(method, call?.args ?? undefined)
+    if (verdict === 'deny') return this.json(res, 200, { ok: false, error: { message: tr('Esto solo se puede hacer desde Aula en tu Mac.', 'This can only be done from Aula on your Mac.'), code: 'forbidden' } })
     if (verdict === 'noop') return this.json(res, 200, { ok: true, value: noopValue(method) })
     const envelope = await dispatchRemote(method, this.o.uploads.resolve(device.id, args), device.id)
     this.send(res, 200, 'application/json; charset=utf-8', rewriteAssets(JSON.stringify(envelope) ?? '{"ok":true}'), { 'cache-control': 'no-store' })

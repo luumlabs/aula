@@ -29,7 +29,7 @@ export function ModelSelect({ provider, onChanged }: { provider: AIProviderView;
   const choose = async (id: string) => {
     if (id === value) return
     // el recomendado se guarda como «sin elegir»: así sigue al preset si Aula lo actualiza
-    await aiClient.configure({ providerId: provider.id, model: id === provider.defaultModel ? '' : id, activate: false }).catch(() => undefined)
+    await aiClient.select({ providerId: provider.id, model: id === provider.defaultModel ? '' : id, activate: false }).catch(() => undefined)
     onChanged()
   }
   return (
@@ -102,7 +102,7 @@ export function LiveModelSelect({ provider, onChanged }: { provider: AIProviderV
   const choose = async (id: string) => {
     if (id === value) return
     try {
-      await aiClient.configure({ providerId: provider.id, model: id, activate: false })
+      await aiClient.select({ providerId: provider.id, model: id, activate: false })
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -135,7 +135,7 @@ export function ReasoningSelect({ provider, onChanged }: { provider?: AIProvider
   const choose = async (v: string) => {
     if (v === value) return
     try {
-      await aiClient.configure({ providerId: id, reasoning: v === 'auto' ? '' : v, activate: false })
+      await aiClient.select({ providerId: id, reasoning: v === 'auto' ? '' : v, activate: false })
     } catch (e) {
       toast.error((e as Error).message)
     }

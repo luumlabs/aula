@@ -7,7 +7,7 @@ import { onSettingsChange } from '@main/services/settings'
 import { invalidArgs } from '@main/services/errors'
 import { log } from '@main/services/log'
 import {
-  aiCosts, aiProviderViews, aiStatus, ChatStreams, configureAI, createFakeModel, invalidateAvailability, providerModels, registerProviderFactory,
+  aiChoices, aiCosts, aiProviderViews, aiStatus, ChatStreams, chooseAI, configureAI, createFakeModel, invalidateAvailability, providerModels, registerProviderFactory,
   removeProviderKey, setModelOverride, setProviderKey, testProvider
 } from '@main/services/ai'
 import { costMeter } from '@main/services/costs'
@@ -48,6 +48,9 @@ export function register(): void {
   })
   // `ai.configure` cambia los ajustes: el aviso 'ai.changed' sale de `onSettingsChange`
   handle('ai.configure', (args) => configureAI(args))
+  // desde un dispositivo: solo elegir entre las IA que ya están listas (sin claves, direcciones ni proveedores nuevos)
+  handle('ai.choices', () => aiChoices())
+  handle('ai.choose', (args) => chooseAI(args))
   handle('ai.models', (args) => {
     if (!args || typeof args !== 'object') throw invalidArgs('Argumentos no válidos')
     return providerModels(args.providerId, args.refresh === true)
