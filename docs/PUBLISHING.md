@@ -136,6 +136,9 @@ What you get in `release/<version>/`:
 | Linux | `Aula-<v>-linux-x86_64.AppImage`, `Aula-<v>-linux-arm64.AppImage` (+ `latest-linux.yml`, `latest-linux-arm64.yml`) and `Aula-<v>-linux-amd64.deb` |
 
 Notes for building on a Mac:
+- macOS carries the Tailscale component of *Aula on your devices* (`Resources/bin/aula-tsnet`, see `docs/DEVICES.md`).
+  Git doesn't keep it: the script builds it with `native/tsnet/build.sh`, which needs the project-local Go toolchain in
+  `.toolchain/go` (the script says how to get it), and stops if the package comes out without it.
 - Windows needs nothing else (no Wine): the installer is unsigned.
 - The Linux `.deb` needs GNU tar on the `PATH` as `gtar` (`brew install gnu-tar`, or the `gtar` that electron-builder
   keeps in `~/Library/Caches/electron-builder/linux-tools-mac*`). Without it the script builds only the AppImages (the

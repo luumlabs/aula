@@ -178,7 +178,12 @@ fi
 for p in "${ONLY[@]}"; do
   case "$p" in
     mac) [ "$(uname)" = Darwin ] || die "El instalador de macOS solo se puede compilar (y firmar) en un Mac."
-         npx electron-builder --mac --publish never -c.directories.output="$OUT" ;;
+         # «Aula en tus dispositivos»: el componente de Tailscale va dentro del paquete (Resources/bin) y git no lo guarda
+         native/tsnet/build.sh || die "No se pudo compilar native/tsnet/bin/aula-tsnet (hace falta Go en .toolchain/go: lo dice native/tsnet/build.sh)."
+         lipo -archs native/tsnet/bin/aula-tsnet | grep -q 'x86_64' && lipo -archs native/tsnet/bin/aula-tsnet | grep -q 'arm64' \
+           || die "native/tsnet/bin/aula-tsnet no es universal (arm64 + x86_64)."
+         npx electron-builder --mac --publish never -c.directories.output="$OUT"
+         [ -x "$OUT/mac-universal/Aula.app/Contents/Resources/bin/aula-tsnet" ] || die "El paquete de macOS salió sin Resources/bin/aula-tsnet." ;;
     win) npx electron-builder --win --publish never -c.directories.output="$OUT" ;;
     linux)
       DEB_OPTS=()
