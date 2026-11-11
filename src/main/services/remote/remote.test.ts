@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Readable } from 'node:stream'
 import { DeviceRegistry, MAX_ATTEMPTS, PAIRING_MINUTES, PairingError, TOKEN_DAYS } from './devices'
-import { noopValue, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
+import { noopValue, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
 import { safeUploadName, UploadError, UploadStore } from './uploads'
 import { pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from './bridge'
 
@@ -71,8 +71,15 @@ describe('qué puede pedir un dispositivo', () => {
     for (const m of ['courses.list', 'study.record', 'chat.send', 'calendar.snapshot', 'automations.inbox', 'automations.setProactive', 'create.addFiles', 'create.start', 'generation.run', 'documents.open', 'settings.get'])
       expect(remoteVerdict(m), m).toBe('allow')
   })
+  it('lo de Ajustes que se usa a diario: ver las IA listas y sus modelos, y añadir, corregir o pausar la memoria', () => {
+    for (const m of ['ai.status', 'ai.choices', 'ai.models', 'memory.list', 'memory.status', 'memory.add', 'memory.edit', 'memory.pause', 'app.info', 'automations.snapshot'])
+      expect(remoteVerdict(m), m).toBe('allow')
+  })
   it('claves, ajustes, diálogos del Mac, exportar o borrar todo, actualizaciones y el propio acceso remoto: no', () => {
-    for (const m of ['ai.setKey', 'ai.configure', 'secrets.get', 'settings.update', 'settings.reset', 'data.exportAll', 'data.deleteAll', 'app.openDataFolder', 'updates.install', 'platforms.connect', 'remote.startPairing', 'remote.setEnabled', 'remote.revoke', 'courses.import', 'courses.delete', 'agents.install', 'memory.clear', 'sinpunto', '.x', ''])
+    for (const m of ['ai.setKey', 'ai.removeKey', 'ai.configure', 'ai.providers', 'ai.test', 'ai.chatStream', 'secrets.get', 'settings.update', 'settings.reset', 'data.exportAll', 'data.deleteAll',
+      'app.openDataFolder', 'app.showItemInFolder', 'app.openLicenses', 'app.openExternal', 'updates.install', 'updates.check', 'platforms.connect', 'platforms.add', 'platforms.remove', 'platforms.signOut',
+      'remote.status', 'remote.startPairing', 'remote.setEnabled', 'remote.revoke', 'courses.import', 'courses.delete', 'agents.install', 'agents.detect', 'agents.codexLogin', 'agents.codexLogout',
+      'local.catalog', 'local.download', 'local.delete', 'local.start', 'memory.clear', 'memory.export', 'memory.restore', 'memory.forget', 'ai.choose', 'sinpunto', '.x', ''])
       expect(remoteVerdict(m), m).toBe('deny')
   })
   it('lo que solo tiene sentido en la ventana del Mac no hace nada', () => {
@@ -80,12 +87,128 @@ describe('qué puede pedir un dispositivo', () => {
     expect(noopValue('app.setTheme')).toBeNull()
     expect(noopValue('secrets.status')).toEqual({ state: 'ok' })
   })
-  it('de los ajustes solo deja pasar el interruptor de «Aula siempre activa»', () => {
+  it('el interruptor de «Aula siempre activa» pasa como siempre', () => {
     expect(remoteSettingsPatch({ persistent: { enabled: false } })).toEqual({ persistent: { enabled: false } })
-    expect(remoteSettingsPatch({ persistent: { enabled: true, budget: 99 } })).toBeNull()
-    expect(remoteSettingsPatch({ persistent: { enabled: true }, general: { language: 'en' } })).toBeNull()
+    expect(remoteSettingsPatch({ persistent: { enabled: true } })).toEqual({ persistent: { enabled: true } })
     expect(remoteSettingsPatch({ persistent: { enabled: 'sí' } })).toBeNull()
-    expect(remoteSettingsPatch(null)).toBeNull()
+  })
+  it('de los ajustes pasa lo de uso diario, campo a campo', () => {
+    const ok: [string, string, unknown[]][] = [
+      ['general', 'theme', ['system', 'light', 'dark']],
+      ['general', 'textScale', [0.85, 1, 1.15, 1.3]],
+      ['general', 'motion', ['system', 'full', 'reduced']],
+      ['general', 'name', ['', 'Ana', 'x'.repeat(80)]],
+      ['general', 'language', ['system', 'es', 'en']],
+      ['general', 'reminders', [true, false]],
+      ['general', 'reminderTime', ['00:00', '18:30', '23:59']],
+      ['persistent', 'enabled', [true, false]],
+      ['persistent', 'quietHours', [null, { from: '22:00', to: '08:00' }]]
+    ]
+    for (const [section, field, values] of ok)
+      for (const v of values) expect(remoteSettingsPatch({ [section]: { [field]: v } }), `${section}.${field} = ${JSON.stringify(v)}`).toEqual({ [section]: { [field]: v } })
+    // varios campos y las dos secciones a la vez
+    const both = { general: { theme: 'dark', language: 'en', name: 'Ana' }, persistent: { enabled: true, quietHours: { from: '23:00', to: '07:00' } } }
+    expect(remoteSettingsPatch(both)).toEqual(both)
+  })
+  it('cada campo, con su tipo y su rango', () => {
+    const bad: [string, string, unknown[]][] = [
+      ['general', 'theme', ['sepia', '', 1, null, ['dark']]],
+      ['general', 'textScale', [0.84, 1.31, 1.4, 5, -1, '1', null, NaN]],
+      ['general', 'motion', ['none', true]],
+      ['general', 'name', ['x'.repeat(81), 7, null, { toString: 'x' }]],
+      ['general', 'language', ['fr', 'EN', 3]],
+      ['general', 'reminders', ['true', 1, null]],
+      ['general', 'reminderTime', ['24:00', '9:00', '18:60', '18:00:00', 1800, null]],
+      ['persistent', 'enabled', ['sí', 1, null]],
+      ['persistent', 'quietHours', ['22:00', { from: '22:00' }, { from: '22:00', to: '25:00' }, { from: '22:00', to: '08:00', days: [1] }, ['22:00', '08:00'], 0]]
+    ]
+    for (const [section, field, values] of bad)
+      for (const v of values) expect(remoteSettingsPatch({ [section]: { [field]: v } }), `${section}.${field} = ${JSON.stringify(v)}`).toBeNull()
+  })
+  it('lo del Mac no pasa: la IA y sus claves, las plataformas, los datos, abrir al iniciar sesión, el cursor…', () => {
+    const closed: unknown[] = [
+      { ai: { activeProvider: 'openai' } },
+      { ai: { providers: [{ id: 'custom', kind: 'openai-compatible', label: 'x', baseURL: 'https://malo.example/v1', secretRef: 'ai.key.openai' }] } },
+      { ai: { dailyBudgetUSD: 0 } },
+      { ai: { maxParallel: 8 } },
+      { data: { memory: false } },
+      { data: { webSearch: false } },
+      { data: { autoUpdate: false } },
+      { platforms: { keepSignedIn: false } },
+      { platforms: { accounts: [] } },
+      { persistent: { openAtLogin: true } },
+      { persistent: { style: 'attentive' } },
+      { persistent: { budget: 99 } },
+      // el cursor es de la ventana del Mac: un dispositivo táctil no tiene, y sus Ajustes no lo enseñan
+      { general: { cursor: 'system' } },
+      { general: { inventado: 1 } },
+      { onboarded: false },
+      { version: 1 },
+      { remote: { enabled: true } },
+      { secrets: { 'ai.key.openai': 'sk-x' } },
+      JSON.parse('{"__proto__":{"enabled":true}}'),
+      JSON.parse('{"general":{"__proto__":{"theme":"dark"}}}'),
+      { constructor: { name: 'x' } },
+      { general: {} },
+      { general: 'dark' },
+      { general: null },
+      { general: [{ theme: 'dark' }] },
+      {}, [], null, undefined, 'general', 7
+    ]
+    for (const patch of closed) expect(remoteSettingsPatch(patch), JSON.stringify(patch)).toBeNull()
+  })
+  it('un campo que no vale anula el cambio entero (no se aplica «lo que sí vale»)', () => {
+    expect(remoteSettingsPatch({ general: { theme: 'dark', cursor: 'system' } })).toBeNull()
+    expect(remoteSettingsPatch({ general: { theme: 'dark' }, data: { memory: false } })).toBeNull()
+    expect(remoteSettingsPatch({ general: { theme: 'dark' }, ai: { dailyBudgetUSD: 0 } })).toBeNull()
+    expect(remoteSettingsPatch({ general: { language: 'en', textScale: 9 } })).toBeNull()
+    expect(remoteSettingsPatch({ persistent: { enabled: true, openAtLogin: true } })).toBeNull()
+    expect(remoteSettingsPatch({ persistent: { enabled: true, budget: 99 } })).toBeNull()
+    expect(remoteSettingsPatch({ persistent: { enabled: true }, general: { language: 'klingon' } })).toBeNull()
+    expect(remoteSettingsPatch({ persistent: { enabled: true }, general: {} })).toBeNull()
+  })
+  it('olvidar un recuerdo, de uno en uno (una lista entera sería «eliminar todo»)', () => {
+    expect(remoteForget({ ids: ['m1'] })).toEqual({ ids: ['m1'] })
+    for (const bad of [{ ids: ['m1', 'm2'] }, { ids: [] }, { ids: 'm1' }, { ids: [7] }, { ids: [''] }, { ids: ['x'.repeat(101)] }, { ids: ['m1'], all: true }, { all: true }, {}, null, ['m1']])
+      expect(remoteForget(bad), JSON.stringify(bad)).toBeNull()
+  })
+  it('elegir la IA: solo cuál, su modelo y su razonamiento; con una dirección, una clave o cualquier otro campo, no', () => {
+    expect(remoteAIChoice({ providerId: 'deepseek' })).toEqual({ providerId: 'deepseek' })
+    expect(remoteAIChoice({ providerId: 'deepseek', model: 'deepseek-v4-pro', reasoning: 'high', activate: false })).toEqual({ providerId: 'deepseek', model: 'deepseek-v4-pro', reasoning: 'high', activate: false })
+    expect(remoteAIChoice({ providerId: 'deepseek', model: '' })).toEqual({ providerId: 'deepseek', model: '' })
+    const bad: unknown[] = [
+      { providerId: 'custom', baseURL: 'https://malo.example/v1' },
+      { providerId: 'openai', key: 'sk-1234567890abcdef' },
+      { providerId: 'custom', baseURL: 'https://malo.example/v1', key: 'sk-1234567890abcdef', model: 'm' },
+      { providerId: 'openai', label: 'x' },
+      { providerId: 'openai', enabled: false },
+      { providerId: 'openai', executable: '/usr/bin/true' },
+      { providerId: 'openai', secretRef: 'ai.key.anthropic' },
+      { providerId: 'openai', headers: { authorization: 'x' } },
+      { providerId: null },
+      { providerId: '' },
+      { providerId: 'x'.repeat(101) },
+      { providerId: ['openai'] },
+      { providerId: 'openai', model: 7 },
+      { providerId: 'openai', model: 'x'.repeat(501) },
+      { providerId: 'openai', reasoning: true },
+      { providerId: 'openai', activate: 'no' },
+      { model: 'gpt' }, {}, null, 'openai', ['openai']
+    ]
+    for (const args of bad) expect(remoteAIChoice(args), JSON.stringify(args)).toBeNull()
+  })
+  it('una llamada acotada pasa solo con sus argumentos comprobados; las demás, por la lista', () => {
+    expect(remoteCall('settings.update', { general: { theme: 'dark' } })).toEqual({ verdict: 'allow', args: { general: { theme: 'dark' } } })
+    expect(remoteCall('settings.update', { data: { memory: false } })).toEqual({ verdict: 'deny', args: undefined })
+    expect(remoteCall('settings.update', undefined).verdict).toBe('deny')
+    expect(remoteCall('memory.forget', { ids: ['m1'] })).toEqual({ verdict: 'allow', args: { ids: ['m1'] } })
+    expect(remoteCall('memory.forget', { ids: ['m1', 'm2'] }).verdict).toBe('deny')
+    expect(remoteCall('ai.choose', { providerId: 'deepseek' })).toEqual({ verdict: 'allow', args: { providerId: 'deepseek' } })
+    expect(remoteCall('ai.choose', { providerId: 'custom', baseURL: 'https://malo.example/v1' }).verdict).toBe('deny')
+    expect(remoteCall('memory.add', { text: 'hola' })).toEqual({ verdict: 'allow', args: { text: 'hola' } })
+    expect(remoteCall('app.setTheme', { theme: 'dark' }).verdict).toBe('noop')
+    for (const m of ['memory.clear', 'memory.export', 'data.deleteAll', 'data.exportAll', 'ai.configure', 'ai.setKey', 'toString', 'constructor', '__proto__'])
+      expect(remoteCall(m, {}).verdict, m).toBe('deny')
   })
   it('las direcciones de la ventana pasan a ser rutas del servidor', () => {
     expect(rewriteAssets('{"src":"aula-asset://pack/c/assets/f.png"}')).toBe('{"src":"/asset/pack/c/assets/f.png"}')

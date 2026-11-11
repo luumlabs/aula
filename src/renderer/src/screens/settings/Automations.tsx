@@ -8,6 +8,7 @@ import { motion } from 'motion/react'
 import { AulaMark, Button, Card, Icon, ProgressBar, SegmentedTabs, Switch, cx } from '@renderer/design'
 import { useSettings } from '@renderer/lib/settings'
 import { useRpc } from '@renderer/lib/useRpc'
+import { api } from '@renderer/lib/api'
 import { openInboxTab } from '../inbox/state'
 import { setProactive } from '../inbox/ProactiveCard'
 import { whenText } from '../inbox/format'
@@ -79,7 +80,8 @@ export function AutomationsSettingsCard() {
           <Switch checked={!!quiet} onChange={(v) => void update({ persistent: { quietHours: v ? { from: p?.quiet.from ?? '22:30', to: p?.quiet.to ?? '07:30' } : null } })} label={t('settingsCard.quietHours')} />
         </div>
         <Toggle title={t('settingsCard.notifications')} hint={t('settingsCard.notificationsHint')} checked={p?.notifications ?? true} onChange={(v) => setProactive({ notifications: v })} disabled={!p} />
-        <Toggle title={t('settingsCard.openAtLogin')} hint={t('settingsCard.openAtLoginHint')} checked={ps.openAtLogin} onChange={(v) => void update({ persistent: { openAtLogin: v } })} />
+        {/* abrir Aula al iniciar sesión es cosa del Mac: desde un dispositivo no se enseña (ni el servidor lo deja cambiar) */}
+        {!api.remote && <Toggle title={t('settingsCard.openAtLogin')} hint={t('settingsCard.openAtLoginHint')} checked={ps.openAtLogin} onChange={(v) => void update({ persistent: { openAtLogin: v } })} />}
       {on && snap && (
         <div className="mt-2">
           <div className="flex items-baseline justify-between t-ui">

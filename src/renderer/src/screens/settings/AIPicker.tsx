@@ -36,6 +36,8 @@ function useAIData() {
   }
   useEffect(() => {
     void load()
+    // otra ventana de Aula (un iPad, un iPhone) eligió otra IA: se vuelve a pedir
+    return api.on('ai.changed', () => void load())
   }, [])
   return { ...data, loading, reload: load }
 }
@@ -429,7 +431,7 @@ function Group({ title, hint, companion, children }: { title: string; hint: stri
   )
 }
 
-function Option({ title, detail, ready, active, action, actionLabel, busy, logo, provider, extra }: { title: string; detail: string; ready: boolean; active: boolean; action?: (el: HTMLElement) => void; actionLabel?: string; busy?: boolean; logo?: LogoId; provider?: AIProviderView; extra?: React.ReactNode }) {
+export function Option({ title, detail, ready, active, action, actionLabel, busy, logo, provider, extra }: { title: string; detail: string; ready: boolean; active: boolean; action?: (el: HTMLElement) => void; actionLabel?: string; busy?: boolean; logo?: LogoId; provider?: AIProviderView; extra?: React.ReactNode }) {
   const { t } = useTranslation('settings')
   return (
     <motion.div layout transition={spring.smooth} className={cx('group flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[14px] p-3 border-[0.5px] transition-colors', active ? 'bg-accent-wash border-accent-line' : 'bg-sunken border-transparent')}>

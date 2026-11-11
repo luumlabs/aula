@@ -25,6 +25,17 @@ export interface AIConfigureArgs {
   activate?: boolean
 }
 
+/** Elegir entre las IA ya listas en el Mac (lo único de «Tu IA» que puede hacer un dispositivo). */
+export interface AIChooseArgs {
+  providerId: string
+  /** Un modelo de la lista de ese proveedor ('' = el recomendado). */
+  model?: string
+  /** 'auto' ('' también) o un nivel de `AIProviderView.reasoningOptions`. */
+  reasoning?: string
+  /** Usarlo desde ahora (por defecto, sí). */
+  activate?: boolean
+}
+
 export interface AIChatStreamArgs {
   /** Lo elige la interfaz; identifica los eventos `ai.delta`/`ai.done`/`ai.error`. */
   requestId: string
@@ -61,6 +72,10 @@ declare module './contract' {
     'ai.removeKey': { args: { providerId: string }; result: AIProviderView[] }
     /** Elige el proveedor (o automático) y, si se dan, su modelo y razonamiento. */
     'ai.configure': { args: AIConfigureArgs; result: AIStatus }
+    /** Las IA que ya están listas para usarse, sin pistas de claves ni direcciones (para elegir desde un dispositivo). */
+    'ai.choices': { args: void; result: AIProviderView[] }
+    /** Elige una de `ai.choices` y, si se dan, un modelo y un razonamiento de los suyos. Rechaza cualquier otro campo. */
+    'ai.choose': { args: AIChooseArgs; result: AIStatus }
     /** Lista de modelos del proveedor (en vivo, con caché de 6 h; `refresh` la vuelve a pedir). */
     'ai.models': { args: { providerId: string; refresh?: boolean }; result: ModelCatalogView }
     /** «Probar conexión» con una petición mínima. Nunca falla: el resultado trae el mensaje. */

@@ -307,6 +307,71 @@ export async function configureAI(raw: unknown, opts: ServiceOptions = {}): Prom
   return aiStatus(opts)
 }
 
+// MARK: Elegir desde un dispositivo
+
+const isReady = (s: { available: boolean; enabled: boolean; supported: boolean }): boolean => s.available && s.enabled && s.supported
+
+/** El host de una dirección («api.together.xyz»): sin ruta ni parámetros, que podrían llevar algo privado. */
+function hostOf(url: string | undefined): string | undefined {
+  try {
+    return url ? new URL(url).host || undefined : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Las IA que ya están listas en el Mac, para elegir una desde un dispositivo: sin pistas de claves ni direcciones. */
+export async function aiChoices(opts: ServiceOptions = {}): Promise<AIProviderView[]> {
+  return (await aiProviderViews(opts)).filter(isReady).map((v) => {
+    const c: AIProviderView = { ...v, help: '', label: v.group === 'custom' ? (hostOf(v.baseURL) ?? v.label) : v.label }
+    delete c.keyHint
+    delete c.keyURL
+    delete c.baseURL
+    return c
+  })
+}
+
+const CHOICE_FIELDS: readonly string[] = ['providerId', 'model', 'reasoning', 'activate']
+
+/** ¿Es un modelo que el selector ofrece para este proveedor? El de ahora, los conocidos del preset o, en el servicio
+ *  propio, los que lista el servicio. */
+async function offersModel(s: ProviderState, model: string, opts: ServiceOptions): Promise<boolean> {
+  if (model === modelShown(s)) return true
+  if (modelChoices(s, '')?.models.some((m) => m.id === model)) return true
+  if (s.group !== 'custom') return false
+  try {
+    return (await providerModels(s.id, false, opts)).models.some((m) => m.id === model)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Elegir entre las IA que YA están listas en el Mac (lo que puede hacer un dispositivo): el proveedor y, de él, un modelo de
+ * su lista y un nivel de razonamiento de los suyos. Nada más: ni direcciones, ni claves, ni proveedores nuevos, ni el modo
+ * automático (eso es `configureAI`, desde el Mac). Cualquier otro campo se rechaza entero.
+ */
+export async function chooseAI(raw: unknown, opts: ServiceOptions = {}): Promise<AIStatus> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw invalidArgs(tr('Ajustes de IA no válidos.', 'Invalid AI settings.'))
+  const a = raw as Record<string, unknown>
+  const extra = Object.keys(a).find((k) => !CHOICE_FIELDS.includes(k))
+  if (extra) throw invalidArgs(tr(`«${extra}» solo se cambia desde Aula en tu Mac.`, `“${extra}” can only be changed from Aula on your Mac.`))
+  if (typeof a.providerId !== 'string' || !a.providerId.trim()) throw invalidArgs(tr('Falta el proveedor.', 'The provider is missing.'))
+  if (a.activate !== undefined && typeof a.activate !== 'boolean') throw invalidArgs(tr('«activate» no es válido.', '“activate” isn’t valid.'))
+  const providerId = a.providerId.trim()
+  const model = optionalString(a.model, 'model')
+  const reasoning = optionalString(a.reasoning, 'reasoning', 20)?.toLowerCase()
+  const s = (await listAvailableProviders(aiSettings(), { deps: opts.deps })).find((x) => x.id === providerId)
+  if (!s || !isReady(s)) {
+    throw new AIError('other', tr(`Esa IA no está lista en tu Mac. Conéctala allí, en ${settingsPath('ai', 'es')}.`, `That AI isn’t ready on your Mac. Connect it there, in ${settingsPath('ai', 'en')}.`), { code: 'ai_no_provider' })
+  }
+  if (model && !(await offersModel(s, model, opts))) throw invalidArgs(tr('Ese modelo no está en la lista de esta IA.', 'That model isn’t in this AI’s list.'))
+  if (reasoning && reasoning !== 'auto' && !reasoningFor(s, model || modelShown(s)).efforts.includes(reasoning)) {
+    throw invalidArgs(tr('Nivel de razonamiento no válido.', 'Invalid reasoning level.'))
+  }
+  return configureAI({ providerId, ...(model !== undefined ? { model } : {}), ...(reasoning !== undefined ? { reasoning } : {}), ...(a.activate === false ? { activate: false } : {}) }, opts)
+}
+
 // MARK: Modelos y prueba
 
 /** Catálogo de modelos de un proveedor (de la API, de la copia guardada o los conocidos). Aprende los precios publicados. */

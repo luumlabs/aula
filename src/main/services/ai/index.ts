@@ -58,7 +58,7 @@ export { fetchModelCatalog, KNOWN_MODELS, recommendedModel } from './catalog/cat
 
 // Servicio de la interfaz (lo usa el IPC)
 export {
-  aiStatus, aiProviderViews, setProviderKey, removeProviderKey, configureAI, providerModels, testProvider, aiCosts, ChatStreams,
+  aiStatus, aiProviderViews, aiChoices, setProviderKey, removeProviderKey, configureAI, chooseAI, providerModels, testProvider, aiCosts, ChatStreams,
   sanitizeChatMessages
 } from './service'
 export type { ConfigureArgs, ChatStreamArgs, ChatDelta, ChatStreamSink } from './service'

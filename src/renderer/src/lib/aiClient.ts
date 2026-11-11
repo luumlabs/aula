@@ -11,6 +11,10 @@ export const aiClient = {
   setKey: (providerId: string, key: string) => invoke('ai.setKey', { providerId, key }) as Promise<AIProviderView[]>,
   removeKey: (providerId: string) => invoke('ai.removeKey', { providerId }) as Promise<AIProviderView[]>,
   configure: (args: { providerId: string | null; model?: string; reasoning?: string; baseURL?: string; key?: string; activate?: boolean }) => invoke('ai.configure', args) as Promise<AIStatus>,
+  /** Las IA que ya están listas en el Mac (lo que se puede elegir desde un dispositivo). */
+  choices: () => invoke('ai.choices') as Promise<AIProviderView[]>,
+  /** Usar un proveedor o cambiar su modelo o su razonamiento. Desde un dispositivo solo se elige entre lo ya listo ('ai.choose'). */
+  select: (args: { providerId: string; model?: string; reasoning?: string; activate?: boolean }) => invoke(api.remote ? 'ai.choose' : 'ai.configure', args) as Promise<AIStatus>,
   models: (providerId: string, refresh = false) => invoke('ai.models', { providerId, refresh }) as Promise<ModelCatalogView>,
   test: (providerId: string) => invoke('ai.test', { providerId }) as Promise<AITestResult>,
   costs: () => invoke('ai.costs') as Promise<AICostsView>,
