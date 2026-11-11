@@ -1,7 +1,7 @@
 <p align="right"><b>English</b> · <a href="README.es.md">Español</a></p>
 
 <p align="center">
-  <img src="docs/media/aula-icon.png" width="128" height="128" alt="Aula's app icon: a brick-red arch painted in one brush stroke, with the sun on the horizon">
+  <img src="docs/media/aula-icon.png" width="128" height="128" alt="Aula's app icon: a brick-red arch drawn in ink and watercolor, with the sun rising inside it">
 </p>
 
 <h1 align="center">Aula</h1>

@@ -12,6 +12,11 @@
   --wc-slate: #9fb3bd;
   --wc-rose: #dba892;
   --wc-night: #56708a;
+  /* el cielo dentro del arco, a cada hora */
+  --wc-sky-dawn: #dba892;
+  --wc-sky-noon: #9fb3bd;
+  --wc-sky-dusk: #d98f72;
+  --wc-sky-night: #56708a;
 }
 .dark {
   --wc-paper: #1f1d1a;
@@ -25,6 +30,11 @@
   --wc-slate: #4d6b78;
   --wc-rose: #7a4e42;
   --wc-night: #34485c;
+  /* en oscuro el color suma luz: un punto más claros para que el cielo se lea dentro del arco */
+  --wc-sky-dawn: #b07a66;
+  --wc-sky-noon: #6f909d;
+  --wc-sky-dusk: #b06a4e;
+  --wc-sky-night: #3d5670;
 }
 
 /* En la capa de componentes: el tamaño lo pone quien lo usa con una clase (las utilidades van en una capa posterior). */

@@ -1,7 +1,7 @@
 <p align="right"><a href="README.md">English</a> · <b>Español</b></p>
 
 <p align="center">
-  <img src="docs/media/aula-icon.png" width="128" height="128" alt="El icono de Aula: un arco rojo ladrillo pintado de un solo trazo, con el sol en el horizonte">
+  <img src="docs/media/aula-icon.png" width="128" height="128" alt="El icono de Aula: un arco de ladrillo dibujado a tinta y acuarela, con el sol saliendo dentro">
 </p>
 
 <h1 align="center">Aula</h1>

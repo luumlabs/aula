@@ -83,10 +83,10 @@ const band = (cx: number, top: number, w: number, t: number, bottom: number): st
 }
 
 const SKY: Record<ArchLightScene, { sky: string; far: string; depth: number }> = {
-  dawn: { sky: 'var(--wc-rose)', far: 'var(--wc-glow)', depth: 0.5 },
-  noon: { sky: 'var(--wc-slate)', far: 'var(--wc-glow)', depth: 0.5 },
-  dusk: { sky: 'var(--wc-brick-soft)', far: 'var(--wc-sun)', depth: 0.5 },
-  night: { sky: 'var(--wc-night)', far: 'var(--wc-slate)', depth: 0.8 }
+  dawn: { sky: 'var(--wc-sky-dawn)', far: 'var(--wc-glow)', depth: 0.5 },
+  noon: { sky: 'var(--wc-sky-noon)', far: 'var(--wc-glow)', depth: 0.5 },
+  dusk: { sky: 'var(--wc-sky-dusk)', far: 'var(--wc-sun)', depth: 0.5 },
+  night: { sky: 'var(--wc-sky-night)', far: 'var(--wc-slate)', depth: 0.8 }
 }
 
 function archDrawing(scene: ArchLightScene): Drawing {

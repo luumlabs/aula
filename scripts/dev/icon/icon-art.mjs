@@ -548,10 +548,10 @@ export function detailFor(size) {
 /**
  * SVG completo de una propuesta a un tamaño dado.
  * @param {keyof typeof PROPOSALS} id
- * @param {{ size: number, platform?: 'mac' | 'plain', detail?: 'full' | 'mid' | 'small' }} o
+ * @param {{ size: number, platform?: 'mac' | 'plain', detail?: 'full' | 'mid' | 'small', art?: string }} o
+ *   `art`: otro dibujo para la misma caja (el vídeo pide el icono sin el sol).
  */
-export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size) }) {
-  const art = PROPOSALS[id].art(detail)
+export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size), art = PROPOSALS[id].art(detail) }) {
   // mac: squircle de 824 en (100,100) del lienzo 1024. plain: casi a sangre (margen de 1/32).
   const box = platform === 'mac' ? { x: 100, y: 100, s: 824 } : { x: 32, y: 32, s: 960 }
   const k = box.s / BOX

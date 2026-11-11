@@ -54,9 +54,14 @@ const ink = (id, detail, body) =>
   `<g ${detail === 'small' ? '' : `filter="url(#${id}-hand)"`} fill="none" stroke="${C.ink}" stroke-width="${detail === 'full' ? 13 : detail === 'mid' ? 19 : 30}" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">${body}</g>`
 const f = (id, detail, kind) => (detail === 'small' ? '' : `filter="url(#${id}-${kind})"`)
 
-/** A · «Arco a tinta»: el arco y su sol, dibujados a tinta y lavados con ladrillo. */
-function inkArch(detail) {
-  const id = 'inkA', cx = 512, g = 772
+/** Medidas de «Arco a tinta» en el lienzo de 1024 (la caja de 824 empieza en 100): las usa también el vídeo
+ *  (scripts/video/compose/icon.ts) para pintar el arco trazo a trazo y hacer salir el sol. */
+export const INK_ARCH = { cx: 512, ground: 772, top: 268, width: 420, band: 96, sun: 84, line: [170, 858] }
+
+/** A · «Arco a tinta»: el arco y su sol, dibujados a tinta y lavados con ladrillo. `sun: false` lo deja sin el sol (el
+ *  resplandor se queda): el vídeo lo hace salir aparte. */
+export function inkArch(detail, { sun = true } = {}) {
+  const id = 'inkA', cx = INK_ARCH.cx, g = INK_ARCH.ground
   const small = detail === 'small'
   return frame(id, detail, `
     <defs><radialGradient id="${id}-glow" cx="${cx}" cy="${g - 20}" r="250" gradientUnits="userSpaceOnUse">
@@ -69,13 +74,13 @@ function inkArch(detail) {
     <circle cx="${cx}" cy="${g - 30}" r="230" fill="url(#${id}-glow)" opacity="0.55"/>`}
     <g ${f(id, detail, 'fill')}>
       <path d="${band(cx, 268, 420, small ? 118 : 96, g)}" fill="${C.brick}" opacity="${small ? 1 : 0.86}"/>
-      <path d="M${cx - (small ? 96 : 84)} ${g} A${small ? 96 : 84} ${small ? 96 : 84} 0 0 1 ${cx + (small ? 96 : 84)} ${g} Z" fill="${C.sun}" opacity="0.95"/>
+      ${sun ? `<path d="M${cx - (small ? 96 : 84)} ${g} A${small ? 96 : 84} ${small ? 96 : 84} 0 0 1 ${cx + (small ? 96 : 84)} ${g} Z" fill="${C.sun}" opacity="0.95"/>` : ''}
       ${small ? '' : `<ellipse cx="${cx}" cy="${g + 24}" rx="340" ry="26" fill="${C.rose}" opacity="0.55"/>`}
     </g>
     ${ink(id, detail, `${small ? '' : `
       <path d="${arch(cx, 262, 432, g)}"/>
       <path d="${arch(cx, 366, 224, g)}"/>
-      <path d="M${cx - 80} ${g - 2} A80 80 0 0 1 ${cx + 80} ${g - 2}"/>`}
+      ${sun ? `<path d="M${cx - 80} ${g - 2} A80 80 0 0 1 ${cx + 80} ${g - 2}"/>` : ''}`}
       <path d="M170 ${g + 6} Q340 ${g - 8} ${cx} ${g + 3} T858 ${g}" opacity="${small ? 1 : 0.8}"/>`)}`)
 }
 
