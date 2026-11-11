@@ -54,3 +54,6 @@ native/ios/_verify/.derived/
 xcuserdata/
 # la demostración de la app de iOS: se graba con scripts/dev/ios-demo.mjs antes de archivar
 native/ios/Aula/Demo.aulademo
+
+# Capturas del App Store: se rehacen desde la demostración (docs/app-store/listing.md)
+docs/app-store/screenshots/
