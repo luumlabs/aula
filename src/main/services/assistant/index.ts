@@ -11,7 +11,7 @@ import { memoryService } from '../memory'
 import { dataRoot } from '../paths'
 import { getLibrary, onCourseChanged } from '../store'
 import type { AttachmentMedia } from './attachments'
-import type { AssistantAppControl, CourseTeam, PlatformReader } from './host'
+import type { AssistantAppControl, CourseTeam, PlatformReader, StudentBrowser } from './host'
 import type { ChatModel } from '../ai/model'
 import { AssistantService, type AssistantSink } from './service'
 
@@ -33,6 +33,7 @@ export { streamingFake, isFakeModel, fakeAnswer } from './fake'
 export interface AssistantHooks {
   sink?: AssistantSink
   platform?: () => PlatformReader | undefined
+  student?: () => StudentBrowser | undefined
   team?: () => CourseTeam | undefined
   control?: () => AssistantAppControl | undefined
   media?: AttachmentMedia
@@ -78,7 +79,7 @@ export function assistantService(): AssistantService {
       root, library: getLibrary, sink, media,
       calendar: () => { try { return calendarService().forAssistant() } catch { return undefined } },
       memory: () => memoryService(),
-      platform: () => hooks.platform?.(), team: () => hooks.team?.(), control: () => hooks.control?.(),
+      platform: () => hooks.platform?.(), student: () => hooks.student?.(), team: () => hooks.team?.(), control: () => hooks.control?.(),
       visionHelpers: () => hooks.visionHelpers?.() ?? Promise.resolve([]),
       ...(fakeDelayMs() ? { fakeDelayMs: fakeDelayMs() } : {})
     })

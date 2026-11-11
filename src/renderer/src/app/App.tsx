@@ -11,6 +11,7 @@ import { useSettings, wireSettings } from '@renderer/lib/settings'
 import { wireCourses } from '@renderer/lib/courses'
 import { Sidebar } from './shell/Sidebar'
 import { CompactTabs, useCompact } from './shell/CompactTabs'
+import { LivePanel } from './shell/LivePanel'
 import { routeFromHash, routeToHash } from './routeHash'
 import { TopBar } from './shell/TopBar'
 import { useTitleStore } from './title'
@@ -91,6 +92,7 @@ export function App() {
       {!compact && <FloatingTools />}
       {!compact && <OrbLauncher />}
       <CommandPalette />
+      <LivePanel />
       <Approvals />
       <AchievementToast />
       <Toaster />

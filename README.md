@@ -203,7 +203,8 @@ answer away.
 - **Your iPad and iPhone** (optional, with Aula on a Mac): open Aula from your own devices while your courses, your AI
   and your data stay on the Mac. The iPad gets the whole app; the iPhone, Aula as your assistant (what it did, what is
   pending, the chat and the calendar). Devices reach the Mac over your private Tailscale network and are linked once
-  with a code. See [docs/DEVICES.md](docs/DEVICES.md).
+  with a code. From there you can also open Aula's browser live: sign in to your platform away from home, or do an
+  assignment yourself and hand it to Aula to review before you submit it. See [docs/DEVICES.md](docs/DEVICES.md).
 - **Memory**: Aula remembers what helps it teach you, like how you prefer explanations or what you find hard. You can
   see, edit, pause or export all of it in *Settings → What Aula remembers*.
 - **Search**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> finds screens, courses and tools, and anything inside your

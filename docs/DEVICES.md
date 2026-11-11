@@ -43,6 +43,27 @@ On the Mac (`src/main/electron/remote/`, `src/main/services/remote/`):
   before forwarding, and never uploads logs. Tailscale does not need to be installed on the Mac. The server also
   rejects any request whose `Host` is not this computer unless it carries the sidecar's per-launch key.
 
+## Aula's browser, live
+
+The study-platform browser lives on the Mac. From a device (or from the Mac's own chat) the student can see and drive
+it: a hidden window on the Mac is shown picture by picture and taps, scrolling and typing are replayed into it
+(`src/main/electron/browser/live.ts`, `src/renderer/src/app/shell/LivePanel.tsx`, `live.*` in `src/shared/ipc/live.ts`).
+
+- **Signing in away from home.** When a platform session has expired, *Sign in* opens the platform in the live browser;
+  the student signs in as usual and presses *I've signed in*, and Aula checks the session. The password travels from the
+  device to the Mac inside the private network and goes straight into the page: Aula does not log it and no model sees it.
+- **Doing an assignment with Aula beside you.** Aula can put a page in front of the student in the chat
+  (`student_browser_show`). The student works on it; *Let Aula review it* hands the page over and Aula reads the page
+  text and the student's answers (`student_browser_review`, never password, code or payment fields), explains what is
+  wrong with a similar example and gives the page back (`student_browser_return`). The student fixes it and submits.
+- **What Aula cannot do there.** There is no tool to click, type or submit in the live window, so Aula never does the
+  assignment or a test. While Aula holds the page the student's input is refused, and an order sent with a stale turn
+  (`controlId`) is refused too.
+- The page takes the size of whoever is looking (a phone gets the phone layout). Pictures are produced only while
+  somebody watches; the window closes by itself after 20 idle minutes and the session stays saved.
+- This computer and the local network are not reachable from the live window (the platform session blocks them on every
+  request), except a platform that itself lives on the local network.
+
 ## Using it
 
 On the Mac: **Settings → Aula on your devices** → turn it on → **Sign in** (Tailscale, once) → **Link** shows the code.

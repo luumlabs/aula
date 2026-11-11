@@ -6,6 +6,7 @@ import { navigate } from '@renderer/app/router'
 import type { AssistantCardAction } from '@shared/assistant/types'
 import type { InboxEntry } from '@shared/automations'
 import { useInboxUI } from './state'
+import { showLive, signInHere } from '@renderer/lib/live'
 
 function fail(e: unknown): void {
   toast.error(e instanceof Error ? e.message : String(e))
@@ -61,7 +62,12 @@ export function runCardAction(a: AssistantCardAction, entry: InboxEntry): void {
       if (a.courseID) return navigate({ name: 'course', id: a.courseID })
       return
     case 'signIn':
+      // desde un dispositivo no hay ventana del Mac que usar: se inicia sesión aquí mismo, en el navegador en vivo
+      if (api.remote) { void signInHere(v); return }
       return navigate({ name: 'settings', section: 'platforms' })
+    case 'openLive':
+      if (v) void showLive(v)
+      return
     case 'runAutomation':
       if (v ?? entry.automationID) void inboxOps.runNow((v ?? entry.automationID)!)
       return

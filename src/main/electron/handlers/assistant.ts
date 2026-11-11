@@ -13,7 +13,7 @@ import type { AssistantThreadView } from '@shared/ipc/assistant'
 import type { MemoryKindName, MemoryStatus } from '@shared/ipc/memory'
 import { tr } from '@shared/ai/i18n'
 import {
-  assistantService, configureAssistant, type AssistantAppControl, type AssistantCourseSpec, type AssistantRunInfo, type CourseTeam, type PlatformReader
+  assistantService, configureAssistant, type AssistantAppControl, type AssistantCourseSpec, type AssistantRunInfo, type CourseTeam, type PlatformReader, type StudentBrowser
 } from '@main/services/assistant'
 import { setInboxChatSink } from '@main/services/automations'
 import { AulaError, invalidArgs } from '@main/services/errors'
@@ -27,6 +27,7 @@ import { userFiles } from '@main/services/userFiles'
 import { platformBrowser } from '../browser'
 import { emit, handle } from '../rpc'
 import { generationService } from './generation'
+import { liveBrowser } from './live'
 
 type Obj = Record<string, unknown>
 
@@ -104,6 +105,31 @@ function withRun(thread: AssistantThread): AssistantThreadView {
 }
 
 // MARK: Lo que pone Electron
+
+/** El navegador en vivo del estudiante para el chat: Aula se lo pone delante y solo lo lee con su turno (browser/live.ts). */
+function studentBrowser(): StudentBrowser | undefined {
+  let browser: ReturnType<typeof platformBrowser>
+  try { browser = platformBrowser() } catch { return undefined }
+  const live = liveBrowser()
+  return {
+    show: async (url, note, purpose) => {
+      // con la sesión de la plataforma de esa dirección, si es una de las suyas
+      const accountId = browser.accountForURL(url)?.id ?? browser.accountForSignIn(url)?.id ?? null
+      const state = await live.open({ accountId, url, purpose, holder: 'student', note })
+      return { id: state.id, url: state.url || url }
+    },
+    read: async () => {
+      const mine = live.readable()
+      return mine ? live.read(mine.id) : null
+    },
+    handBack: (note) => {
+      const mine = live.readable() ?? live.list()[0]
+      if (!mine) return null
+      live.hold(mine.id, 'student', note)
+      return mine.id
+    }
+  }
+}
 
 /** La plataforma del estudiante en el navegador de Aula, en solo lectura (una pestaña para el chat). */
 function platformReader(): PlatformReader | undefined {
@@ -258,6 +284,7 @@ export function register(): void {
       queue: (threadId, queued, sent) => emit('chat.queue', { threadId, queued, ...(sent ? { sent } : {}) })
     },
     platform: platformReader,
+    student: studentBrowser,
     team: courseTeam,
     control: appControl,
     media: { jpeg, thumbnail, transcribe: transcribeAttachment }

@@ -14,6 +14,7 @@ import { calendarEventsTool, findItemsTool, getCourseTool, getExerciseTool, getL
 import { calculateTool, chemistryTool, listSourcesTool, readSourceTool, searchSourcesTool } from './research'
 import { blockReferenceTool, convertUnitsTool, graphFunctionTool, makeFlashcardsTool, makeQuizTool, saveStudySetTool } from './study'
 import { platformTools } from './platform'
+import { studentBrowserTools } from './student'
 import { fetchURL, webSearch, type ToolContext } from '../../tools'
 
 /** Herramientas que añaden otras áreas al chat y al tutor (documentos, automatizaciones…). Se registran una vez al arrancar. */
@@ -119,7 +120,7 @@ export function assistantTools(env: ToolEnv): AgentTool[] {
       }
     })
     : []
-  return guarded(env, uniqueTools([...ownTools(env), ...researchTools(env), ...platformTools(env), ...goals, ...extra]))
+  return guarded(env, uniqueTools([...ownTools(env), ...researchTools(env), ...platformTools(env), ...studentBrowserTools(env), ...goals, ...extra]))
 }
 
 export { saveStudySet, EXERCISE_CHEAT_SHEET } from './study'

@@ -17,6 +17,7 @@ import { register as search } from './search'
 import { register as secrets } from './secrets'
 import { register as power } from './power'
 import { register as remote } from './remote'
+import { register as live } from './live'
 
 export function registerAllHandlers(): void {
   app()
@@ -37,4 +38,5 @@ export function registerAllHandlers(): void {
   secrets()
   power()
   remote()
+  live()
 }
