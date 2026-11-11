@@ -11,9 +11,9 @@ struct RootView: View {
             switch model.stage {
             case .ready(let base):
                 VStack(spacing: 0) {
-                    if model.inDemo { DemoBar { Task { await model.exitDemo() } } }
+                    if model.showsDemoBar { DemoBar { Task { await model.exitDemo() } } }
                     WebView(base: base) { Task { await model.webFailed() } }
-                        .ignoresSafeArea(edges: model.inDemo ? [.horizontal, .bottom] : .all)
+                        .ignoresSafeArea(edges: model.showsDemoBar ? [.horizontal, .bottom] : .all)
                 }
                 .transition(.opacity)
             default:

@@ -159,14 +159,28 @@ Primera versión en el App Store.
 
 ## Screenshots
 
-Apple asks for iPhone 6.9" (1320 × 2868) and iPad 13" (2064 × 2752). They are taken from the demo in the simulators
-(the same interface the student sees), in English:
+Apple asks for iPhone 6.9" (1320 × 2868) and iPad 13" (2064 × 2752), without transparency. They are in
+`docs/app-store/screenshots/` (`iphone-6.9/` and `ipad-13/`, five each, JPEG; git does not keep them), taken from the
+app's demo in the simulators, in English:
 
-1. Today: the plan of the day and the exam countdown.
-2. A lesson, with its figure.
-3. Flashcards.
-4. The course: estimated grade and topics.
-5. The chat with Aula, with the quiz.
+| | iPhone | iPad |
+| --- | --- | --- |
+| 1 | Today: the plan of the day, the streak and the exam countdown | Today |
+| 2 | The course: estimated grade and topics | The course |
+| 3 | Flashcards | A lesson, with its figure and table |
+| 4 | The calendar | The calendar |
+| 5 | The chat with Aula, with a quiz | The chat with Aula, with a quiz |
+
+To take them again (after recording the demo, see `docs/DEVICES.md`): build the app for the simulator in Debug, install
+it on *iPhone 18 Pro Max* and *iPad Pro 13-inch (M5)*, and launch it with the argument `-AulaStoreShots`, which shows
+the demo without its bar, as Aula looks when connected to the Mac (Debug builds only):
+
+```bash
+xcrun simctl status_bar <device> override --time "9:41" --batteryState charged --batteryLevel 100
+xcrun simctl launch <device> com.luumlabs.aula.ios -AulaStoreShots
+xcrun simctl io <device> screenshot shot.png
+sips -s format jpeg -s formatOptions 92 shot.png --out shot.jpg     # Apple refuses images with transparency
+```
 
 ## What only the account owner can do
 

@@ -35,6 +35,15 @@ final class AppModel {
     var showingMacInfo = false
     /// La demostración está abierta (la interfaz la sirve la propia app, sin Mac).
     private(set) var inDemo = false
+    /// La demostración con su barra de aviso. Solo las capturas del App Store (compilación de depuración, con el
+    /// argumento «-AulaStoreShots») la enseñan sin ella, como se ve Aula conectada al Mac.
+    var showsDemoBar: Bool {
+        #if DEBUG
+        return inDemo && !ProcessInfo.processInfo.arguments.contains("-AulaStoreShots")
+        #else
+        return inDemo
+        #endif
+    }
     private var demo: DemoServer?
 
     /// ¿Esta copia de la app trae la demostración? (scripts/dev/ios-demo.mjs la graba antes de archivar).
