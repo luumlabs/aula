@@ -56,8 +56,11 @@ export function HeatmapCard({ days, today }: { days: StatsDay[]; today: string }
                   transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1], delay: 0.1 + c.week * 0.03 + c.weekday * 0.01 }}
                   whileHover={{ scale: 1.18 }}
                   className={cx('aspect-square rounded-[5px] cursor-default', isToday && 'ring-[1.5px] ring-offset-[1.5px] ring-offset-surface ring-accent-line', hover === c.day.date && 'ring-[1.5px] ring-text3')}
-                  style={{ gridColumn: c.week + 2, gridRow: c.weekday + 1, background: `var(--heat-${level})` }}
-                />
+                  style={{ gridColumn: c.week + 2, gridRow: c.weekday + 1 }}
+                >
+                  {/* el color va en un toque de pincel de dentro: los anillos de hoy y del ratón no se recortan */}
+                  <span aria-hidden className={cx('dab block h-full w-full rounded-[5px]', `dab-${((c.week * 3 + c.weekday) % 4) + 1}`)} style={{ background: `var(--heat-${level})` }} />
+                </motion.div>
               )
             })}
           </div>
@@ -68,7 +71,7 @@ export function HeatmapCard({ days, today }: { days: StatsDay[]; today: string }
             <div className="flex items-center gap-1.5 shrink-0" aria-hidden>
               <span className="t-caption text-text3 mr-0.5">{t('heat.less')}</span>
               {[0, 1, 2, 3, 4].map((l) => (
-                <span key={l} className="h-2.5 w-2.5 rounded-[3px]" style={{ background: `var(--heat-${l})` }} />
+                <span key={l} className="dab h-2.5 w-2.5 rounded-[3px]" style={{ background: `var(--heat-${l})` }} />
               ))}
               <span className="t-caption text-text3 ml-0.5">{t('heat.more')}</span>
             </div>
