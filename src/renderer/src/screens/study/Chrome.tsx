@@ -58,8 +58,9 @@ export function StudyFrame({ capsule, bottom, children, onExit, wide, scrollKey,
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       {/* velo de papel (un solo color que se desvanece) tras las cápsulas: el texto no se lee a través de ellas */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-[linear-gradient(to_bottom,var(--paper)_45%,transparent)]" />
-      {bottom && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-[linear-gradient(to_top,var(--paper)_40%,transparent)]" />}
+      {/* lo que se desplaza se pierde bajo las cápsulas: el mismo papel (con su grano) que se desvanece, no una franja lisa más clara */}
+      <div aria-hidden className="paper-grain pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-paper [mask-image:linear-gradient(to_bottom,black_45%,transparent)]" />
+      {bottom && <div aria-hidden className="paper-grain pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-paper [mask-image:linear-gradient(to_top,black_40%,transparent)]" />}
       <div className="pointer-events-none absolute inset-x-0 top-2 z-20 flex justify-center px-6">{capsule}</div>
       <div ref={scroller} onClickCapture={revealAnswer} className="@container min-h-0 flex-1 overflow-y-auto">
         <div className={cx('mx-auto w-full px-6 pt-[76px] pb-36', wide ? 'max-w-[1080px]' : 'max-w-[800px]', className)}>{children}</div>

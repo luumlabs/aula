@@ -42,18 +42,29 @@ export class UploadStore {
       await new Promise<void>((resolve, reject) => {
         const out = createWriteStream(path, { flags: 'wx' })
         let size = 0
+        let failed = false
+        // al fallar se suelta el archivo y se espera a que el sistema lo cierre: borrar la carpeta mientras aún se está
+        // abriendo dejaba, a veces, el archivo a medias dentro (y el borrado fallaba)
+        const fail = (code: UploadError['code']): void => {
+          if (failed) return
+          failed = true
+          body.unpipe(out)
+          const done = (): void => reject(new UploadError(code))
+          if (out.closed) done()
+          else { out.once('close', done); out.destroy() }
+        }
         body.on('data', (chunk: Buffer) => {
           size += chunk.length
-          if (size > max) { body.unpipe(out); out.destroy(); reject(new UploadError('tooBig')) }
+          if (size > max) fail('tooBig')
         })
-        body.on('error', () => reject(new UploadError('failed')))
-        body.on('aborted', () => reject(new UploadError('failed')))
-        out.on('error', () => reject(new UploadError('failed')))
-        out.on('finish', () => resolve())
+        body.on('error', () => fail('failed'))
+        body.on('aborted', () => fail('failed'))
+        out.on('error', () => fail('failed'))
+        out.on('finish', () => { if (!failed) resolve() })
         body.pipe(out)
       })
     } catch (err) {
-      rmSync(folder, { recursive: true, force: true })
+      rmSync(folder, { recursive: true, force: true, maxRetries: 3 })
       throw err
     }
     this.opts.grant?.(path)

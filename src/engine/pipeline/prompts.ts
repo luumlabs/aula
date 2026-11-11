@@ -234,7 +234,7 @@ ${h.objectives}
 Prerequisites (assume the student already knows them): ${h.prereq || 'none'}
 Weight: ${ref.weight} · Expected study time: ${ref.minutes} min
 
-Other skills of this course (do not duplicate their content; refer to them when useful):
+Other skills of this course (do not duplicate their content; refer to them when useful, always by their TITLE in the student's language — the student never sees these ids):
 ${h.others || '  (none)'}
 
 ${courseContext(request, course)}

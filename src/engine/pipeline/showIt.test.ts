@@ -2,7 +2,7 @@
 // foto real cuando el curso trata de cosas que existen y hay web. Son fallos de la auditoría, como los demás.
 import { describe, expect, it } from 'vitest'
 import { decodeBlocks } from '@shared/schema/blocks'
-import { auditSkill, showItProblems } from './audit'
+import { auditSkill, nameSkillMentions, showItProblems } from './audit'
 import { aboutRealThings } from './goal'
 import { makeSkill } from '@shared/schema'
 
@@ -64,5 +64,26 @@ describe('¿el curso trata de cosas reales?', () => {
     expect(aboutRealThings('Inglés B2', 'Idiomas')).toBe(false)
     expect(aboutRealThings('Programación en Python', 'Informática')).toBe(false)
     expect(aboutRealThings('Artículos y preposiciones', 'Lengua')).toBe(false)
+  })
+})
+
+describe('las otras lecciones se citan por su título', () => {
+  const others = [{ id: 'reglas-polinomios', title: 'Reglas básicas: constante, potencia y suma' }, { id: 'definicion-derivada', title: 'La derivada como límite' }, { id: 's1', title: 'Esta misma' }]
+  it('cambia el identificador interno por el título, en la lección, los ejercicios y las tarjetas', () => {
+    const skill = makeSkill({ id: 's1', title: 'Producto y cociente' })
+    skill.lesson = blocks([text('En `reglas-polinomios` aprendiste a derivar término a término. En `definicion-derivada` viste el límite.'), { type: 'callout', kind: 'tip', md: 'Repasa `reglas-polinomios`.' }])
+    skill.cards = [{ id: 'c1', kind: 'basic', front: '¿Qué viste en `definicion-derivada`?', back: 'El límite', tags: [] }] as unknown as typeof skill.cards
+    const out = nameSkillMentions(skill, others, 'es')
+    const all = JSON.stringify(out)
+    expect(all).toContain('En «Reglas básicas: constante, potencia y suma» aprendiste')
+    expect(all).toContain('En «La derivada como límite» viste')
+    expect(all).toContain('¿Qué viste en «La derivada como límite»?')
+    expect(all).not.toContain('`reglas-polinomios`')
+    expect(JSON.stringify(nameSkillMentions(skill, others, 'en'))).toContain('“Reglas básicas: constante, potencia y suma”')
+  })
+  it('no toca el código, ni lo que no es una lección del curso, ni su propio identificador', () => {
+    const skill = makeSkill({ id: 's1', title: 'x' })
+    skill.lesson = blocks([text('Usa `print(x)` y la variable `s1`.'), { type: 'code', language: 'python', code: 'reglas = `reglas-polinomios`' }])
+    expect(nameSkillMentions(skill, others, 'es')).toBe(skill)
   })
 })

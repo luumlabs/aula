@@ -136,6 +136,36 @@ export function teachingProblems(lesson: readonly Block[], minVisuals: number, l
 const isTryIt = (b: Block): b is BlockOf<'tryit'> => b.type === 'tryit'
 
 /**
+ * El modelo a veces cita otra lección por su identificador interno («En `reglas-polinomios` aprendiste…»): al estudiante
+ * eso no le dice nada. Aquí se cambia por el título de esa lección, entre comillas, en la lección, los ejercicios y las
+ * tarjetas (el código de los bloques `code` no se toca). Devuelve la habilidad cambiada, o la misma si no había ninguno.
+ */
+export function nameSkillMentions(skill: Skill, skills: readonly { id: string; title: string }[], language: string): Skill {
+  const titles = new Map(skills.filter((s) => s.id !== skill.id && s.title.trim()).map((s) => [s.id, s.title.trim()]))
+  if (!titles.size) return skill
+  const [open, close] = language.toLowerCase().startsWith('es') ? ['«', '»'] : ['“', '”']
+  let changed = false
+  const rename = (text: string): string =>
+    text.replace(/`([\w-]{2,80})`/g, (whole, id: string) => {
+      const title = titles.get(id)
+      if (!title) return whole
+      changed = true
+      return `${open}${title}${close}`
+    })
+  const walk = (value: unknown, depth: number): unknown => {
+    if (typeof value === 'string') return value.includes('`') ? rename(value) : value
+    if (depth > 8 || value === null || typeof value !== 'object') return value
+    if (Array.isArray(value)) return value.map((v) => walk(v, depth + 1))
+    if ((value as { type?: unknown }).type === 'code') return value
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) out[k] = walk(v, depth + 1)
+    return out
+  }
+  const next = { ...skill, lesson: walk(skill.lesson, 0) as Skill['lesson'], exercises: walk(skill.exercises, 0) as Skill['exercises'], cards: walk(skill.cards, 0) as Skill['cards'] }
+  return changed ? next : skill
+}
+
+/**
  * Equipo: la lección se escribe a la vez que los ejercicios, así que aquí se enlazan los «Pruébalo» con ejercicios reales (después
  * del primer ejemplo y antes del resumen) y se quitan referencias a ejercicios que no existen. Devuelve la habilidad cambiada (o
  * la misma si no hacía falta nada).
