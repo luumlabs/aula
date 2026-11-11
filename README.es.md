@@ -7,21 +7,23 @@
 <h1 align="center">Aula</h1>
 
 <p align="center">
-  Una app para estudiar en macOS, Windows y Linux.<br>
-  Dale tus apuntes, diapositivas y exámenes de otros años, o solo un tema, y los convierte en un curso para estudiar.
+  <b>Tus apuntes se convierten en un curso. Y Aula lo estudia contigo.</b><br>
+  Una app para estudiar en macOS, Windows y Linux, con una compañera para iPad y iPhone.<br>
+  Dale tus apuntes, diapositivas, grabaciones y exámenes de otros años, o solo un tema.
 </p>
 
 <p align="center">
   <a href="https://github.com/luumlabs/aula/releases/latest"><img src="https://img.shields.io/github/v/release/luumlabs/aula?style=flat-square&label=descargar&color=1d1d1f" alt="Última versión"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-AGPL--3.0-B9553A?style=flat-square" alt="Licencia: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-6b6b6b?style=flat-square" alt="macOS, Windows y Linux">
   <img src="https://img.shields.io/badge/estado-acceso%20anticipado-D9822B?style=flat-square" alt="Estado: acceso anticipado">
 </p>
 
 <p align="center">
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
-    <img src="docs/media/film-poster.png" width="1000" alt="Mira un recorrido por Aula (2:12, vídeo de 24 MB, en inglés)">
+    <img src="docs/media/film-poster.png" width="1000" alt="Mira el corto sobre Aula (1:50): de noche, un estudiante con bufanda roja camina entre hojas que vuelan hacia un gran arco encendido">
   </a>
-  <br><sub>Un recorrido de dos minutos por la app (vídeo de 24 MB, en inglés)</sub>
+  <br><sub><b>Nueve días.</b> Un corto de animación sobre Aula, pintado con código (1:50, vídeo de 42 MB, rótulos en inglés · <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film.mp4">a toda calidad, 121 MB</a>)</sub>
 </p>
 
 Te da lecciones cortas, ejercicios que se corrigen al responder, tarjetas de memoria y un simulacro con la misma
@@ -31,6 +33,23 @@ No está atada a una asignatura. Cálculo, química orgánica, anatomía, un idi
 
 Tus cursos y tu progreso se guardan en tu ordenador. Aula funciona con la IA que ya pagas (una suscripción a Claude o ChatGPT, o una clave
 de API) o con un modelo gratis que corre en tu propio equipo. No hay cuentas ni rastreo.
+
+### De un vistazo
+
+- **Cualquier material se convierte en un curso.** PDF, diapositivas, fotos de la pizarra, grabaciones de audio y
+  vídeo de una clase, enlaces o lo que hay en tu plataforma de estudio. [Cursos](#cursos)
+- **Lecciones que enseñan antes de preguntar.** Figuras, imágenes reales, gráficas y modelos en 3D que puedes girar, y
+  un ejemplo resuelto antes del primer ejercicio. [Lecciones](#lecciones)
+- **Práctica que se queda.** Ejercicios que se corrigen al responder, un cuaderno con tus errores, tarjetas con
+  repetición espaciada y simulacros con la forma del examen real. [Práctica](#práctica)
+- **Una tutora que sabe lo que estás haciendo.** Pregúntale por el ejercicio que tienes delante o por el documento
+  abierto, y crea o cambia un curso con solo pedirlo. [Hablar con Aula](#hablar-con-aula)
+- **Siempre activa, si quieres.** Revisa tu plataforma y tu calendario, te recuerda las entregas y te deja un repaso
+  corto antes de un examen. Solo lee: nunca entrega nada por ti. [Todo lo demás](#todo-lo-demás)
+- **En tu iPad y tu iPhone.** Tus cursos se quedan en tu Mac y estudias desde tus dispositivos.
+  [Dispositivos](docs/DEVICES.md)
+- **Privada y tuya.** Sin cuenta, sin rastreo, tus datos en tu ordenador y la IA que tú elijas, también una gratuita
+  que funciona sin conexión. [Privacidad](#privacidad)
 
 > [!NOTE]
 > Aula está en acceso anticipado. Funciona, pero vas a encontrar fallos y detalles sin pulir, y las cosas cambiarán de
@@ -122,7 +141,9 @@ OpenCode también funciona, si está instalado y con la sesión iniciada.
 
 Pulsa <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>N</kbd> y di qué quieres estudiar. Añade la fecha del examen si la hay, y los
 archivos que tengas: PDF, Word, PowerPoint, Excel, EPUB, páginas web, Markdown, archivos de texto o de código, enlaces,
-texto pegado o fotos de tus apuntes o de la pizarra (se leen con OCR). Aula también puede traer los materiales de tu
+texto pegado, fotos de tus apuntes o de la pizarra (se leen con OCR) y grabaciones de audio o vídeo de una clase. Aula
+transcribe una grabación con los subtítulos que la acompañan o con el servicio de transcripción de una clave de API que
+hayas añadido, y cada cita la abre en el minuto en que se dijo. Aula también puede traer los materiales de tu
 plataforma de estudio.
 
 Después, un pequeño equipo de agentes monta el curso, y puedes verlos trabajar. Unos lectores leen tus materiales.
@@ -209,8 +230,10 @@ Cada ejercicio tiene además un tutor al lado. Ve el ejercicio y tu respuesta, y
   tus datos se quedan en el Mac. En el iPad, la app entera; en el iPhone, Aula como tu asistente (lo que hizo, lo que
   hay pendiente, el chat y el calendario). Los dispositivos llegan al Mac por tu red privada de Tailscale y se vinculan
   una vez con un código. Desde ahí también puedes abrir el navegador de Aula en vivo: iniciar sesión en tu plataforma
-  estando fuera de casa, o hacer tú una tarea y pasársela a Aula para que la revise antes de enviarla. Más en
-  [docs/DEVICES.md](docs/DEVICES.md).
+  estando fuera de casa, o hacer tú una tarea y pasársela a Aula para que la revise antes de enviarla. Un dispositivo
+  vinculado también abre Ajustes con la parte de uso diario (qué IA usar entre las que están listas en el Mac,
+  apariencia, idioma, *Aula siempre activa*, memoria); las claves, las plataformas y tus datos se gestionan en el Mac.
+  Más en [docs/DEVICES.md](docs/DEVICES.md).
 - **Memoria**: Aula recuerda lo que le ayuda a enseñarte, por ejemplo cómo prefieres que te expliquen o qué te cuesta. Puedes
   verlo, corregirlo, pausarlo o exportarlo todo en *Ajustes → Lo que Aula recuerda*.
 - **Buscar**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> encuentra pantallas, cursos y herramientas, y cualquier cosa
