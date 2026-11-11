@@ -23,7 +23,7 @@
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
     <img src="docs/media/film-poster.png" width="1000" alt="Watch the short film about Aula (1:50): at night, a student with a red scarf walks through flying pages towards a great lit arch">
   </a>
-  <br><sub><b>Nine days.</b> A short animated film about Aula, painted by code (1:50, 42 MB video · <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film.mp4">full quality, 121 MB</a>)</sub>
+  <br><sub><b>Nine days.</b> A short animated film about Aula, painted by code (1:50, 26 MB video)</sub>
 </p>
 <!-- Maintainers: for an inline player, drop a ≤10 MB cut of the film here in GitHub's web editor (first check that your
      commit email is the noreply address: GitHub → Settings → Emails). -->

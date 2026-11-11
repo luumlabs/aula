@@ -23,7 +23,7 @@
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
     <img src="docs/media/film-poster.png" width="1000" alt="Mira el corto sobre Aula (1:50): de noche, un estudiante con bufanda roja camina entre hojas que vuelan hacia un gran arco encendido">
   </a>
-  <br><sub><b>Nueve días.</b> Un corto de animación sobre Aula, pintado con código (1:50, vídeo de 42 MB, rótulos en inglés · <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film.mp4">a toda calidad, 121 MB</a>)</sub>
+  <br><sub><b>Nueve días.</b> Un corto de animación sobre Aula, pintado con código (1:50, vídeo de 26 MB, rótulos en inglés)</sub>
 </p>
 
 Te da lecciones cortas, ejercicios que se corrigen al responder, tarjetas de memoria y un simulacro con la misma

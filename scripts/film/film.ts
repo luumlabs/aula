@@ -10,6 +10,8 @@ export { DURATION } from './timing.ts'
 /** Altura de las franjas del formato panorámico (2,39:1). */
 export const BARS = Math.round((H - W / 2.39) / 2)
 let alt: Sheet
+/** Ajustes del render: `grain` escala el grano de película (el corte web lleva menos, para pesar poco). */
+export const look = { grain: 1 }
 
 export async function initFilm(): Promise<void> {
   initNight()
@@ -72,5 +74,5 @@ export function drawFilm(ctx: Ctx, t: number, frame: number): void {
   }
   // las franjas se abren con la floración: el cuadro pasa de panorámico a pantalla completa
   const bars = BARS * (1 - ease.io(seg(t, 30.4, 31.9)))
-  finish(ctx, { frame, bars, vignette, grain: t < 31 ? 0.085 : 0.06 })
+  finish(ctx, { frame, bars, vignette, grain: (t < 31 ? 0.085 : 0.06) * look.grain })
 }

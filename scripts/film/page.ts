@@ -4,10 +4,10 @@ import { encodeAac, H264Encoder, h264Codec } from '../video/compose/encode.ts'
 import { muxMp4 } from '../video/mp4/muxer.ts'
 import { FPS, H, W } from './engine/core.ts'
 import { finishKit, sheet } from './engine/paint.ts'
-import { DURATION, drawFilm, initFilm } from './film.ts'
+import { DURATION, drawFilm, initFilm, look } from './film.ts'
 import { renderScore } from './score.ts'
 
-interface Job { name: string; stills: number[] | null; range: [number, number] | null; fps: number | null; silent: boolean; bitrate: number }
+interface Job { name: string; stills: number[] | null; range: [number, number] | null; fps: number | null; silent: boolean; bitrate: number; grain: number }
 
 const png = async (c: OffscreenCanvas): Promise<Uint8Array> => new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer())
 
@@ -15,6 +15,7 @@ export async function run(): Promise<void> {
   try {
     const job = (await vt.job()) as Job
     finishKit()
+    look.grain = job.grain
     await initFilm()
     const { canvas, ctx } = sheet(W, H)
     if (job.stills) {

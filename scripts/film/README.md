@@ -40,7 +40,7 @@ versión nueva, ver `docs/PUBLISHING.md`), y el póster del README sale de un fo
 
 ```sh
 node scripts/film/render.ts --name Aula-film --bitrate 9000000        # el máster
-node scripts/film/render.ts --name Aula-film-web --bitrate 3000000    # el del README
+node scripts/film/render.ts --name Aula-film-web --bitrate 1800000 --grain 0.4   # el del README: 27 MB como mucho (lo comprueba public-docs.test.ts)
 gh release upload v0.1.0 scripts/film/work/Aula-film.mp4 scripts/film/work/Aula-film-web.mp4 --clobber
 node scripts/film/render.ts --stills 28.2
 npx electron scripts/dev/film-poster.mjs scripts/film/work/stills/aula-short-film-28.20.png 1:50
