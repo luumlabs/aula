@@ -25,7 +25,8 @@ node scripts/film/render.ts --fps 12 --silent    # borrador rápido
 | `engine/paint.ts` | Papel, aguadas, trazos de pincel, resplandores y el acabado (grano, viñeta, franjas) |
 | `engine/figure.ts` | El estudiante de la bufanda |
 | `engine/props.ts` | Hojas, el arco de Aula, torres de apuntes, mesa y flexo |
-| `scenes/night.ts` | La noche, la tormenta, los relámpagos y la gran ola |
+| `scenes/night.ts` | La noche: el escritorio, las torres de apuntes y el viento que empieza |
+| `scenes/storm.ts` | La tormenta, plano a plano y animada «a doses» (12 dibujos por segundo): el calendario, el flexo, los relámpagos y la gran ola |
 | `scenes/arch.ts` | El llano con el arco a lo lejos y el umbral |
 | `scenes/dawn.ts` | La escalera, la ballena de papel y el día del examen |
 | `scenes/aula.ts` | Las pantallas de la app y el final (las hojas forman el arco) |

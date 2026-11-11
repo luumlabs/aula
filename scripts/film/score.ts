@@ -234,6 +234,18 @@ export async function renderScore(duration: number): Promise<Score> {
     thump(hb + 0.17, 0.32, 58, 38, 0.26)
     hb += 0.95 - Math.min(0.42, i * 0.045)
   }
+  // el calendario se arranca; dos hojas salen de la mesa; el flexo chasquea cada vez que parpadea; la mano planta la tercera
+  air(10.38, 0.34, [[0.08, 0.5], [0.5, 0.3], [1, 0]], 2600, 7200, 0.9, 'bandpass', 0.3, -0.6)
+  flutter(11.0, 0.3, 0.2)
+  flutter(11.45, 0.3, 0)
+  let lit = true
+  for (let d = 136; d < 150; d++) {
+    const on = d < 146 ? hash(d, 77) > 0.3 : hash(d, 77) > 0.55
+    if (on !== lit) air(d / 12, 0.05, [[0.05, on ? 0.34 : 0.2], [1, 0]], 5200, 3800, 2.4, 'bandpass', 0.2, 0.2)
+    lit = on
+  }
+  thump(12.09, 0.6, 130, 52, 0.2)
+  air(12.09, 0.09, [[0.04, 0.5], [1, 0]], 1700, 800, 0.8, 'bandpass', -0.4, -0.4)
   // la lámpara se apaga
   thump(12.5, 0.95, 90, 30, 1.4)
   piano(12.52, 38, 0.6, 6)
@@ -244,7 +256,10 @@ export async function renderScore(duration: number): Promise<Score> {
   thunder(15.62, 1)
   air(14.4, 2.9, [[0.5, 0.35], [0.95, 0.95], [1, 0.2]], 70, 280, 0.6, 'lowpass', 0.6, 0)
   air(16.85, 1.25, [[0.1, 0.9], [1, 0]], 5200, 700, 0.5, 'highpass')
-  thump(17.05, 1, 80, 26, 1.7)
+  thump(17.05, 0.7, 80, 30, 1.2)
+  // el golpe: los dos dibujos de impacto
+  thump(17.25, 1, 72, 24, 1.9)
+  air(17.25, 0.55, [[0.02, 0.85], [0.3, 0.3], [1, 0]], 6400, 700, 0.5, 'highpass')
 
   // ── Acto II · el arco (18–30,4) ──
   air(18, 12, [[0.05, 0.22], [0.7, 0.08], [1, 0.03]], 500, 320, 0.6, 'bandpass', 0.3, -0.2)
