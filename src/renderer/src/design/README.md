@@ -88,11 +88,13 @@ grano de papel muy suave, algo fuera de registro de su línea. Minimalista y ama
 - **El diente del papel** (`.paper-grain`, en `paint/paint.css`): el fondo de las pantallas lleva un grano muy fino y quieto,
   como papel de acuarela; las tarjetas, encima, siguen lisas. Y la **muestra de pigmento** (`PigmentMark`, receta `swatch`):
   el color de identidad como pasadas de pincel plano en una esquina (tarjetas, notas de las lecciones, diapositivas).
-- **Aguadas** (`Wash`, `wash.css`; del estilo de Faro): acuarela pintada por código (manchas con borde de agua y grano de
-  pigmento, por filtros SVG), QUIETA: se abre una vez y no se mueve. Escenas `dawn`, `noon`, `dusk`, `night` (el cielo de
-  la hora, `washSceneFor(hora)`, en el saludo de Hoy) y `still` (una mancha tranquila: chat vacío, bienvenida). Tonos
-  `--wash-sky/light/sand/rose`, apagados en oscuro. En pocos sitios y siempre detrás del contenido; nunca como relleno de
-  una tarjeta entera ni debajo de texto pequeño. Sus degradados son solo máscaras para perderse en el papel.
+- **Dibujos a tinta y acuarela** (`ArchLight`, `InkSpot`, `inkArt.css`): la misma mano que Faro (una línea con pulso y
+  aguadas que se salen de ella, pintadas por filtros SVG) pero con los motivos de Aula, nunca los de Faro. `ArchLight` es
+  el arco de Aula con la luz dentro (`dawn`, `noon`, `dusk`, `night`; `archLightFor(hora)`): en el saludo de Hoy y en la
+  bienvenida. `InkSpot` son objetos del estudio (`books`, `cards`, `pencil`, `flask`, `calendar`, `lamp`) para las
+  pantallas vacías (`EmptyState art="…"`) y el chat sin empezar. La tinta se dibuja UNA vez al aparecer y el dibujo se
+  queda quieto. Tonos `--wc-*` (ladrillo y sol más cuatro apagados), más hondos en oscuro. Un dibujo por pantalla, nunca
+  de fondo de una tarjeta ni debajo de texto. El icono de la app sigue la misma receta (`scripts/dev/icon/ink-art.mjs`).
 - **Profundidad suave**: las tarjetas llevan su borde fino y una sombra larga y baja, metida hacia dentro (`--e1`, `--e2`),
   no un halo alrededor. **Botones en píldora** (`Button`: `rounded-full` en todos los tamaños).
 - **Dos voces en el chat**: lo que dice Aula va en serif sobre el papel, sin burbuja; lo del estudiante, en su burbuja

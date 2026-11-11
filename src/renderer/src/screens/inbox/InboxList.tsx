@@ -317,5 +317,5 @@ function InboxEmpty({ filtered }: { filtered: boolean }) {
         action={<Button size="sm" onClick={() => ui.set({ filter: 'all', query: '' })}>{t('empty.showAll')}</Button>} />
     )
   }
-  return <EmptyState className="py-16" title={t('empty.title')} body={t('empty.body')} />
+  return <EmptyState className="py-16" art="lamp" title={t('empty.title')} body={t('empty.body')} />
 }

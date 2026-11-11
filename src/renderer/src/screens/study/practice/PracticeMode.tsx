@@ -77,7 +77,7 @@ export function PracticeMode({ data, skillId, initial, title, options = {} }: { 
   if (!round.queue.length)
     return (
       <StudyFrame capsule={<TopCapsule icon={options.icon ?? 'practice'} label={label} onExit={onExit} />} onExit={onExit}>
-        <EmptyState title={t('practice.emptyTitle')} body={t('practice.emptyBody')} action={<Button onClick={onExit}>{t('common.backToCourse')}</Button>} />
+        <EmptyState art="pencil" title={t('practice.emptyTitle')} body={t('practice.emptyBody')} action={<Button onClick={onExit}>{t('common.backToCourse')}</Button>} />
       </StudyFrame>
     )
 

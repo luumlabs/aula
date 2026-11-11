@@ -130,6 +130,7 @@ export function CardsMode({ data, skillId }: { data: CourseData; skillId?: strin
     return (
       <StudyFrame capsule={<TopCapsule icon="cards" label={label} onExit={onExit} />} onExit={onExit}>
         <EmptyState
+          art="cards"
           title={t('cards.nothingTitle')}
           body={t('cards.nothingBody')}
           action={

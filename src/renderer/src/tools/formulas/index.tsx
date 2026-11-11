@@ -77,7 +77,7 @@ export default function FormulasTool(_props: ToolProps) {
       </Card>
 
       {groups.every((g) => g.items.length === 0) && consts.length === 0 ? (
-        <EmptyState title={filter === 'favorites' && !query ? t('formulas.noFavs') : t('formulas.none')} body={filter === 'favorites' && !query ? t('formulas.noFavsBody') : t('formulas.noneBody')} />
+        <EmptyState art="flask" title={filter === 'favorites' && !query ? t('formulas.noFavs') : t('formulas.none')} body={filter === 'favorites' && !query ? t('formulas.noFavsBody') : t('formulas.noneBody')} />
       ) : (
         groups.map((g) =>
           g.items.length ? (

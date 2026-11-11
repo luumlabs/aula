@@ -65,7 +65,7 @@ export function Library() {
         {lib.items.length === 0 ? (
           <StaggerItem className="col-span-12">
             <Card padded="lg">
-              <EmptyState title={t('library.emptyTitle')} body={t('library.emptyBody')} action={<Button variant="primary" icon={<Icon name="upload" size={14} />} onClick={() => void pick()}>{t('library.pick')}</Button>} />
+              <EmptyState art="books" title={t('library.emptyTitle')} body={t('library.emptyBody')} action={<Button variant="primary" icon={<Icon name="upload" size={14} />} onClick={() => void pick()}>{t('library.pick')}</Button>} />
             </Card>
           </StaggerItem>
         ) : (

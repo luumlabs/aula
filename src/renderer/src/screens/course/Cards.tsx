@@ -32,7 +32,7 @@ export function CardsTab({ pack }: { pack: Pack }) {
   }, [data, now])
   if (!data || !counts) return status === 'loading' ? <div className="grid place-items-center py-16 text-text3"><Spinner size={18} /></div> : <EmptyState title={t('common.loadError')} />
   const all = data.skills.flatMap((s) => s.cards.map((c) => ({ card: c, skill: s })))
-  if (!all.length) return <EmptyState title={t('tab.cards.emptyTitle')} body={t('tab.cards.emptyBody')} />
+  if (!all.length) return <EmptyState art="cards" title={t('tab.cards.emptyTitle')} body={t('tab.cards.emptyBody')} />
   const key = searchKey(q.trim())
   const shown = key ? all.filter(({ card }) => searchKey(`${card.front} ${card.back}`).includes(key)) : all
   const study = (skill?: string): void => navigate({ name: 'study', id: pack.id, mode: 'cards', skill })

@@ -1,0 +1,72 @@
+/* Dibujos a tinta y acuarela (InkArt.tsx). Los tonos, en claro y en oscuro: los de Aula (ladrillo y sol) más cuatro
+   apagados para acompañar; nunca vivos ni fríos, y en la noche, más hondos. */
+:root {
+  --wc-paper: #fffdf9;
+  --wc-brick: #bf5a36;
+  --wc-brick-soft: #d98f72;
+  --wc-ember: #d9762f;
+  --wc-sun: #e3a23a;
+  --wc-glow: #efbf6f;
+  --wc-sand: #dcc6a6;
+  --wc-sage: #a9b9a0;
+  --wc-slate: #9fb3bd;
+  --wc-rose: #dba892;
+  --wc-night: #56708a;
+}
+.dark {
+  --wc-paper: #1f1d1a;
+  --wc-brick: #c9714c;
+  --wc-brick-soft: #8a4d38;
+  --wc-ember: #c4692e;
+  --wc-sun: #f0b062;
+  --wc-glow: #b9772e;
+  --wc-sand: #4a4033;
+  --wc-sage: #55655a;
+  --wc-slate: #4d6b78;
+  --wc-rose: #7a4e42;
+  --wc-night: #34485c;
+}
+
+/* En la capa de componentes: el tamaño lo pone quien lo usa con una clase (las utilidades van en una capa posterior). */
+@layer components {
+  .ink-art {
+    display: block;
+    flex: none;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+}
+/* el color se funde con el papel, como el agua */
+.ink-art-color {
+  mix-blend-mode: multiply;
+  animation: ink-color 900ms 380ms cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+.dark .ink-art-color { mix-blend-mode: screen; }
+.ink-art-line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.86;
+}
+.ink-art-line .ink-art-solid { fill: var(--text); }
+.ink-art-line .ink-art-accent { stroke: var(--wc-brick); }
+/* la tinta se dibuja una vez, trazo a trazo, y se queda */
+.ink-art-line > * {
+  stroke-dasharray: 1;
+  animation: ink-draw 700ms cubic-bezier(0.3, 0.1, 0.2, 1) both;
+}
+@keyframes ink-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ink-color {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-art-color, .ink-art-line > * { animation: none; }
+}

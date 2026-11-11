@@ -1,8 +1,8 @@
 // Tarjeta principal de Hoy: la fecha, el saludo en serif, una frase con lo que toca y la acción principal.
-// A la derecha, el curso del momento: su icono pixel-art se enciende píxel a píxel dentro del anillo de la meta de hoy.
+// A la derecha, el arco de Aula con la luz de la hora que es (tinta y acuarela) y, debajo, el curso del momento y la meta de hoy.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { Button, Card, Floating, ProgressRing, AnimatedNumber, CourseIcon, Chip, Icon, PixelSky, BrushUnderline, Wash, washSceneFor } from '@renderer/design'
+import { Button, Card, AnimatedNumber, CourseIcon, Chip, Icon, PixelSky, BrushUnderline, ArchLight, archLightFor, ProgressBar } from '@renderer/design'
 import type { HomeSummary } from '@shared/ipc/home'
 import { capitalize, fmtDate } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -25,9 +25,7 @@ export function Hero({ data }: { data: HomeSummary }) {
   const ratio = Math.min(1, data.today.minutesDone / goal)
 
   return (
-    <Card enterAnim padded={false} className="relative isolate h-full min-h-[280px] overflow-hidden">
-      {/* el cielo de la hora que es, en acuarela (pintura quieta, no un resplandor): mañana, mediodía, tarde o noche */}
-      <Wash scene={washSceneFor(new Date().getHours())} seed={7} className="-z-10 bottom-auto! h-[72%]" />
+    <Card enterAnim padded={false} className="relative h-full min-h-[280px] overflow-hidden">
       <div className="relative grid h-full grid-cols-1 @3xl:grid-cols-[1fr_auto] gap-6 p-7 @3xl:p-8">
         <div className="flex flex-col justify-between min-w-0">
           <div>
@@ -68,21 +66,22 @@ export function Hero({ data }: { data: HomeSummary }) {
           )}
         </div>
 
-        {focus && (
-          <div className="relative hidden @3xl:grid place-items-center w-[236px]">
-            <Floating amplitude={4} duration={7}>
-              <ProgressRing value={ratio} size={196} stroke={6} color="var(--accent)" track="var(--fill2)">
-                <CourseIcon icon={focus.icon} hue={focus.hue} size={112} title={focus.title} animation="dissolve" radius={30} />
-              </ProgressRing>
-            </Floating>
-            <div className="mt-3 t-ui text-text2 text-center">
-              <span className="text-text3">{t('todayGoal')} · </span>
-              <span className="tabular text-text font-medium">
-                <AnimatedNumber value={data.today.minutesDone} /> / {goal} min
-              </span>
+        {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche) */}
+        <div className="hidden @3xl:flex w-[272px] flex-col items-center justify-center">
+          <ArchLight scene={archLightFor(new Date().getHours())} className="h-[190px] w-[228px]" />
+          <div className="mt-2 flex items-center gap-2.5">
+            {focus && <CourseIcon icon={focus.icon} hue={focus.hue} size={30} title={focus.title} radius={9} />}
+            <div className="min-w-0">
+              <div className="t-ui text-text2">
+                <span className="text-text3">{t('todayGoal')} · </span>
+                <span className="tabular text-text font-medium">
+                  <AnimatedNumber value={data.today.minutesDone} /> / {goal} min
+                </span>
+              </div>
+              <ProgressBar value={ratio} className="mt-1.5 w-[150px]" />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </Card>
   )
