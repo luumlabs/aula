@@ -10,7 +10,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Graph3D, Label3D, Model3DBlock, Solid3D } from '@shared/schema/visual'
 import { covalentRadius, elementSymbol, keyBondAngles, vdwRadius, type Molecule, type Vec3 } from '../lib/molecules'
 import { dimensionLabels, faceTriangles, polyEdges, polyhedron, solidRadius } from '../lib/solids'
-import { axisNumber, layoutGraph, type GraphLayout, type OfT, type XY } from '../lib/graph3d'
+import { axisNumber, layoutGraph, plainMathLabel, type GraphLayout, type OfT, type XY } from '../lib/graph3d'
 import { compileFn } from '../../plot/evaluate'
 import { disposeObject3D, ReleaseGL } from '@renderer/lib/glRelease'
 import { useAmbient } from '@renderer/design/ambient'
@@ -454,14 +454,14 @@ function GraphView({ g, layout, palette, formatNumber }: { g: Graph3D; layout: G
           <meshStandardMaterial color={graphColor(palette, g.curves[i].color, i + 1)} roughness={0.45} metalness={0} />
         </mesh>
       ))}
-      {g.curves.map((c, i) => c.label && layout.curves[i].length > 0 && <GraphLabel key={`cl${i}`} at={new THREE.Vector3(...layout.curves[i][layout.curves[i].length - 1])} strong>{c.label.replace(/\$/g, '')}</GraphLabel>)}
+      {g.curves.map((c, i) => c.label && layout.curves[i].length > 0 && <GraphLabel key={`cl${i}`} at={new THREE.Vector3(...layout.curves[i][layout.curves[i].length - 1])} strong>{plainMathLabel(c.label)}</GraphLabel>)}
       {g.vectors.map((v, i) => {
         const color = graphColor(palette, v.color, i + 2)
         const to = at(...v.to)
         return (
           <group key={`v${i}`}>
             <Arrow from={at(...v.from)} to={to} color={color} radius={0.045} />
-            {v.label && <GraphLabel at={to.clone().add(new THREE.Vector3(0, 0.26, 0))} strong>{v.label.replace(/\$/g, '')}</GraphLabel>}
+            {v.label && <GraphLabel at={to.clone().add(new THREE.Vector3(0, 0.26, 0))} strong>{plainMathLabel(v.label)}</GraphLabel>}
           </group>
         )
       })}
@@ -470,7 +470,7 @@ function GraphView({ g, layout, palette, formatNumber }: { g: Graph3D; layout: G
         return (
           <group key={`p${i}`}>
             <mesh position={pos}><sphereGeometry args={[0.085, 20, 16]} /><meshStandardMaterial color={graphColor(palette, p.color ?? 'accent', i)} roughness={0.4} /></mesh>
-            {p.label && <GraphLabel at={pos.clone().add(new THREE.Vector3(0, 0.26, 0))} strong>{p.label.replace(/\$/g, '')}</GraphLabel>}
+            {p.label && <GraphLabel at={pos.clone().add(new THREE.Vector3(0, 0.26, 0))} strong>{plainMathLabel(p.label)}</GraphLabel>}
           </group>
         )
       })}
@@ -482,7 +482,7 @@ function GraphView({ g, layout, palette, formatNumber }: { g: Graph3D; layout: G
           <GraphLabel at={e.to.clone().sub(e.to.clone().sub(e.from).multiplyScalar(pad / (1 + pad))).add(new THREE.Vector3(0, -0.2, 0))}>{axisNumber(e.hi, formatNumber)}</GraphLabel>
         </group>
       ))}
-      {g.surfaces.map((s, i) => s.label && layout.surfaces[i] && <GraphLabel key={`sl${i}`} at={new THREE.Vector3(layout.surfaces[i]!.positions[0], layout.surfaces[i]!.positions[1] + 0.3, layout.surfaces[i]!.positions[2])} strong>{s.label.replace(/\$/g, '')}</GraphLabel>)}
+      {g.surfaces.map((s, i) => s.label && layout.surfaces[i] && <GraphLabel key={`sl${i}`} at={new THREE.Vector3(layout.surfaces[i]!.positions[0], layout.surfaces[i]!.positions[1] + 0.3, layout.surfaces[i]!.positions[2])} strong>{plainMathLabel(s.label)}</GraphLabel>)}
     </group>
   )
 }

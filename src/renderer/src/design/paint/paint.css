@@ -34,6 +34,23 @@
   transition: none;
 }
 
+/* Toques de pincel (paint/dabs.ts): un cuadradito de color cortado a mano. El recorte llena la caja (la receta deja un
+   margen para que quepa torcido), así que se agranda un pelo para que pese lo mismo que el cuadrado que sustituye. */
+.dab {
+  mask-image: var(--dab-1, none);
+  -webkit-mask-image: var(--dab-1, none);
+  mask-size: 112% 112%;
+  -webkit-mask-size: 112% 112%;
+  mask-position: center;
+  -webkit-mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+/* (o con la variante dicha a mano, cuando el toque no es hijo directo de la fila: `dab dab-2`) */
+.dab:nth-child(4n + 2), .dab.dab-2 { mask-image: var(--dab-2, none); -webkit-mask-image: var(--dab-2, none); }
+.dab:nth-child(4n + 3), .dab.dab-3 { mask-image: var(--dab-3, none); -webkit-mask-image: var(--dab-3, none); }
+.dab:nth-child(4n), .dab.dab-4 { mask-image: var(--dab-4, none); -webkit-mask-image: var(--dab-4, none); }
+
 /* ── Líneas ── */
 .ink {
   display: block;

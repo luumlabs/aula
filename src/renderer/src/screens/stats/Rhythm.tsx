@@ -63,7 +63,7 @@ function WeekdayPixels({ byWeekday, best, label }: { byWeekday: number[]; best: 
                 {Array.from({ length: n }, (_, k) => (
                   <motion.span
                     key={k}
-                    className="block h-[11px] w-[15px] rounded-[3px]"
+                    className="dab block h-[11px] w-[15px] rounded-[3px]"
                     style={{ background: `var(--heat-${pixelLevel(k)})` }}
                     initial={{ opacity: 0, y: -14 }}
                     animate={{ opacity: 1, y: 0 }}

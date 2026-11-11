@@ -10,7 +10,7 @@ import { decodeSourceChunk } from '@shared/schema'
 import type { MaterialView } from '@shared/generation/types'
 import { Button, Card, cx, Drawer, EmptyState, Icon, SectionTitle, Spinner, Stagger, StaggerItem, TextField, toast, type IconName } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
-import { api } from '@renderer/lib/api'
+import { api, packAssetUrl } from '@renderer/lib/api'
 import { isDemo } from '@renderer/lib/demo'
 import { fmtDate } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -31,7 +31,7 @@ async function loadChunks(packId: string, sourceId: string): Promise<SourceChunk
   const demo = Object.entries(demoChunks).find(([p]) => p.includes(`/Packs/${packId}/sources/${sourceId}/`))
   if (demo && isDemo()) raw = await demo[1]()
   else {
-    const res = await fetch(`aula-asset://pack/${encodeURIComponent(packId)}/sources/${encodeURIComponent(sourceId)}/chunks.json`)
+    const res = await fetch(packAssetUrl(packId, `sources/${sourceId}/chunks.json`))
     if (!res.ok) throw new Error(String(res.status))
     raw = await res.json()
   }

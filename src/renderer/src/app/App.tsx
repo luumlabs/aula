@@ -3,17 +3,20 @@ import { Suspense, useEffect, useMemo, useReducer, useRef, useState, type ReactN
 import { AnimatePresence } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { SunCursor, ThemeProvider, Toaster, Spinner, cx, useTheme } from '@renderer/design'
+import { installDabs } from '@renderer/design/paint'
 import { api } from '@renderer/lib/api'
 import { setLanguage, pickLanguage } from '@renderer/i18n'
 import { applyEngineLanguage } from '@engine/language'
 import { useSettings, wireSettings } from '@renderer/lib/settings'
 import { wireCourses } from '@renderer/lib/courses'
 import { Sidebar } from './shell/Sidebar'
+import { CompactTabs, useCompact } from './shell/CompactTabs'
+import { routeFromHash, routeToHash } from './routeHash'
 import { TopBar } from './shell/TopBar'
 import { useTitleStore } from './title'
 import { CommandPalette } from './shell/CommandPalette'
 import { OrbLauncher } from './shell/OrbLauncher'
-import { useNav, routeKey, ScreenScopeContext, type Route } from './router'
+import { navigate, useNav, routeKey, ScreenScopeContext, type Route } from './router'
 import { SCREENS, prepareScreen, preloadScreensWhenIdle } from './screens'
 import './screens.css'
 import { useDev, installDevHooks } from './dev'
@@ -30,13 +33,34 @@ export function App() {
   const devTheme = useDev((s) => s.theme)
   const { i18n } = useTranslation()
 
+  // desde un dispositivo (iPad, iPhone): sin ventana que arrastrar; en pantalla estrecha, pestañas abajo en vez de barra lateral
+  const remote = api.remote
+  const compact = useCompact()
+
   useEffect(() => {
     if (api.platform === 'darwin') document.documentElement.classList.add('vibrant')
+    else if (api.remote) {
+      document.documentElement.classList.add('remote')
+      // si la página se recargó (un túnel nuevo al volver a la app, un refresco), se vuelve a la pantalla apuntada en la
+      // dirección; si no, en el teléfono Aula es sobre todo su asistente: se abre por lo que hizo y lo que hay pendiente
+      const saved = routeFromHash(window.location.hash)
+      if (saved) navigate(saved, { replace: true })
+      else if (window.matchMedia('(max-width: 700px)').matches) navigate({ name: 'inbox' }, { replace: true })
+    }
     // Windows y Linux: los botones de la ventana (titleBarOverlay, 48 px) se dibujan encima; lo flotante empieza debajo
     else if (api.platform !== 'web') document.documentElement.style.setProperty('--titlebar-h', '48px')
     wireSettings()
+    installDabs()
     wireCourses()
     installDevHooks()
+  }, [])
+
+  // desde un dispositivo: la pantalla de ahora queda apuntada en la dirección (routeHash.ts)
+  useEffect(() => {
+    if (!api.remote) return
+    return useNav.subscribe((s) => {
+      try { window.history.replaceState(null, '', routeToHash(s.route) || window.location.pathname) } catch { /* sin historial: no se apunta */ }
+    })
   }, [])
 
   useEffect(() => {
@@ -52,23 +76,25 @@ export function App() {
     <ThemeProvider mode={mode} motion={settings?.general.motion ?? 'system'} textScale={settings?.general.textScale ?? 1}>
       <AppCommands />
       <Backdrop />
-      <div className="relative flex h-full">
+      <div className={cx('relative flex h-full', compact && 'flex-col')} style={remote ? { paddingTop: 'env(safe-area-inset-top)' } : undefined}>
         {/* el hueco de arriba (sobre la hoja) también arrastra la ventana */}
-        <div aria-hidden className="drag absolute inset-x-0 top-0 h-2" />
-        <Sidebar />
-        <Sheet>
-          <Bar />
+        {!remote && <div aria-hidden className="drag absolute inset-x-0 top-0 h-2" />}
+        {!compact && <Sidebar />}
+        <Sheet compact={compact}>
+          <Bar compact={compact} />
           <Screens />
         </Sheet>
+        {compact && <CompactTabs />}
       </div>
-      <AnimatePresence>{settings && !settings.onboarded && <Onboarding key="onboarding" />}</AnimatePresence>
-      <FloatingTools />
-      <OrbLauncher />
+      {/* la bienvenida se hace en el Mac (allí se elige la IA); un dispositivo entra directo */}
+      <AnimatePresence>{settings && !settings.onboarded && !remote && <Onboarding key="onboarding" />}</AnimatePresence>
+      {!compact && <FloatingTools />}
+      {!compact && <OrbLauncher />}
       <CommandPalette />
       <Approvals />
       <AchievementToast />
       <Toaster />
-      <AppCursor />
+      {!remote && <AppCursor />}
     </ThemeProvider>
   )
 }
@@ -81,15 +107,12 @@ function AppCursor() {
 }
 
 /**
- * Lienzo: una sola superficie de vidrio cálido para toda la ventana (en macOS, el vidrio del sistema teñido; fuera, el lienzo
- * liso), con un único brillo fijo junto a la barra lateral. La barra lateral vive sobre ese vidrio, sin panel propio.
+ * Lienzo: una sola superficie para toda la ventana (en macOS, el vidrio del sistema teñido; fuera, el lienzo liso). Sin
+ * brillos ni degradados: la única luz de la interfaz es el ladrillo de lo que se puede pulsar. La barra lateral vive
+ * sobre este lienzo, sin panel propio.
  */
 function Backdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: api.platform === 'darwin' ? 'var(--sidebar)' : 'var(--canvas)' }}>
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(520px 380px at 0% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%)' }} />
-    </div>
-  )
+  return <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: api.platform === 'darwin' ? 'var(--sidebar)' : 'var(--canvas)' }} />
 }
 
 /**
@@ -97,13 +120,14 @@ function Backdrop() {
  * de 16 px (casi concéntricas con las de la ventana); en Windows y Linux llega hasta los bordes de arriba, derecha y abajo
  * (allí se dibujan los botones de la ventana) y solo redondea el lado de la barra lateral.
  */
-function Sheet({ children }: { children: ReactNode }) {
+function Sheet({ children, compact }: { children: ReactNode; compact?: boolean }) {
   const mac = api.platform === 'darwin'
   return (
     <main
       className={cx(
-        'paper-grain relative flex min-w-0 flex-1 flex-col overflow-clip bg-paper border-[0.5px] border-line shadow-[var(--e1)]',
-        mac ? 'my-2 mr-2 rounded-[16px]' : 'rounded-l-[16px] border-r-0 border-y-0'
+        'paper-grain relative flex min-w-0 flex-1 flex-col overflow-clip bg-paper',
+        // en el teléfono la hoja es toda la pantalla: sin marco
+        compact ? 'min-h-0' : cx('border-[0.5px] border-line shadow-[var(--e1)]', mac ? 'my-2 mr-2 rounded-[16px]' : 'rounded-l-[16px] border-r-0 border-y-0')
       )}
     >
       {children}
@@ -111,9 +135,9 @@ function Sheet({ children }: { children: ReactNode }) {
   )
 }
 
-function Bar() {
+function Bar({ compact }: { compact?: boolean }) {
   const { title, right } = useTitleStore()
-  return <TopBar title={title} right={right} />
+  return <TopBar title={title} right={right} compact={compact} />
 }
 
 /** Una pantalla pintada: la de delante o una que se desvanece. `id` cambia con cada visita (A → B → A son tres capas). */

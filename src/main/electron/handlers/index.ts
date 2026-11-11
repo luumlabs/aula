@@ -16,6 +16,7 @@ import { register as achievements } from './achievements'
 import { register as search } from './search'
 import { register as secrets } from './secrets'
 import { register as power } from './power'
+import { register as remote } from './remote'
 
 export function registerAllHandlers(): void {
   app()
@@ -35,4 +36,5 @@ export function registerAllHandlers(): void {
   search()
   secrets()
   power()
+  remote()
 }

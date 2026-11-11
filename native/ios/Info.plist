@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- La interfaz se carga por el túnel local (http://127.0.0.1:<puerto>): sin TLS solo en este mismo dispositivo. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<!-- Al dar materiales a un curso desde el dispositivo se puede hacer una foto o grabar la clase. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Para fotografiar apuntes o la pizarra y dárselos a Aula como material de un curso.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Para grabar una clase y dársela a Aula como material de un curso.</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>Paper</string>
+	</dict>
+</dict>
+</plist>

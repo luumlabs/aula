@@ -1,6 +1,7 @@
 // Contrato común de los bloques de lección (lo usan la lección, el tutor, el chat y la vista de impresión).
 import type { Block } from '@shared/schema/blocks'
 import type { SourceRef } from '@shared/schema/common'
+import { packAssetUrl } from '@renderer/lib/api'
 
 export interface BlockContext {
   /** Curso al que pertenecen los recursos (imágenes, modelos 3D). null en el chat sin curso. */
@@ -36,7 +37,7 @@ export function makeBlockContext(packId: string | null, language: string, extra:
     packId,
     language,
     mode: 'lesson',
-    assetUrl: (path) => (packId ? `aula-asset://pack/${encodeURIComponent(packId)}/${path.split('/').map(encodeURIComponent).join('/')}` : path),
+    assetUrl: (path) => (packId ? packAssetUrl(packId, path) : path),
     ...extra
   }
 }

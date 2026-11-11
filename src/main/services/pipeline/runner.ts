@@ -11,7 +11,7 @@ import { IDs } from '@engine/base/ids'
 import { CourseLanguages } from '@engine/base/language'
 import { LiveCalculator } from '@engine/math'
 import {
-  addUsage, auditSkill, adjudicatorPrompt, courseContext, courseDigest, crossCuttingPartPrompt, crossCuttingPrompt, DEPTHS, encodeRunState, extendPrompt, fallbackBlueprint,
+  aboutRealThings, addUsage, auditSkill, nameSkillMentions, adjudicatorPrompt, courseContext, courseDigest, crossCuttingPartPrompt, crossCuttingPrompt, DEPTHS, encodeRunState, extendPrompt, fallbackBlueprint,
   gatherPrompt, gatherSystem, goalKindIsSure, goalKindOf, isExtend, knownExamOf, linkPractice, materialsMap, MAX_AGENTS, missingCrossCutting, newRunID, newRunState, planPrompt, prepareForResume,
   readerPrompt, readerSystem, readingGroups, runProgress, skillPartPrompt, skillPrompt, solverPrompt, splitSharedContext, systemPrompt, uiRoleFor, usesTeam, usuallyHasExam, decodeRunState,
   countContent, type AuditProblem, type ContentCounts, type CrossPart, type GenerationRequest, type GenerationRunState, type GenerationStage, type LaneRecord, type PipelineRole, type PromptCourse, type SkillPart,
@@ -538,6 +538,7 @@ export class GenerationPipeline {
         continue
       }
       if (usesTeam(this.state.request)) this.linkPractice(id)
+      try { this.nameMentions(id, this.loadPack()) } catch { /* sin curso que leer: se queda como está */ }
       const remaining = this.audit(id)
       this.persistAudit(id)
       if (!remaining.length) { this.updateSkill(id, (s) => { s.status = 'done'; s.openIssues = 0; s.note = '' }); return }
@@ -583,13 +584,29 @@ export class GenerationPipeline {
     } catch (err) { log.warn('[pipeline] no se pudo enlazar la práctica', err) }
   }
 
+  /** Las otras lecciones se citan por su título, no por su identificador interno (el modelo a veces lo deja escrito). */
+  private nameMentions(id: string, pack: Pack): void {
+    if (!this.store.hasSkill(id)) return
+    try {
+      this.store.updateSkill(id, (s) => {
+        const named = nameSkillMentions(s, pack.skills, this.state.request.language)
+        s.lesson = named.lesson
+        s.exercises = named.exercises
+        s.cards = named.cards
+      })
+    } catch (err) { log.warn('[pipeline] no se pudieron nombrar las lecciones citadas', err) }
+  }
+
   /** Auditoría independiente de la IA: errores del validador + mínimos de cobertura. Lista vacía = habilidad lista. */
   audit(id: string): AuditProblem[] {
     const skill = this.loadSkill(id)
     let pack: Pack | undefined
     try { pack = this.loadPack() } catch { pack = undefined }
     const issues = skill ? boundValidator(this.store).checkSkill(skill, pack) : []
-    return auditSkill(skill, this.state.request.depth, issues, this.lang(), { teaching: true })
+    const r = this.state.request
+    // fotos reales: solo si el curso trata de cosas que existen y el modelo puede buscarlas en la web
+    const realPictures = r.allowWeb && aboutRealThings(pack?.title ?? r.title, pack?.subject ?? r.subject, r.topics)
+    return auditSkill(skill, r.depth, issues, this.lang(), { teaching: true, realPictures })
   }
 
   problems(id: string): string[] {

@@ -37,7 +37,7 @@ export function StreakCard({ data }: { data: HomeSummary }) {
                 initial={{ scale: 0.4, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 439, damping: 22, delay: 0.2 + i * 0.04 }}
-                className={cx('h-6 w-full max-w-7 rounded-[7px]', done ? 'bg-accent' : 'bg-fill2', isToday && !done && 'ring-[1.5px] ring-accent-line')}
+                className={cx('h-6 w-full max-w-7 rounded-[7px]', done ? 'bg-accent' : 'bg-fill2', isToday && !done ? 'ring-[1.5px] ring-accent-line' : 'dab')}
               />
               <span className={cx('t-caption', isToday && 'text-text font-semibold')}>{l}</span>
             </div>

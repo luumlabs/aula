@@ -3,6 +3,7 @@
 export { Paint, BrushUnderline, InkRing, DrawnTile, DrawnBorder, CoverBand, InkStrike, InkCheck, InkBurst, PencilRays, InkArrow, type PaintProps } from './Paint'
 export { Ink, useInkReveal, type RevealPlan } from './Ink'
 export { requestPaint, peekPaint } from './cache'
+export { installDabs } from './dabs'
 export { seedOf } from './random'
 export type { PaintKind, PaintSpec } from './recipes'
 export type { InkDrawing, InkStroke } from './drawings'

@@ -18,6 +18,7 @@ import { updateProgress, useStudyStore, type CourseData } from '../data'
 import { exitTo, useInk } from '../kit'
 import { SessionSummary } from '../Summary'
 import { canSpeak, speakable, useSpeech } from '../speech'
+import { packAssetUrl } from '@renderer/lib/api'
 
 const RATINGS: Rating[] = [1, 2, 3, 4]
 const RATING_KEY = ['again', 'hard', 'good', 'easy'] as const
@@ -230,7 +231,7 @@ export function CardsMode({ data, skillId }: { data: CourseData; skillId?: strin
           flipped={flipped}
           onFlip={() => setFlipped((f) => !f)}
           ink={ink}
-          assetUrl={(a) => `aula-asset://pack/${encodeURIComponent(packId)}/${a.split('/').map(encodeURIComponent).join('/')}`}
+          assetUrl={(a) => packAssetUrl(packId, a)}
         />
         <div className="flex items-center gap-2">
           {card.hint && !flipped && (

@@ -4,7 +4,9 @@
     "unread_one": "{{count}} unread",
     "unread_other": "{{count}} unread",
     "allRead": "All caught up",
-    "what": "What Aula did for you while you weren’t looking"
+    "what": "What Aula did for you while you weren’t looking",
+    "attention_one": "{{count}} needs you",
+    "attention_other": "{{count}} need you"
   },
   "tabs": {
     "inbox": "Inbox",
@@ -18,7 +20,8 @@
   "filters": {
     "all": "All",
     "unread": "Unread",
-    "label": "Filter by type"
+    "label": "Filter by type",
+    "attention": "Needs you"
   },
   "kinds": {
     "platform": "Platform",
@@ -38,7 +41,8 @@
     "week": "This week",
     "earlier": "Earlier",
     "unread_one": "{{count}} unread",
-    "unread_other": "{{count}} unread"
+    "unread_other": "{{count}} unread",
+    "needsYou": "Needs you"
   },
   "actions": {
     "markAllRead": "Mark all as read",
@@ -59,7 +63,13 @@
     "more": "More options",
     "pauseThis": "Pause this automation",
     "pauseRoutine": "Pause this routine",
-    "settings": "Notifications and style…"
+    "settings": "Notifications and style…",
+    "showSnoozed": "Show snoozed",
+    "showArchived": "Show archived",
+    "showOpen": "Back to open",
+    "only": "Only: {{kind}}",
+    "clearFilter": "Clear filter",
+    "searchOpen": "Search"
   },
   "snooze": {
     "oneHour": "1 hour",
@@ -165,7 +175,8 @@
     "fixSignIn": "Sign in",
     "fixAI": "Choose in Settings",
     "fixRetry": "Try again",
-    "fixBudget": "Adjust"
+    "fixBudget": "Adjust",
+    "onMac": "Fix it in Aula on your Mac."
   },
   "automations": {
     "yours": "Your automations",

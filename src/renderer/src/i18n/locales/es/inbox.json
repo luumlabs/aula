@@ -4,7 +4,9 @@
     "unread_one": "{{count}} sin leer",
     "unread_other": "{{count}} sin leer",
     "allRead": "Todo al día",
-    "what": "Lo que Aula hizo por ti mientras no mirabas"
+    "what": "Lo que Aula hizo por ti mientras no mirabas",
+    "attention_one": "{{count}} te necesita",
+    "attention_other": "{{count}} te necesitan"
   },
   "tabs": {
     "inbox": "Novedades",
@@ -18,7 +20,8 @@
   "filters": {
     "all": "Todo",
     "unread": "Sin leer",
-    "label": "Filtrar por tipo"
+    "label": "Filtrar por tipo",
+    "attention": "Te necesita"
   },
   "kinds": {
     "platform": "Plataforma",
@@ -38,7 +41,8 @@
     "week": "Esta semana",
     "earlier": "Antes",
     "unread_one": "{{count}} sin leer",
-    "unread_other": "{{count}} sin leer"
+    "unread_other": "{{count}} sin leer",
+    "needsYou": "Te necesita"
   },
   "actions": {
     "markAllRead": "Marcar todo como leído",
@@ -59,7 +63,13 @@
     "more": "Más opciones",
     "pauseThis": "Pausar esta automatización",
     "pauseRoutine": "Pausar esta rutina",
-    "settings": "Avisos y estilo…"
+    "settings": "Avisos y estilo…",
+    "showSnoozed": "Ver las pospuestas",
+    "showArchived": "Ver las archivadas",
+    "showOpen": "Volver a las abiertas",
+    "only": "Solo: {{kind}}",
+    "clearFilter": "Quitar el filtro",
+    "searchOpen": "Buscar"
   },
   "snooze": {
     "oneHour": "1 hora",
@@ -165,7 +175,8 @@
     "fixSignIn": "Iniciar sesión",
     "fixAI": "Elegir en Ajustes",
     "fixRetry": "Reintentar",
-    "fixBudget": "Ajustar"
+    "fixBudget": "Ajustar",
+    "onMac": "Se arregla en Aula, en tu Mac."
   },
   "automations": {
     "yours": "Tus automatizaciones",

@@ -200,6 +200,10 @@ answer away.
   password.
 - **Aula always on** (optional): with the window closed, Aula can send you a morning summary, check your platform, remind
   you of deadlines and write a weekly summary. It all lands in the Inbox, and it stops for the day when it reaches its daily budget.
+- **Your iPad and iPhone** (optional, with Aula on a Mac): open Aula from your own devices while your courses, your AI
+  and your data stay on the Mac. The iPad gets the whole app; the iPhone, Aula as your assistant (what it did, what is
+  pending, the chat and the calendar). Devices reach the Mac over your private Tailscale network and are linked once
+  with a code. See [docs/DEVICES.md](docs/DEVICES.md).
 - **Memory**: Aula remembers what helps it teach you, like how you prefer explanations or what you find hard. You can
   see, edit, pause or export all of it in *Settings → What Aula remembers*.
 - **Search**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> finds screens, courses and tools, and anything inside your

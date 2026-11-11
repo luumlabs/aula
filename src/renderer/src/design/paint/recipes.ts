@@ -6,7 +6,7 @@ import { deform, superellipse, trace } from './shapes'
 import { createNoise, type Noise } from './noise'
 import { between, gauss, rngFrom, type Rng } from './random'
 
-export type PaintKind = 'band' | 'tile' | 'swatch'
+export type PaintKind = 'band' | 'tile' | 'swatch' | 'pass'
 
 export interface PaintSpec {
   kind: PaintKind
@@ -105,7 +105,7 @@ function tile(spec: PaintSpec): OffscreenCanvas {
  * Cerdas: el pincel plano no carga igual en todo su ancho y, donde arranca (lejos de la esquina), ya va seco y deja
  * rayas de papel a lo largo de la pasada. `angle` es la dirección de la pasada; el origen, la esquina de abajo a la derecha.
  */
-function bristles(j: Job, angle: number): OffscreenCanvas {
+function bristles(j: Job, angle: number, fromLeft = false): OffscreenCanvas {
   const { canvas, noise, s, w, h } = j
   const W = canvas.width
   const H = canvas.height
@@ -117,12 +117,13 @@ function bristles(j: Job, angle: number): OffscreenCanvas {
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4 + 3
       if (!d[i]) continue
-      const X = x / s - w
-      const Y = y / s - h
+      // (con `fromLeft` la pasada entra cargada por la izquierda y llega seca a la derecha)
+      const X = fromLeft ? -x / s : x / s - w
+      const Y = fromLeft ? y / s - h / 2 : y / s - h
       const along = X * cos + Y * sin
       const across = -X * sin + Y * cos
       // 0 junto a la esquina (pincel cargado), 1 en el arranque (seco)
-      const dry = Math.min(1, Math.max(0, -along / w)) ** 1.8
+      const dry = Math.min(1, Math.max(0, -along / w)) ** (fromLeft ? 3.2 : 1.8)
       const load = 1 - 0.14 * noise.at(across * 1.5 + 11, along * 0.02 + 90)
       const hair = noise.at(across * 0.62 + 31, along * 0.011 + 7)
       const bare = hair > 1 - dry * 0.66 ? 0.16 + 0.5 * (1 - dry) : 1
@@ -158,7 +159,21 @@ function swatch(spec: PaintSpec): OffscreenCanvas {
   return paper(j, 0.16)
 }
 
-const RECIPES: Record<PaintKind, (spec: PaintSpec) => OffscreenCanvas> = { band, tile, swatch }
+/**
+ * Una pasada: una sola pasada de pincel plano a lo ancho de la caja (la fila elegida de una lista). Entra cargada por la
+ * izquierda, con los bordes cortados a mano, y se va quedando seca al final: las últimas cerdas dejan ver el papel.
+ */
+function pass(spec: PaintSpec): OffscreenCanvas {
+  const j = job(spec)
+  const { w, h, rng, ctx } = j
+  const base = superellipse(w / 2, h / 2, w * 0.497, h * 0.47, 7, 30, rng, [0.003, 0.01], gauss(rng) * 0.004)
+  trace(ctx, deform(base, 3, rng, 1, 0.45))
+  ctx.fill()
+  bristles(j, gauss(rng) * 0.01, true)
+  return paper(j, 0.1)
+}
+
+const RECIPES: Record<PaintKind, (spec: PaintSpec) => OffscreenCanvas> = { band, tile, swatch, pass }
 
 export function renderPaint(spec: PaintSpec): OffscreenCanvas {
   return RECIPES[spec.kind](spec)

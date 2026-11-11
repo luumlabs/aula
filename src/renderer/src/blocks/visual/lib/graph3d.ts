@@ -157,3 +157,24 @@ export function axisNumber(v: number, format: (v: number) => string): string {
   const r = Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 100) / 100
   return format(Object.is(r, -0) ? 0 : r)
 }
+
+const SUPERSCRIPT: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻', '+': '⁺', n: 'ⁿ' }
+const SYMBOLS: Record<string, string> = { nabla: '∇', partial: '∂', pi: 'π', theta: 'θ', alpha: 'α', beta: 'β', lambda: 'λ', cdot: '·', times: '×', vec: '', mathbf: '', sqrt: '√', infty: '∞', le: '≤', ge: '≥', neq: '≠' }
+
+/**
+ * Una etiqueta de la escena 3D, legible sin KaTeX (van sobre el lienzo, en texto llano): «$z = x^2 - y^2$» → «z = x² − y²»,
+ * «\\nabla f» → «∇f», «2*x» → «2·x». Lo que no se sabe traducir se deja sin barras ni llaves.
+ */
+export function plainMathLabel(label: string): string {
+  return label
+    .replace(/\$/g, '')
+    .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1/$2')
+    .replace(/\\([a-zA-Z]+)\s?/g, (_, name: string) => SYMBOLS[name] ?? name)
+    .replace(/\^\{?(-?[0-9n+]+)\}?/g, (_, exp: string) => [...exp].map((c) => SUPERSCRIPT[c] ?? c).join(''))
+    .replace(/[{}]/g, '')
+    .replace(/\s*\*\s*/g, '·')
+    .replace(/ - /g, ' − ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+

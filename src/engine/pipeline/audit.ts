@@ -17,7 +17,7 @@ const L = (lang: Lang, es: string, en: string): string => (lang === 'en' ? en : 
  * Auditoría independiente de la IA: errores del validador + mínimos de cobertura. Lista vacía = habilidad lista.
  * `validatorIssues` son los del validador ligado al curso (`checkSkill`).
  */
-export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, validatorIssues: readonly ContentIssue[], lang: Lang = 'es', options: { teaching?: boolean } = {}): AuditProblem[] {
+export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, validatorIssues: readonly ContentIssue[], lang: Lang = 'es', options: { teaching?: boolean; realPictures?: boolean } = {}): AuditProblem[] {
   if (!skill) return [{ forAI: 'The skill has no content yet.', forUser: L(lang, 'Aún no tiene contenido.', 'It has no content yet.') }]
   const out: AuditProblem[] = []
   for (const i of validatorIssues) {
@@ -49,7 +49,7 @@ export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, val
     })
   }
   // solo al crear o ampliar un curso: un curso ya hecho no pasa a «pendiente de corregir» por reglas nuevas
-  if (options.teaching) out.push(...teachingProblems(skill.lesson, d.minVisuals, lang))
+  if (options.teaching) out.push(...teachingProblems(skill.lesson, d.minVisuals, lang), ...showItProblems(skill.lesson, { realPictures: options.realPictures === true }, lang))
   const known = new Set(skill.exercises.map((e) => e.id))
   for (const b of skill.lesson) {
     if (b.type !== 'tryit') continue
@@ -136,6 +136,36 @@ export function teachingProblems(lesson: readonly Block[], minVisuals: number, l
 const isTryIt = (b: Block): b is BlockOf<'tryit'> => b.type === 'tryit'
 
 /**
+ * El modelo a veces cita otra lección por su identificador interno («En `reglas-polinomios` aprendiste…»): al estudiante
+ * eso no le dice nada. Aquí se cambia por el título de esa lección, entre comillas, en la lección, los ejercicios y las
+ * tarjetas (el código de los bloques `code` no se toca). Devuelve la habilidad cambiada, o la misma si no había ninguno.
+ */
+export function nameSkillMentions(skill: Skill, skills: readonly { id: string; title: string }[], language: string): Skill {
+  const titles = new Map(skills.filter((s) => s.id !== skill.id && s.title.trim()).map((s) => [s.id, s.title.trim()]))
+  if (!titles.size) return skill
+  const [open, close] = language.toLowerCase().startsWith('es') ? ['«', '»'] : ['“', '”']
+  let changed = false
+  const rename = (text: string): string =>
+    text.replace(/`([\w-]{2,80})`/g, (whole, id: string) => {
+      const title = titles.get(id)
+      if (!title) return whole
+      changed = true
+      return `${open}${title}${close}`
+    })
+  const walk = (value: unknown, depth: number): unknown => {
+    if (typeof value === 'string') return value.includes('`') ? rename(value) : value
+    if (depth > 8 || value === null || typeof value !== 'object') return value
+    if (Array.isArray(value)) return value.map((v) => walk(v, depth + 1))
+    if ((value as { type?: unknown }).type === 'code') return value
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) out[k] = walk(v, depth + 1)
+    return out
+  }
+  const next = { ...skill, lesson: walk(skill.lesson, 0) as Skill['lesson'], exercises: walk(skill.exercises, 0) as Skill['exercises'], cards: walk(skill.cards, 0) as Skill['cards'] }
+  return changed ? next : skill
+}
+
+/**
  * Equipo: la lección se escribe a la vez que los ejercicios, así que aquí se enlazan los «Pruébalo» con ejercicios reales (después
  * del primer ejemplo y antes del resumen) y se quitan referencias a ejercicios que no existen. Devuelve la habilidad cambiada (o
  * la misma si no hacía falta nada).
@@ -218,6 +248,54 @@ export function courseDigest(pack: Pack, skillOf: (id: string) => Skill | undefi
     for (const x of defs.slice(0, 6)) out += `  - def: ${x}\n`
     for (const f of formulas.slice(0, 8)) out += `  - formula: ${f}\n`
     if (out.length > maxChars) { out += '… (digest truncated)\n'; break }
+  }
+  return out
+}
+
+/** Señales de que la lección trabaja con una función de dos variables: `f(x, y)` y `z = …x…y…`. */
+const SURFACE_MATH = [/f\s*\(\s*x\s*,\s*y\s*\)/g, /\bz\s*=\s*[^$\n]{0,40}?x[^$\n]{0,40}?y/g]
+/** Puntos o vectores con tres coordenadas: solo cuentan si además hay una función de dos variables (una terna suelta puede ser cualquier cosa). */
+const TRIPLE = /\(\s*-?[\w.]+\s*,\s*-?[\w.]+\s*,\s*-?[\w.]+\s*\)/g
+
+/** Todo lo que la lección dice con palabras o fórmulas (para buscar de qué habla). */
+function lessonText(lesson: readonly Block[]): string {
+  const parts: string[] = []
+  const walk = (v: unknown, depth: number): void => {
+    if (typeof v === 'string') { if (v.length > 2) parts.push(v) } else if (depth < 5 && v && typeof v === 'object') for (const x of Object.values(v)) walk(x, depth + 1)
+  }
+  for (const b of lesson) if (b.type !== 'model3d' && b.type !== 'image') walk(b, 0)
+  return parts.join('\n')
+}
+
+/**
+ * Lo que la lección tiene que ENSEÑAR A LA VISTA según de qué hable: una gráfica en 3D cuando trabaja con funciones de dos
+ * variables (el modelo siempre puede dibujarla), y una foto real cuando el curso trata de cosas que existen y hay acceso
+ * a la web. Son fallos como los demás: vuelven al modelo en cada repaso y, si no se arreglan, la lección queda «por revisar»
+ * con su motivo a la vista.
+ */
+export function showItProblems(lesson: readonly Block[], options: { realPictures: boolean }, lang: Lang = 'es'): AuditProblem[] {
+  if (!lesson.length) return []
+  const out: AuditProblem[] = []
+  const types = lesson.map(blockTypeName)
+  if (!types.includes('model3d')) {
+    const text = lessonText(lesson)
+    const surface = SURFACE_MATH.reduce((n, re) => n + (text.match(re)?.length ?? 0), 0)
+    const hits = surface + (surface ? text.match(TRIPLE)?.length ?? 0 : 0)
+    if (surface >= 2 && hits >= 3) {
+      out.push({
+        forAI: 'lesson: it works with a function of two variables or with points and vectors in space, but shows nothing in 3D. The student has to SEE the surface, not imagine it: add a `model3d` block with `graph` (for example `{"type":"model3d","title":"…","alt":"…","graph":{"surfaces":[{"expr":"x^2 - y^2"}],"xMin":-2,"xMax":2,"yMin":-2,"yMax":2,"points":[{"x":0,"y":0,"z":0,"label":"…"}],"vectors":[…]}}`) for the surface, point, tangent plane, gradient or vectors this lesson is about, right where the text explains it, and tell the student what to look for when turning it. Keep the 2D figures (level curves, sections) next to it.',
+        forUser: L(lang, 'La lección habla de superficies o del espacio y no enseña ninguna gráfica en 3D.', 'The lesson is about surfaces or space and shows no 3D graph.')
+      })
+    }
+  }
+  if (options.realPictures) {
+    const real = lesson.some((b) => (b.type === 'image' && !!b.asset) || (b.type === 'labeled' && !!b.asset))
+    if (!real) {
+      out.push({
+        forAI: 'lesson: this course is about real things and the web tools are available, but the lesson shows no real picture (only drawings or diagrams). Show the real thing next to the diagram that explains it: call `find_image` with the specific thing this lesson is about (in English it finds more: "mitochondrion electron micrograph", "onion cells microscope", "Colosseum Rome", "Rosetta Stone"), pick a result that clearly shows it, call `add_image`, and place the returned block (`image`, or `labeled` with that `asset` and the parts marked) right after the paragraph that describes it, with a caption that says what to look at. Try at least three different searches (the organism or object by its scientific or English name, a more general one, a related structure) before giving up: almost every real thing has a picture on Wikimedia Commons.',
+        forUser: L(lang, 'La lección no enseña ninguna imagen real de lo que explica.', 'The lesson shows no real picture of what it explains.')
+      })
+    }
   }
   return out
 }

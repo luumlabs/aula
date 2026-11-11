@@ -14,6 +14,7 @@ import { AIPicker } from './AIPicker'
 import { PlatformsCard } from './Platforms'
 import { AutomationsSettingsCard } from './Automations'
 import { MemoryCard } from './Memory'
+import { DevicesCard } from './Devices'
 import { UpdateButtons, UpdateStatus } from './Updates'
 import type { AppSettings } from '@shared/settings'
 import { sourceCodeURL, type LegalDoc } from '@shared/legal'
@@ -55,6 +56,7 @@ export default function SettingsScreen() {
         {/* el resto en dos columnas que se reparten solas (cada tarjeta con su altura, sin estirarse) */}
         <div className="col-span-12 @4xl:columns-2 gap-4">
           {[
+            <DevicesCard key="devices" />,
             <MemoryCard key="memory" />,
             <GeneralCard key="general" s={settings} update={update} />,
             <DataCard key="data" s={settings} update={update} />,

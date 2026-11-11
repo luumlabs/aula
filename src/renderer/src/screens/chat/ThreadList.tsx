@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { AulaMark, Button, Dialog, Icon, Menu, TextField, cx, spring, toast } from '@renderer/design'
+import { AulaMark, Button, Dialog, Icon, Menu, TextField, cx, spring, toast, SelectionPaint } from '@renderer/design'
 import type { AssistantThreadSummary } from '@shared/assistant/types'
 import { daysUntil, fmtDate, fmtTime } from '@renderer/lib/format'
 import { api } from '@renderer/lib/api'
@@ -52,7 +52,7 @@ export function ThreadList({ threads, active, onOpen, onNew }: { threads: Assist
             {g.items.map((x, i) => (
               <motion.div key={x.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25, delay: i * 0.03 }} className="group relative">
                 <button onClick={() => onOpen(x.id)} className={cx('relative w-full rounded-[12px] px-2.5 py-2 text-left transition-colors', x.id !== active && 'hover:bg-fill1')}>
-                  {x.id === active && <motion.span layoutId="thread-active" transition={spring.snappy} className="absolute inset-0 rounded-[12px] bg-selected" />}
+                  {x.id === active && <motion.span layoutId="thread-active" transition={spring.snappy} className="absolute inset-0"><SelectionPaint seed="conversaciones" /></motion.span>}
                   <span className="relative flex items-baseline justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5 t-callout font-medium">
                       {/* respondiendo: el atardecer de la marca, en pequeño */}

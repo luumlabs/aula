@@ -8,7 +8,7 @@ import { Button, Card, EmptyState, Icon, IconButton, Menu, cx, spring, type Menu
 import { RichText } from '@renderer/lib/RichText'
 import type { AssistantCard } from '@shared/assistant/types'
 import type { AutomationItemView, InboxEntry } from '@shared/automations'
-import { SNOOZE_PRESETS, groupByDay, groupByKind, isSnoozed, snoozeDate, visibleEntries } from '@shared/automations/inbox'
+import { SNOOZE_PRESETS, groupByDay, groupByKind, isSnoozed, needsYou, snoozeDate, visibleEntries } from '@shared/automations/inbox'
 import { inboxOps, openAutomation, replyTo, runCardAction } from './actions'
 import { KIND_ICONS, iconOr, rowTime, whenText } from './format'
 import { useInboxUI } from './state'
@@ -18,10 +18,15 @@ export function InboxList({ entries, items, chatLinked }: { entries: InboxEntry[
   const ui = useInboxUI()
   const now = Date.now()
   const visible = useMemo(() => visibleEntries(entries, { view: ui.view, filter: ui.filter, query: ui.query, now }), [entries, ui.view, ui.filter, ui.query, now])
-  const groups = useMemo(
-    () => (ui.byKind ? groupByKind(visible).map((g) => ({ key: g.kind, title: t(`kinds.${g.kind}`), entries: g.entries })) : groupByDay(visible, now).map((g) => ({ key: g.section, title: t(`sections.${g.section}`), entries: g.entries }))),
-    [visible, ui.byKind, now, t]
-  )
+  const groups = useMemo(() => {
+    if (ui.byKind) return groupByKind(visible).map((g) => ({ key: g.kind as string, title: t(`kinds.${g.kind}`), entries: g.entries, needs: false }))
+    // en lo abierto, sin filtros ni búsqueda: arriba lo que pide algo de ti; debajo, lo demás por días
+    const split = ui.view === 'open' && ui.filter === 'all' && !ui.query
+    const needs = split ? visible.filter(needsYou) : []
+    const rest = split ? visible.filter((e) => !needsYou(e)) : visible
+    const byDay = groupByDay(rest, now).map((g) => ({ key: g.section as string, title: t(`sections.${g.section}`), entries: g.entries, needs: false }))
+    return needs.length ? [{ key: 'needsYou', title: t('sections.needsYou'), entries: needs, needs: true }, ...byDay] : byDay
+  }, [visible, ui.byKind, ui.view, ui.filter, ui.query, now, t])
   const order = groups.flatMap((g) => g.entries.map((e) => e.id))
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -75,7 +80,7 @@ export function InboxList({ entries, items, chatLinked }: { entries: InboxEntry[
         return (
           <motion.section key={g.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: gi * 0.05 }}>
             <h3 className="flex items-baseline gap-1.5 px-1 mb-2">
-              <span className="t-ui font-semibold text-text2">{g.title}</span>
+              <span className={cx('t-ui font-semibold', g.needs ? 'text-accent-text' : 'text-text2')}>{g.title}</span>
               {unread > 0 && <span className="t-ui text-text3">· {t('sections.unread', { count: unread })}</span>}
             </h3>
             <Card padded={false} className="overflow-hidden">

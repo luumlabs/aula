@@ -33,8 +33,8 @@ export function unreadCount(entries: readonly InboxEntry[], now: number): number
 
 /** Qué se ve: abiertas, pospuestas o archivadas. */
 export type InboxView = 'open' | 'snoozed' | 'archived'
-/** Filtros por tipo (o «sin leer»). */
-export type InboxFilter = 'all' | 'unread' | InboxKind
+/** Filtros: todo, sin leer, lo que pide algo del estudiante, o un tipo. */
+export type InboxFilter = 'all' | 'unread' | 'attention' | InboxKind
 
 /** Los de Swift (Todo, Sin leer, Plataforma, Fechas, Resúmenes, Seguimientos, Pospuestas, Archivadas). */
 export type SwiftInboxFilter = 'all' | 'unread' | 'platform' | 'dates' | 'summaries' | 'aula' | 'snoozed' | 'archived'
@@ -45,9 +45,20 @@ export function matchesView(e: InboxEntry, view: InboxView, now: number): boolea
   return !e.archived && !isSnoozed(e, now)
 }
 
+/**
+ * ¿Esta novedad pide algo del estudiante? Un problema que Aula no puede arreglar sola (una sesión caducada, una IA sin
+ * elegir) mientras siga abierto, y lo que aún no ha leído y corre prisa: una entrega o un examen que se echan encima, o un
+ * examen para el que no hay curso.
+ */
+export function needsYou(e: InboxEntry): boolean {
+  if (e.archived) return false
+  return e.kind === 'problem' || (!e.read && (e.priority === 2 || e.kind === 'offer'))
+}
+
 export function matchesFilter(e: InboxEntry, filter: InboxFilter): boolean {
   if (filter === 'all') return true
   if (filter === 'unread') return !e.read
+  if (filter === 'attention') return needsYou(e)
   return e.kind === filter
 }
 

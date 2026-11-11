@@ -22,9 +22,22 @@ export const api = {
   get platform(): string {
     return typeof window !== 'undefined' && window.aula ? window.aula.platform : 'web'
   },
+  /** ¿Aula se está usando desde un dispositivo (iPad, iPhone) y no desde su ventana del Mac? */
+  get remote(): boolean {
+    return typeof window !== 'undefined' && (window.aula as { remote?: boolean } | undefined)?.remote === true
+  },
   pathForFile(file: File): string {
     return bridge().pathForFile(file)
   }
+}
+
+/**
+ * URL de un recurso de un curso (`assets/figura.png`, `sources/<id>/pages.json`…). En la ventana del Mac lo sirve el
+ * protocolo `aula-asset://`; desde un dispositivo, el servidor remoto en `/asset/…` (mismo origen).
+ */
+export function packAssetUrl(packId: string, path: string): string {
+  const rest = `pack/${encodeURIComponent(packId)}/${path.split('/').map(encodeURIComponent).join('/')}`
+  return api.remote ? `/asset/${rest}` : `aula-asset://${rest}`
 }
 
 export function isAulaError(err: unknown): err is AulaClientError {
