@@ -10,9 +10,12 @@ struct RootView: View {
             Color("Paper").ignoresSafeArea()
             switch model.stage {
             case .ready(let base):
-                WebView(base: base) { Task { await model.webFailed() } }
-                    .ignoresSafeArea()
-                    .transition(.opacity)
+                VStack(spacing: 0) {
+                    if model.inDemo { DemoBar { Task { await model.exitDemo() } } }
+                    WebView(base: base) { Task { await model.webFailed() } }
+                        .ignoresSafeArea(edges: model.inDemo ? [.horizontal, .bottom] : .all)
+                }
+                .transition(.opacity)
             default:
                 ConnectView(model: model)
                     .transition(.opacity)
@@ -48,16 +51,31 @@ struct ConnectView: View {
             content
                 .padding(.top, 2)
                 .frame(maxWidth: 460)
+            if model.demoArchive != nil {
+                // sin Mac a mano (o antes de instalar nada): Aula de verdad, con un curso de ejemplo
+                Button(Texts.demoAction) { Task { await model.startDemo() } }
+                    .buttonStyle(QuietButton())
+                    .padding(.top, 16)
+            }
             Spacer(minLength: 20)
             Steps(current: step)
                 .frame(maxWidth: 420)
-                .padding(.bottom, canSignOut ? 14 : 26)
+                .padding(.bottom, 14)
             if canSignOut {
                 Button(Texts.signOut) { model.askingSignOut = true }
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 18)
+            } else {
+                // quien llega sin Aula en el Mac: dónde se descarga
+                Button(Texts.macLink) { model.showingMacInfo = true }
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.bottom, 18)
             }
+        }
+        .sheet(isPresented: Binding(get: { model.showingMacInfo }, set: { model.showingMacInfo = $0 })) {
+            MacInfo { model.showingMacInfo = false }
         }
         .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -122,6 +140,61 @@ struct ConnectView: View {
                 Button(Texts.retry) { Task { await model.tryAgain() } }.buttonStyle(BrickButton())
             }
         }
+    }
+}
+
+/// Dónde se descarga Aula para Mac: qué es, la dirección y cómo llevar el enlace al Mac.
+struct MacInfo: View {
+    /// La página de descarga (la última versión publicada).
+    static let download = URL(string: "https://github.com/luumlabs/aula/releases/latest")!
+    let close: () -> Void
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button(Texts.done, action: close).font(.body.weight(.medium))
+            }
+            .padding(.top, 18)
+            Spacer(minLength: 8)
+            Image("SpotLamp")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 210)
+                .accessibilityHidden(true)
+            VStack(spacing: 12) {
+                Text(Texts.macTitle)
+                    .font(.system(.title, design: .serif).weight(.medium))
+                Text(Texts.macBody)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(Texts.macAddress)
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.06), in: Capsule())
+                    .padding(.top, 4)
+                ShareLink(item: MacInfo.download) {
+                    Label(Texts.macShare, systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(BrickButton())
+                .padding(.top, 12)
+                Button(Texts.macOpen) { openURL(MacInfo.download) }
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.top, 6)
+            }
+            .frame(maxWidth: 460)
+            Spacer(minLength: 20)
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color("Paper").ignoresSafeArea())
     }
 }
 
@@ -224,6 +297,41 @@ private struct Steps: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Texts.stepsLabel(current))
+    }
+}
+
+/// La franja de la demostración: dice que lo es y deja salir.
+private struct DemoBar: View {
+    let exit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle().fill(Color.accentColor).frame(width: 7, height: 7)
+            Text(Texts.demoBar)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.primary)
+            Spacer(minLength: 8)
+            Button(Texts.demoExit, action: exit)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 7)
+        .background(Color.accentColor.opacity(0.1))
+        .background(Color("Paper"))
+    }
+}
+
+/// El botón secundario: una píldora de papel con borde fino.
+private struct QuietButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.callout.weight(.medium))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 42)
+            .background(Color.primary.opacity(configuration.isPressed ? 0.1 : 0.05), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.14), lineWidth: 1))
     }
 }
 

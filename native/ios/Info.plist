@@ -8,11 +8,15 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<!-- Al dar materiales a un curso desde el dispositivo se puede hacer una foto o grabar la clase. -->
+	<!-- Los textos de los permisos, en inglés aquí y en español en Aula/es.lproj/InfoPlist.strings.
+	     Al dar materiales a un curso desde el dispositivo se puede hacer una foto o grabar la clase. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Para fotografiar apuntes o la pizarra y dárselos a Aula como material de un curso.</string>
+	<string>To photograph your notes or the whiteboard and give them to Aula as course material.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Para grabar una clase y dársela a Aula como material de un curso.</string>
+	<string>To record a class and give it to Aula as course material.</string>
+	<!-- La red privada intenta hablar con el Mac directamente cuando los dos están en la misma red. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>To reach the Aula on your Mac directly when both are on the same network.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

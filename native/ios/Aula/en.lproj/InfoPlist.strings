@@ -1,0 +1,4 @@
+/* Permission texts in English (the same as Info.plist; this file makes English a listed language of the app). */
+"NSCameraUsageDescription" = "To photograph your notes or the whiteboard and give them to Aula as course material.";
+"NSMicrophoneUsageDescription" = "To record a class and give it to Aula as course material.";
+"NSLocalNetworkUsageDescription" = "To reach the Aula on your Mac directly when both are on the same network.";

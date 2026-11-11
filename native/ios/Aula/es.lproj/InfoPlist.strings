@@ -1,0 +1,4 @@
+/* Los textos de los permisos, en español (los de inglés están en Info.plist). */
+"NSCameraUsageDescription" = "Para fotografiar apuntes o la pizarra y dárselos a Aula como material de un curso.";
+"NSMicrophoneUsageDescription" = "Para grabar una clase y dársela a Aula como material de un curso.";
+"NSLocalNetworkUsageDescription" = "Para llegar directamente a la Aula de tu Mac cuando los dos están en la misma red.";

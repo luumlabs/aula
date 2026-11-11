@@ -31,6 +31,14 @@ final class AppModel {
     private(set) var macName: String?
     /// Se está preguntando si cerrar la sesión de Tailscale.
     var askingSignOut = false
+    /// Se está enseñando dónde descargar Aula para Mac.
+    var showingMacInfo = false
+    /// La demostración está abierta (la interfaz la sirve la propia app, sin Mac).
+    private(set) var inDemo = false
+    private var demo: DemoServer?
+
+    /// ¿Esta copia de la app trae la demostración? (scripts/dev/ios-demo.mjs la graba antes de archivar).
+    let demoArchive: DemoArchive? = Bundle.main.url(forResource: "Demo", withExtension: "aulademo").flatMap { DemoArchive(url: $0) }
 
     private let controller = TailnetController.shared
     private var started = false
@@ -83,6 +91,8 @@ final class AppModel {
     private func apply(_ snap: TailnetSnapshot) async {
         last = snap
         macName = snap.macHost
+        // con la demostración abierta, la red privada sigue a lo suyo sin cambiar de pantalla
+        if inDemo { return }
         switch snap.state {
         case .stopped, .starting:
             if case .ready = stage { return }
@@ -103,7 +113,7 @@ final class AppModel {
 
     /// Busca la Aula del Mac y, si responde, abre su interfaz por el túnel local.
     private func openMac(force: Bool) async {
-        guard !opening, last.state == .running else { return }
+        guard !inDemo, !opening, last.state == .running else { return }
         if !force, case .ready = stage { return }
         guard let mac = last.macHost else {
             stage = .lookingForMac
@@ -150,6 +160,7 @@ final class AppModel {
 
     /// La interfaz no cargó (el Mac se durmió, se cerró Aula): se vuelve a buscar.
     func webFailed() async {
+        if inDemo { return await startDemo() }
         stage = .macUnreachable
         await openMac(force: true)
     }
@@ -158,6 +169,8 @@ final class AppModel {
     /// (si cambió de puerto, la interfaz se recarga en el nuevo, en la misma pantalla).
     func cameToForeground() async {
         guard started else { return }
+        // iOS pudo quitarle el puerto a la demostración mientras la app estaba suspendida: se abre en otro
+        if inDemo { await startDemo() }
         await controller.applicationWillEnterForeground()
         if case .ready = stage { await openMac(force: true) }
     }
@@ -170,6 +183,38 @@ final class AppModel {
         let store = WKWebsiteDataStore.default()
         await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
         await startNode()
+    }
+
+    // MARK: La demostración
+
+    /// Abre la demostración: el curso de ejemplo, servido por la propia app.
+    func startDemo() async {
+        guard let demoArchive else { return }
+        demo?.stop()
+        let server = DemoServer(archive: demoArchive, unavailable: Texts.demoUnavailable, chatReply: Texts.demoChatReply)
+        do {
+            let port = try await server.start()
+            demo = server
+            inDemo = true
+            retry?.cancel()
+            // «demo=1»: la interfaz usa sus datos de ejemplo donde el Mac daría los del estudiante
+            stage = .ready(URL(string: "http://127.0.0.1:\(port)/?demo=1")!)
+        } catch {
+            server.stop()
+            demo = nil
+            inDemo = false
+            stage = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Sale de la demostración y vuelve a donde estaba la conexión con el Mac.
+    func exitDemo() async {
+        demo?.stop()
+        demo = nil
+        inDemo = false
+        stage = .starting
+        await apply(last)
+        if case .starting = stage, !started { await start() }
     }
 
     // MARK: El túnel local
