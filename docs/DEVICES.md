@@ -87,6 +87,7 @@ A small SwiftUI app, no third-party packages:
 | `Aula/WebView.swift` | The `WKWebView` that shows Aula through the loopback tunnel; outside links open in the browser |
 | `Aula/Tailnet/TailnetController.swift` | Owns the embedded TailscaleKit node, finds `aula-mac` among the tailnet's machines |
 | `Aula/Tailnet/LoopbackForwarder.swift` | `127.0.0.1` listener piped through the tailnet. Only connections that present the listener's secret (the `aula_gate` cookie the app sets for the web view, or `_ft` for native requests) are dialed; the port and secret change after a suspension |
+| `Aula/Assets.xcassets` | The app icon and the drawings of the connect screen (the arch at each hour and the desk lamp, in light and dark), taken from the real app with `node scripts/dev/ios-art.mjs` |
 | `build-tailscalekit.sh` | Builds `Frameworks/TailscaleKit.xcframework` from Tailscale's official `libtailscale`, with log uploads disabled |
 | `Aula.xcodeproj` | The Xcode project (iOS 18.1+, iPhone and iPad) |
 
@@ -116,7 +117,7 @@ Verified on a Mac, by tests in this repository:
 - With Xcode 27.2: `build-tailscalekit.sh` builds the framework for device and simulator, and `Aula.xcodeproj` builds
   for the iOS Simulator (Debug) and for a device (Release, unsigned) without errors or warnings in the project's code.
   In the iPhone and iPad simulators (iOS 27.2) the app opens on *Connect to your Aula*, and *Sign in to Tailscale*
-  starts the embedded node and opens Tailscale's sign-in page in Safari.
+  starts the embedded node and opens Tailscale's sign-in page in Safari. The connect screen was checked on both, in light and dark.
 
 Not verified yet (it needs a signed-in tailnet and a real device):
 
