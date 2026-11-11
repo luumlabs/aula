@@ -39,7 +39,7 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 - Google Gemini: an API key that isn't valid is now reported as a problem with the key (Google answers it with a
   generic error). Gemini works with an API key; its help says why there is no sign-in with a Google account.
 - Windows: saving no longer fails now and then when another program (an antivirus, another Aula process) has the file
-  open for an instant.
+  open for an instant, or when two Aula processes (the app and an AI agent's helper) reach for the same course at once.
 
 ### Updating from 0.1.x
 - **Install 0.2.0 by hand once.** The keys that signed the 0.1.x updates, and the macOS signing certificate, were lost.
