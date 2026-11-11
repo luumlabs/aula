@@ -8,6 +8,17 @@ const C = {
   paper: '#f8f3ea', ink: '#231f1a', brick: '#bf5a36', sun: '#e3a23a', glow: '#efbf6f', sand: '#dcc6a6', rose: '#dba892'
 }
 
+// Los tres aspectos del icono (iOS 18+ y macOS 26+ eligen uno según el modo del sistema):
+//   light  → el de siempre, sobre papel.
+//   dark   → el mismo dibujo con la tinta clara y el arco encendido, SIN fondo: el oscuro lo pone el sistema.
+//   tinted → en grises sobre negro: el sistema lo tiñe del color que elija la persona.
+// `wash` es cuánto pesan las aguadas (sobre oscuro, mucho menos: ya no se multiplican con el papel).
+export const INK_LOOKS = {
+  light: { ...C, blend: 'multiply', wash: 1, grain: true },
+  dark: { paper: null, ink: '#f3eadc', brick: '#e58f63', sun: '#f6c468', glow: '#f2b660', sand: '#6b513c', rose: '#a8705a', blend: 'screen', wash: 0.55, grain: false },
+  tinted: { paper: '#000000', ink: '#f2f2f2', brick: '#a6a6a6', sun: '#ffffff', glow: '#d0d0d0', sand: '#3c3c3c', rose: '#5a5a5a', blend: 'screen', wash: 0.4, grain: false }
+}
+
 const filters = (id) => `
   <filter id="${id}-wash" x="-30%" y="-30%" width="160%" height="160%">
     <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="3" seed="13" result="n"/>
@@ -44,14 +55,14 @@ const band = (cx, top, w, t, bottom) => {
 }
 
 /** El marco común: papel, el dibujo y el grano; todo corrido a la caja de 824. */
-function frame(id, detail, body) {
+function frame(id, detail, body, c = C) {
   return `<g transform="translate(-100 -100)"><defs>${detail === 'small' ? '' : filters(id)}</defs>
-    <rect x="60" y="60" width="904" height="904" fill="${C.paper}"/>
+    ${c.paper ? `<rect x="60" y="60" width="904" height="904" fill="${c.paper}"/>` : ''}
     ${body}
-    ${detail === 'full' ? `<rect x="60" y="60" width="904" height="904" filter="url(#${id}-grain)" opacity="0.55"/>` : ''}</g>`
+    ${detail === 'full' && c.grain !== false ? `<rect x="60" y="60" width="904" height="904" filter="url(#${id}-grain)" opacity="0.55"/>` : ''}</g>`
 }
-const ink = (id, detail, body) =>
-  `<g ${detail === 'small' ? '' : `filter="url(#${id}-hand)"`} fill="none" stroke="${C.ink}" stroke-width="${detail === 'full' ? 13 : detail === 'mid' ? 19 : 30}" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">${body}</g>`
+const ink = (id, detail, body, c = C) =>
+  `<g ${detail === 'small' ? '' : `filter="url(#${id}-hand)"`} fill="none" stroke="${c.ink}" stroke-width="${detail === 'full' ? 13 : detail === 'mid' ? 19 : 30}" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">${body}</g>`
 const f = (id, detail, kind) => (detail === 'small' ? '' : `filter="url(#${id}-${kind})"`)
 
 /** Medidas de «Arco a tinta» en el lienzo de 1024 (la caja de 824 empieza en 100): las usa también el vídeo
@@ -59,29 +70,31 @@ const f = (id, detail, kind) => (detail === 'small' ? '' : `filter="url(#${id}-$
 export const INK_ARCH = { cx: 512, ground: 772, top: 268, width: 420, band: 96, sun: 84, line: [170, 858] }
 
 /** A · «Arco a tinta»: el arco y su sol, dibujados a tinta y lavados con ladrillo. `sun: false` lo deja sin el sol (el
- *  resplandor se queda): el vídeo lo hace salir aparte. */
-export function inkArch(detail, { sun = true } = {}) {
+ *  resplandor se queda): el vídeo lo hace salir aparte. `look`: 'light' (sobre papel), 'dark' o 'tinted' (INK_LOOKS). */
+export function inkArch(detail, { sun = true, look = 'light' } = {}) {
   const id = 'inkA', cx = INK_ARCH.cx, g = INK_ARCH.ground
   const small = detail === 'small'
+  const c = INK_LOOKS[look] ?? INK_LOOKS.light
+  const w = (n) => +(n * c.wash).toFixed(3)
   return frame(id, detail, `
     <defs><radialGradient id="${id}-glow" cx="${cx}" cy="${g - 20}" r="250" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${C.sun}" stop-opacity="0.95"/><stop offset="0.45" stop-color="${C.glow}" stop-opacity="0.5"/><stop offset="1" stop-color="${C.glow}" stop-opacity="0"/></radialGradient></defs>
-    ${small ? '' : `<g style="mix-blend-mode:multiply"><g filter="url(#${id}-wash)">
-      <ellipse cx="${cx + 30}" cy="420" rx="370" ry="210" fill="${C.glow}" opacity="0.24"/>
-      <ellipse cx="${cx - 230}" cy="300" rx="200" ry="92" fill="${C.rose}" opacity="0.2"/>
-      <path d="M-80 880 Q220 846 ${cx} 866 T1104 852 L1104 1104 L-80 1104 Z" fill="${C.sand}" opacity="0.6"/>
+      <stop offset="0" stop-color="${c.sun}" stop-opacity="0.95"/><stop offset="0.45" stop-color="${c.glow}" stop-opacity="0.5"/><stop offset="1" stop-color="${c.glow}" stop-opacity="0"/></radialGradient></defs>
+    ${small ? '' : `<g style="mix-blend-mode:${c.blend}"><g filter="url(#${id}-wash)">
+      <ellipse cx="${cx + 30}" cy="420" rx="370" ry="210" fill="${c.glow}" opacity="${w(0.24)}"/>
+      <ellipse cx="${cx - 230}" cy="300" rx="200" ry="92" fill="${c.rose}" opacity="${w(0.2)}"/>
+      <path d="M-80 880 Q220 846 ${cx} 866 T1104 852 L1104 1104 L-80 1104 Z" fill="${c.sand}" opacity="${w(0.6)}"/>
     </g></g>
-    <circle cx="${cx}" cy="${g - 30}" r="230" fill="url(#${id}-glow)" opacity="0.55"/>`}
+    <circle cx="${cx}" cy="${g - 30}" r="230" fill="url(#${id}-glow)" opacity="${look === 'light' ? 0.55 : 0.5}"/>`}
     <g ${f(id, detail, 'fill')}>
-      <path d="${band(cx, 268, 420, small ? 118 : 96, g)}" fill="${C.brick}" opacity="${small ? 1 : 0.86}"/>
-      ${sun ? `<path d="M${cx - (small ? 96 : 84)} ${g} A${small ? 96 : 84} ${small ? 96 : 84} 0 0 1 ${cx + (small ? 96 : 84)} ${g} Z" fill="${C.sun}" opacity="0.95"/>` : ''}
-      ${small ? '' : `<ellipse cx="${cx}" cy="${g + 24}" rx="340" ry="26" fill="${C.rose}" opacity="0.55"/>`}
+      <path d="${band(cx, 268, 420, small ? 118 : 96, g)}" fill="${c.brick}" opacity="${small ? 1 : 0.86}"/>
+      ${sun ? `<path d="M${cx - (small ? 96 : 84)} ${g} A${small ? 96 : 84} ${small ? 96 : 84} 0 0 1 ${cx + (small ? 96 : 84)} ${g} Z" fill="${c.sun}" opacity="0.95"/>` : ''}
+      ${small ? '' : `<ellipse cx="${cx}" cy="${g + 24}" rx="340" ry="26" fill="${c.rose}" opacity="${w(0.55)}"/>`}
     </g>
     ${ink(id, detail, `${small ? '' : `
       <path d="${arch(cx, 262, 432, g)}"/>
       <path d="${arch(cx, 366, 224, g)}"/>
       ${sun ? `<path d="M${cx - 80} ${g - 2} A80 80 0 0 1 ${cx + 80} ${g - 2}"/>` : ''}`}
-      <path d="M170 ${g + 6} Q340 ${g - 8} ${cx} ${g + 3} T858 ${g}" opacity="${small ? 1 : 0.8}"/>`)}`)
+      <path d="M170 ${g + 6} Q340 ${g - 8} ${cx} ${g + 3} T858 ${g}" opacity="${small ? 1 : 0.8}"/>`, c)}`, c)
 }
 
 /** B · «El aula encendida»: una puerta en arco con la luz dentro, que sale al suelo. */
