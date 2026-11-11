@@ -51,13 +51,22 @@ struct ConnectView: View {
             Spacer(minLength: 20)
             Steps(current: step)
                 .frame(maxWidth: 420)
-                .padding(.bottom, canSignOut ? 14 : 26)
+                .padding(.bottom, 14)
             if canSignOut {
                 Button(Texts.signOut) { model.askingSignOut = true }
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 18)
+            } else {
+                // quien llega sin Aula en el Mac: dónde se descarga
+                Button(Texts.macLink) { model.showingMacInfo = true }
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.bottom, 18)
             }
+        }
+        .sheet(isPresented: Binding(get: { model.showingMacInfo }, set: { model.showingMacInfo = $0 })) {
+            MacInfo { model.showingMacInfo = false }
         }
         .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -122,6 +131,61 @@ struct ConnectView: View {
                 Button(Texts.retry) { Task { await model.tryAgain() } }.buttonStyle(BrickButton())
             }
         }
+    }
+}
+
+/// Dónde se descarga Aula para Mac: qué es, la dirección y cómo llevar el enlace al Mac.
+struct MacInfo: View {
+    /// La página de descarga (la última versión publicada).
+    static let download = URL(string: "https://github.com/luumlabs/aula/releases/latest")!
+    let close: () -> Void
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button(Texts.done, action: close).font(.body.weight(.medium))
+            }
+            .padding(.top, 18)
+            Spacer(minLength: 8)
+            Image("SpotLamp")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 210)
+                .accessibilityHidden(true)
+            VStack(spacing: 12) {
+                Text(Texts.macTitle)
+                    .font(.system(.title, design: .serif).weight(.medium))
+                Text(Texts.macBody)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(Texts.macAddress)
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.06), in: Capsule())
+                    .padding(.top, 4)
+                ShareLink(item: MacInfo.download) {
+                    Label(Texts.macShare, systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(BrickButton())
+                .padding(.top, 12)
+                Button(Texts.macOpen) { openURL(MacInfo.download) }
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.top, 6)
+            }
+            .frame(maxWidth: 460)
+            Spacer(minLength: 20)
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color("Paper").ignoresSafeArea())
     }
 }
 

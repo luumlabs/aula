@@ -31,6 +31,8 @@ final class AppModel {
     private(set) var macName: String?
     /// Se está preguntando si cerrar la sesión de Tailscale.
     var askingSignOut = false
+    /// Se está enseñando dónde descargar Aula para Mac.
+    var showingMacInfo = false
 
     private let controller = TailnetController.shared
     private var started = false

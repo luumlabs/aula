@@ -102,6 +102,35 @@ open native/ios/Aula.xcodeproj        # pick your team in Signing & Capabilities
 A free Apple ID is enough to run it on your own device (the build expires after 7 days); a paid developer account is
 only needed for TestFlight or the App Store.
 
+## Sending the app to the App Store
+
+The app is the window to the Aula on the student's Mac, so its first screen also says where to get Aula for Mac
+(*Don't have Aula on your Mac yet?* → the download page, with a button to send the link to the Mac).
+
+Ready in the project:
+
+- An archive builds (`xcodebuild archive`, checked unsigned): iPhone and iPad, iOS 18.1+, version from `MARKETING_VERSION`.
+- `Aula/PrivacyInfo.xcprivacy`: no tracking, no collected data, and the two "required reason" system functions the
+  embedded Tailscale node uses (file timestamps in its own folder, the system clock for elapsed time).
+- Permission texts in English and Spanish (camera, microphone, local network), the app icon without transparency, a
+  launch screen, all orientations on iPad.
+
+What only the owner of the Apple account can do:
+
+1. Join the **Apple Developer Program** (paid) and pick that team in *Signing & Capabilities*.
+2. Create the app in **App Store Connect** with the bundle id `com.luumlabs.aula.ios`, then *Product → Archive →
+   Distribute App* in Xcode.
+3. Answer the **export compliance** question: the app carries Tailscale (WireGuard), which is standard encryption that
+   is not Apple's own. That declaration is the owner's to make.
+4. Give a **privacy policy** address (the *Privacy* section of the README can be the base) and fill in the privacy
+   answers: the app collects nothing.
+5. Screenshots for iPhone and iPad showing Aula in use, a description and keywords.
+
+**Review.** Apple's reviewers have no Mac with Aula, so as it is they would only see the connect screen and are likely
+to reject it for not being able to try it. Before sending it, either add a demo mode to the app (an example course
+without a Mac) or give the reviewers a Tailscale account and keep a Mac with Aula on for the review. In the review
+notes, describe it as a client for software the student runs on their own Mac.
+
 ## What is verified, and what is not
 
 Verified on a Mac, by tests in this repository:
@@ -117,7 +146,7 @@ Verified on a Mac, by tests in this repository:
 - With Xcode 27.2: `build-tailscalekit.sh` builds the framework for device and simulator, and `Aula.xcodeproj` builds
   for the iOS Simulator (Debug) and for a device (Release, unsigned) without errors or warnings in the project's code.
   In the iPhone and iPad simulators (iOS 27.2) the app opens on *Connect to your Aula*, and *Sign in to Tailscale*
-  starts the embedded node and opens Tailscale's sign-in page in Safari. The connect screen was checked on both, in light and dark.
+  starts the embedded node and opens Tailscale's sign-in page in Safari. The connect screen was checked on both, in light and dark. The *Aula for Mac* sheet opens from the connect screen.
 
 Not verified yet (it needs a signed-in tailnet and a real device):
 

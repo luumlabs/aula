@@ -25,6 +25,15 @@ enum Texts {
     static var signOutConfirm: String { t("Este dispositivo dejará de estar en tu red privada. Tus cursos siguen en tu Mac.", "This device will leave your private network. Your courses stay on your Mac.") }
     static var cancel: String { t("Cancelar", "Cancel") }
 
+    // Aula para Mac: esta app es la ventana; Aula vive en el Mac.
+    static var macLink: String { t("¿Aún no tienes Aula en tu Mac?", "Don’t have Aula on your Mac yet?") }
+    static var macTitle: String { t("Aula para Mac", "Aula for Mac") }
+    static var macBody: String { t("Esta app es la ventana a tu Aula: tus cursos, la IA y tus datos viven en tu Mac. Aula para Mac es gratis y de código abierto. Descárgala en tu Mac, ábrela y enciende «Aula en tus dispositivos» en Ajustes.", "This app is the window to your Aula: your courses, the AI and your data live on your Mac. Aula for Mac is free and open source. Download it on your Mac, open it and turn on “Aula on your devices” in Settings.") }
+    static var macOpen: String { t("Abrir la página de descarga", "Open the download page") }
+    static var macShare: String { t("Enviar el enlace a mi Mac", "Send the link to my Mac") }
+    static var macAddress: String { "github.com/luumlabs/aula" }
+    static var done: String { t("Hecho", "Done") }
+
     /// Los tres pasos de la conexión (1…3).
     static func step(_ n: Int) -> String {
         switch n {
