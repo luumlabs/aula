@@ -5,6 +5,7 @@
 //   node scripts/film/render.ts --range 9:18         solo ese tramo
 //   node scripts/film/render.ts --fps 12 --silent    borrador rápido, sin sonido
 //   --bitrate 1800000 --grain 0.4                    un corte ligero (menos grano de película: pesa mucho menos)
+//   --scale 0.5 --audio 96000                        a media resolución y con el sonido más comprimido (para incrustarlo)
 import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,7 +24,9 @@ const payload = {
   fps: opt('--fps') ? Number(opt('--fps')) : null,
   silent: args.includes('--silent'),
   bitrate: opt('--bitrate') ? Number(opt('--bitrate')) : 12_000_000,
-  grain: opt('--grain') ? Number(opt('--grain')) : 1
+  grain: opt('--grain') ? Number(opt('--grain')) : 1,
+  scale: opt('--scale') ? Number(opt('--scale')) : 1,
+  audio: opt('--audio') ? Number(opt('--audio')) : 192_000
 }
 const t0 = Date.now()
 const result = await runCompositor({

@@ -7,7 +7,7 @@ import { finishKit, sheet } from './engine/paint.ts'
 import { DURATION, drawFilm, initFilm, look } from './film.ts'
 import { renderScore } from './score.ts'
 
-interface Job { name: string; stills: number[] | null; range: [number, number] | null; fps: number | null; silent: boolean; bitrate: number; grain: number }
+interface Job { name: string; stills: number[] | null; range: [number, number] | null; fps: number | null; silent: boolean; bitrate: number; grain: number; scale: number; audio: number }
 
 const png = async (c: OffscreenCanvas): Promise<Uint8Array> => new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer())
 
@@ -37,10 +37,15 @@ export async function run(): Promise<void> {
       const score = await renderScore(DURATION)
       const a = Math.round(from * score.sampleRate)
       const b = Math.round(to * score.sampleRate)
-      audio = await encodeAac(score.channels.map((c) => c.slice(a, b)), score.sampleRate, 192_000, 2112)
+      audio = await encodeAac(score.channels.map((c) => c.slice(a, b)), score.sampleRate, job.audio, 2112)
       vt.log({ step: 'música', lufs: score.lufs, peak: score.peak })
     }
-    const enc = new H264Encoder({ width: W, height: H, fps, bitrate: job.bitrate, gop: 2, codec: h264Codec(W, H, fps) })
+    // a escala: el fotograma se pinta entero y se reduce al codificarlo
+    const ow = Math.round((W * job.scale) / 2) * 2
+    const oh = Math.round((H * job.scale) / 2) * 2
+    const small = job.scale === 1 ? null : sheet(ow, oh)
+    if (small) small.ctx.imageSmoothingQuality = 'high'
+    const enc = new H264Encoder({ width: ow, height: oh, fps, bitrate: job.bitrate, gop: 2, codec: h264Codec(ow, oh, fps) })
     await enc.configure()
     const thumbs: { t: number; bitmap: ImageBitmap }[] = []
     const every = Math.max(1, Math.round(fps * (to - from > 30 ? 1.5 : 0.5)))
@@ -50,7 +55,10 @@ export async function run(): Promise<void> {
       // el dibujo «hierve» a 24 fps aunque el borrador vaya a menos
       drawFilm(ctx, t, Math.round(t * FPS))
       if ((i - first) % every === 0) thumbs.push({ t, bitmap: await createImageBitmap(canvas, { resizeWidth: 384, resizeHeight: 216, resizeQuality: 'high' }) })
-      await enc.add(canvas)
+      if (small) {
+        small.ctx.drawImage(canvas, 0, 0, ow, oh)
+        await enc.add(small.canvas)
+      } else await enc.add(canvas)
       if ((i - first) % 48 === 0) vt.log({ step: 'vídeo', frame: i - first, of: last - first, s: +((performance.now() - t0) / 1000).toFixed(1) })
     }
     const video = await enc.finish()
