@@ -21,7 +21,7 @@ Importa todo desde `@renderer/design`. Referencia de calidad: `screens/home/*`.
 - Acción: `bg-accent text-on-accent` (UNA por vista), `text-accent-text` (enlaces), `bg-accent-wash` (fila elegida, «espera tu respuesta»).
 - Estado (siempre con palabra o icono): `success`, `warning`, `danger`, `info` y sus `-soft`. Sol: `--sun`, `--sun-glow`.
 - Identidad del curso: `toneForHue(course.hue)` → `fillLight/fillDark` (losetas y velos planos al 14–22 %), `inkLight/inkDark`
-  (cifras, barras y anillos del curso, la luz tras el cristal de sus tarjetas). Nunca pinta la interfaz entera.
+  (cifras, barras y anillos del curso, la muestra de pigmento de sus tarjetas). Nunca pinta la interfaz entera.
   Diez tonos: coral, ámbar, arena, oliva, salvia, turquesa, pizarra, azul noche (`navy`), vino (`wine`) y rosa.
 - **Nada violeta, morado ni lila** (decisión del dueño): ni en los tonos (los antiguos índigo y ciruela pintan ahora azul
   noche y vino), ni en los personajes (`PALETTE` ya no tiene `purple*`; el pintor templa los colores y en las costuras
@@ -37,10 +37,10 @@ Importa todo desde `@renderer/design`. Referencia de calidad: `screens/home/*`.
 
 ## Componentes
 - `Card` — burbuja/tarjeta (radio 22, `bg-surface`, sombra sepia `e1`). `interactive` (se levanta 2 px con `e2`), `floating`
-  (flota 3 px, en el compositor), `mark` (color de identidad: una «luz tras el cristal», mancha pastel mate de ese color —luminosidad y croma
-  fijos en claro, nunca un gris— que reposa dentro de la tarjeta, deriva despacio y se acerca al ratón; `markSize="sm"` en fichas bajas), `wash` (velo plano de un color),
-  `elevation`, `enterAnim`, `padded`. Nada de rayas de color a la izquierda: para eso está `mark` (o `GlassLight` suelta, en
-  cualquier burbuja `relative isolate`); en filas de lista, el color va en la loseta del icono.
+  (flota 3 px, en el compositor), `mark` (color de identidad: una «muestra de pigmento», unas pasadas de pincel plano de ese color en la esquina de la
+  tarjeta, como quien prueba un color en el margen del papel; plana, mate y QUIETA: ni deriva ni sigue al ratón; `markSize="sm"` en fichas bajas), `wash` (velo plano de un color),
+  `elevation`, `enterAnim`, `padded`. Nada de rayas de color a la izquierda ni de luces difusas que se muevan detrás de las
+  tarjetas (decisión del dueño): para eso está `mark` (o `PigmentMark` suelta, en cualquier burbuja `relative isolate`); en filas de lista, el color va en la loseta del icono.
 - `Group` + `Row` — lista agrupada (el contenedor por defecto dentro de una tarjeta). `Row`: `leading`, `title`, `subtitle`,
   `trailing`, `chevron`, `onClick`, `selected`, `mark`, `index` (escalona la entrada).
 - `PageHeader`, `SectionTitle` (títulos serif). `Button` (`primary` ladrillo, `secondary`, `ghost`, `plain`, `danger`; tamaños
@@ -85,9 +85,12 @@ grano de papel muy suave, algo fuera de registro de su línea. Minimalista y ama
   silueta, huecos secos y eje; `Ink.tsx`: una máscara por trazo que la mano recorre); los rellenos, máscaras con grano hechas
   una vez en un hilo aparte (`recipes.ts`, `paint.worker.ts`). En reposo no cuesta nada; lo vivo (sol, «boil») se para en
   calma, con la ventana oculta y con «Reducir movimiento», que además lo enseña todo ya dibujado.
+- **El diente del papel** (`.paper-grain`, en `paint/paint.css`): el fondo de las pantallas lleva un grano muy fino y quieto,
+  como papel de acuarela; las tarjetas, encima, siguen lisas. Y la **muestra de pigmento** (`PigmentMark`, receta `swatch`):
+  el color de identidad como pasadas de pincel plano en una esquina (tarjetas, notas de las lecciones, diapositivas).
 - Semilla fija (`seedOf('id')`): el mismo dibujo en cada arranque. Tintas: `--ink`, `--graphite`, `--pigment-brick`,
   `--pigment-sun` (en oscuro, claras y cálidas; nunca un gris; nada violeta). Nunca debajo de texto pequeño, campos ni
-  ejercicios; la luz tras el cristal NO se dibuja. Todo junto en la galería (`navigate({ name: 'gallery' })`).
+  ejercicios. Todo junto en la galería (`navigate({ name: 'gallery' })`).
 
 ## Pantallas
 - `screens/<nombre>/index.tsx` (export default); título con `useScreenTitle(t('title'), acciones?)`.

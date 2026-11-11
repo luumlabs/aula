@@ -29,7 +29,7 @@ export const BLOCK_CATALOG = `## 5. Block catalog (JSON; \`id\` optional)
 
 export const VISUAL_BLOCKS_BRIEF = `Interactive visuals you can include as ONE aula-block JSON (rendered natively, offline):
 - \`labeled\`: an image of the course (asset id) or a vector \`drawing\` with parts [{id,name,x,y (fractions 0–1),r,detail}] and optional layers — anatomy, cells, maps, machines. The student explores and practises «point at the part».
-- \`model3d\`: {"formula":"H2O","lonePairs":true} (VSEPR shapes, benzene, ethanol, NaCl…), {"atoms":[…],"bonds":[…]} or {"solids":[{"shape":"cylinder","r":1,"h":3,"dims":true}]}.
+- \`model3d\`: {"formula":"H2O","lonePairs":true} (VSEPR shapes, benzene, ethanol, NaCl…), {"atoms":[…],"bonds":[…]} {"solids":[{"shape":"cylinder","r":1,"h":3,"dims":true}]}, or a graph on 3D axes (z up): {"graph":{"xMin":-2,"xMax":2,"yMin":-2,"yMax":2,"surfaces":[{"expr":"x^2 + y^2"}],"curves":[{"x":"cos(t)","y":"sin(t)","z":"t/3","tMin":0,"tMax":12}],"vectors":[{"from":[0,0,0],"to":[1,2,2],"label":"v"}],"points":[{"x":1,"y":1,"z":2,"label":"P"}]}} — use it for functions of two variables, planes, vectors and curves in space.
 - \`simulation\`: {"preset":"projectile|pendulum|spring|wave|rc|supply-demand|population|decay|pharmacokinetics|enzyme"} (sliders + live values + animation).
 - \`map\`: {"markers":[{"lat":…,"lon":…,"title":"…"}],"routes":[…],"regions":[…]}; \`timeline\` with dates as years and \`periods\`; \`diagram\` with \`steps\` (animated process: Krebs cycle, mitosis).
 Only use images that already exist in the course (asset ids); never web URLs.

@@ -102,7 +102,7 @@ function Sheet({ children }: { children: ReactNode }) {
   return (
     <main
       className={cx(
-        'relative flex min-w-0 flex-1 flex-col overflow-clip bg-paper border-[0.5px] border-line shadow-[var(--e1)]',
+        'paper-grain relative flex min-w-0 flex-1 flex-col overflow-clip bg-paper border-[0.5px] border-line shadow-[var(--e1)]',
         mac ? 'my-2 mr-2 rounded-[16px]' : 'rounded-l-[16px] border-r-0 border-y-0'
       )}
     >

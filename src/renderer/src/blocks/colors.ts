@@ -33,15 +33,12 @@ export function inkColor(hue: number | undefined, dark: boolean): string {
 }
 
 /**
- * Colores de `n` series, sobrios: una sola, la tinta del curso; dos o tres, la tinta, un gris cálido y la tinta aclarada
- * (se distinguen por luminosidad y siempre van con leyenda); de cuatro en adelante, las ranuras validadas en orden,
- * empezando por la familia del curso.
+ * Colores de `n` series: una sola, la tinta del curso; varias, las ranuras validadas en orden, empezando por la familia
+ * del curso. Cada serie tiene su color (antes, dos o tres series iban en la tinta, un gris y la tinta aclarada, y se
+ * confundían); siguen siendo tonos sobrios y siempre van con leyenda.
  */
 export function seriesColors(n: number, hue: number | undefined, dark: boolean): string[] {
-  const ink = inkColor(hue, dark)
-  if (n <= 1) return [ink]
-  // la tercera, la tinta aclarada: hacia el papel en claro y hacia el texto en oscuro (si no, se apagaría sobre el fondo)
-  if (n <= 3) return [ink, 'var(--viz-neutral)', dark ? `color-mix(in oklab, ${ink} 50%, var(--text))` : `color-mix(in oklab, ${ink} 45%, var(--surface))`].slice(0, n)
+  if (n <= 1) return [inkColor(hue, dark)]
   return categoricalColors(n, hue)
 }
 
@@ -49,14 +46,6 @@ export function seriesColors(n: number, hue: number | undefined, dark: boolean):
 export function categoricalColors(n: number, hue: number | undefined): string[] {
   const first = hue === undefined ? 1 : VIZ_SLOTS.indexOf(slotForTone(toneForHue(hue)))
   return Array.from({ length: n }, (_, i) => slotVar(VIZ_SLOTS[(first + i) % VIZ_SLOTS.length]))
-}
-
-/** Rampa de un solo tono (la tinta del curso, de intensa a clara sobre el papel): sectores y partes de un todo. */
-export function rampColors(n: number, hue: number | undefined, dark: boolean): string[] {
-  const ink = inkColor(hue, dark)
-  if (n <= 1) return [ink]
-  const span = dark ? 60 : 76
-  return Array.from({ length: n }, (_, i) => `color-mix(in oklab, ${ink} ${Math.round(100 - (i * span) / (n - 1))}%, var(--surface))`)
 }
 
 /** Color por nombre (lo que escribe la IA: «accent», «blue», «naranja», «#2F67A9»…) para curvas, puntos e intervalos. */

@@ -25,9 +25,8 @@ export function Hero({ data }: { data: HomeSummary }) {
   const ratio = Math.min(1, data.today.minutesDone / goal)
 
   return (
-    <Card enterAnim padded={false} className="h-full min-h-[280px] overflow-hidden">
-      {/* la única luz: el sol, muy tenue, en la esquina */}
-      <div aria-hidden className="absolute inset-0" style={{ background: 'radial-gradient(60% 80% at 100% 100%, var(--sun-glow), transparent 70%)' }} />
+    <Card enterAnim padded={false} mark="var(--pigment-sun)" className="h-full min-h-[280px] overflow-hidden">
+      {/* el sol del día: una muestra de su pigmento en la esquina (pintura quieta, no un resplandor) */}
       <div className="relative grid h-full grid-cols-1 @3xl:grid-cols-[1fr_auto] gap-6 p-7 @3xl:p-8">
         <div className="flex flex-col justify-between min-w-0">
           <div>

@@ -292,7 +292,31 @@ export interface Solid3D {
   x: number; y: number; z: number
 }
 
-/** Visor 3D: una molécula, sólidos geométricos o un modelo del curso (USDZ, OBJ, STL…). */
+/** Superficie z = f(x, y), en sintaxis de calculadora con las variables x e y. */
+export interface Surface3D { expr: string; color?: string; opacity?: number; label?: string }
+/** Curva en el espacio: x(t), y(t), z(t) con t entre `tMin` y `tMax`. */
+export interface Curve3D { x: string; y: string; z: string; tMin: number; tMax: number; color?: string; label?: string }
+export type Triple = [number, number, number]
+/** Vector (una flecha) desde `from` (el origen si no se da) hasta `to`. */
+export interface Vector3D { from: Triple; to: Triple; color?: string; label?: string }
+export interface Point3D { x: number; y: number; z: number; color?: string; label?: string }
+
+/** Gráfica en ejes 3D con z hacia arriba, como se dibuja en clase: superficies, curvas, vectores y puntos. */
+export interface Graph3D {
+  xMin: number; xMax: number; yMin: number; yMax: number
+  /** Recorte en z (si falta, lo que alcancen las superficies). */
+  zMin?: number; zMax?: number
+  surfaces: Surface3D[]
+  curves: Curve3D[]
+  vectors: Vector3D[]
+  points: Point3D[]
+  axes: boolean
+  xLabel?: string; yLabel?: string; zLabel?: string
+}
+
+export const GRAPH3D_LIMITS = { surfaces: 4, curves: 12, vectors: 40, points: 200 }
+
+/** Visor 3D: una molécula, sólidos geométricos, una gráfica en ejes 3D o un modelo del curso (USDZ, OBJ, STL…). */
 export interface Model3DBlock {
   title?: string
   /** Fórmula o nombre de una molécula de la biblioteca de Aula. Si hay `atoms`, mandan los átomos. */
@@ -304,6 +328,8 @@ export interface Model3DBlock {
   /** Muestra los pares de electrones libres (VSEPR). */
   lonePairs: boolean
   solids: Solid3D[]
+  /** Gráfica en ejes 3D: superficies z = f(x, y), curvas, vectores y puntos. */
+  graph?: Graph3D
   /** Modelo del curso: .usdz, .usda, .usdc, .scn, .obj, .stl, .ply, .dae. */
   asset?: string
   credit?: string
@@ -369,6 +395,72 @@ export function encodeSolid3D(v: Solid3D): JSONObject {
   return out
 }
 
+function decodeTriple(raw: unknown): Triple | undefined {
+  if (Array.isArray(raw)) {
+    const v = raw.filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
+    return v.length >= 3 ? [v[0], v[1], v[2]] : v.length === 2 ? [v[0], v[1], 0] : undefined
+  }
+  if (!isObj(raw)) return undefined
+  return [flexNum(raw, 'x') ?? 0, flexNum(raw, 'y') ?? 0, flexNum(raw, 'z') ?? 0]
+}
+
+function decodeSurface3D(raw: unknown): Surface3D | undefined {
+  if (typeof raw === 'string') return raw.trim() ? { expr: raw.trim() } : undefined
+  if (!isObj(raw)) return undefined
+  const expr = flexStr(raw, 'expr') ?? flexStr(raw, 'z') ?? flexStr(raw, 'f') ?? flexStr(raw, 'function')
+  return expr ? prune({ expr, color: str(raw, 'color'), opacity: flexNum(raw, 'opacity'), label: str(raw, 'label') }) : undefined
+}
+
+function decodeCurve3D(raw: unknown): Curve3D | undefined {
+  if (!isObj(raw)) return undefined
+  const x = flexStr(raw, 'x'), y = flexStr(raw, 'y'), z = flexStr(raw, 'z')
+  if (x === undefined || y === undefined || z === undefined) return undefined
+  return prune({ x, y, z, tMin: flexNum(raw, 'tMin') ?? flexNum(raw, 'from') ?? 0, tMax: flexNum(raw, 'tMax') ?? flexNum(raw, 'to') ?? 2 * Math.PI, color: str(raw, 'color'), label: str(raw, 'label') })
+}
+
+function decodeVector3D(raw: unknown): Vector3D | undefined {
+  // [1, 2, 3] es un vector desde el origen
+  if (Array.isArray(raw)) { const to = decodeTriple(raw); return to ? { from: [0, 0, 0], to } : undefined }
+  if (!isObj(raw)) return undefined
+  const to = decodeTriple(raw.to ?? raw.end ?? raw.v ?? raw.components) ?? (raw.x !== undefined ? decodeTriple(raw) : undefined)
+  if (!to) return undefined
+  return prune({ from: decodeTriple(raw.from ?? raw.start ?? raw.origin) ?? [0, 0, 0], to, color: str(raw, 'color'), label: str(raw, 'label') })
+}
+
+function decodePoint3D(raw: unknown): Point3D | undefined {
+  const p = decodeTriple(raw)
+  if (!p) return undefined
+  return prune({ x: p[0], y: p[1], z: p[2], color: isObj(raw) ? str(raw, 'color') : undefined, label: isObj(raw) ? str(raw, 'label') : undefined })
+}
+
+export function decodeGraph3D(raw: unknown, d = 0): Graph3D | undefined {
+  if (!isObj(raw)) return undefined
+  const c: Obj = raw
+  const surfaces = list(c, 'surfaces', decodeSurface3D, d)
+  const one = decodeSurface3D(c.surface ?? c.expr ?? c.z)
+  if (one) surfaces.unshift(one)
+  const g = prune({
+    xMin: flexNum(c, 'xMin') ?? -3, xMax: flexNum(c, 'xMax') ?? 3, yMin: flexNum(c, 'yMin') ?? -3, yMax: flexNum(c, 'yMax') ?? 3,
+    zMin: flexNum(c, 'zMin'), zMax: flexNum(c, 'zMax'),
+    surfaces: surfaces.slice(0, GRAPH3D_LIMITS.surfaces), curves: list(c, 'curves', decodeCurve3D, d).slice(0, GRAPH3D_LIMITS.curves),
+    vectors: list(c, 'vectors', decodeVector3D, d).slice(0, GRAPH3D_LIMITS.vectors), points: list(c, 'points', decodePoint3D, d).slice(0, GRAPH3D_LIMITS.points),
+    axes: bool(c, 'axes') ?? true, xLabel: str(c, 'xLabel'), yLabel: str(c, 'yLabel'), zLabel: str(c, 'zLabel')
+  })
+  return g.surfaces.length || g.curves.length || g.vectors.length || g.points.length ? g : undefined
+}
+
+export function encodeGraph3D(g: Graph3D): JSONObject {
+  const out: JSONObject = { xMin: g.xMin, xMax: g.xMax, yMin: g.yMin, yMax: g.yMax }
+  Object.assign(out, pickKeys(g, ['zMin', 'zMax']))
+  if (g.surfaces.length) out.surfaces = g.surfaces.map((s) => pickKeys(s, ['expr', 'color', 'opacity', 'label']))
+  if (g.curves.length) out.curves = g.curves.map((s) => pickKeys(s, ['x', 'y', 'z', 'tMin', 'tMax', 'color', 'label']))
+  if (g.vectors.length) out.vectors = g.vectors.map((s) => ({ from: [...s.from], to: [...s.to], ...pickKeys(s, ['color', 'label']) }))
+  if (g.points.length) out.points = g.points.map((s) => pickKeys(s, ['x', 'y', 'z', 'color', 'label']))
+  if (!g.axes) out.axes = false
+  Object.assign(out, pickKeys(g, ['xLabel', 'yLabel', 'zLabel']))
+  return out
+}
+
 export function decodeModel3D(raw: unknown, d = 0): Model3DBlock | undefined {
   if (!isObj(raw)) return undefined
   const c: Obj = raw
@@ -379,7 +471,8 @@ export function decodeModel3D(raw: unknown, d = 0): Model3DBlock | undefined {
     title: str(c, 'title'), formula: flexStr(c, 'formula') ?? flexStr(c, 'molecule'),
     atoms: list(c, 'atoms', decodeAtom3D, d).slice(0, 2000), bonds: list(c, 'bonds', decodeBond3D, d).slice(0, 4000),
     style: str(c, 'style')?.toLowerCase().replace(/[-_]/g, '') ?? 'ballstick', lonePairs: bool(c, 'lonePairs') ?? false,
-    solids: solids.slice(0, 40), asset: str(c, 'asset'), credit: str(c, 'credit'), labels: list(c, 'labels', decodeLabel3D, d).slice(0, 100),
+    // `graph`, o sus piezas sueltas en el propio bloque (surfaces, curves, vectors)
+    solids: solids.slice(0, 40), graph: nested(c, 'graph', decodeGraph3D, d) ?? (c.surfaces !== undefined || c.surface !== undefined || c.vectors !== undefined || c.curves !== undefined ? decodeGraph3D(c, d) : undefined), asset: str(c, 'asset'), credit: str(c, 'credit'), labels: list(c, 'labels', decodeLabel3D, d).slice(0, 100),
     caption: str(c, 'caption'), alt: flexStr(c, 'alt') ?? '', autoRotate: bool(c, 'autoRotate') ?? true, atomLabels: bool(c, 'atomLabels') ?? false
   })
 }
@@ -391,6 +484,7 @@ export function encodeModel3D(v: Model3DBlock): JSONObject {
   out.style = v.style
   if (v.lonePairs) out.lonePairs = true
   if (v.solids.length) out.solids = v.solids.map(encodeSolid3D)
+  if (v.graph) out.graph = encodeGraph3D(v.graph)
   Object.assign(out, pickKeys(v, ['asset', 'credit']))
   if (v.labels.length) out.labels = v.labels.map(encodeLabel3D)
   Object.assign(out, pickKeys(v, ['caption', 'alt', 'autoRotate']))

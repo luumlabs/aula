@@ -73,17 +73,23 @@ function plan(request: GenerationRequest): Obj {
 }
 
 function lesson(title: string, en: boolean, minBlocks: number): Obj {
-  const extra = Array.from({ length: Math.max(0, minBlocks - 9) }, (_, i) => (en ? `Idea ${i + 3}: check each step before moving on.` : `Idea ${i + 3}: comprueba cada paso antes de seguir.`))
+  const extra = Array.from({ length: Math.max(0, minBlocks - 13) }, (_, i) => (en ? `Idea ${i + 3}: check each step before moving on.` : `Idea ${i + 3}: comprueba cada paso antes de seguir.`))
+  // Como pide la guía: primero se explica y se enseña con figuras, luego el ejemplo resuelto y solo después se pregunta.
   return {
     blocks: [
       `# ${title}`,
-      { type: 'predict', question: en ? 'What is 2+2?' : '¿Cuánto es 2+2?', options: [{ md: '4', correct: true, why: en ? 'Basic addition' : 'Suma básica' }, { md: '5', correct: false, why: en ? 'Counting slip' : 'Error de conteo' }], explanation: en ? 'It is 4.' : 'Es 4.' },
-      en ? `In this lesson you will practise **${title}** step by step.` : `En esta lección practicarás **${title}** paso a paso.`,
+      en
+        ? `In this lesson you will learn **${title}** step by step. Adding means joining two amounts into one. Picture two piles of counters: push them together and count them all, and that total is the sum. On a number line it is a walk: you start at the first number and take as many steps to the right as the second number says. Wherever you land is the answer.`
+        : `En esta lección aprenderás **${title}** paso a paso. Sumar es juntar dos cantidades en una sola. Imagina dos montones de fichas: los juntas, las cuentas todas y ese total es la suma. En la recta numérica es un paseo: empiezas en el primer número y das hacia la derecha tantos pasos como diga el segundo. Donde llegues, esa es la respuesta.`,
+      { type: 'numberline', min: 0, max: 8, points: [{ value: '2', label: '2' }, { value: '5', label: '5', color: 'blue' }], caption: en ? 'From 2, three steps to the right: you land on 5.' : 'Desde 2, tres pasos a la derecha: llegas a 5.' },
       { type: 'callout', kind: 'definition', title: en ? 'Addition' : 'Suma', md: en ? 'Combining quantities.' : 'Combinar cantidades.' },
       { type: 'math', tex: 'a+b=c', label: en ? 'Addition' : 'Suma' },
       { type: 'example', problem: en ? 'Work out $2+3$.' : 'Calcula $2+3$.', steps: [{ md: en ? 'Start at 2' : 'Empieza en 2', note: en ? 'The first addend' : 'El primer sumando' }, { md: en ? 'Count on 3: 3, 4, 5' : 'Cuenta 3 más: 3, 4, 5', note: en ? 'Count on' : 'Contar' }], answer: '$5$' },
+      { type: 'predict', question: en ? 'What is 2+2?' : '¿Cuánto es 2+2?', options: [{ md: '4', correct: true, why: en ? 'Basic addition' : 'Suma básica' }, { md: '5', correct: false, why: en ? 'Counting slip' : 'Error de conteo' }], explanation: en ? 'It is 4.' : 'Es 4.' },
       en ? 'Another idea: the order does not change the sum.' : 'Otra idea: el orden no cambia la suma.',
+      { type: 'chart', kind: 'bar', title: en ? 'The same sum in either order' : 'La misma suma en cualquier orden', series: [{ name: en ? 'Sum' : 'Suma', points: [{ label: '2+3', y: 5 }, { label: '3+2', y: 5 }, { label: '4+1', y: 5 }] }] },
       ...extra,
+      { type: 'plot', title: en ? 'Adding 3 to any number' : 'Sumar 3 a cualquier número', xMin: 0, xMax: 6, yMin: 0, yMax: 10, curves: [{ expr: 'x+3', label: 'y = x + 3' }], points: [{ x: '2', y: '5', label: '$(2, 5)$' }] },
       { type: 'callout', kind: 'mistake', md: en ? "Don't forget to carry." : 'No olvides llevar.' },
       { type: 'recap', points: en ? ['Adding combines', 'Practise'] : ['Sumar combina', 'Practica'] }
     ]

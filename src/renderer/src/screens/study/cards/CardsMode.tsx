@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { Flashcard, StudyProgress } from '@shared/schema'
 import { cardIntervals, clozeText, dueCards, reviewCard, type DueCard } from '@engine/study'
 import type { Rating } from '@engine/learn'
-import { Button, cx, EmptyState, GlassLight, Icon, IconButton, Tooltip, useTheme } from '@renderer/design'
+import { Button, cx, EmptyState, PigmentMark, Icon, IconButton, Tooltip, useTheme } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
 import { navigate } from '@renderer/app/router'
 import { isTypingTarget } from '@renderer/exercises/normalize'
@@ -309,13 +309,13 @@ function FlipCard({ card, flipped, onFlip, ink, assetUrl }: { card: Flashcard; f
         style={{ boxShadow: 'var(--e3)' }}
       >
         <div className={face}>
-          <GlassLight color={ink} />
+          <PigmentMark color={ink} seed={card.id} />
           <span className="t-eyebrow">{t('cards.front')}</span>
           {figure}
           <div className="t-reading text-[22px] leading-[32px] text-text"><RichText text={front} /></div>
         </div>
         <div className={face} style={{ transform: 'rotateY(180deg)' }}>
-          <GlassLight color={ink} />
+          <PigmentMark color={ink} seed={card.id} />
           <span className="t-eyebrow">{t('cards.back')}</span>
           {card.kind === 'cloze' ? (
             <div className="t-reading text-[22px] leading-[32px] text-text"><RichText text={revealedFront} /></div>

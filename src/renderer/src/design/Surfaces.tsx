@@ -5,7 +5,7 @@ import { motion, type HTMLMotionProps } from 'motion/react'
 import { cx } from './cx'
 import { enter, spring } from './tokens'
 import { useTheme } from './theme'
-import { GlassLight } from './GlassLight'
+import { PigmentMark } from './PigmentMark'
 import { useFloat } from './Motion'
 
 export interface CardProps extends Omit<HTMLMotionProps<'div'>, 'children'> {
@@ -70,18 +70,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
       {...rest}
       {...keys}
     >
-      {mark && <GlassLight color={mark} size={markSize} phase={phaseOf(mark)} />}
+      {mark && <PigmentMark color={mark} size={markSize} />}
       {children}
     </motion.div>
   )
 })
-
-/** Desfase estable por color: dos tarjetas de distinto tono, juntas, no derivan al unísono. */
-function phaseOf(color: string): number {
-  let h = 0
-  for (let i = 0; i < color.length; i++) h = (h * 31 + color.charCodeAt(i)) | 0
-  return Math.abs(h % 17)
-}
 
 /** Lista agrupada con separadores que empiezan donde empieza el texto. */
 export function Group({ children, className, inset = 52 }: { children: ReactNode; className?: string; inset?: number }) {
@@ -130,7 +123,7 @@ export function Row({ leading, title, subtitle, trailing, chevron, onClick, sele
       )}
       {...rest}
     >
-      {mark && <GlassLight color={mark} size="sm" still />}
+      {mark && <PigmentMark color={mark} size="sm" />}
       {leading && <div className="flex w-7 shrink-0 justify-center text-text2">{leading}</div>}
       <div className="min-w-0 flex-1">
         <div className="t-callout text-text truncate">{title}</div>

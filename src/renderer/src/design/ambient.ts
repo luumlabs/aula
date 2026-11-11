@@ -1,7 +1,7 @@
 // Movimiento ambiental y energía: un único nivel para toda la interfaz.
 //  · run   — la ventana se ve y alguien la usa: todo se mueve.
-//  · calm  — se ve, pero nadie la toca desde hace un rato: lo DECORATIVO se queda quieto (tarjetas que flotan, la luz tras el
-//            cristal, el reposo del pixel art, puntos que laten…); lo que Aula está haciendo (el chat escribiendo, un curso
+//  · calm  — se ve, pero nadie la toca desde hace un rato: lo DECORATIVO se queda quieto (tarjetas que flotan, el
+//            reposo del pixel art, puntos que laten…); lo que Aula está haciendo (el chat escribiendo, un curso
 //            creándose, el temporizador) sigue. Al mover el ratón o pulsar una tecla vuelve a «run».
 //  · off   — la ventana no se ve (minimizada, oculta en la bandeja, pantalla bloqueada): no se mueve nada.
 // El nivel lo fija lib/power.ts con lo que cuenta el proceso principal; aquí solo está el estado, la regla y los ganchos.

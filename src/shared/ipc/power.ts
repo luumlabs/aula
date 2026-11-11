@@ -1,5 +1,5 @@
 // Energía: el proceso principal le cuenta a la interfaz si la ventana se ve, para que lo ambiental (tarjetas que flotan,
-// la luz tras el cristal, el reposo del pixel art…) se quede quieto cuando nadie lo mira. En macOS la página sigue
+// las tarjetas que flotan, el reposo del pixel art…) se quede quieto cuando nadie lo mira. En macOS la página sigue
 // «visible» (rAF a 120 fps) aunque la ventana esté minimizada u oculta en la bandeja: Chromium no la frena sola.
 
 declare module './contract' {

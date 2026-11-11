@@ -6,7 +6,7 @@ import { deform, superellipse, trace } from './shapes'
 import { createNoise, type Noise } from './noise'
 import { between, gauss, rngFrom, type Rng } from './random'
 
-export type PaintKind = 'band' | 'tile'
+export type PaintKind = 'band' | 'tile' | 'swatch'
 
 export interface PaintSpec {
   kind: PaintKind
@@ -101,7 +101,64 @@ function tile(spec: PaintSpec): OffscreenCanvas {
   return paper(j, 0.12)
 }
 
-const RECIPES: Record<PaintKind, (spec: PaintSpec) => OffscreenCanvas> = { band, tile }
+/**
+ * Cerdas: el pincel plano no carga igual en todo su ancho y, donde arranca (lejos de la esquina), ya va seco y deja
+ * rayas de papel a lo largo de la pasada. `angle` es la dirección de la pasada; el origen, la esquina de abajo a la derecha.
+ */
+function bristles(j: Job, angle: number): OffscreenCanvas {
+  const { canvas, noise, s, w, h } = j
+  const W = canvas.width
+  const H = canvas.height
+  const img = j.ctx.getImageData(0, 0, W, H)
+  const d = img.data
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4 + 3
+      if (!d[i]) continue
+      const X = x / s - w
+      const Y = y / s - h
+      const along = X * cos + Y * sin
+      const across = -X * sin + Y * cos
+      // 0 junto a la esquina (pincel cargado), 1 en el arranque (seco)
+      const dry = Math.min(1, Math.max(0, -along / w)) ** 1.8
+      const load = 1 - 0.14 * noise.at(across * 1.5 + 11, along * 0.02 + 90)
+      const hair = noise.at(across * 0.62 + 31, along * 0.011 + 7)
+      const bare = hair > 1 - dry * 0.66 ? 0.16 + 0.5 * (1 - dry) : 1
+      d[i] = Math.round(d[i] * load * bare)
+    }
+  j.ctx.putImageData(img, 0, 0)
+  return canvas
+}
+
+/**
+ * Muestra de pigmento: tres pasadas de pincel plano que entran por la esquina de abajo a la derecha, una sobre otra y
+ * cada vez más cortas, como quien prueba un color en el margen del papel. Donde se pisan, el color queda más denso.
+ */
+function swatch(spec: PaintSpec): OffscreenCanvas {
+  const j = job(spec)
+  const { w, h, rng, ctx } = j
+  const angle = -between(rng, 0.07, 0.15)
+  const thick = h * between(rng, 0.36, 0.42)
+  ctx.save()
+  ctx.translate(w, h)
+  ctx.rotate(angle)
+  ctx.globalAlpha = 0.8
+  for (let i = 0; i < 3; i++) {
+    const y = -thick * (0.3 + i * 0.8) + gauss(rng) * thick * 0.05
+    const length = w * (1.0 - i * between(rng, 0.17, 0.25))
+    const reach = w * 0.16
+    const base = superellipse((reach - length) / 2, y, (reach + length) / 2, thick * (0.52 - i * 0.03), 5.2, 22, rng, [0.008, 0.028], gauss(rng) * 0.012)
+    trace(ctx, deform(base, 3, rng, 1, 0.55))
+    ctx.fill()
+  }
+  ctx.restore()
+  bristles(j, angle)
+  return paper(j, 0.16)
+}
+
+const RECIPES: Record<PaintKind, (spec: PaintSpec) => OffscreenCanvas> = { band, tile, swatch }
 
 export function renderPaint(spec: PaintSpec): OffscreenCanvas {
   return RECIPES[spec.kind](spec)

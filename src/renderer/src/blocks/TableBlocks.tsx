@@ -1,7 +1,8 @@
 // Tablas (cifras alineadas a la derecha en tabular, fórmulas en las celdas, filas destacadas) y comparaciones en columnas.
 import { Fragment } from 'react'
 import { motion } from 'motion/react'
-import { cx } from '@renderer/design'
+import { cx, useTheme } from '@renderer/design'
+import { inkColor } from './colors'
 import type { BlockOf } from '@shared/schema/blocks'
 import type { BlockProps } from './types'
 import { BlockTitle, Caption, Inline, Prose, useAnimate } from './shared'
@@ -34,15 +35,20 @@ export function TableBlockView({ block, ctx }: BlockProps<BlockOf<'table'>>) {
   const highlight = new Set(block.highlightRows)
   const cols = aligns.length
   const cell = chat ? 'px-3 py-2' : 'px-4 py-2.5'
+  // la tinta del curso: la línea bajo la cabecera y la fila destacada (antes, una banda gris y el ladrillo de la app)
+  const { dark } = useTheme()
+  const ink = inkColor(ctx.hue, dark)
+  // en una tabla larga, filas alternas apenas teñidas: el ojo no se pierde al cruzarla
+  const zebra = rows.length > 5
   return (
     <div>
       <div className={cx('blk-table overflow-x-auto bg-surface border-[0.5px] border-line', chat ? 'rounded-[12px]' : 'rounded-[16px]')}>
         <table className={cx('w-full border-collapse', chat ? 't-callout' : 'text-[15px] leading-[22px]')}>
           {headers.length > 0 && (
             <thead>
-              <tr className="bg-sunken">
+              <tr style={{ background: `color-mix(in oklab, ${ink} 7%, transparent)` }}>
                 {Array.from({ length: cols }, (_, c) => (
-                  <th key={c} scope="col" className={cx(cell, 't-ui font-semibold text-text2 whitespace-nowrap border-b-[0.5px] border-line', alignClass(aligns[c]))}>
+                  <th key={c} scope="col" className={cx(cell, 'font-serif text-[15.5px] font-medium text-text whitespace-nowrap', alignClass(aligns[c]))} style={{ borderBottom: `1.5px solid color-mix(in oklab, ${ink} 62%, transparent)` }}>
                     <Inline text={displayFractions(headers[c] ?? '')} />
                   </th>
                 ))}
@@ -55,7 +61,8 @@ export function TableBlockView({ block, ctx }: BlockProps<BlockOf<'table'>>) {
               return (
                 <motion.tr
                   key={ri}
-                  className={cx('transition-colors', on ? 'bg-accent-wash' : 'hover:bg-fill1', ri > 0 && 'border-t-[0.5px] border-line-soft')}
+                  className={cx('transition-colors', !on && 'hover:bg-fill1', !on && zebra && ri % 2 === 1 && 'bg-fill1/50', ri > 0 && 'border-t-[0.5px] border-line-soft')}
+                  style={on ? { background: `color-mix(in oklab, ${ink} ${dark ? 20 : 12}%, transparent)` } : undefined}
                   initial={animate && ri < 40 ? { opacity: 0 } : false}
                   whileInView={animate && ri < 40 ? { opacity: 1 } : undefined}
                   viewport={{ once: true, margin: '-20px' }}
@@ -65,7 +72,7 @@ export function TableBlockView({ block, ctx }: BlockProps<BlockOf<'table'>>) {
                     const head = block.firstColumnIsHeader && c === 0
                     const Tag = head ? 'th' : 'td'
                     return (
-                      <Tag key={c} scope={head ? 'row' : undefined} className={cx(cell, 'align-middle', on && c === 0 ? 'font-semibold text-accent-text' : 'text-text', head && 'font-semibold', alignClass(aligns[c]))}>
+                      <Tag key={c} scope={head ? 'row' : undefined} className={cx(cell, 'align-middle text-text', on && c === 0 && 'font-semibold', head && 'font-semibold', alignClass(aligns[c]))} style={on && c === 0 ? { color: ink } : undefined}>
                         <Inline text={displayFractions(r[c] ?? '')} />
                       </Tag>
                     )

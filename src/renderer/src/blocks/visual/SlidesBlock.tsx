@@ -6,7 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
-import { Button, Icon, IconButton, ProgressBar, cx, spring, useTheme } from '@renderer/design'
+import { BrushUnderline, Button, Icon, IconButton, Paint, ProgressBar, cx, spring, useTheme } from '@renderer/design'
 import type { Block, BlockOf } from '@shared/schema/blocks'
 import { decodeDeck, type Deck, type Slide } from '@shared/schema/cards'
 import { RichText } from '@renderer/lib/RichText'
@@ -194,6 +194,7 @@ function SlideCanvas({ slide, deck, index, ctx, showFooter = true }: { slide: Sl
       style={{ width: SLIDE_W, height: SLIDE_H, background: `var(--${theme.background})`, fontFamily: FONT_STACK[theme.bodyFont], ['--slide-tone' as string]: theme.tone } as CSSProperties}
     >
       <ThemeDetail theme={theme} />
+      <SlidePigment theme={theme} index={index} large={slide.layout === 'title' || slide.layout === 'section'} />
       <div className="absolute inset-0 flex flex-col" style={{ padding: `46px 60px ${showFooter && slide.layout !== 'title' ? 56 : 42}px` }}>
         <SlideContent slide={slide} deck={deck} theme={theme} ctx={blockCtx} />
       </div>
@@ -204,6 +205,25 @@ function SlideCanvas({ slide, deck, index, ctx, showFooter = true }: { slide: Sl
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * La pincelada del tema en la esquina: unas pasadas de pincel plano de su color, quietas, como en las tarjetas de la app.
+ * Más grande en la portada y en las aperturas de sección; la pizarra ya lleva su marco y no la necesita.
+ */
+function SlidePigment({ theme, index, large }: { theme: SlideTheme; index: number; large: boolean }) {
+  if (theme.detail === 'frame') return null
+  const width = large ? 560 : 330
+  return (
+    <Paint
+      kind="swatch"
+      seed={`muestra:${index % 6}`}
+      color={theme.tone}
+      size={{ w: 240, h: 144 }}
+      alpha={theme.dark ? (large ? 0.3 : 0.22) : large ? 0.2 : 0.14}
+      style={{ right: -3, bottom: -3, width, height: width * 0.6 }}
+    />
   )
 }
 
@@ -248,11 +268,11 @@ function SlideContent({ slide, deck, theme, ctx }: { slide: Slide; deck: Deck; t
     case 'title':
       return (
         <div className="flex-1 flex flex-col justify-center gap-4 min-h-0">
-          <span className="block h-[6px] w-16 rounded-full" style={{ background: theme.tone }} />
-          <h1 className="m-0 text-text tracking-[-0.8px]" style={{ ...titleFont, fontSize: 54, lineHeight: 1.08 }}>
-            <RichText text={slide.title ?? deck.title} inline />
+          {/* el título de la presentación, subrayado a pincel con el color del tema (se dibuja una vez) */}
+          <h1 className="m-0 text-text tracking-[-0.8px]" style={{ ...titleFont, fontSize: 58, lineHeight: 1.1 }}>
+            <BrushUnderline seed={`deck:${deck.id}`} color={theme.tone}><RichText text={slide.title ?? deck.title} inline /></BrushUnderline>
           </h1>
-          {slide.subtitle && <p className="m-0 text-[24px] leading-[32px] text-text2"><RichText text={slide.subtitle} inline /></p>}
+          {slide.subtitle && <p className="m-0 mt-3 text-[24px] leading-[32px] text-text2"><RichText text={slide.subtitle} inline /></p>}
           {slide.blocks.length > 0 && <FitBlocks blocks={slide.blocks} ctx={ctx} zoom={1.3} maxHeight={150} />}
           {deck.summary && !slide.subtitle && <p className="m-0 mt-6 text-[16px] text-text3 line-clamp-2">{deck.summary}</p>}
         </div>
@@ -325,7 +345,8 @@ function SlideContent({ slide, deck, theme, ctx }: { slide: Slide; deck: Deck; t
         <div className="flex-1 flex flex-col min-h-0">
           <Title text={slide.title} theme={theme} />
           <div className="flex-1 min-h-0 flex gap-7">
-            <div className="flex-1 min-w-0 min-h-0"><FitBlocks blocks={slide.blocks} ctx={ctx} /></div>
+            {/* poco contenido no se queda pegado arriba con media diapositiva vacía: se asienta en el centro */}
+            <div className="flex-1 min-w-0 min-h-0"><FitBlocks blocks={slide.blocks} ctx={ctx} zoom={1.75} middle /></div>
             {slide.image && (
               <div className="w-[330px] shrink-0 flex flex-col gap-1.5">
                 <img src={ctx.assetUrl(slide.image)} alt="" className="w-full max-h-[340px] object-contain rounded-[12px]" draggable={false} />
@@ -346,7 +367,7 @@ function Column({ blocks, header, tint, ctx }: { blocks: Block[]; header?: strin
           <RichText text={header} inline />
         </div>
       )}
-      <div className="flex-1 min-h-0"><FitBlocks blocks={blocks} ctx={ctx} zoom={1.45} /></div>
+      <div className="flex-1 min-h-0"><FitBlocks blocks={blocks} ctx={ctx} zoom={1.45} middle /></div>
     </div>
   )
 }
@@ -355,7 +376,7 @@ function Column({ blocks, header, tint, ctx }: { blocks: Block[]; header?: strin
  * Los bloques de la diapositiva a escala de proyección; si no caben en el hueco, la letra baja (una sola copia del contenido:
  * lo que el estudiante hizo en un bloque interactivo no se pierde al cambiar de tamaño).
  */
-function FitBlocks({ blocks, ctx, zoom = 1.6, maxHeight, center }: { blocks: Block[]; ctx: BlockContext; zoom?: number; maxHeight?: number; center?: boolean }) {
+function FitBlocks({ blocks, ctx, zoom = 1.6, maxHeight, center, middle }: { blocks: Block[]; ctx: BlockContext; zoom?: number; maxHeight?: number; center?: boolean; middle?: boolean }) {
   const outer = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
   const [fit, setFit] = useState(initialFit)
@@ -374,7 +395,7 @@ function FitBlocks({ blocks, ctx, zoom = 1.6, maxHeight, center }: { blocks: Blo
   }, [maxHeight])
   if (!blocks.length) return null
   return (
-    <div ref={outer} className={cx('w-full overflow-hidden', maxHeight === undefined && 'h-full', center && 'flex flex-col justify-center')} style={maxHeight !== undefined ? { maxHeight } : undefined}>
+    <div ref={outer} className={cx('w-full overflow-hidden', maxHeight === undefined && 'h-full', (center || middle) && 'flex flex-col justify-center')} style={maxHeight !== undefined ? { maxHeight } : undefined}>
       <div ref={inner} style={{ zoom: zoom * FIT_FACTORS[fit.step] }} className={cx(center && 'text-center')}>
         <BlockList blocks={blocks} ctx={ctx} />
       </div>

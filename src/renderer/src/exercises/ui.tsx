@@ -5,7 +5,7 @@ import { motion } from 'motion/react'
 import katex from 'katex'
 import 'katex/contrib/mhchem'
 import { AULA_KATEX_MACROS } from '@engine/content/tex'
-import { cx, GlassLight, Icon, spring, useTheme, type IconName } from '@renderer/design'
+import { cx, PigmentMark, Icon, spring, useTheme, type IconName } from '@renderer/design'
 
 const cache = new Map<string, string>()
 
@@ -126,11 +126,11 @@ export function StatusWord({ tone, icon, children, className }: { tone: 'success
   )
 }
 
-/** La explicación en una burbuja suave con la luz mate del color del resultado detrás (antes, una raya fina a la izquierda). */
+/** La explicación en una burbuja suave con la muestra de pigmento del color del resultado en la esquina (antes, una raya fina a la izquierda). */
 export function ToneRule({ color, children, className }: { color: string; children: ReactNode; className?: string }) {
   return (
     <div className={cx('relative isolate overflow-hidden rounded-[14px] px-3.5 py-2.5', className)} style={{ background: `color-mix(in oklab, ${color} 6%, transparent)` }}>
-      <GlassLight color={color} size="sm" still />
+      <PigmentMark color={color} size="sm" />
       {children}
     </div>
   )

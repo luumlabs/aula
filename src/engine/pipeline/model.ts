@@ -22,12 +22,14 @@ export interface DepthSpec {
   minExercises: number
   minCards: number
   minLessonBlocks: number
+  /** Bloques visuales (gráfica, diagrama, imagen, 3D, mapa…) que una lección nueva debe traer como poco. */
+  minVisuals: number
 }
 
 export const DEPTHS: Readonly<Record<GenerationDepth, DepthSpec>> = {
-  quick: { skillRange: [3, 7], exerciseTarget: [6, 10], cardTarget: [5, 8], lessonBlocks: [8, 12], wantsDecks: false, maxSteps: 40, minExercises: 6, minCards: 4, minLessonBlocks: 6 },
-  standard: { skillRange: [6, 14], exerciseTarget: [10, 16], cardTarget: [8, 14], lessonBlocks: [12, 18], wantsDecks: false, maxSteps: 70, minExercises: 9, minCards: 6, minLessonBlocks: 9 },
-  deep: { skillRange: [10, 24], exerciseTarget: [16, 30], cardTarget: [12, 20], lessonBlocks: [14, 24], wantsDecks: true, maxSteps: 110, minExercises: 14, minCards: 10, minLessonBlocks: 12 }
+  quick: { skillRange: [3, 7], exerciseTarget: [6, 10], cardTarget: [5, 8], lessonBlocks: [8, 12], wantsDecks: false, maxSteps: 40, minExercises: 6, minCards: 4, minLessonBlocks: 6, minVisuals: 1 },
+  standard: { skillRange: [6, 14], exerciseTarget: [10, 16], cardTarget: [8, 14], lessonBlocks: [12, 18], wantsDecks: false, maxSteps: 70, minExercises: 9, minCards: 6, minLessonBlocks: 9, minVisuals: 2 },
+  deep: { skillRange: [10, 24], exerciseTarget: [16, 30], cardTarget: [12, 20], lessonBlocks: [14, 24], wantsDecks: true, maxSteps: 110, minExercises: 14, minCards: 10, minLessonBlocks: 12, minVisuals: 3 }
 }
 
 const DEPTH_KEYS: readonly GenerationDepth[] = ['quick', 'standard', 'deep']

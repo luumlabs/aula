@@ -61,7 +61,7 @@ export default function Model3DBlock({ block, ctx }: BlockProps<BlockOf<'model3d
   const ext = b.asset?.split('.').pop()?.toLowerCase() ?? ''
   const modelUrl = b.asset && LOADABLE.has(ext) ? ctx.assetUrl(b.asset) : undefined
   const assetBroken = !!b.asset && (!LOADABLE.has(ext) || modelFailed)
-  const nothing = !molecule && b.solids.length === 0 && b.labels.length === 0 && !modelUrl
+  const nothing = !molecule && b.solids.length === 0 && b.labels.length === 0 && !modelUrl && !b.graph
   const gl = typeof document !== 'undefined' && webglAvailable()
 
   // colores reales del tema para three.js (no entiende `var(--…)`)

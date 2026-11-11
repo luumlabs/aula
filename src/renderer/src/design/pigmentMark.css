@@ -1,0 +1,34 @@
+/* Muestra de pigmento (PigmentMark.tsx): pasadas de pincel plano del color de identidad en la esquina de una burbuja.
+   Quieta y mate: ni animación, ni desenfoque, ni seguimiento del ratón. */
+
+.pigment-mark {
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* detrás del contenido, encima del fondo de la tarjeta (la tarjeta aísla su contexto de apilamiento) */
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  contain: strict;
+}
+
+.pigment-mark__paint {
+  right: -2px;
+  bottom: -2px;
+  width: clamp(168px, 36%, 300px);
+  aspect-ratio: 5 / 3;
+  /* en una ficha baja la muestra no llega arriba: quedan sus pasadas, no un rincón relleno */
+  max-height: 86%;
+  /* un velo: el pigmento tiñe el papel, no lo tapa (el texto de encima se lee igual) */
+  --pigment-veil: 0.2;
+}
+.pigment-mark__paint[data-ready] {
+  opacity: var(--pigment-veil);
+}
+html.dark .pigment-mark__paint {
+  --pigment-veil: 0.22;
+}
+
+/* más pequeña en filas y fichas compactas */
+.pigment-mark[data-size='sm'] .pigment-mark__paint {
+  width: clamp(104px, 30%, 168px);
+}

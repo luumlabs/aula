@@ -2,7 +2,7 @@
 // avance de una ejecución.
 import { describe, expect, it } from 'vitest'
 import { makeSkill, type Block, type Exercise, type Skill } from '@shared/schema'
-import { auditSkill, linkPractice } from './audit'
+import { auditSkill, linkPractice, MAX_TEXT_RUN, MIN_EXPLANATION_CHARS, teachingProblems, VISUAL_BLOCK_TYPES } from './audit'
 import { inferredRunState, makeRequest, newRunID, newRunState, prepareForResume, runProgress, uiRoleFor } from './model'
 
 function ex(id: string, level: number): Exercise {
@@ -22,6 +22,38 @@ function skill(lesson: string[], exercises: Exercise[], cards = 0): Skill {
   const s = makeSkill({ id: 's', title: 'S' })
   return { ...s, lesson: lesson.map((t, i) => block(`b${i}`, t)), exercises, cards: Array.from({ length: cards }, (_, i) => ({ id: `c${i}`, kind: 'basic', front: 'f', back: 'b', tags: [] })) as unknown as Skill['cards'] }
 }
+
+describe('una lección que enseña', () => {
+  const text = (md: string): Block => ({ id: 't', type: 'text', md }) as unknown as Block
+  const visual = (type: string): Block => ({ id: 'v', type }) as unknown as Block
+  const example = (steps: number): Block => ({ id: 'e', type: 'example', problem: 'p', steps: Array.from({ length: steps }, () => ({ md: 's', note: 'n' })), answer: 'a' }) as unknown as Block
+  const long = 'x'.repeat(MIN_EXPLANATION_CHARS)
+  const ai = (lesson: Block[], min = 1): string => teachingProblems(lesson, min, 'en').map((p) => p.forAI).join('\n')
+
+  it('acepta: explicación, figura, ejemplo con sus pasos y después la práctica', () => {
+    expect(teachingProblems([text('# T'), text(long), visual('plot'), example(2), block('p', 'tryit')], 1)).toEqual([])
+    expect(teachingProblems([], 3)).toEqual([])
+  })
+  it('pide figuras (las tablas y las fórmulas no cuentan) y no deja un muro de párrafos', () => {
+    expect(ai([text(long), visual('table'), visual('math'), example(2)], 1)).toContain('only 0 visual blocks')
+    expect(ai([text(long), visual('chart'), example(2)], 2)).toContain('only 1 visual block;')
+    for (const type of VISUAL_BLOCK_TYPES) expect(ai([text(long), visual(type), example(2)], 1)).toBe('')
+    const wall = [text(long), ...Array.from({ length: MAX_TEXT_RUN }, () => text('más')), visual('plot'), example(2)]
+    expect(ai(wall)).toContain(`${MAX_TEXT_RUN + 1} \`text\` blocks in a row`)
+    expect(ai([text(long), ...Array.from({ length: MAX_TEXT_RUN - 1 }, () => text('más')), visual('plot'), example(2)])).toBe('')
+  })
+  it('exige explicar antes de preguntar o de poner un ejemplo; el título no cuenta como explicación', () => {
+    expect(ai([text('# ' + long), visual('predict'), text(long), visual('plot'), example(2)])).toContain('first `predict` (block 2) comes before the idea has been explained')
+    expect(ai([text('corto'), example(2), visual('plot')])).toContain('first `example`')
+    expect(ai([text(long), visual('plot'), block('p', 'tryit'), example(2)])).toContain('`tryit` comes before any worked `example`')
+    expect(ai([text(long), visual('plot'), example(1)])).toContain('has 1 step.')
+  })
+  it('solo se aplica al crear o ampliar: un curso ya hecho no pasa a pendiente', () => {
+    const s = skill(['text', 'example'], [ex('e1', 1)], 0)
+    const before = auditSkill(s, 'quick', [], 'es').length
+    expect(auditSkill(s, 'quick', [], 'es', { teaching: true }).length).toBeGreaterThan(before)
+  })
+})
 
 describe('auditoría y práctica', () => {
   it('pide los mínimos de la profundidad y un ejemplo resuelto', () => {

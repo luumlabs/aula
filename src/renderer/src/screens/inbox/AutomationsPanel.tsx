@@ -118,8 +118,7 @@ function Overview() {
   const set = useInboxUI((s) => s.set)
   const examples = t('automations.examples', { returnObjects: true }) as unknown as string[]
   return (
-    <Card padded="lg" className="overflow-hidden">
-      <div aria-hidden className="absolute inset-0" style={{ background: 'radial-gradient(55% 70% at 100% 0%, var(--sun-glow), transparent 70%)' }} />
+    <Card padded="lg" mark="var(--pigment-sun)" className="overflow-hidden">
       <div className="relative flex flex-col gap-4 max-w-[640px]">
         <AulaMark size={44} />
         <div>

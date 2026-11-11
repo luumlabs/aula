@@ -6,7 +6,7 @@ import { cx, useTheme } from '@renderer/design'
 import type { BlockOf, ChartBlock, ChartSeries } from '@shared/schema/blocks'
 import type { BlockContext, BlockProps } from '../types'
 import { Caption, Figure, useAnimate, useBlocksT, useProgress, useSeen, useWidth } from '../shared'
-import { rampColors, seriesColors, withAlpha } from '../colors'
+import { categoricalColors, seriesColors, withAlpha } from '../colors'
 import { formatNumber } from '../plot/ticks'
 import { arcPath, bands, categoryLabels, compactNumber, foldSlices, isCategoricalX, niceDomain, pieSlices, safeSeries, smoothPath, valueExtent, xExtent } from './scale'
 
@@ -156,7 +156,8 @@ function BarChart({ b, series, colors, fmt, ctx }: ChartProps) {
   const [lo, hi] = valueExtent(series, stacked)
   const dom = niceDomain(lo, hi, Math.max(3, Math.floor(rect.h / 46)))
   const Y = (v: number) => rect.y + rect.h - ((v - dom.lo) / (dom.hi - dom.lo)) * rect.h
-  const bs = bands(n, stacked ? 1 : series.length, rect.w, { histogram })
+  // barras con cuerpo: una sola serie (o apiladas) puede llenar más su hueco
+  const bs = bands(n, stacked ? 1 : series.length, rect.w, { histogram, maxBar: stacked || series.length === 1 ? 56 : 36 })
   const centers = bs.map((bd) => rect.x + bd.start + (bd.bar * (stacked ? 1 : series.length) + bd.gap * ((stacked ? 1 : series.length) - 1)) / 2 - (histogram ? 1 : 0))
   const showValues = b.showValues && !stacked && n * series.length <= 24 && (bs[0]?.bar ?? 0) >= 14
   return (
@@ -385,7 +386,8 @@ function PieChart({ b, series, fmt, ctx }: ChartProps) {
   const pts = series[0]?.points ?? []
   const items = foldSlices(pts.map((q, i) => ({ label: q.label ?? (q.x !== undefined ? formatNumber(q.x, ctx.language) : String(i + 1)), value: q.y })), 8, t('chart.other'))
   const slices = pieSlices(items.map((x) => x.value))
-  const colors = rampColors(items.length, ctx.hue, dark)
+  // cada sector, su color: en una rampa de un solo tono los sectores pequeños no se distinguían
+  const colors = categoricalColors(items.length, ctx.hue)
   const valueColumn = b.showValues && b.unit?.trim() !== '%'
   const total = items.reduce((a, x) => a + x.value, 0)
   const side = width >= 460
