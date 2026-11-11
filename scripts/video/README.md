@@ -264,6 +264,37 @@ AULA_VIDEO_NO_WORLDS=1 node scripts/video/render.ts scripts/video/montage/v6-lap
     pantalla 3D, y el portátil se apaga debajo en 0,35 s (sin salto a una ventana 2D).
 - Ejemplo de todo esto: `montage/v6-s3.ts` (14,4 s).
 
+## V6: rehacer la película entera (cuando cambian la interfaz o el icono)
+
+La V6 solo compone: sus tomas son las de la V5 más la de cámara lenta. Con `work/` vacío, en este orden (unos 75 min en
+un Mac con Apple Silicon; todo a partir de la compilación de `out/`):
+
+```sh
+npm run build
+node scripts/video/render.ts scripts/video/montage/aula-v5-film.ts --only capture --jobs 3        # las 8 tomas (~40 min)
+W=scripts/video/work
+mkdir -p $W/v6-tec2-world && cp -c -R $W/worlds-v5/v*/v*/course $W/v6-tec2-world/course          # el mundo de la V5, clonado
+node scripts/video/render.ts scripts/video/montage/v6-hfr.ts --only capture --jobs 2              # cámara lenta (~15 min)
+mkdir -p $W/aula-v6-film/takes
+for t in always ask docs every learn main morning see; do cp -c -R $W/aula-v5-film/takes/$t $W/aula-v6-film/takes/$t; done
+cp -c -R $W/v6-tec2/takes/nacl $W/aula-v6-film/takes/nacl
+AULA_VIDEO_NO_WORLDS=1 node scripts/video/render.ts scripts/video/montage/aula-v6-film.ts --reuse --only cues
+node scripts/video/sound-v3/render.ts $W/aula-v6-film/cuesheet.json $W/aula-v6-film/soundtrack.wav
+AULA_VIDEO_NO_WORLDS=1 AULA_VIDEO_FPS=30 node scripts/video/render.ts scripts/video/montage/aula-v6-film.ts --reuse --draft   # borrador
+AULA_VIDEO_NO_WORLDS=1 node scripts/video/render.ts scripts/video/montage/aula-v6-film.ts --reuse --stills 10.4              # final (~8 min)
+npx electron scripts/dev/film-poster.mjs $W/aula-v6-film/stills/aula-v6-film-10.40.png 2:12                                  # el póster del README
+```
+
+- Las fechas del mundo salen del día en que se graba: la toma de la mañana pasa de mes en el calendario solo si el examen
+  (el viernes de la semana siguiente) cae en el mes siguiente (`EXAM_NEXT_MONTH` en `aula-film.ts`).
+- El icono del prólogo y del final es el de la app (`compose/icon.ts` lo dibuja desde `scripts/dev/icon/ink-art.mjs`): si
+  cambia el icono, cambian solos.
+- La banda sonora del v3 sale con el pico verdadero en torno a −1,2 dBTP y el control de calidad del máster pide ≤ −1,5:
+  si avisa, baja el WAV 0,4 dB (una ganancia plana, sin limitar) y vuelve a componer.
+- Los MP4 se publican como archivos de la versión v0.1.0 de GitHub (`Aula-film.mp4`, el máster, y `Aula-film-web.mp4`, el
+  del README), sustituyendo a los anteriores: `gh release upload v0.1.0 <archivo> --clobber`. Nunca como una versión
+  nueva (ver `docs/PUBLISHING.md`).
+
 ## V6: personajes que se dibujan a pincel
 
 Los compañeros y los iconos de curso de la app aparecen trazándose a pincel, trazo a trazo, con el pintor de la app
