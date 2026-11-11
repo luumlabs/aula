@@ -1,5 +1,9 @@
 # Vídeo de Aula: cadena de render
 
+> El vídeo del README ya no sale de aquí: desde el 11-11-2026 es el corto de animación de [`scripts/film`](../film/README.md).
+> Esta cadena (el recorrido por la app capturado de la interfaz real) se conserva; el corto usa su codificador y su
+> empaquetador MP4.
+
 > *Developer notes for the pipeline that renders Aula's film from the real app. Like the code comments, they're in
 > Spanish; the film itself and everything user-facing are in English.*
 

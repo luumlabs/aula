@@ -7,21 +7,23 @@
 <h1 align="center">Aula</h1>
 
 <p align="center">
-  A study app for macOS, Windows and Linux.<br>
-  Give it your notes, slides and past exams, or just a topic, and it turns them into a course you can study from.
+  <b>Your notes become a course. Then Aula studies it with you.</b><br>
+  A study app for macOS, Windows and Linux, with a companion for iPad and iPhone.<br>
+  Give it your notes, slides, recordings and past exams, or just a topic.
 </p>
 
 <p align="center">
   <a href="https://github.com/luumlabs/aula/releases/latest"><img src="https://img.shields.io/github/v/release/luumlabs/aula?style=flat-square&label=download&color=1d1d1f" alt="Latest release"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-AGPL--3.0-B9553A?style=flat-square" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-6b6b6b?style=flat-square" alt="macOS, Windows and Linux">
   <img src="https://img.shields.io/badge/status-early%20access-D9822B?style=flat-square" alt="Status: early access">
 </p>
 
 <p align="center">
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
-    <img src="docs/media/film-poster.png" width="1000" alt="Watch a tour of Aula (2:12, 24 MB video)">
+    <img src="docs/media/film-poster.png" width="1000" alt="Watch the short film about Aula (1:50): at night, a student with a red scarf walks through flying pages towards a great lit arch">
   </a>
-  <br><sub>A two-minute tour of the app (24 MB video)</sub>
+  <br><sub><b>Nine days.</b> A short animated film about Aula, painted by code (1:50, 26 MB video)</sub>
 </p>
 <!-- Maintainers: for an inline player, drop a ≤10 MB cut of the film here in GitHub's web editor (first check that your
      commit email is the noreply address: GitHub → Settings → Emails). -->
@@ -34,6 +36,23 @@ understand properly. If you have class materials, Aula uses them, so the course 
 
 Your courses and progress are stored on your computer. Aula works with the AI you already pay for (a Claude or ChatGPT subscription, or an
 API key) or with a free model that runs on your own machine. There's no account and no tracking.
+
+### At a glance
+
+- **Any material becomes a course.** PDFs, slides, photos of the whiteboard, audio and video recordings of a class,
+  links, or what is on your school platform. [Courses](#courses)
+- **Lessons that teach before they ask.** Figures, real pictures, graphs and 3D you can turn, and a worked example
+  before the first exercise. [Lessons](#lessons)
+- **Practice that sticks.** Exercises checked as you answer, a notebook of your mistakes, flashcards with spaced
+  repetition and mock exams shaped like the real one. [Practice](#practice)
+- **A tutor that knows what you're doing.** Ask about the exercise in front of you or the document you have open, and
+  make or change a course just by asking. [Talking to Aula](#talking-to-aula)
+- **Always on, if you want.** It checks your school platform and your calendar, reminds you of deadlines and leaves a
+  short review ready before an exam. It only reads: it never submits anything for you. [Everything else](#everything-else)
+- **On your iPad and iPhone.** Your courses stay on your Mac and you study from your own devices.
+  [Devices](docs/DEVICES.md)
+- **Private and yours.** No account, no tracking, your data on your computer, and the AI you choose, including a free
+  one that runs offline. [Privacy](#privacy)
 
 > [!NOTE]
 > Aula is in early access. It works, but you will find bugs and rough edges, and things will change between versions.
@@ -123,7 +142,9 @@ OpenCode works too, if it's installed and signed in.
 
 Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>N</kbd> and say what you want to study. Add the exam date if there is one, and
 any files you have: PDF, Word, PowerPoint, Excel, EPUB, web pages, Markdown, text or code files, links, pasted text, or
-photos of your notes or the whiteboard (read with OCR). Aula can also pull your materials from your study platform.
+photos of your notes or the whiteboard (read with OCR), and audio or video recordings of a class. Aula transcribes a
+recording from the subtitles next to the file or with the transcription service of an API key you have added, and a
+citation opens it at the minute where it was said. Aula can also pull your materials from your study platform.
 
 A small team of agents then builds the course, and you can watch them work. Readers go through your materials. A
 planner turns them into a map of topics, weighted by what the exam asks. Authors write the lessons, exercises and
@@ -209,7 +230,9 @@ answer away.
   and your data stay on the Mac. The iPad gets the whole app; the iPhone, Aula as your assistant (what it did, what is
   pending, the chat and the calendar). Devices reach the Mac over your private Tailscale network and are linked once
   with a code. From there you can also open Aula's browser live: sign in to your platform away from home, or do an
-  assignment yourself and hand it to Aula to review before you submit it. See [docs/DEVICES.md](docs/DEVICES.md).
+  assignment yourself and hand it to Aula to review before you submit it. A linked device can also open Settings for
+  the daily-use part (which AI to use among those ready on the Mac, appearance, language, *Aula always on*, memory);
+  keys, platforms and your data are managed on the Mac. See [docs/DEVICES.md](docs/DEVICES.md).
 - **Memory**: Aula remembers what helps it teach you, like how you prefer explanations or what you find hard. You can
   see, edit, pause or export all of it in *Settings → What Aula remembers*.
 - **Search**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> finds screens, courses and tools, and anything inside your
