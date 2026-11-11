@@ -68,9 +68,9 @@ export function Hero({ data }: { data: HomeSummary }) {
           )}
         </div>
 
-        {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche) */}
+        {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche); con el ratón encima, se mueve despacio */}
         <div className="hidden @3xl:flex w-[272px] flex-col items-center justify-center">
-          <ArchLight scene={archLightFor(new Date().getHours())} className="h-[190px] w-[228px]" />
+          <ArchLight live scene={archLightFor(new Date().getHours())} className="h-[190px] w-[228px]" />
           <div className="mt-2 flex items-center gap-2.5">
             {focus && <CourseIcon icon={focus.icon} hue={focus.hue} size={30} title={focus.title} radius={9} />}
             <div className="min-w-0">
