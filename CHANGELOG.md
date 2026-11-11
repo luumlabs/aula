@@ -18,6 +18,10 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 - The first screen says where to get Aula for Mac, with a button to send the link to the Mac.
 - Ready to be sent to the App Store: privacy manifest, permission texts in English and Spanish. `docs/DEVICES.md`
   says what is left for the owner of the Apple account.
+- The interface no longer sits under the time and the battery (it was also blurred there on iPadOS 27), and it
+  behaves like an app instead of a web page: no zoom with two fingers or a double tap, no long-press menus on links
+  and images, and the text of buttons can't be selected.
+- Tried on a real iPad from sign-in to studying.
 
 ### Updating
 - From 0.2.0, Aula updates itself. From 0.1.x, install this version by hand once (see 0.2.0 below).
