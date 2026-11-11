@@ -11,7 +11,7 @@ import grid from '../music/south-waves.grid.json' with { type: 'json' }
 import { filmGrid, type GridJson } from './grid.ts'
 import { defineMontage, type CameraKey, type Clip, type Take, type Target, type TimedAction, type Title } from './types.ts'
 import { answerPractice, markWhere, MARK_FIND_TARGET, PIXEL_IDLE_OFF, scrollToHeading, typeInto } from './aula-film-js.ts'
-import { buildWorld, clockAt } from '../world/worlds.ts'
+import { buildWorld, clockAt, examDate, filmDay } from '../world/worlds.ts'
 
 // ——— rejilla (VIDEO-TEC: scripts/video/music/south-waves.grid.json, 115,0 BPM; se quitan los compases [57, 73) de la pista) ———
 const CUTS: [number, number][] = [[57, 73]]
@@ -24,6 +24,10 @@ const V = (bar: number, beat = 1, frac = 0): number => +G.V(bar, beat, frac).toF
 const DURATION = +G.duration.toFixed(2)
 const FPS = Number(process.env.AULA_VIDEO_FPS ?? 60)
 const COURSE = 'exam-2-math112'
+
+/** El día del examen en el mes del calendario, y si hay que pasar de mes para verlo (depende del día en que se graba). */
+const EXAM_DAY = '[role="button"]:has(button[title*="Exam #2"]) span.tabular'
+const EXAM_NEXT_MONTH = examDate().getMonth() !== filmDay().getMonth()
 
 const W = { morning: buildWorld('morning'), course: buildWorld('course') }
 
@@ -77,8 +81,9 @@ const takeMorning: Take = {
     clickAt(V(5, 2), 'input[placeholder^="Add an exam"]', 0.4),
     { at: V(5, 2, 0.3), do: 'type', text: 'Physics lab Thursday at 4pm', cps: 22 },
     { at: V(6, 3), do: 'key', key: 'Enter' },
-    clickAt(V(7, 1), 'button[aria-label="Next"]', 0.6),
-    clickAt(V(7, 4), '[role="button"]:has(button[title*="Exam #2"]) span.tabular', 0.7),
+    // el examen es el viernes de la semana que viene: si cae en el mes siguiente se pasa de mes; si no, el cursor va ya hacia su día
+    EXAM_NEXT_MONTH ? clickAt(V(7, 1), 'button[aria-label="Next"]', 0.6) : moveAt(V(7, 1), EXAM_DAY, 0.6),
+    clickAt(V(7, 4), EXAM_DAY, 0.7),
     moveAt(V(8, 3), 'text:Prepare for this exam', 0.6),
     clickAt(V(9), 'text:Prepare for this exam', 0.3),
     // el curso nuevo, ya relleno

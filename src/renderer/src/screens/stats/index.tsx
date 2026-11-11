@@ -60,6 +60,7 @@ export default function StatsScreen() {
   if (stats.courses.length === 0)
     return (
       <EmptyState
+        art="pencil"
         title={t('empty.noCourses')}
         body={t('empty.noCoursesBody')}
         action={
@@ -72,6 +73,7 @@ export default function StatsScreen() {
   if (nothingToMeasure(courses))
     return (
       <EmptyState
+        art="pencil"
         title={t('empty.nothing')}
         body={t('empty.nothingBody')}
         action={

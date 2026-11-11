@@ -52,6 +52,8 @@ export type AssistantCardActionKind =
   | 'pauseAutomation' | 'cancelAutomation' | 'openToday' | 'openCalendar' | 'openSettings' | 'dismiss' | 'neverForEvent'
   /** Abre un documento en el lector (`value` = su clave: una guía que Aula dejó hecha). */
   | 'openDocument'
+  /** Abre el navegador de Aula en vivo (`value` = su id): la página que Aula le puso delante al estudiante. */
+  | 'openLive'
 
 export interface AssistantCardAction {
   id: string

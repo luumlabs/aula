@@ -13,6 +13,7 @@ import type { AssistantAnswer } from './broker'
 import type { AssistantAppInfo, AssistantRunInfo } from './prompts'
 import type { GoalStore } from './goals'
 import type { WebAccess } from '../tools/context'
+import type { LiveReading } from '@shared/live/types'
 
 /** Pantallas de la app que la IA puede abrir. */
 export { ASSISTANT_SCREENS } from '@shared/assistant/types'
@@ -85,6 +86,20 @@ export interface PlatformReader {
   finish?(): void
 }
 
+/**
+ * El navegador del estudiante dentro de Aula (el «navegador en vivo»): Aula le pone delante una página para que él inicie
+ * sesión o haga su tarea, y la lee solo cuando él le pasa el turno. Aula ahí no pulsa, no escribe y no envía. Lo implementa
+ * la capa de Electron.
+ */
+export interface StudentBrowser {
+  /** Abre la página en la ventana en vivo y deja el turno al estudiante. */
+  show(url: string, note: string, purpose: 'task' | 'signin'): Promise<{ id: string; url: string }>
+  /** Lo que hay en la ventana (texto y respuestas, sin lo privado); null si el estudiante no le ha pasado el turno. */
+  read(): Promise<LiveReading | null>
+  /** Devuelve el turno al estudiante con una nota. Devuelve el id de la ventana, o null si no hay ninguna. */
+  handBack(note: string): string | null
+}
+
 /** Puente de un turno entre las herramientas y la interfaz: enseñar tarjetas y esperar respuestas. */
 export interface TurnIO {
   /** Enseña una tarjeta que espera respuesta (pregunta o permiso) y devuelve lo que contestó el estudiante. */
@@ -122,6 +137,8 @@ export interface ToolEnv {
   /** Un cuestionario o unas tarjetas que Aula enseñó en esta conversación (para `save_study_set`). */
   studySets: (id: string) => AssistantStudySet | undefined
   platform?: PlatformReader
+  /** El navegador en vivo del estudiante (ver `StudentBrowser`). */
+  student?: StudentBrowser
   trust: AssistantTurnTrust
   /** Búsqueda por significado en los materiales de un curso (si hay modelo de vectores). */
   vectors?: (packDir: string) => VectorSearcher | undefined

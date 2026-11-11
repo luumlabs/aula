@@ -161,6 +161,17 @@ describe('errores de los proveedores', () => {
   const ctx: ErrorContext = { provider: 'DeepSeek', model: 'deepseek-flash', host: 'api.deepseek.com', secrets: [TEST_KEY] }
   const map = (status: number, body: string, headers: Record<string, string> = {}) => fromHTTP(status, body, new Headers(headers), ctx)
 
+  it('Gemini contesta 400 a una clave que no vale: se trata como un problema de la clave, no como un fallo cualquiera', () => {
+    // (lo que devuelve de verdad generativelanguage.googleapis.com/v1beta/openai con una clave inventada)
+    const body = '[{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}]'
+    const r = fromHTTP(400, body, new Headers(), { provider: 'Google Gemini', model: 'gemini-flash-latest', host: 'generativelanguage.googleapis.com', secrets: [TEST_KEY] })
+    expect(r.error.kind).toBe('missingKey')
+    expect(r.retryable).toBe(false)
+    expect(r.error.message).toMatch(/clave de API de Google Gemini no es válida/)
+    // un 400 de otra cosa (una petición mal formada) sigue siendo un 400 normal
+    expect(map(400, '{"error":{"message":"Unsupported parameter: foo"}}').error.kind).not.toBe('missingKey')
+  })
+
   it('lee los cuerpos de OpenAI, OpenRouter, MiMo y Anthropic', () => {
     const p = parseErrorBody(Fixtures.openAI404Model)
     expect(p.type).toBe('invalid_request_error')

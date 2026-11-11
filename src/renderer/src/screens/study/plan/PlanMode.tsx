@@ -66,7 +66,7 @@ export function PlanMode({ data }: { data: CourseData }) {
   if (!steps.length)
     return (
       <StudyFrame capsule={capsule} onExit={onExit}>
-        <EmptyState title={t('plan.emptyTitle')} body={t('plan.emptyBody')} action={<Button variant="primary" onClick={() => navigate({ name: 'study', id: packId, mode: 'practice' }, { replace: true })}>{t('plan.practiceAnyway')}</Button>} />
+        <EmptyState art="calendar" title={t('plan.emptyTitle')} body={t('plan.emptyBody')} action={<Button variant="primary" onClick={() => navigate({ name: 'study', id: packId, mode: 'practice' }, { replace: true })}>{t('plan.practiceAnyway')}</Button>} />
       </StudyFrame>
     )
 

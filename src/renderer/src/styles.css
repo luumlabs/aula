@@ -60,8 +60,8 @@
   --menu: rgba(255, 253, 249, 0.97);
 
   --shadow-color: 56, 40, 22;
-  --e1: 0 1px 0.5px rgba(var(--shadow-color), 0.05), 0 1px 3px rgba(var(--shadow-color), 0.06);
-  --e2: 0 1px 2px rgba(var(--shadow-color), 0.06), 0 6px 12px rgba(var(--shadow-color), 0.11);
+  --e1: 0 1px 0.5px rgba(var(--shadow-color), 0.04), 0 14px 30px -22px rgba(var(--shadow-color), 0.34);
+  --e2: 0 1px 2px rgba(var(--shadow-color), 0.05), 0 22px 44px -26px rgba(var(--shadow-color), 0.44);
   --e3: 0 2px 6px rgba(var(--shadow-color), 0.08), 0 16px 28px rgba(var(--shadow-color), 0.2);
   --e4: 0 4px 12px rgba(var(--shadow-color), 0.1), 0 32px 60px rgba(var(--shadow-color), 0.3);
   --accent-halo: 0 1px 2px rgba(156, 65, 38, 0.18), 0 4px 8px rgba(156, 65, 38, 0.3);
@@ -133,8 +133,8 @@
   --menu: rgba(38, 36, 33, 0.97);
 
   --shadow-color: 0, 0, 0;
-  --e1: 0 1px 0.5px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.24);
-  --e2: 0 1px 2px rgba(0, 0, 0, 0.36), 0 6px 12px rgba(0, 0, 0, 0.42);
+  --e1: 0 1px 0.5px rgba(0, 0, 0, 0.28), 0 14px 30px -22px rgba(0, 0, 0, 0.6);
+  --e2: 0 1px 2px rgba(0, 0, 0, 0.34), 0 22px 44px -26px rgba(0, 0, 0, 0.7);
   --e3: 0 2px 6px rgba(0, 0, 0, 0.42), 0 16px 28px rgba(0, 0, 0, 0.58);
   --e4: 0 4px 12px rgba(0, 0, 0, 0.48), 0 32px 60px rgba(0, 0, 0, 0.7);
   --accent-halo: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(234, 154, 108, 0.18);

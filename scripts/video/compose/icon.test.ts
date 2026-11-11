@@ -31,8 +31,25 @@ describe('icono pintado', () => {
     // fuera del sol no se recorta nada
     expect(at(mask, 2, 25)[3]).toBe(255)
   })
+  it('con el suelo a tinta, la máscara corta en la línea oscura aunque debajo del sol haya aguada', () => {
+    const inked = (sun: boolean): Px => {
+      const p = scene(sun)
+      for (let y = 0; y < p.height; y++)
+        for (let x = 0; x < p.width; x++) {
+          const i = (y * p.width + x) * 4
+          // una aguada que oscurece el papel hacia abajo (más de 12 niveles) y la línea de tinta en las filas 19–22
+          if (y >= 19 && y <= 22) p.data.set([0x2c, 0x28, 0x23, 255], i)
+          else if (!(sun && y < 21 && Math.hypot(x - 20, y - 20) <= 10)) p.data.set([0xf6 - y, 0xe6 - y * 2, 0xc4 - y * 3, 255], i)
+        }
+      return p
+    }
+    const { mask } = extractSun(inked(true), inked(false), 0x3e, true)
+    const alpha = (x: number, y: number) => mask.data[(y * mask.width + x) * 4 + 3]
+    expect(alpha(20, 18)).toBe(255)
+    expect(alpha(20, 19)).toBe(0)
+  })
   it('la puerta es el hueco por dentro del pincel del arco, hasta el horizonte', () => {
-    expect(ICON.door).toEqual({ top: 266, w: 228, bottom: 600 })
+    expect(ICON.door).toEqual({ top: 264, w: 228, bottom: 672 })
     expect(ICON.sun.y).toBe(ICON.door.bottom)
   })
   it('la tinta sale con su color y transparencia; el papel y lo de fuera de la squircle, transparentes', () => {
@@ -45,7 +62,7 @@ describe('icono pintado', () => {
   it('el trazo del arco se posa abajo a la izquierda, pasa por la clave y sale por debajo del horizonte a la derecha', () => {
     const pts = STROKES.arch.pts()
     expect(pts[0][0]).toBeLessThan(ICON.cx)
-    expect(Math.min(...pts.map((p) => p[1]))).toBeCloseTo(222, 0)
+    expect(Math.min(...pts.map((p) => p[1]))).toBeCloseTo(216, 0)
     expect(pts[pts.length - 1][1]).toBeGreaterThan(ICON.door.bottom)
     expect(pathLength(pts)).toBeGreaterThan(900)
   })

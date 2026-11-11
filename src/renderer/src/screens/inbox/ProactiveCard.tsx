@@ -12,6 +12,7 @@ import { toast } from '@renderer/design'
 import { LIGHT_ROUTINES, PROACTIVE_ROUTINES, type AutomationHealthIssue, type AutomationsSnapshot, type ProactiveRoutine, type ProactiveSettings } from '@shared/automations'
 import { inboxOps } from './actions'
 import { ROUTINE_ICONS, hoursText, timeDisplay, weekdayName, whenText } from './format'
+import { signInHere } from '@renderer/lib/live'
 
 const fail = (e: unknown) => toast.error(e instanceof Error ? e.message : String(e))
 
@@ -156,7 +157,10 @@ function HealthRow({ issue }: { issue: AutomationHealthIssue }) {
       break
   }
   // desde un dispositivo: la IA, las plataformas y el presupuesto se arreglan en el Mac (allí están los ajustes)
-  if (api.remote && (issue.kind === 'noAI' || issue.kind === 'signIn' || issue.kind === 'budget')) {
+  if (api.remote && issue.kind === 'signIn') {
+    // la sesión caducada sí se arregla desde aquí: en el navegador de Aula en vivo
+    fix = { label: t('health.fixSignIn'), run: () => void signInHere() }
+  } else if (api.remote && (issue.kind === 'noAI' || issue.kind === 'budget')) {
     fix = null
     detail = `${detail} ${t('health.onMac')}`
   }

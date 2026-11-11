@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { AulaMark, Button, Card, CourseIcon, Icon, ProgressBar, TextField, cx, pixelBurst, spring, toast } from '@renderer/design'
 import type { AssistantCard, AssistantCardAction } from '@shared/assistant/types'
 import { api } from '@renderer/lib/api'
+import { showLive, signInHere } from '@renderer/lib/live'
 import { useCourses } from '@renderer/lib/courses'
 import { navigate } from '@renderer/app/router'
 import { useCourseRun } from '../course/runs'
@@ -189,6 +190,7 @@ function CourseCard({ card }: { card: AssistantCard }) {
 }
 
 function Actions({ actions, inline }: { actions: AssistantCardAction[]; inline?: boolean }) {
+  const { t } = useTranslation()
   if (!actions.length) return null
   const run = (a: AssistantCardAction) => {
     if ((a.kind === 'open' || a.kind === 'adjustCourse' || a.kind === 'extendCourse') && a.courseID) navigate({ name: 'course', id: a.courseID })
@@ -197,6 +199,8 @@ function Actions({ actions, inline }: { actions: AssistantCardAction[]; inline?:
     else if (a.kind === 'openSettings') navigate({ name: 'settings' })
     else if (a.kind === 'prepareCourse') navigate({ name: 'create', prefill: { title: a.value } })
     else if (a.kind === 'openURL' && a.value) void api.invoke('app.openExternal', { url: a.value })
+    else if (a.kind === 'openLive' && a.value) void showLive(a.value).then((ok) => { if (!ok) toast.info(t('live.gone')) })
+    else if (a.kind === 'signIn' && api.remote) void signInHere(a.value)
   }
   return (
     <div className={cx('flex flex-wrap gap-2', inline ? '' : 'mt-3')}>

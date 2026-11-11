@@ -1,27 +1,30 @@
-// El icono de Aula («Sumi-e mínimo B · arco y horizonte», scripts/dev/icon/paint-art.mjs) para el prólogo, el final y
-// los avisos del vídeo: el mismo cuadro pintado que build/icon.png, en dos versiones (entero y sin el sol, idéntico fuera
-// de la puerta), el sol como sprite recortado por el horizonte para hacerlo salir, y la geometría de la puerta.
-import { archPath } from '../../dev/icon/icon-art.mjs'
-import * as paint from '../../dev/icon/paint-art.mjs'
+// El icono de Aula («Tinta A · Arco a tinta», scripts/dev/icon/ink-art.mjs) para el prólogo, el final y los avisos del
+// vídeo: el mismo dibujo que build/icon.png, en dos versiones (entero y sin el sol, idéntico fuera de él), el sol como
+// sprite recortado por la línea del suelo para hacerlo salir, y la geometría de la puerta.
+import { archPath, iconSvg } from '../../dev/icon/icon-art.mjs'
+import { INK_ARCH, inkArch } from '../../dev/icon/ink-art.mjs'
 
 type Canvas = OffscreenCanvas | HTMLCanvasElement
-// paint-art.mjs es JS sin tipos: su API, tal como la usa el vídeo
-const renderArt = paint.renderArt as (id: string, o: { px: number; detail?: 'full' | 'small'; sun?: boolean }) => Canvas
-const composeIcon = paint.composeIcon as (art: Canvas, o: { size: number; platform: 'mac' | 'plain' | 'square' }) => Canvas
+// los módulos del icono son JS sin tipos: su API, tal como la usa el vídeo
+const svgOf = iconSvg as (id: string, o: { size: number; platform: 'mac' | 'plain'; detail?: 'full' | 'mid' | 'small'; art?: string }) => string
+const archArt = inkArch as (detail: 'full' | 'mid' | 'small', o?: { sun?: boolean }) => string
+const M = INK_ARCH as { cx: number; ground: number; top: number; width: number; band: number; sun: number; line: [number, number] }
+/** Del lienzo de 1024 del dibujo a la caja del arte (824, que empieza en 100). */
+const U = (v: number): number => v - 100
 
-export const ICON_ID = 'sumiB'
+export const ICON_ID = 'inkA'
 
-/** Trazos del icono para descubrir la tinta (unidades del arte): el eje del arco tal como lo pinta archGesture (se posa
- *  abajo a la izquierda, sube, gira por la clave y baja por la derecha hasta pasar el horizonte) y el pincelazo del
- *  horizonte (de izquierda a derecha). `w`: ancho de la máscara (el pincel, sus cerdas abiertas y el temblor). */
+/** Trazos del icono para descubrir la tinta (unidades del arte): el eje del arco (se posa abajo a la izquierda, sube,
+ *  gira por la clave y baja por la derecha hasta pasar el suelo) y la línea del suelo (de izquierda a derecha). `w`:
+ *  ancho de la máscara (la banda de ladrillo, sus dos líneas de tinta y el temblor). */
 export const STROKES = {
   arch: { w: 150, pts: () => archAxis() },
-  horizon: { w: 72, pts: () => [[158, 609], [682, 601]] as [number, number][] }
+  horizon: { w: 72, pts: () => [[U(M.line[0]) - 12, ARCH.horizon + 6], [U(M.line[1]) + 12, ARCH.horizon + 2]] as [number, number][] }
 }
 
 function archAxis(): [number, number][] {
   const { R, top, w, horizon } = ARCH
-  const cx = 412
+  const cx = U(M.cx)
   const cy = top + R
   const pts: [number, number][] = [[cx - R, horizon + w * 0.12]]
   for (let i = 0; i <= 48; i++) {
@@ -39,9 +42,9 @@ export function pathLength(pts: [number, number][]): number {
   return L
 }
 
-/** Arco de sumiB (paint-art.mjs, archGesture): eje de radio 158 con la clave en 222, base en el horizonte (600) y un
- *  pincel de 88. La puerta es lo de dentro del pincel. */
-const ARCH = { R: 158, top: 222, w: 88, horizon: 600 }
+/** El arco (ink-art.mjs, INK_ARCH) en unidades del arte: el eje de la banda de ladrillo (radio y clave), su ancho y el
+ *  suelo. La puerta es lo de dentro de la banda. */
+const ARCH = { R: M.width / 2 - M.band / 2, top: U(M.top) + M.band / 2, w: M.band, horizon: U(M.ground) }
 
 /** Caja del arte (824) dentro del lienzo `plain` de 1024: squircle en (32, 32) de 960. */
 export const ICON = {
@@ -51,11 +54,11 @@ export const ICON = {
   art: 824,
   /** Radio de la squircle en unidades del arte. */
   radius: 185.4,
-  cx: 412,
-  /** La puerta: el hueco por dentro del pincel del arco, hasta el horizonte. */
+  cx: U(M.cx),
+  /** La puerta: el hueco por dentro de la banda del arco, hasta el suelo. */
   door: { top: ARCH.top + ARCH.w / 2, w: 2 * (ARCH.R - ARCH.w / 2), bottom: ARCH.horizon },
   /** El medio sol ámbar que sale sobre el horizonte (centro y radio, unidades del arte). */
-  sun: { x: 412, y: ARCH.horizon, r: 70 }
+  sun: { x: U(M.cx), y: ARCH.horizon, r: M.sun }
 }
 
 /** Puerta del arco (en unidades del arte), para recortar el sol. */
@@ -98,7 +101,7 @@ export interface Px {
 }
 const blank = (w: number, h: number): Px => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) })
 
-export function extractSun(full: Px, noSun: Px, amberBlue = 0x3e): { sprite: Px; mask: Px } {
+export function extractSun(full: Px, noSun: Px, amberBlue = 0x3e, inkEdge = false): { sprite: Px; mask: Px } {
   const { width: w, height: h } = full
   const sprite = blank(w, h)
   const mask = blank(w, h)
@@ -120,11 +123,14 @@ export function extractSun(full: Px, noSun: Px, amberBlue = 0x3e): { sprite: Px;
     if (bottom[x] >= 0) {
       const paper = noSun.data[x * 4 + 2]
       edge = bottom[x] + 1
-      for (let y = 0; y <= bottom[x]; y++)
-        if (noSun.data[(y * w + x) * 4 + 2] < paper - 12) {
+      for (let y = 0; y <= bottom[x]; y++) {
+        const i = (y * w + x) * 4
+        // con `inkEdge` el suelo es una línea de tinta sobre aguadas: se busca lo oscuro, no «más oscuro que el papel»
+        if (inkEdge ? noSun.data[i] < 0x80 && noSun.data[i + 2] < 0x70 : noSun.data[i + 2] < paper - 12) {
           edge = y
           break
         }
+      }
     }
     for (let y = 0; y < h; y++) mask.data[(y * w + x) * 4 + 3] = y < edge ? 255 : 0
   }
@@ -152,22 +158,29 @@ function pixels(c: Canvas, x: number, y: number, w: number, h: number): ImageDat
   return (c.getContext('2d') as OffscreenCanvasRenderingContext2D).getImageData(x, y, w, h)
 }
 
+/** Rasteriza un SVG (con sus filtros) en un lienzo cuadrado. */
+async function rasterSvg(svg: string, size: number): Promise<OffscreenCanvas> {
+  const img = new Image()
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+  await img.decode()
+  const c = new OffscreenCanvas(size, size)
+  c.getContext('2d')!.drawImage(img, 0, 0, size, size)
+  return c
+}
+
 export async function loadIconAssets(): Promise<IconAssets> {
-  // el mismo cuadro que build/icon.png (1648 px allí; aquí basta 1024: el icono nunca pasa de ~400 px en el vídeo)
-  const px = 1024
-  const fullArt = renderArt(ICON_ID, { px })
-  const noSunArt = renderArt(ICON_ID, { px, sun: false })
-  const full = composeIcon(fullArt, { size: ICON.canvas, platform: 'plain' })
-  const noSun = composeIcon(noSunArt, { size: ICON.canvas, platform: 'plain' })
+  // el mismo dibujo que build/icon.png, en el lienzo «plain» (la squircle casi a sangre)
+  const full = await rasterSvg(svgOf(ICON_ID, { size: ICON.canvas, platform: 'plain', detail: 'full' }), ICON.canvas)
+  const noSun = await rasterSvg(svgOf(ICON_ID, { size: ICON.canvas, platform: 'plain', detail: 'full', art: archArt('full', { sun: false }) }), ICON.canvas)
   const s = ICON.sun
   const k = ICON.boxSize / ICON.art
   const x = Math.floor(toCanvas(s.x - s.r - 14))
   const y = Math.floor(toCanvas(s.y - s.r - 14))
   const w = Math.ceil(toCanvas(s.x + s.r + 14)) - x
   const h = Math.ceil(toCanvas(s.y + 30)) - y
-  const { sprite, mask } = extractSun(pixels(full, x, y, w, h), pixels(noSun, x, y, w, h))
-  // papel: la media de un trozo sin pintar (arriba a la izquierda, dentro de la squircle)
-  const p = pixels(noSun, Math.round(toCanvas(150)), Math.round(toCanvas(110)), 60, 60).data
+  const { sprite, mask } = extractSun(pixels(full, x, y, w, h), pixels(noSun, x, y, w, h), 0x3a, true)
+  // papel: la media de un trozo sin pintar (arriba en el centro, por encima de las aguadas)
+  const p = pixels(noSun, Math.round(toCanvas(ICON.cx - 26)), Math.round(toCanvas(12)), 50, 30).data
   const avg = [0, 1, 2].map((c) => {
     let sum = 0
     for (let i = c; i < p.length; i += 4) sum += p[i]

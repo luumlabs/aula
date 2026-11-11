@@ -1,5 +1,5 @@
 // Galería del sistema de diseño (solo para desarrollo y capturas: window.__aula.navigate({ name: 'gallery' })).
-import { Card, Companion, COMPANION_IDS, PixelSky, PixelMedal, PixelCheck, PixelFlame, Spinner, AulaMark, CourseIcon, Button, SegmentedTabs, ProgressBar, ProgressRing, Chip, pixelBurst, SectionTitle, Group, Row, Icon, BrushUnderline, InkRing, DrawnTile, DrawnBorder, InkStrike, InkCheck, InkBurst, PencilRays, InkArrow, CoverBand } from '@renderer/design'
+import { Card, Companion, COMPANION_IDS, PixelSky, PixelMedal, PixelCheck, PixelFlame, Spinner, AulaMark, CourseIcon, Button, SegmentedTabs, ProgressBar, ProgressRing, Chip, pixelBurst, SectionTitle, Group, Row, Icon, BrushUnderline, InkRing, DrawnTile, DrawnBorder, InkStrike, InkCheck, InkBurst, PencilRays, InkArrow, CoverBand, ArchLight, InkSpot, EmptyState } from '@renderer/design'
 import { ICON_IDS } from '@renderer/design/pixel/resolve'
 import { useState } from 'react'
 import { ActivityPreview } from '../chat/ActivityPreview'
@@ -8,6 +8,20 @@ export default function Gallery() {
   const [tab, setTab] = useState<'a' | 'b' | 'c'>('a')
   return (
     <div className="@container flex-1 min-h-0 overflow-y-auto px-6 pt-1 pb-24 grid gap-4 grid-cols-12 content-start">
+      <Card className="col-span-12" padded="lg">
+        <SectionTitle title="Tinta y acuarela: el arco según la hora y los objetos del estudio" />
+        <div className="flex flex-wrap items-end gap-4 mt-3">
+          {(['dawn', 'noon', 'dusk', 'night'] as const).map((scene) => <ArchLight key={scene} scene={scene} className="h-[150px] w-[180px]" />)}
+        </div>
+        <div className="flex flex-wrap items-end gap-4 mt-4">
+          {(['books', 'cards', 'pencil', 'flask', 'calendar', 'lamp'] as const).map((name) => <InkSpot key={name} name={name} className="h-[120px] w-[144px]" />)}
+        </div>
+        <div className="grid grid-cols-3 mt-2">
+          <EmptyState art="cards" title="Nada que repasar" body="Las tarjetas vuelven cuando toca." className="py-6" />
+          <EmptyState art="calendar" title="Semana libre" body="Sin exámenes ni entregas." className="py-6" />
+          <EmptyState art="flask" title="Sin fórmulas" body="Aún no has guardado ninguna." className="py-6" />
+        </div>
+      </Card>
       <HandDrawn />
       <ActivityPreview />
       <Card className="col-span-12" padded="lg">

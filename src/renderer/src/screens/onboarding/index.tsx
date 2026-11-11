@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { AulaMark, Button, Companion, InkArrow, PixelMedal, TextField, cx, spring, useTabTrap } from '@renderer/design'
+import { ArchLight, AulaMark, Button, Companion, InkArrow, PixelMedal, TextField, cx, spring, useTabTrap } from '@renderer/design'
 import { useSettings } from '@renderer/lib/settings'
 import { useCourses } from '@renderer/lib/courses'
 import { navigate } from '@renderer/app/router'
@@ -40,11 +40,8 @@ export function Onboarding() {
         <div key={step} className="screen-enter mx-auto flex min-h-full max-w-[1080px] flex-col items-center justify-center px-8 py-10">
             {step === 0 && (
               <div className="flex flex-col items-center text-center max-w-[560px]">
-                {/* la marca a pincel, en ladrillo como el icono de la app: el pincel la dibuja, el sol sale y luego respira, y la
-                    línea «hierve» casi sin verse */}
-                <div className="text-[var(--pigment-brick)]">
-                  <AulaMark size={96} state="idle" draw alive boil />
-                </div>
+                {/* el arco de Aula amaneciendo, a tinta y acuarela como el icono de la app: la tinta se dibuja y entra el color */}
+                <ArchLight scene="dawn" className="h-[170px] w-[204px]" />
                 <h1 className="t-display mt-6">{t('hello')}</h1>
                 <p className="t-body text-text2 mt-3">{t('helloBody')}</p>
                 <div className="flex gap-2 mt-7">

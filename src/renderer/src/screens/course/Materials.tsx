@@ -233,7 +233,7 @@ function ReaderDrawer({ pack, source, onClose }: { pack: Pack; source: SourceMet
       <div className="flex flex-col gap-4 px-5 pb-8">
         <TextField value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('tab.materials.search')} icon={<Icon name="search" size={15} />} />
         {error ? (
-          <EmptyState title={t('tab.materials.noText')} body={t('tab.materials.noTextBody')} />
+          <EmptyState art="books" title={t('tab.materials.noText')} body={t('tab.materials.noTextBody')} />
         ) : !chunks ? (
           <div className="grid place-items-center py-10 text-text3"><Spinner size={16} /></div>
         ) : pages.length === 0 ? (

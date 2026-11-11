@@ -5,6 +5,8 @@
 //   · plain → la squircle ocupando casi todo el lienzo (Windows .ico, Linux, README, notificaciones).
 // `detail` simplifica el dibujo para tamaños pequeños: 'full' (≥128 px), 'mid' (48–64 px), 'small' (≤32 px).
 
+import { INK_PROPOSALS } from './ink-art.mjs'
+
 const rad = (deg) => (deg * Math.PI) / 180
 const f = (n) => Number(n.toFixed(2))
 
@@ -534,7 +536,9 @@ export const PROPOSALS = {
   cloister: { name: 'D · Claustro de papel', art: cloister },
   c2: { name: 'C2 · Sol de píxeles', art: pixelSun2 },
   d2: { name: 'D2 · Claustro de papel', art: cloister2 },
-  e: { name: 'E · Arco y claustro (C×D)', art: blend }
+  e: { name: 'E · Arco y claustro (C×D)', art: blend },
+  // a tinta y acuarela, de la misma mano que el icono de Faro (ink-art.mjs)
+  ...INK_PROPOSALS
 }
 
 export function detailFor(size) {
@@ -544,10 +548,10 @@ export function detailFor(size) {
 /**
  * SVG completo de una propuesta a un tamaño dado.
  * @param {keyof typeof PROPOSALS} id
- * @param {{ size: number, platform?: 'mac' | 'plain', detail?: 'full' | 'mid' | 'small' }} o
+ * @param {{ size: number, platform?: 'mac' | 'plain', detail?: 'full' | 'mid' | 'small', art?: string }} o
+ *   `art`: otro dibujo para la misma caja (el vídeo pide el icono sin el sol).
  */
-export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size) }) {
-  const art = PROPOSALS[id].art(detail)
+export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size), art = PROPOSALS[id].art(detail) }) {
   // mac: squircle de 824 en (100,100) del lienzo 1024. plain: casi a sangre (margen de 1/32).
   const box = platform === 'mac' ? { x: 100, y: 100, s: 824 } : { x: 32, y: 32, s: 960 }
   const k = box.s / BOX

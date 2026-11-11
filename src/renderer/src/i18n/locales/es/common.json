@@ -94,5 +94,24 @@
   "sample": {
     "tag": "Ejemplo",
     "hint": "Viene con Aula para que veas cómo funciona. Puedes borrarlo cuando quieras."
+  },
+  "live": {
+    "title": "El navegador de Aula",
+    "opening": "Abriendo…",
+    "reload": "Recargar",
+    "close": "Cerrar",
+    "yourTurn": "Es tu turno: la página es tuya.",
+    "aulaTurn": "Aula está mirando lo que llevas.",
+    "signInHint": "Inicia sesión como siempre. Aula no ve ni guarda tu contraseña.",
+    "give": "Que Aula lo revise",
+    "take": "Tomar el control",
+    "confirmSignIn": "Ya he iniciado sesión",
+    "signedIn": "Sesión iniciada en {{name}}",
+    "notSignedIn": "Aula aún no ve la sesión iniciada. Termina de entrar y vuelve a pulsarlo.",
+    "aulaLooking": "Aula está revisando tu página",
+    "aulaLookingHint": "Solo la lee: no pulsa, no escribe y no envía nada. Te lo cuenta en el chat.",
+    "typeHere": "Escribe aquí",
+    "openHere": "Iniciar sesión aquí",
+    "gone": "Esa ventana del navegador ya se cerró. Pídele a Aula que te la vuelva a abrir."
   }
 }

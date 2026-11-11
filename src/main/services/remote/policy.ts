@@ -2,7 +2,8 @@
 // abierto por descuido). Fuera quedan las claves y los secretos, lo que abre ventanas o diálogos en el Mac, lo que toca
 // archivos del Mac por su ruta (un dispositivo solo puede dar los que él mismo sube: remote/uploads.ts), las actualizaciones, los ejecutables y borrar o exportar todo.
 
-const DOMAINS_OPEN: ReadonlySet<string> = new Set(['achievements', 'automations', 'chat', 'course', 'generation', 'history', 'home', 'progress', 'search', 'stats', 'study'])
+// («live»: el navegador de Aula en vivo, para iniciar sesión o hacer una tarea desde el dispositivo)
+const DOMAINS_OPEN: ReadonlySet<string> = new Set(['achievements', 'automations', 'chat', 'course', 'generation', 'history', 'home', 'live', 'progress', 'search', 'stats', 'study'])
 
 const METHODS_OPEN: ReadonlySet<string> = new Set([
   'ai.status', 'ai.costs', 'ai.cancel',
@@ -14,7 +15,7 @@ const METHODS_OPEN: ReadonlySet<string> = new Set([
   'documents.aiCancel', 'documents.aiStart', 'documents.aiStatus', 'documents.annotate', 'documents.annotations', 'documents.cardTargets', 'documents.fileData',
   'documents.find', 'documents.import', 'documents.kinds', 'documents.library', 'documents.open', 'documents.saveCards', 'documents.search', 'documents.setPage', 'documents.unannotate',
   'memory.list', 'memory.status',
-  'platforms.list', 'platforms.courses',
+  'platforms.list', 'platforms.courses', 'platforms.check',
   'settings.get'
 ])
 

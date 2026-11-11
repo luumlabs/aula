@@ -67,6 +67,7 @@ export function LearnMode({ data, skillId }: { data: CourseData; skillId?: strin
     return (
       <StudyFrame capsule={<TopCapsule icon="learn" label={skill ? <RichText text={skill.title} inline /> : t('learn.title')} onExit={onExit} />} onExit={onExit}>
         <EmptyState
+          art="books"
           title={t('learn.noLessonTitle')}
           body={t('learn.noLessonBody')}
           action={<Button variant="primary" onClick={() => navigate({ name: 'chat', prompt: t('learn.askWrite', { topic: skill?.title ?? '' }) })}>{t('learn.askAula')}</Button>}

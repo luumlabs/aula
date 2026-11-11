@@ -88,6 +88,17 @@ grano de papel muy suave, algo fuera de registro de su línea. Minimalista y ama
 - **El diente del papel** (`.paper-grain`, en `paint/paint.css`): el fondo de las pantallas lleva un grano muy fino y quieto,
   como papel de acuarela; las tarjetas, encima, siguen lisas. Y la **muestra de pigmento** (`PigmentMark`, receta `swatch`):
   el color de identidad como pasadas de pincel plano en una esquina (tarjetas, notas de las lecciones, diapositivas).
+- **Dibujos a tinta y acuarela** (`ArchLight`, `InkSpot`, `inkArt.css`): la misma mano que Faro (una línea con pulso y
+  aguadas que se salen de ella, pintadas por filtros SVG) pero con los motivos de Aula, nunca los de Faro. `ArchLight` es
+  el arco de Aula con la luz dentro (`dawn`, `noon`, `dusk`, `night`; `archLightFor(hora)`): en el saludo de Hoy y en la
+  bienvenida. `InkSpot` son objetos del estudio (`books`, `cards`, `pencil`, `flask`, `calendar`, `lamp`) para las
+  pantallas vacías (`EmptyState art="…"`) y el chat sin empezar. La tinta se dibuja UNA vez al aparecer y el dibujo se
+  queda quieto. Tonos `--wc-*` (ladrillo y sol más cuatro apagados), más hondos en oscuro. Un dibujo por pantalla, nunca
+  de fondo de una tarjeta ni debajo de texto. El icono de la app sigue la misma receta (`scripts/dev/icon/ink-art.mjs`).
+- **Profundidad suave**: las tarjetas llevan su borde fino y una sombra larga y baja, metida hacia dentro (`--e1`, `--e2`),
+  no un halo alrededor. **Botones en píldora** (`Button`: `rounded-full` en todos los tamaños).
+- **Dos voces en el chat**: lo que dice Aula va en serif sobre el papel, sin burbuja; lo del estudiante, en su burbuja
+  (20/20/6/20) con la letra de la interfaz.
 - **La fila elegida se pinta** (`SelectionPaint`, receta `pass`): en la barra lateral y en la lista de conversaciones, lo
   elegido es una sola pasada de pincel plano en ladrillo muy aguado (entra cargada y se queda seca al final), no una
   píldora gris. Se desliza de fila en fila con el `layoutId` de siempre. Para listas; no para celdas cuadradas.

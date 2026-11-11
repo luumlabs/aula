@@ -114,8 +114,8 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     supportsTools: true, supportsVision: true, supportsJSONMode: true, contextWindow: 200_000, maxOutputTokens: 64_000,
     keyURL: 'https://aistudio.google.com/apikey', priority: 48,
     help: bi(
-      'Crea una clave gratis en aistudio.google.com/apikey (Google AI Studio). Aula usa la API compatible con OpenAI de Gemini. «gemini-flash-latest» es rápido y tiene un nivel gratuito con límites por minuto; «gemini-pro-latest» es más capaz. Pulsa «Actualizar modelos» para ver los disponibles.',
-      'Create a free key at aistudio.google.com/apikey (Google AI Studio). Aula uses Gemini’s OpenAI-compatible API. “gemini-flash-latest” is fast and has a free tier with per-minute limits; “gemini-pro-latest” is more capable. Click “Update models” to see what’s available.'
+      'Crea una clave gratis en aistudio.google.com/apikey (Google AI Studio). Aula usa la API compatible con OpenAI de Gemini. «gemini-flash-latest» es rápido y tiene un nivel gratuito con límites por minuto; «gemini-pro-latest» es más capaz. Pulsa «Actualizar modelos» para ver los disponibles. Gemini va con clave: Google no permite usar su inicio de sesión con cuenta personal desde otras aplicaciones.',
+      'Create a free key at aistudio.google.com/apikey (Google AI Studio). Aula uses Gemini’s OpenAI-compatible API. “gemini-flash-latest” is fast and has a free tier with per-minute limits; “gemini-pro-latest” is more capable. Click “Update models” to see what’s available. Gemini works with a key: Google doesn’t allow its personal-account sign-in to be used from other apps.'
     )
   },
   {

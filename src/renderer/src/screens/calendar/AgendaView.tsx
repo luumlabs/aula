@@ -23,6 +23,7 @@ export function AgendaView({ events }: { events: CalEvent[] }) {
     return (
       <div className="grid h-full min-h-[360px] place-items-center">
         <EmptyState
+          art="calendar"
           title={t('agendaEmpty')}
           body={t('agendaEmptyBody')}
           className="py-6"

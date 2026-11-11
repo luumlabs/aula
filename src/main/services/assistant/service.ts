@@ -35,7 +35,7 @@ import { Answer, AssistantBroker, type AssistantAnswer } from './broker'
 import { cutOffNotice, explainError } from './errors'
 import { isFakeModel, streamingFake } from './fake'
 import { GoalStore } from './goals'
-import type { AssistantAppControl, AssistantTarget, CourseTeam, PlatformReader } from './host'
+import type { AssistantAppControl, AssistantTarget, CourseTeam, PlatformReader, StudentBrowser } from './host'
 import { contextIsEmpty, decodeContext, decodeRef, expirePending, isPendingCard, newMessage, newThread } from './models'
 import type { AssistantAppInfo } from './prompts'
 import { runTurn, type TurnDeps, type TurnEvents } from './session'
@@ -75,6 +75,7 @@ export interface AssistantServiceOptions {
   control?: () => AssistantAppControl | undefined
   team?: () => CourseTeam | undefined
   platform?: () => PlatformReader | undefined
+  student?: () => StudentBrowser | undefined
   media?: AttachmentMedia
   settings?: () => AssistantSettingsView
   validator?: ContentValidator
@@ -591,6 +592,7 @@ export class AssistantService {
       ...(this.opts.team?.() ? { team: this.opts.team()! } : {}),
       ...(this.memory ? { memory: this.memory } : {}),
       ...(this.opts.platform?.() ? { platform: this.opts.platform()! } : {}),
+      ...(this.opts.student?.() ? { student: this.opts.student()! } : {}),
       ...(this.opts.vectors ? { vectors: this.opts.vectors } : {}),
       ...(s.allowWeb ? { web: this.opts.web ? this.opts.web() : (this.liveWeb ??= new LiveWebAccess()) } : {}),
       navigate: (target) => this.sink?.navigate?.(thread.id, target),

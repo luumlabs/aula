@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LayoutGroup, motion } from 'motion/react'
-import { AulaMark, Button, Card, Chip, Companion, Drawer, Icon, toast, useMarkPhase } from '@renderer/design'
+import { AulaMark, Button, Card, Chip, Companion, Drawer, Icon, InkSpot, toast, useMarkPhase } from '@renderer/design'
 import { useAmbient } from '@renderer/design/ambient'
 import { useRoute } from '@renderer/app/router'
 import { useScreenTitle } from '@renderer/app/title'
@@ -94,9 +94,8 @@ export default function ChatScreen() {
   const moving = useAmbient()
   const emptyView = (
     <div className="flex flex-col items-center text-center pt-[12vh]">
-      <div className="text-text">
-        <AulaMark size={72} state={emptyMark} hover />
-      </div>
+      {/* el flexo encendido sobre la mesa: Aula está lista (mientras piensa, su marca) */}
+      {busy.busy ? <div className="text-text"><AulaMark size={72} state={emptyMark} hover /></div> : <InkSpot name="lamp" className="h-[150px] w-[180px]" />}
       <h1 className="t-display text-[36px] mt-5">{t('emptyTitle')}</h1>
       <p className="t-body text-text2 mt-2 max-w-[480px]">{t('emptyBody')}</p>
       <div className="flex flex-wrap justify-center gap-2 mt-6 max-w-[620px]">

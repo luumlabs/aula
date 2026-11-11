@@ -1,7 +1,7 @@
 <p align="right"><a href="README.md">English</a> · <b>Español</b></p>
 
 <p align="center">
-  <img src="docs/media/aula-icon.png" width="128" height="128" alt="El icono de Aula: un arco rojo ladrillo pintado de un solo trazo, con el sol en el horizonte">
+  <img src="docs/media/aula-icon.png" width="128" height="128" alt="El icono de Aula: un arco de ladrillo dibujado a tinta y acuarela, con el sol saliendo dentro">
 </p>
 
 <h1 align="center">Aula</h1>
@@ -202,7 +202,9 @@ Cada ejercicio tiene además un tutor al lado. Ve el ejercicio y tu respuesta, y
 - **Tu iPad y tu iPhone** (opcional, con Aula en un Mac): abre Aula desde tus dispositivos mientras tus cursos, tu IA y
   tus datos se quedan en el Mac. En el iPad, la app entera; en el iPhone, Aula como tu asistente (lo que hizo, lo que
   hay pendiente, el chat y el calendario). Los dispositivos llegan al Mac por tu red privada de Tailscale y se vinculan
-  una vez con un código. Más en [docs/DEVICES.md](docs/DEVICES.md).
+  una vez con un código. Desde ahí también puedes abrir el navegador de Aula en vivo: iniciar sesión en tu plataforma
+  estando fuera de casa, o hacer tú una tarea y pasársela a Aula para que la revise antes de enviarla. Más en
+  [docs/DEVICES.md](docs/DEVICES.md).
 - **Memoria**: Aula recuerda lo que le ayuda a enseñarte, por ejemplo cómo prefieres que te expliquen o qué te cuesta. Puedes
   verlo, corregirlo, pausarlo o exportarlo todo en *Ajustes → Lo que Aula recuerda*.
 - **Buscar**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> encuentra pantallas, cursos y herramientas, y cualquier cosa

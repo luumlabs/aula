@@ -94,5 +94,24 @@
   "sample": {
     "tag": "Example",
     "hint": "It comes with Aula so you can see how it works. Delete it whenever you like."
+  },
+  "live": {
+    "title": "Aula’s browser",
+    "opening": "Opening…",
+    "reload": "Reload",
+    "close": "Close",
+    "yourTurn": "It’s your turn: the page is yours.",
+    "aulaTurn": "Aula is looking at what you have so far.",
+    "signInHint": "Sign in as usual. Aula doesn’t see or keep your password.",
+    "give": "Let Aula review it",
+    "take": "Take control",
+    "confirmSignIn": "I’ve signed in",
+    "signedIn": "Signed in to {{name}}",
+    "notSignedIn": "Aula can’t see the session yet. Finish signing in and press it again.",
+    "aulaLooking": "Aula is reviewing your page",
+    "aulaLookingHint": "It only reads: it doesn’t click, type or submit anything. It will tell you in the chat.",
+    "typeHere": "Type here",
+    "openHere": "Sign in here",
+    "gone": "That browser window has closed. Ask Aula to open it again."
   }
 }

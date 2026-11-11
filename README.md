@@ -1,7 +1,7 @@
 <p align="right"><b>English</b> · <a href="README.es.md">Español</a></p>
 
 <p align="center">
-  <img src="docs/media/aula-icon.png" width="128" height="128" alt="Aula's app icon: a brick-red arch painted in one brush stroke, with the sun on the horizon">
+  <img src="docs/media/aula-icon.png" width="128" height="128" alt="Aula's app icon: a brick-red arch drawn in ink and watercolor, with the sun rising inside it">
 </p>
 
 <h1 align="center">Aula</h1>
@@ -203,7 +203,8 @@ answer away.
 - **Your iPad and iPhone** (optional, with Aula on a Mac): open Aula from your own devices while your courses, your AI
   and your data stay on the Mac. The iPad gets the whole app; the iPhone, Aula as your assistant (what it did, what is
   pending, the chat and the calendar). Devices reach the Mac over your private Tailscale network and are linked once
-  with a code. See [docs/DEVICES.md](docs/DEVICES.md).
+  with a code. From there you can also open Aula's browser live: sign in to your platform away from home, or do an
+  assignment yourself and hand it to Aula to review before you submit it. See [docs/DEVICES.md](docs/DEVICES.md).
 - **Memory**: Aula remembers what helps it teach you, like how you prefer explanations or what you find hard. You can
   see, edit, pause or export all of it in *Settings → What Aula remembers*.
 - **Search**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> finds screens, courses and tools, and anything inside your

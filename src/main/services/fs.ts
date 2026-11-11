@@ -37,6 +37,29 @@ function keepPrevious(file: string): void {
   } catch { /* sin copia: la escritura sigue */ }
 }
 
+const SLEEP = new Int32Array(new SharedArrayBuffer(4))
+/** Los fallos de Windows al cambiar de nombre sobre un archivo que otro proceso tiene abierto un instante. */
+const BUSY = new Set(['EPERM', 'EACCES', 'EBUSY'])
+
+/**
+ * El cambio de nombre final. En Windows, si otro proceso tiene abierto el destino un instante (otro Aula leyéndolo, el
+ * antivirus, el indexador) el rename falla con EPERM/EACCES/EBUSY aunque nada esté mal: se reintenta con pausas cortas
+ * hasta `maxWaitMs`. En los demás sistemas el rename sobre un archivo abierto funciona y no se reintenta.
+ */
+export function renameOver(tmp: string, file: string, o: { rename?: (from: string, to: string) => void; platform?: string; maxWaitMs?: number } = {}): void {
+  const rename = o.rename ?? renameSync
+  if ((o.platform ?? process.platform) !== 'win32') return rename(tmp, file)
+  const until = Date.now() + (o.maxWaitMs ?? 2000)
+  for (let pause = 4; ; pause = Math.min(pause * 2, 64)) {
+    try {
+      return rename(tmp, file)
+    } catch (err) {
+      if (!BUSY.has((err as NodeJS.ErrnoException).code ?? '') || Date.now() >= until) throw err
+      Atomics.wait(SLEEP, 0, 0, pause)
+    }
+  }
+}
+
 export function writeFileAtomic(file: string, data: string | Uint8Array, modeOrOptions?: number | AtomicWriteOptions): void {
   const opts: AtomicWriteOptions = typeof modeOrOptions === 'number' ? { mode: modeOrOptions } : (modeOrOptions ?? {})
   mkdirSync(dirname(file), { recursive: true })
@@ -54,7 +77,7 @@ export function writeFileAtomic(file: string, data: string | Uint8Array, modeOrO
       closeSync(fd)
     }
     if (opts.backup) keepPrevious(file)
-    renameSync(tmp, file)
+    renameOver(tmp, file)
   } catch (err) {
     try { rmSync(tmp, { force: true }) } catch { /* nada */ }
     throw err
