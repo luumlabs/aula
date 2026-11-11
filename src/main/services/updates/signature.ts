@@ -22,10 +22,13 @@ import { basename } from 'node:path'
  *   1 · la de reserva (update-ed25519-backup.key), guardada SOLO fuera de línea. Si la principal se pierde, se firma con
  *       esta; si se filtra, una versión firmada con la de reserva la quita de la lista (y trae una reserva nueva).
  * Quitarlas o cambiarlas todas deja huérfanas a las copias ya instaladas (tendrían que instalar a mano).
+ *
+ * Eso pasó en la 0.2.0 (11-11-2026): las dos claves privadas de las versiones 0.1.x se perdieron con el ordenador desde
+ * el que se publicaban, así que estas dos son nuevas y las copias 0.1.x tienen que instalar la 0.2.0 a mano una vez.
  */
 export const UPDATE_PUBLIC_KEYS: readonly string[] = [
-  'MCowBQYDK2VwAyEATb7ooai9PeLuWpRmtNnfTuaBplk3qbJU3R3qBxcDyLQ=',
-  'MCowBQYDK2VwAyEAVy9VyEyhjbZOFueeQ5f79mVXJAePnLodoH8r4WGlKs8='
+  'MCowBQYDK2VwAyEAiBq04gxTBROZgokQ8tRvRcPy5/OjleXFtgsX4jWE7ds=',
+  'MCowBQYDK2VwAyEAPrUlbRbiqC2VFtFMsTp7iacXNrG8gvxJdrezd2AtCqA='
 ]
 
 /** La principal. */

@@ -55,6 +55,11 @@ Download the file for your system from the [latest release](https://github.com/l
 | Linux x64 | `Aula-0.2.0-linux-x86_64.AppImage` or `Aula-0.2.0-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.2.0-linux-amd64.deb`. |
 | Linux ARM64 | `Aula-0.2.0-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
 
+> **Updating from 0.1.x:** install 0.2.0 by hand this one time (download it here and install it over your copy; your
+> courses and settings stay). Aula 0.1.x will say the new version's signature isn't valid: 0.2.0 is signed with new
+> keys, because the old ones were lost. From 0.2.0 on, Aula updates itself again. On a Mac, macOS asks once more for
+> permission to use Aula's saved keys.
+
 On Linux you need a 64-bit distribution with glibc. Install GNOME Keyring or KWallet too, or Aula has to store your
 keys unencrypted.
 

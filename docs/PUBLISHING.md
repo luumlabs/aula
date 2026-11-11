@@ -318,7 +318,7 @@ packaged build with CDP (`scripts/dev/security-check.mjs`, measurements), build 
 
 | System | Without certificates (now) | With certificates |
 | --- | --- | --- |
-| macOS | Signed with the project's own self-signed certificate **Aula Local Signing** (`scripts/build/mac-sign.cjs`, from the keychain `~/.aula-signing/aula-signing.keychain-db`; ad hoc if it isn't there). Gatekeeper treats it like ad hoc: the first launch needs *Open* / *Open Anyway*. Its designated requirement (`identifier "com.luumlabs.aula" and certificate root = H"3b5c…"`) is the same for every version, so after one *Always Allow* macOS stops asking for the «Aula Safe Storage» keychain item on each update, and Aula's installer requires every new version to satisfy it. **So every later macOS release must be signed with this certificate**: `release-local.sh` refuses to build or upload macOS without it (`AULA_MAC_ADHOC=1` only for tests). Automatic updates **work** (Aula's own installer, above). | Set `MAC_CERT_P12_BASE64` + `MAC_CERT_PASSWORD` (a *Developer ID Application* certificate) and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` to notarize (repository secrets for Actions, or `CSC_LINK`/`CSC_KEY_PASSWORD` + the Apple variables in your shell for a local build). Then, in `electron-builder.yml`, remove `identity: "-"` and set `hardenedRuntime: true`. From that version on, updates must be signed by the same team (the installer checks it). |
+| macOS | Signed with the project's own self-signed certificate **Aula Local Signing** (`scripts/build/mac-sign.cjs`, from the keychain `~/.aula-signing/aula-signing.keychain-db`; ad hoc if it isn't there). Gatekeeper treats it like ad hoc: the first launch needs *Open* / *Open Anyway*. Its designated requirement (`identifier "com.luumlabs.aula" and certificate root = H"2606…"`) is the same for every version, so after one *Always Allow* macOS stops asking for the «Aula Safe Storage» keychain item on each update, and Aula's installer requires every new version to satisfy it. **So every later macOS release must be signed with this certificate**: `release-local.sh` refuses to build or upload macOS without it (`AULA_MAC_ADHOC=1` only for tests). Automatic updates **work** (Aula's own installer, above). | Set `MAC_CERT_P12_BASE64` + `MAC_CERT_PASSWORD` (a *Developer ID Application* certificate) and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` to notarize (repository secrets for Actions, or `CSC_LINK`/`CSC_KEY_PASSWORD` + the Apple variables in your shell for a local build). Then, in `electron-builder.yml`, remove `identity: "-"` and set `hardenedRuntime: true`. From that version on, updates must be signed by the same team (the installer checks it). |
 | Windows | Unsigned: SmartScreen shows *More info → Run anyway* the first time. Updates work. | `CSC_LINK`/`CSC_KEY_PASSWORD` (or Azure Trusted Signing). electron-updater then requires updates signed by the same publisher. |
 | Linux | AppImage and .deb are not signed (normal for Linux). | — |
 
@@ -341,7 +341,7 @@ signature**:
 
 - **Private keys** (PEM, permissions `0600`, **never** in the repository):
   - the **main** key `~/.aula-signing/update-ed25519.key`, the one every release is signed with;
-  - the **backup** key `update-ed25519-backup.key`, generated on 27-10-2026 and meant to live **only offline** (see
+  - the **backup** key `update-ed25519-backup.key`, generated with the main one on 11-11-2026 and meant to live **only offline** (see
     [Keeping the keys](#keeping-the-keys)). It's never used unless the main one is lost or leaks.
   The `.pub` files next to them are their public halves.
 - **Public keys**: both are embedded in the app, `src/main/services/updates/signature.ts → UPDATE_PUBLIC_KEYS`
@@ -362,6 +362,10 @@ signature**:
   --clobber`. Rehearsals with `scripts/dev/fake-github-releases.mjs` need the same step on each `rel-<version>` folder.
 
 ### Keeping the keys
+
+> **This already happened once.** The keys and the macOS certificate of the 0.1.x releases were lost with the computer
+> they were published from, with no copy anywhere. 0.2.0 carries two new keys and a new certificate, so every 0.1.x
+> copy had to be updated by hand once. The copies below are what keeps that from happening again.
 
 - Keep **two offline copies** of both private keys (and of the macOS certificate, see [Signing](#signing)): a password
   manager entry (each PEM is 119 bytes of text) and an encrypted USB drive. Never in the repository, a cloud folder

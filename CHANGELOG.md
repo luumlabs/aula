@@ -41,6 +41,12 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 - Windows: saving no longer fails now and then when another program (an antivirus, another Aula process) has the file
   open for an instant.
 
+### Updating from 0.1.x
+- **Install 0.2.0 by hand once.** The keys that signed the 0.1.x updates, and the macOS signing certificate, were lost.
+  0.2.0 is signed with new ones, so a 0.1.x copy refuses it as an update ("invalid signature"): download 0.2.0 and
+  install it over your copy; courses and settings stay. From 0.2.0 on, updates install themselves again. On macOS the
+  system asks once more for access to Aula's saved keys.
+
 ### Packaging
 - The macOS package includes the Tailscale component for *Aula on your devices* (`scripts/release-local.sh` builds it
   and refuses to continue without it).

@@ -52,6 +52,11 @@ Descarga el archivo de tu sistema desde la [última versión](https://github.com
 | Linux x64 | `Aula-0.2.0-linux-x86_64.AppImage` o `Aula-0.2.0-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.2.0-linux-amd64.deb`. |
 | Linux ARM64 | `Aula-0.2.0-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
 
+> **Si vienes de la 0.1.x:** instala la 0.2.0 a mano esta única vez (descárgala aquí e instálala encima de tu copia;
+> tus cursos y ajustes se quedan). Aula 0.1.x dirá que la firma de la versión nueva no es válida: la 0.2.0 va firmada
+> con claves nuevas, porque las anteriores se perdieron. A partir de la 0.2.0, Aula vuelve a actualizarse sola. En un
+> Mac, macOS vuelve a pedir una vez permiso para usar las claves guardadas de Aula.
+
 En Linux necesitas una distribución de 64 bits con glibc. Instala también GNOME Keyring o KWallet; si no, Aula tiene
 que guardar tus claves sin cifrar.
 
