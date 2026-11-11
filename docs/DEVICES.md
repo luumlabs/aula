@@ -113,11 +113,15 @@ Verified on a Mac, by tests in this repository:
 - `native/ios/_verify/verify.sh`: the loopback forwarder at runtime (36 checks), the whole app compiled for macOS in
   Swift 6 mode against TailscaleKit built from source, and the app's Tailscale node started for real up to "needs
   sign-in".
+- With Xcode 27.2: `build-tailscalekit.sh` builds the framework for device and simulator, and `Aula.xcodeproj` builds
+  for the iOS Simulator (Debug) and for a device (Release, unsigned) without errors or warnings in the project's code.
+  In the iPhone and iPad simulators (iOS 27.2) the app opens on *Connect to your Aula*, and *Sign in to Tailscale*
+  starts the embedded node and opens Tailscale's sign-in page in Safari.
 
-Not verified yet (it needs Xcode, an iOS device and a signed-in tailnet):
+Not verified yet (it needs a signed-in tailnet and a real device):
 
-- Building `Aula.xcodeproj` for iOS and running it on a device or simulator. The project file was written by hand and
-  has only been checked for syntax; the UIKit-only lines (a few `#if canImport(UIKit)` branches) have not been compiled.
+- Everything after signing in to Tailscale: finding `aula-mac`, typing the code and using Aula through the tunnel.
+- Running it on a real iPhone or iPad (it needs your Apple ID as the signing team).
 - A full session over a real tailnet between a device and the Mac.
 - Recordings playing through the tunnel inside `WKWebView` (media requests must carry the tunnel cookie).
 

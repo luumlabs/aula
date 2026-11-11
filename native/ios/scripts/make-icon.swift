@@ -1,6 +1,8 @@
 // Genera el icono de la app de iPhone/iPad a partir del icono de Aula para macOS (build/icon.png, con su rejilla y
 // esquinas transparentes): iOS quiere un cuadrado entero y opaco, sin márgenes (él recorta las esquinas).
 //   xcrun swift native/ios/scripts/make-icon.swift build/icon.png native/ios/Aula/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+// La marca que la app enseña mientras conecta (Mark.imageset) es ese mismo icono a 360 px; después de rehacerlo:
+//   sips -Z 360 native/ios/Aula/Assets.xcassets/AppIcon.appiconset/icon-1024.png --out native/ios/Aula/Assets.xcassets/Mark.imageset/mark.png
 import AppKit
 import CoreGraphics
 import ImageIO
