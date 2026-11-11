@@ -3,6 +3,22 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.2.3] - 2026-11-11
+
+### New
+- **The arch on Today moves in slow motion under the mouse.** The big ink-and-wash arch in Today's greeting stood
+  still. While the mouse is over it, its four sheets (the loose wash, the colour, the light and the ink line) drift
+  apart, each at its own depth, following the pointer with a long delay, and the light inside does what that hour's
+  light does: the dawn sun grows from the ground, the noon sun and the moon rise, the evening sun sinks. When the mouse
+  leaves, it settles back just as slowly. No loops; with *Reduce motion* it stays still, and touch doesn't trigger it.
+
+### The project
+- **A new short film** at the top of the README, *Nine days.* (1 min 50 s), painted frame by frame by code
+  (`scripts/film`), and a README that says what Aula does at a glance.
+
+### Updating
+- From 0.2.0, 0.2.1 or 0.2.2, Aula updates itself. From 0.1.x, install this version by hand once (see 0.2.0 below).
+
 ## [0.2.2] - 2026-11-11
 
 ### New
