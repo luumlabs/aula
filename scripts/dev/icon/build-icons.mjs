@@ -24,8 +24,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { PROPOSALS, iconSvg, traySvg } from './icon-art.mjs'
 import { PAINTINGS } from './paint-art.mjs'
 
-/** La propuesta que se publica: «Sumi-e mínimo B · arco y horizonte» (paint-art.mjs), elegida el 27-10. */
-export const CHOSEN = 'sumiB'
+/** La propuesta que se publica: «Tinta A · Arco a tinta» (ink-art.mjs), de la misma mano que el icono de Faro; elegida el
+ *  10-11 (antes, «Sumi-e mínimo B», paint-art.mjs). */
+export const CHOSEN = 'inkA'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const args = process.argv.slice(2)
@@ -145,7 +146,7 @@ async function buildRepoAssets(id) {
   write(at('docs/media/aula-icon.png'), await icon(id, { size: 512 }))
   // bandeja: plantilla negra para macOS (el sistema la tiñe; vector a la rejilla de píxeles, con la silueta del
   // icono) y en color para Windows/Linux
-  const trayShape = PAINTINGS[id]?.tray ?? {}
+  const trayShape = PAINTINGS[id]?.tray ?? PROPOSALS[id]?.tray ?? {}
   write(at('resources/tray/trayTemplate.png'), await raster(traySvg(16, '#000000', trayShape), 16))
   write(at('resources/tray/trayTemplate@2x.png'), await raster(traySvg(32, '#000000', trayShape), 32))
   write(at('resources/tray/tray.png'), await icon(id, { size: 16, platform: 'plain' }))

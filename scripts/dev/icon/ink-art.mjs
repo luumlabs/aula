@@ -129,7 +129,7 @@ function inkBrush(detail) {
 }
 
 export const INK_PROPOSALS = {
-  inkA: { name: 'Tinta A · Arco a tinta', art: inkArch },
+  inkA: { name: 'Tinta A · Arco a tinta', art: inkArch, tray: { horizon: true } },
   inkB: { name: 'Tinta B · El aula encendida', art: inkDoor },
-  inkC: { name: 'Tinta C · Una pincelada', art: inkBrush }
+  inkC: { name: 'Tinta C · Una pincelada', art: inkBrush, tray: { horizon: true } }
 }
