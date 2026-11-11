@@ -1,6 +1,6 @@
 // Acto I — La noche y la tormenta (0–18 s). Un estudiante diminuto en su mesa, entre torres de apuntes; quedan nueve días.
 // El viento levanta el papel, la lámpara se apaga y la ventisca se lo traga.
-import { bell, clamp, col, ease, H, hash, lerp, mix, noise1, P, seg, smooth, W, type Pt } from '../engine/core.ts'
+import { bell, clamp, col, ease, H, hash, lerp, mix, noise1, P, resample, seg, smooth, W, type Pt } from '../engine/core.ts'
 import { blob, brush, ellipsePts, glow, paperOver, sheet, sky, temp, title, wash, type Ctx, type Sheet } from '../engine/paint.ts'
 import { desk, groundLine, lamp, paperSheet, stack, stackHeight } from '../engine/props.ts'
 import { student } from '../engine/figure.ts'
@@ -44,6 +44,86 @@ export function initNight(): void {
   stack(near.ctx, 70, H + 40, 330, 58, 500, 0.93, -0.5)
   stack(near.ctx, 1860, H + 60, 360, 70, 501, 0.93, 0.4)
   stack(near.ctx, 330, H + 80, 250, 22, 502, 0.95, 0.2)
+}
+
+/** Los relámpagos: cuándo caen y dónde. */
+const BOLTS: [number, number][] = [[13.25, 430], [15.6, 1420]]
+/** Cuánto alumbra el relámpago en este instante (0–1): un fogonazo, un parpadeo y la cola. */
+function lightning(t: number): number {
+  let f = 0
+  for (const [at] of BOLTS) {
+    const d = t - at
+    if (d < 0 || d > 0.62) continue
+    f = Math.max(f, d < 0.07 ? 1 : d < 0.13 ? 0.22 : d < 0.2 ? 0.85 : Math.max(0, 0.85 - (d - 0.2) * 2.1))
+  }
+  return f
+}
+function bolt(ctx: Ctx, x: number, seed: number, f: number): void {
+  const pts: Pt[] = []
+  let px = x
+  for (let i = 0; i <= 9; i++) {
+    pts.push({ x: px, y: -60 + i * 80 })
+    px += (hash(i, seed) - 0.5) * 160
+  }
+  ctx.save()
+  ctx.globalAlpha = f
+  glow(ctx, pts[4].x, pts[4].y, 560, '#b9c8ee', 0.55)
+  ctx.strokeStyle = '#f3f6ff'
+  ctx.lineJoin = 'miter'
+  ctx.lineWidth = 5.5
+  ctx.beginPath()
+  pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)))
+  ctx.stroke()
+  ctx.lineWidth = 2.5
+  ctx.beginPath()
+  ctx.moveTo(pts[4].x, pts[4].y)
+  ctx.lineTo(pts[4].x + 120, pts[4].y + 86)
+  ctx.lineTo(pts[4].x + 96, pts[4].y + 196)
+  ctx.lineTo(pts[4].x + 170, pts[4].y + 270)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** La gran ola de apuntes que se levanta detrás de él y se curva sobre su cabeza. `r` (0–1): cuánto ha crecido. */
+function paperWave(ctx: Ctx, t: number, r: number): void {
+  if (r <= 0) return
+  const h = lerp(260, 800, r)
+  const xb = lerp(W + 560, 1300, r)
+  const g = FLOOR + 20
+  const sway = Math.sin(t * 2.3) * 12
+  const pts: Pt[] = [
+    { x: xb + 950, y: g + 460 }, { x: xb + 540, y: g - 0.42 * h }, { x: xb + 180, y: g - 0.88 * h }, { x: xb - 0.2 * h, y: g - 1.0 * h },
+    { x: xb - 0.5 * h + sway, y: g - 0.93 * h }, { x: xb - 0.65 * h + sway, y: g - 0.73 * h }, { x: xb - 0.53 * h + sway, y: g - 0.72 * h },
+    { x: xb - 0.33 * h, y: g - 0.6 * h }, { x: xb - 0.25 * h, y: g - 0.3 * h }, { x: xb - 0.4 * h, y: g + 460 }
+  ]
+  const path = blob(pts, 9, 3 + Math.floor(t * 8), 0.004)
+  wash(ctx, path, '#a3aecb', { alpha: 0.97, bleed: 4, edge: 0.5, grain: 0.35, to: P.night2, fromY: g - h, toY: g + 60 })
+  // el filo de la cresta, que coge la poca luz que queda
+  ctx.save()
+  ctx.filter = 'blur(2px)'
+  ctx.strokeStyle = col('#e4eaf8', 0.55)
+  ctx.lineWidth = 7
+  ctx.stroke(path)
+  ctx.restore()
+  // está hecha de hojas: por dentro, arrastradas hacia la cresta
+  ctx.save()
+  ctx.clip(path)
+  for (let i = 0; i < 170; i++) {
+    const drift = (t * (70 + hash(i, 703) * 130) + hash(i, 708) * 320) % 320
+    paperSheet(ctx, {
+      x: xb - 0.62 * h + hash(i, 701) * (0.62 * h + 980) - drift, y: g + 40 - hash(i, 702) * (h + 40) - drift * 0.45, w: 28 + hash(i, 704) * 34,
+      rot: hash(i, 705) * 6 + t * 0.7, flip: hash(i, 706) * 6 + t * 1.6, seed: 2000 + i, shade: 0.42 + hash(i, 707) * 0.3, lines: false
+    })
+  }
+  ctx.restore()
+  // la espuma: hojas que saltan de la cresta
+  resample([pts[1], pts[2], pts[3], pts[4], pts[5]], 54).forEach((q, i) => {
+    const fly = (t * 1.6 + hash(i, 711) * 3) % 1
+    paperSheet(ctx, {
+      x: q.x - fly * 170 + (hash(i, 712) - 0.5) * 46, y: q.y - 14 - fly * 80 * hash(i, 713) + (hash(i, 714) - 0.5) * 34, w: 30 + hash(i, 715) * 30,
+      rot: t * 2 + i, flip: t * 3.2 + i * 1.3, seed: 2200 + i, shade: 0.22 + hash(i, 716) * 0.25, alpha: 1 - fly * 0.6
+    })
+  })
 }
 
 interface Cam { x: number; y: number; zoom: number }
@@ -94,12 +174,12 @@ export function subtitle(ctx: Ctx, text: string, t: number, a: number, b: number
 export function drawNight(ctx: Ctx, t: number, frame: number): void {
   // cámara: nace en la bombilla y se aleja; en la tormenta, empuja hacia el estudiante y tiembla
   const pull = ease.io(seg(t, 1.0, 6.6))
-  const push = ease.io(seg(t, 9.5, 17.5))
-  const cam: Cam = {
-    x: lerp(lerp(BULB.x, W / 2, pull), 900, push),
-    y: lerp(lerp(BULB.y + 30, 560, pull), 600, push),
-    zoom: lerp(lerp(3.1, 1, pull), 1.5, push)
-  }
+  const push = ease.io(seg(t, 9.5, 15))
+  // con el segundo relámpago, el plano se abre de golpe: él, diminuto, y la ola entera encima
+  const wide = t >= BOLTS[1][0] - 0.02
+  const cam: Cam = wide
+    ? { x: W / 2, y: 548, zoom: lerp(1.0, 1.07, seg(t, BOLTS[1][0], 17.8)) }
+    : { x: lerp(lerp(BULB.x, W / 2, pull), 900, push), y: lerp(lerp(BULB.y + 30, 560, pull), 600, push), zoom: lerp(lerp(3.1, 1, pull), 1.34, push) }
   const gust = smooth(seg(t, 7, 16))
   const shake: Pt = { x: noise1(t * 9, 3) * 7 * gust, y: noise1(t * 11, 4) * 5 * gust }
   // la luz de la lámpara: parpadea y muere
@@ -111,6 +191,8 @@ export function drawNight(ctx: Ctx, t: number, frame: number): void {
   ctx.globalAlpha = 1
   ctx.filter = 'none'
   ctx.drawImage(back.canvas, 0, 0)
+  const flash = lightning(t)
+  if (flash > 0.2) plane(ctx, cam, 0.15, () => BOLTS.forEach(([at, x], i) => t >= at && t < at + 0.62 && bolt(ctx, x, 40 + i, flash)), shake)
 
   // la ciudad de papel, en bruma
   plane(ctx, cam, 0.2, () => {
@@ -123,6 +205,8 @@ export function drawNight(ctx: Ctx, t: number, frame: number): void {
   // hojas lejanas
   plane(ctx, cam, 0.3, () => storm(ctx, t, density, { seed: 1, from: 0, to: 0.8 }), shake)
   plane(ctx, cam, 0.6, () => ctx.drawImage(mid.canvas, 0, 0), shake)
+  // la ola
+  plane(ctx, cam, 0.7, () => paperWave(ctx, t, ease.out(seg(t, 14.4, 17.0))), shake)
 
   // el rincón: mesa, flexo, estudiante, calendario
   plane(ctx, cam, 0.8, () => {
@@ -165,7 +249,7 @@ export function drawNight(ctx: Ctx, t: number, frame: number): void {
     if (up < 1) student(ctx, { x: 858, y: FLOOR, size: 262, kind: 'sit', lean: lerp(0.62, 0.3, seg(t, 9.5, 11)), wind, time: t, frame, alpha: 1 - up })
     if (up > 0) student(ctx, { x: 858, y: FLOOR, size: 262, kind: 'stand', lean: 0.18 + gust * 0.18, shield: smooth(seg(t, 11.8, 12.8)), wind, time: t, frame, alpha: up })
     // hojas que se levantan de las torres
-    storm(ctx, t, density, { seed: 1, from: 0.8, to: 1.5, light: BULB, lightOn })
+    storm(ctx, t, density * (wide ? 0.55 : 1), { seed: 1, from: 0.8, to: 1.5, light: BULB, lightOn })
   }, shake)
 
   // la luz: cono sobre la mesa, halo y motas
@@ -213,7 +297,7 @@ export function drawNight(ctx: Ctx, t: number, frame: number): void {
     ctx.filter = 'none'
   }, shake)
   const nearStorm = temp(4)
-  storm(nearStorm.ctx, t, density, { seed: 1, from: 1.5, to: 9, light: BULB, lightOn })
+  storm(nearStorm.ctx, t, density * (wide ? 0.3 : 1), { seed: 1, from: 1.5, to: 9, light: BULB, lightOn })
   ctx.save()
   ctx.filter = 'blur(5px)'
   ctx.drawImage(nearStorm.canvas, shake.x * 2, shake.y * 2)
@@ -228,8 +312,15 @@ export function drawNight(ctx: Ctx, t: number, frame: number): void {
     ctx.fillRect(0, 0, W, H)
     ctx.restore()
   }
+  if (flash > 0) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    ctx.fillStyle = col('#aebfe8', 0.5 * flash)
+    ctx.fillRect(0, 0, W, H)
+    ctx.restore()
+  }
   paperOver(ctx, 0.9)
-  // arranque desde negro y fundido final a papel (la ventisca lo cubre todo)
+  // arranque desde negro y fundido final a papel (la ola rompe y lo cubre todo)
   const fadeIn = 1 - seg(t, 0.05, 0.9)
   if (fadeIn > 0) {
     ctx.fillStyle = `rgba(0,0,0,${fadeIn})`

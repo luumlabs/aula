@@ -127,6 +127,66 @@ function planet(ctx: Ctx, x: number, y: number, r: number, t: number, appear: nu
   ctx.restore()
 }
 
+/** Una ballena de papel que cruza el cielo: acuarela azul, renglones de cuaderno y un surtidor de hojas. Mira a la izquierda. */
+function whale(ctx: Ctx, x: number, y: number, s: number, t: number, frame: number): void {
+  const flap = Math.sin(t * 1.5) * 0.24
+  const tail = (px: number, py: number): Pt => {
+    const dx = px - 330
+    return { x: 330 + dx * Math.cos(flap) - py * Math.sin(flap), y: dx * Math.sin(flap) + py * Math.cos(flap) }
+  }
+  const body: Pt[] = [
+    { x: -360, y: 14 }, { x: -338, y: -34 }, { x: -250, y: -76 }, { x: -110, y: -96 }, { x: 40, y: -88 }, { x: 190, y: -54 }, { x: 290, y: -22 },
+    tail(360, -12), tail(420, -62), tail(472, -94), tail(452, -34), tail(430, -4), tail(462, 40), tail(490, 80), tail(424, 56), tail(360, 16),
+    { x: 290, y: 24 }, { x: 180, y: 56 }, { x: 30, y: 84 }, { x: -120, y: 86 }, { x: -260, y: 62 }, { x: -340, y: 40 }
+  ]
+  ctx.save()
+  ctx.translate(x, y + Math.sin(t * 0.8) * 12)
+  ctx.rotate(Math.sin(t * 0.5) * 0.04 - 0.05)
+  ctx.scale(s, s)
+  // la aleta de atrás, antes que el cuerpo
+  const fin = blob([{ x: -170, y: 62 }, { x: -128, y: 150 + flap * 70 }, { x: -70, y: 166 + flap * 70 }, { x: -84, y: 80 }], 2, 47, 0.03)
+  wash(ctx, fin, P.dawn4, { alpha: 0.85, bleed: 3, edge: 0.5, grain: 0.4 })
+  const path = blob(body, 2.4, 41 + Math.floor(frame / 3), 0.02)
+  ctx.fillStyle = P.paper
+  ctx.fill(path)
+  wash(ctx, path, P.dawn4, { alpha: 0.92, bleed: 4, edge: 0.6, grain: 0.5, to: '#cfdbe8', fromY: -96, toY: 96 })
+  ctx.save()
+  ctx.clip(path)
+  // el vientre claro y los renglones: es una hoja de cuaderno
+  ctx.fillStyle = col(P.paper, 0.6)
+  ctx.fill(blob([{ x: -372, y: 34 }, { x: -200, y: 44 }, { x: 0, y: 62 }, { x: 170, y: 46 }, { x: 190, y: 110 }, { x: -100, y: 120 }, { x: -360, y: 90 }], 2, 43, 0.02))
+  ctx.strokeStyle = col('#ffffff', 0.42)
+  ctx.lineWidth = 2
+  for (let i = -5; i <= 2; i++) {
+    ctx.beginPath()
+    ctx.moveTo(-380, i * 17)
+    ctx.lineTo(520, i * 17 + 5)
+    ctx.stroke()
+  }
+  ctx.strokeStyle = col(P.brick, 0.5)
+  ctx.beginPath()
+  ctx.moveTo(-300, -110)
+  ctx.lineTo(-296, 110)
+  ctx.stroke()
+  ctx.restore()
+  for (let j = 0; j < 4; j++) pen(ctx, [{ x: -326, y: 46 + j * 9 }, { x: -200, y: 58 + j * 8 }, { x: -70, y: 70 + j * 6 }], col(P.ink, 0.5), 2, 480 + j, 1)
+  brush(ctx, [...body, body[0], body[1]], { width: 5, color: P.ink, seed: 44 + Math.floor(frame / 3), taper: 0.2, shake: 1.6, alpha: 0.9 })
+  pen(ctx, [{ x: -358, y: 12 }, { x: -306, y: 24 }, { x: -262, y: 16 }], P.ink, 3, 49, 1)
+  ctx.fillStyle = P.ink
+  ctx.beginPath()
+  ctx.arc(-292, -8, 5.5, 0, Math.PI * 2)
+  ctx.fill()
+  // el surtidor
+  for (let i = 0; i < 9; i++) {
+    const ph = (t * 0.8 + i / 9) % 1
+    paperSheet(ctx, {
+      x: -232 + (i - 4) * 16 * ph, y: -98 - ph * 150 + ph * ph * 70, w: 13 + ph * 9, rot: t * 3 + i, flip: t * 4 + i, seed: 6000 + i, shade: 0,
+      tint: '#fffaf0', toward: P.paperShade, outline: col(P.ink, 0.3), alpha: 1 - ph, lines: false
+    })
+  }
+  ctx.restore()
+}
+
 /** Tarjetas que vuelan como pájaros, en formación. */
 function flock(ctx: Ctx, t: number, start: number): void {
   const k = seg(t, start, start + 7.5)
@@ -179,6 +239,7 @@ export function drawStairs(ctx: Ctx, t: number, frame: number): void {
     title(ctx, String(9 - day), SUN.x, SUN.y + 6, 150, P.brickDeep, 0.62 * Math.min(1, tick * 4 + 0.15) * smooth(seg(t, 31.9, 32.5)), 0, 500)
   })
   view(0.25, () => ctx.drawImage(hills.canvas, -120, 40, W + 240, H + 60))
+  view(0.32, () => whale(ctx, lerp(W + 700, 420, seg(t, 33.0, 41.8)), 700 + Math.sin(t * 0.7) * 22, 1.08, t, frame))
   view(0.4, () => flock(ctx, t, 33.6))
   view(0.55, () => {
     molecule(ctx, 520, 500, 1, t, seg(t, 33.2, 34.0))

@@ -176,6 +176,29 @@ export async function renderScore(duration: number): Promise<Score> {
   }
   const flutter = (t: number, vel = 0.2, p = 0): void => air(t, 0.16 + hash(Math.round(t * 50), 7) * 0.2, [[0.1, vel], [1, 0]], 2400 + hash(Math.round(t * 50), 8) * 3000, 1200, 1.4, 'bandpass', p, -p)
 
+  /** Trueno: el chasquido, el golpe y un rumor grave que se aleja. */
+  const thunder = (t: number, vel = 1): void => {
+    air(t, 0.22, [[0.05, 0.8 * vel], [1, 0]], 4200, 900, 0.6, 'highpass')
+    air(t + 0.04, 2.8, [[0.03, 0.95 * vel], [0.25, 0.5 * vel], [1, 0]], 240, 55, 0.5, 'lowpass', -0.3, 0.3)
+    thump(t + 0.03, 0.95 * vel, 95, 27, 1.8)
+  }
+  /** El canto de la ballena: un seno que sube y cae, con mucha sala. */
+  const whaleCall = (t: number, f0: number, f1: number, f2: number, dur = 2.6, vel = 0.34): void => {
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.setValueAtTime(f0, t)
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.45)
+    o.frequency.exponentialRampToValueAtTime(f2, t + dur)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(vel, t + dur * 0.3)
+    g.gain.linearRampToValueAtTime(vel * 0.7, t + dur * 0.7)
+    g.gain.linearRampToValueAtTime(0.0001, t + dur)
+    o.connect(g).connect(pan(BELL, 0.35))
+    o.start(t)
+    o.stop(t + dur + 0.05)
+  }
+
   // ── Acto I · la noche (0–9) ──
   // un re grave que respira
   ;[38, 45].forEach((m, i) => {
@@ -215,6 +238,13 @@ export async function renderScore(duration: number): Promise<Score> {
   thump(12.5, 0.95, 90, 30, 1.4)
   piano(12.52, 38, 0.6, 6)
   piano(12.52, 26, 0.5, 6)
+
+  // los relámpagos y la gran ola
+  thunder(13.27, 0.9)
+  thunder(15.62, 1)
+  air(14.4, 2.9, [[0.5, 0.35], [0.95, 0.95], [1, 0.2]], 70, 280, 0.6, 'lowpass', 0.6, 0)
+  air(16.85, 1.25, [[0.1, 0.9], [1, 0]], 5200, 700, 0.5, 'highpass')
+  thump(17.05, 1, 80, 26, 1.7)
 
   // ── Acto II · el arco (18–30,4) ──
   air(18, 12, [[0.05, 0.22], [0.7, 0.08], [1, 0.03]], 500, 320, 0.6, 'bandpass', 0.3, -0.2)
@@ -258,6 +288,9 @@ export async function renderScore(duration: number): Promise<Score> {
     c.forEach((m, i) => piano(at + i * E, m + (i === 4 ? 12 : 0), 0.3 + (i === 0 ? 0.14 : 0) + (i === 4 ? 0.08 : 0), 2.2, (i / 7 - 0.5) * 0.8))
     at += E * 8
   }
+  // la ballena
+  whaleCall(34.3, 190, 330, 240)
+  whaleCall(38.2, 240, 410, 300, 2.9, 0.3)
   // las campanas cuentan los días que quedan
   const scale = [77, 79, 81, 82, 84, 86, 88, 89, 93]
   for (let d = 0; d < 9; d++) bell(32.0 + d * (9.3 / 9), scale[d], 0.34 + d * 0.02, 3, d % 2 ? 0.3 : -0.3)
@@ -305,6 +338,14 @@ export async function renderScore(duration: number): Promise<Score> {
   bell(END + 2.42, 89, 0.5, 5)
   bell(END + 3.1, 96, 0.3, 4.5, 0.3)
   thump(END + 2.4, 0.6, 70, 40, 1.4)
+  // las hojas que vuelven y forman el arco
+  for (let i = 0; i < 36; i++) flutter(END + 0.15 + Math.pow(i / 36, 0.8) * 2.2, 0.09 + (i / 36) * 0.12, hash(i, 91) * 1.6 - 0.8)
+  air(END + 0.2, 2.25, [[0.8, 0.26], [0.98, 0.5], [1, 0]], 500, 5200, 1, 'highpass')
+  // la coda
+  ;[[4.4, 72], [4.9, 77], [5.4, 81], [6.0, 84], [6.7, 89]].forEach(([d, m], i) => piano(END + d, m, 0.4, 4, (i - 2) * 0.15))
+  pad(END + 5.6, [41, 53, 60, 65, 69, 72], 3.9, 0.6, 1.2, 1900)
+  piano(END + 6.7, 41, 0.55, 4)
+  bell(END + 6.72, 101, 0.3, 4)
 
   const rendered = await ctx.startRendering()
   const n = Math.round(duration * RATE)
@@ -312,6 +353,6 @@ export async function renderScore(duration: number): Promise<Score> {
   // fundido final
   const fade = Math.round(1.1 * RATE)
   for (const c of channels) for (let i = 0; i < fade; i++) c[n - 1 - i] *= i / fade
-  master(channels, RATE, -15, -1.8)
+  master(channels, RATE, -15, -2.8)
   return { channels, sampleRate: RATE, lufs: +integratedLoudness(channels, RATE).toFixed(2), peak: +truePeak(channels).toFixed(2) }
 }

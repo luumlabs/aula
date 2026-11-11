@@ -2,7 +2,7 @@
 // contra el papel y, al cruzarlo, la noche se rompe.
 import { clamp, col, ease, H, hash, lerp, mix, noise1, P, seg, smooth, W, type Pt } from '../engine/core.ts'
 import { blob, ellipsePts, glow, paperOver, rays, sheet, sky, temp, wash, type Ctx, type Sheet } from '../engine/paint.ts'
-import { arch, groundLine } from '../engine/props.ts'
+import { arch, groundLine, paperSheet } from '../engine/props.ts'
 import { student } from '../engine/figure.ts'
 import { storm } from './night.ts'
 
@@ -55,6 +55,32 @@ export function drawFar(ctx: Ctx, t: number, frame: number): void {
     ctx.restore()
   }
   ctx.drawImage(wide.canvas, 0, 0)
+  view(0.1, () => {
+    // la tormenta escampa: salen las estrellas
+    const clear = smooth(seg(t, 19, 23.5))
+    for (let i = 0; i < 110; i++) {
+      const tw = 0.5 + 0.5 * Math.sin(t * (1.4 + hash(i, 903) * 3) + i)
+      ctx.fillStyle = col('#dfe6ff', clear * (0.2 + 0.65 * tw) * (0.35 + hash(i, 904) * 0.65))
+      ctx.beginPath()
+      ctx.arc(hash(i, 901) * (W + 300) - 150, hash(i, 902) * (HORIZON - 110), 0.9 + hash(i, 905) * 1.6, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    const sh = seg(t, 22.3, 23.0)
+    if (sh > 0 && sh < 1) {
+      const x = 380 + sh * 560
+      const y = 130 + sh * 170
+      const tail = ctx.createLinearGradient(x - 190, y - 58, x, y)
+      tail.addColorStop(0, col('#ffffff', 0))
+      tail.addColorStop(1, col('#ffffff', 0.9 * Math.sin(sh * Math.PI)))
+      ctx.strokeStyle = tail
+      ctx.lineWidth = 2.6
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(x - 190, y - 58)
+      ctx.lineTo(x, y)
+      ctx.stroke()
+    }
+  })
   view(0.2, () => {
     // el resplandor del horizonte y el arco, pequeño y encendido
     glow(ctx, FAR.x, FAR.y - 10, 760, P.brickLight, 0.26 * pulse)
@@ -157,6 +183,19 @@ export function drawGate(ctx: Ctx, t: number, frame: number): void {
   ctx.fill()
   ctx.restore()
   const into = seg(t, 30.0, 30.9)
+  // la tormenta entera, aspirada por el arco en espiral
+  const eye = { x: GATE.cx, y: GATE.ground - 230 }
+  for (let i = 0; i < 110; i++) {
+    const s0 = 27.3 + hash(i, 951) * 2.7
+    const p = seg(t, s0, s0 + 1.5)
+    if (p <= 0 || p >= 1) continue
+    const a = hash(i, 952) * Math.PI * 2 + p * (3 + hash(i, 953) * 3.5)
+    const r = (480 + hash(i, 954) * 700) * Math.pow(1 - p, 1.6)
+    paperSheet(ctx, {
+      x: eye.x + Math.cos(a) * r * 1.25, y: eye.y + Math.sin(a) * r * 0.8, w: 9 + 46 * (1 - p), rot: a + t * 3, flip: t * 5 + i, seed: 3000 + i,
+      shade: 0.5 * (1 - p), tint: mix(P.paper, P.sunCore, p), alpha: Math.min(1, p * 5), lines: false
+    })
+  }
   student(ctx, { x, y: GATE.ground + 2, size: lerp(318, 280, into), kind: 'walk', phase: (t - 27) * 1.5, lean: 0.12, reach: smooth(seg(t, 29.2, 30.2)) * 0.8, wind: lerp(0.7, 0.25, k), time: t, frame, ink: P.night0, alpha: 1 - into * 0.85 })
   ctx.restore()
   const st = temp(4)

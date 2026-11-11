@@ -7,4 +7,4 @@ export const LEN = 2.3
 export const N_SHOTS = 20
 /** Acaban las pantallas y empieza el final. */
 export const END = S0 + N_SHOTS * LEN
-export const DURATION = END + 5.8
+export const DURATION = END + 9.5
