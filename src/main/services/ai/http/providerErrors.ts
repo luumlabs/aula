@@ -36,7 +36,8 @@ export function parseErrorBody(data: Uint8Array | string): ParsedBody {
   const text = decoder.decode(bytes.subarray(0, 64 * 1024))
   const json = tryParseJSON(decoder.decode(bytes.subarray(0, 1_000_000)))
   if (json === undefined) return { message: plainText(text) }
-  return parseErrorJSON(json)
+  // Google (Gemini, API compatible con OpenAI) envuelve el error en una lista: [{"error":{…}}]
+  return parseErrorJSON(Array.isArray(json) && json.length === 1 ? json[0] : json)
 }
 
 export function parseErrorJSON(json: JSONValue): ParsedBody {
@@ -148,12 +149,14 @@ export function fromHTTP(status: number, body: Uint8Array | string, headers: Hea
   const code = String(status)
   let kind: AIErrorKind = 'http'
   let base: string
+  // Google (Gemini) contesta 400 a una clave que no vale («API key not valid. Please pass a valid API key.»), no 401
+  const badKey = (status === 400 || status === 403) && (/api key not valid|pass a valid api key|invalid api key/.test(detailLower) || codes.includes('api_key_invalid') || (status === 400 && /invalid_argument/.test(codes) && detailLower.includes('api key')))
   switch (true) {
-    case status === 401:
+    case status === 401 || badKey:
       kind = 'missingKey'
       base = tr(
-        `La clave de API de ${p} no es válida, ha caducado o no tiene permiso (401). Revísala en los ajustes de IA de Aula y vuelve a pegarla.`,
-        `The API key for ${p} isn't valid, has expired, or lacks permission (401). Check it in Aula's AI settings and paste it again.`
+        `La clave de API de ${p} no es válida, ha caducado o no tiene permiso (${code}). Revísala en los ajustes de IA de Aula y vuelve a pegarla.`,
+        `The API key for ${p} isn't valid, has expired, or lacks permission (${code}). Check it in Aula's AI settings and paste it again.`
       ) + (ctx.unauthorizedHint ? ' ' + ctx.unauthorizedHint : '')
       break
     case status === 402:
