@@ -10,9 +10,12 @@ struct RootView: View {
             Color("Paper").ignoresSafeArea()
             switch model.stage {
             case .ready(let base):
-                WebView(base: base) { Task { await model.webFailed() } }
-                    .ignoresSafeArea()
-                    .transition(.opacity)
+                VStack(spacing: 0) {
+                    if model.inDemo { DemoBar { Task { await model.exitDemo() } } }
+                    WebView(base: base) { Task { await model.webFailed() } }
+                        .ignoresSafeArea(edges: model.inDemo ? [.horizontal, .bottom] : .all)
+                }
+                .transition(.opacity)
             default:
                 ConnectView(model: model)
                     .transition(.opacity)
@@ -48,6 +51,12 @@ struct ConnectView: View {
             content
                 .padding(.top, 2)
                 .frame(maxWidth: 460)
+            if model.demoArchive != nil {
+                // sin Mac a mano (o antes de instalar nada): Aula de verdad, con un curso de ejemplo
+                Button(Texts.demoAction) { Task { await model.startDemo() } }
+                    .buttonStyle(QuietButton())
+                    .padding(.top, 16)
+            }
             Spacer(minLength: 20)
             Steps(current: step)
                 .frame(maxWidth: 420)
@@ -288,6 +297,41 @@ private struct Steps: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Texts.stepsLabel(current))
+    }
+}
+
+/// La franja de la demostración: dice que lo es y deja salir.
+private struct DemoBar: View {
+    let exit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle().fill(Color.accentColor).frame(width: 7, height: 7)
+            Text(Texts.demoBar)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.primary)
+            Spacer(minLength: 8)
+            Button(Texts.demoExit, action: exit)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 7)
+        .background(Color.accentColor.opacity(0.1))
+        .background(Color("Paper"))
+    }
+}
+
+/// El botón secundario: una píldora de papel con borde fino.
+private struct QuietButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.callout.weight(.medium))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 42)
+            .background(Color.primary.opacity(configuration.isPressed ? 0.1 : 0.05), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.14), lineWidth: 1))
     }
 }
 

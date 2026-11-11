@@ -52,3 +52,5 @@ native/tsnet/bin/
 native/ios/Frameworks/
 native/ios/_verify/.derived/
 xcuserdata/
+# la demostración de la app de iOS: se graba con scripts/dev/ios-demo.mjs antes de archivar
+native/ios/Aula/Demo.aulademo

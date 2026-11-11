@@ -58,6 +58,7 @@ struct WebView: PlatformViewRepresentable {
         func show(_ base: URL, in view: WKWebView) {
             guard shown != base, var parts = URLComponents(url: base, resolvingAgainstBaseURL: false) else { return }
             shown = base
+            // la consulta de la dirección se conserva («?demo=1» en la demostración)
             parts.path = "/"
             parts.percentEncodedFragment = view.url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.percentEncodedFragment }
             if let url = parts.url { view.load(URLRequest(url: url)) }

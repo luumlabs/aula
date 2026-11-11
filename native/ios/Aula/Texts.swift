@@ -34,6 +34,14 @@ enum Texts {
     static var macAddress: String { "github.com/luumlabs/aula" }
     static var done: String { t("Hecho", "Done") }
 
+    // La demostración
+    static var demoAction: String { t("Probar con un curso de ejemplo", "Try it with an example course") }
+    static var demoBar: String { t("Demostración · nada se guarda", "Demo · nothing is saved") }
+    static var demoExit: String { t("Salir", "Exit") }
+    static var demoUnavailable: String { t("Esto no está en la demostración. Conecta con tu Mac para usar Aula entera.", "This isn’t part of the demo. Connect to your Mac to use all of Aula.") }
+
+    static var demoChatReply: String { t("Esto es la demostración: aquí solo puedo enseñarte este cuestionario de ejemplo. Con Aula en tu Mac te respondo con tus cursos y tus materiales.", "This is the demo, so here I can only show you this sample quiz. With Aula on your Mac, I answer from your own courses and materials.") }
+
     /// Los tres pasos de la conexión (1…3).
     static func step(_ n: Int) -> String {
         switch n {
