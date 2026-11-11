@@ -11,7 +11,7 @@ import { DEPTHS, type GenerationDepth } from './model'
 export interface AuditProblem {
   forAI: string
   forUser: string
-  /** Un consejo, no un fallo: se le pide al modelo una vez (en un repaso) y, si no lo cumple, la lección vale igual. */
+  /** Un consejo, no un fallo: se le pide al modelo en cada repaso y, si al final no lo cumple, la lección vale igual. */
   advice?: boolean
 }
 

@@ -3,6 +3,7 @@ import { Suspense, useEffect, useMemo, useReducer, useRef, useState, type ReactN
 import { AnimatePresence } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { SunCursor, ThemeProvider, Toaster, Spinner, cx, useTheme } from '@renderer/design'
+import { installDabs } from '@renderer/design/paint'
 import { api } from '@renderer/lib/api'
 import { setLanguage, pickLanguage } from '@renderer/i18n'
 import { applyEngineLanguage } from '@engine/language'
@@ -49,6 +50,7 @@ export function App() {
     // Windows y Linux: los botones de la ventana (titleBarOverlay, 48 px) se dibujan encima; lo flotante empieza debajo
     else if (api.platform !== 'web') document.documentElement.style.setProperty('--titlebar-h', '48px')
     wireSettings()
+    installDabs()
     wireCourses()
     installDevHooks()
   }, [])

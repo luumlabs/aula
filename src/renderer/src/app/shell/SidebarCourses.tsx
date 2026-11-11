@@ -1,7 +1,7 @@
 // Cursos en la barra lateral: icono pixel-art (cae en su sitio al aparecer), título y la cuenta atrás del examen.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { CourseIcon, Tooltip, cx, spring } from '@renderer/design'
+import { CourseIcon, Tooltip, cx, spring, SelectionPaint } from '@renderer/design'
 import { useNav, navigate } from '../router'
 import { useCourses } from '@renderer/lib/courses'
 import { daysUntil } from '@renderer/lib/format'
@@ -45,7 +45,7 @@ export function SidebarCourses({ collapsed }: { collapsed: boolean }) {
             aria-current={active ? 'page' : undefined}
             className={cx('no-drag relative flex w-full items-center gap-2.5 rounded-[10px] px-1.5 py-1.5 text-left transition-colors', !active && 'hover:bg-fill1', collapsed && 'justify-center')}
           >
-            {active && <motion.span layoutId="sidebar-selection" transition={spring.snappy} className="absolute inset-0 rounded-[10px] bg-selected" />}
+            {active && <motion.span layoutId="sidebar-selection" transition={spring.snappy} className="absolute inset-0"><SelectionPaint seed="barra" /></motion.span>}
             <span className="relative">
               <CourseIcon icon={c.icon} hue={c.hue} size={30} title={c.title} animation="drop" radius={8} />
               {problem && <span aria-hidden className={cx('absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full', issue === 'failed' ? 'bg-danger' : 'bg-warning')} />}

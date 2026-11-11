@@ -540,8 +540,9 @@ export class GenerationPipeline {
       if (usesTeam(this.state.request)) this.linkPractice(id)
       const remaining = this.audit(id)
       this.persistAudit(id)
-      // los consejos se piden una sola vez, tras el primer intento: si el repaso no los cumple, la lección vale igual
-      const advice = attempt === 1 ? this.audit(id, true).filter((p) => p.advice) : []
+      // los consejos se piden en cada repaso (hasta dos veces); si al último intento siguen sin cumplirse, la lección
+      // vale igual: un consejo nunca la deja «por revisar»
+      const advice = attempt < maxAttempts ? this.audit(id, true).filter((p) => p.advice) : []
       if (!remaining.length && !advice.length) { this.updateSkill(id, (s) => { s.status = 'done'; s.openIssues = 0; s.note = '' }); return }
       this.updateSkill(id, (s) => { s.openIssues = remaining.length; s.note = (remaining[0] ?? advice[0])?.forUser ?? '' })
     }

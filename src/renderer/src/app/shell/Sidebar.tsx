@@ -5,7 +5,7 @@ import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { create } from 'zustand'
-import { Icon, Tooltip, cx, spring, AulaMark, useTheme, type IconName } from '@renderer/design'
+import { Icon, Tooltip, cx, spring, AulaMark, useTheme, type IconName, SelectionPaint } from '@renderer/design'
 import { useNav, navigate, type Route } from '../router'
 import { SidebarCourses } from './SidebarCourses'
 import { useInboxCount } from './inboxCount'
@@ -157,7 +157,7 @@ function NavRow({ item, active, collapsed }: { item: NavItem; active: boolean; c
       aria-label={collapsed ? (item.count ? `${item.label} (${item.count})` : item.label) : undefined}
       className={cx('no-drag relative flex w-full items-center gap-2.5 h-8 rounded-[10px] px-2.5 t-ui transition-colors', active ? 'text-text font-medium' : 'text-text hover:bg-fill1', collapsed && 'justify-center px-0')}
     >
-      {active && <motion.span layoutId="sidebar-selection" transition={spring.snappy} className="absolute inset-0 rounded-[10px] bg-selected" />}
+      {active && <motion.span layoutId="sidebar-selection" transition={spring.snappy} className="absolute inset-0"><SelectionPaint seed="barra" /></motion.span>}
       <span className={cx('relative grid w-[18px] place-items-center', active ? 'text-text' : 'text-text2')}>{item.icon}</span>
       {!collapsed && <span className="relative flex-1 truncate text-left">{item.label}</span>}
       {!collapsed && item.count ? <span className="relative t-caption tabular">{item.count}</span> : null}

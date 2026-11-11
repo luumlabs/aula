@@ -88,6 +88,12 @@ grano de papel muy suave, algo fuera de registro de su línea. Minimalista y ama
 - **El diente del papel** (`.paper-grain`, en `paint/paint.css`): el fondo de las pantallas lleva un grano muy fino y quieto,
   como papel de acuarela; las tarjetas, encima, siguen lisas. Y la **muestra de pigmento** (`PigmentMark`, receta `swatch`):
   el color de identidad como pasadas de pincel plano en una esquina (tarjetas, notas de las lecciones, diapositivas).
+- **La fila elegida se pinta** (`SelectionPaint`, receta `pass`): en la barra lateral y en la lista de conversaciones, lo
+  elegido es una sola pasada de pincel plano en ladrillo muy aguado (entra cargada y se queda seca al final), no una
+  píldora gris. Se desliza de fila en fila con el `layoutId` de siempre. Para listas; no para celdas cuadradas.
+- **Toques de pincel** (`.dab`, `paint/dabs.ts`): los cuadraditos de color (días de la racha, dominio de cada tema y su
+  leyenda) van cortados a mano con la receta `tile`, cuatro variantes que se reparten solas. Si el cuadrado lleva anillo o
+  contorno de foco, el toque va en un `span` de dentro (la máscara recortaría el anillo).
 - Semilla fija (`seedOf('id')`): el mismo dibujo en cada arranque. Tintas: `--ink`, `--graphite`, `--pigment-brick`,
   `--pigment-sun` (en oscuro, claras y cálidas; nunca un gris; nada violeta). Nunca debajo de texto pequeño, campos ni
   ejercicios. Todo junto en la galería (`navigate({ name: 'gallery' })`).

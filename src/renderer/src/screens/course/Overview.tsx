@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { AnimatedNumber, Button, Card, Companion, Floating, Group, Icon, ProgressBar, Row, SectionTitle, Stagger, toneForHue, useTheme, type IconName } from '@renderer/design'
+import { AnimatedNumber, Button, Card, Companion, Floating, Group, Icon, ProgressBar, Row, SectionTitle, Stagger, toneForHue, useTheme, type IconName, cx } from '@renderer/design'
 import { COURSE_EDIT_EVENT } from './Actions'
 import type { Pack } from '@shared/schema/pack'
 import type { CourseOverview } from '@shared/ipc/course-view'
@@ -135,7 +135,7 @@ function TopicPixels({ pack, ov }: { pack: Pack; ov: CourseOverview }) {
         <span className="t-ui font-semibold text-text2">{t('topicPixels')}</span>
         <span className="flex items-center gap-1.5 t-caption" aria-hidden>
           {t('pixelsFrom')}
-          {[0, 1, 2, 3, 4].map((l) => <span key={l} className="w-2.5 h-2.5 rounded-[3px]" style={{ background: `var(--level-${l})` }} />)}
+          {[0, 1, 2, 3, 4].map((l) => <span key={l} className="dab w-2.5 h-2.5 rounded-[3px]" style={{ background: `var(--level-${l})` }} />)}
           {t('pixelsTo')}
         </span>
       </div>
@@ -153,8 +153,10 @@ function TopicPixels({ pack, ov }: { pack: Pack; ov: CourseOverview }) {
               whileHover={{ y: -2 }}
               onClick={() => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: s.id })}
               className="w-7 h-7 rounded-[6px] outline-offset-2"
-              style={{ background: `var(--level-${level})` }}
-            />
+            >
+              {/* el color va en un toque de pincel de dentro: así el contorno del foco del botón no se recorta */}
+              <span aria-hidden className={cx('dab block h-full w-full rounded-[6px]', `dab-${(i % 4) + 1}`)} style={{ background: `var(--level-${level})` }} />
+            </motion.button>
           )
         })}
       </div>
