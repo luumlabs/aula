@@ -66,6 +66,8 @@ export function Hero({ data }: { data: HomeSummary }) {
           )}
         </div>
 
+        {/* en pantallas estrechas (el teléfono), el mismo arco en pequeño junto a los botones */}
+        {!empty && <ArchLight scene={archLightFor(new Date().getHours())} className="@3xl:hidden absolute right-5 bottom-4 h-[92px] w-[110px]" />}
         {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche) */}
         <div className="hidden @3xl:flex w-[272px] flex-col items-center justify-center">
           <ArchLight scene={archLightFor(new Date().getHours())} className="h-[190px] w-[228px]" />
