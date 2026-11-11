@@ -32,6 +32,8 @@ export function Hero({ data }: { data: HomeSummary }) {
             <div className="flex items-center gap-2">
               <PixelSky size={18} />
               <span className="t-eyebrow">{capitalize(fmtDate(new Date()))}</span>
+              {/* en pantallas estrechas (el teléfono), el arco en pequeño a la derecha de la fecha: en su sitio, sin tapar nada */}
+              <ArchLight scene={archLightFor(new Date().getHours())} className="@3xl:hidden ml-auto -my-1 -mr-1 h-[60px] w-[72px]" />
             </div>
             <motion.h1 className="t-display mt-2.5 text-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}>
               {/* el saludo, subrayado a pincel: lo primero que se lee del día */}
@@ -66,8 +68,6 @@ export function Hero({ data }: { data: HomeSummary }) {
           )}
         </div>
 
-        {/* en pantallas estrechas (el teléfono), el mismo arco en pequeño junto a los botones */}
-        {!empty && <ArchLight scene={archLightFor(new Date().getHours())} className="@3xl:hidden absolute right-5 bottom-4 h-[92px] w-[110px]" />}
         {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche) */}
         <div className="hidden @3xl:flex w-[272px] flex-col items-center justify-center">
           <ArchLight scene={archLightFor(new Date().getHours())} className="h-[190px] w-[228px]" />
