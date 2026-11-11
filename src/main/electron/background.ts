@@ -11,7 +11,7 @@ import { tr } from '@shared/ai/i18n'
 import { proactiveIsActive } from '@shared/automations'
 import type { AppCommand } from '@shared/ipc'
 import {
-  automationCenter, bindPersistentSettings, configureAutomations, setInboxChatSink, studyReminders, type AutomationPlatforms, type StudyReminderNotice
+  automationCenter, bindPersistentSettings, configureAutomations, setInboxChatSink, studyReminders, type AutomationPlatforms, type AutomationStudio, type StudyReminderNotice
 } from '@main/services/automations'
 import { postSystemMessage } from '@main/services/assistant'
 import { seedDemoAutomations } from '@main/services/automations/demo'
@@ -20,6 +20,12 @@ import { getSettings, onSettingsChange } from '@main/services/settings'
 import { onCalendarChange } from '@main/services/calendar'
 import { onCourseChanged } from '@main/services/store'
 import { log } from '@main/services/log'
+import { getLibrary } from '@main/services/store'
+import { addCourseDocument } from '@main/services/documents/saving'
+import { aiLocale } from '@shared/ai/i18n'
+import { docKey } from '@shared/documents'
+import { IDs } from '@engine/base/ids'
+import { generationService } from './handlers/generation'
 import { platformBrowser } from './browser'
 import { emit } from './rpc'
 import { createMainWindow, getMainWindow } from './window'
@@ -87,6 +93,31 @@ function platformAccess(): AutomationPlatforms | null {
   }
 }
 
+/**
+ * Lo que Aula puede crear sola al adelantar trabajo: un repaso dentro de un curso (con la misma tubería que amplía cursos)
+ * y una guía entre los documentos del curso. Solo dentro de Aula: nada de esto toca la plataforma del estudiante.
+ */
+function automationStudio(): AutomationStudio | null {
+  const g = generationService()
+  if (!g) return null
+  return {
+    async createReview({ courseID, instruction }) {
+      const r = await g.extend(courseID, instruction)
+      return { runID: r.runId }
+    },
+    async saveGuide({ courseID, title, markdown }) {
+      const store = getLibrary().openPack(courseID)
+      if (!store) throw new AulaError('not_found', 'Ese curso ya no está.')
+      const lang = aiLocale()
+      const base = IDs.slug(title, 60) || 'guia'
+      const { saved } = addCourseDocument({
+        data: new TextEncoder().encode(`# ${title}\n\n${markdown.trim()}\n`), format: 'markdown', pages: 1, title, kind: 'guide', baseName: base, attachments: [], courseID
+      }, store, true, lang)
+      return { docKey: docKey({ kind: 'saved', packId: courseID, savedId: saved.id }) }
+    }
+  }
+}
+
 /** Con «Aula siempre activa», cerrar la ventana la esconde. */
 function guardWindow(win: BrowserWindow): void {
   win.on('close', (e) => {
@@ -145,6 +176,7 @@ export function startBackground(): void {
 
   configureAutomations({
     platforms: platformAccess,
+    studio: automationStudio,
     notify: (n) => postAutomationNotice(n, {
       open: (entryId) => openInbox(entryId),
       snooze: (entryId) => { automationCenter().snooze([entryId], Date.now() + 3_600_000) },

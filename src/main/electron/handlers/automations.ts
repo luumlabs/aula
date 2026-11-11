@@ -109,7 +109,7 @@ const TIME: Checker = (v, k) => time(v, k)
 
 /** Lo que la interfaz puede cambiar de «Aula siempre activa» (la pausa va por 'automations.pause'). */
 const PROACTIVE_FIELDS: Record<string, Checker> = {
-  enabled: BOOL, morningBrief: BOOL, platformCheck: BOOL, deadlineReminders: BOOL, examOffers: BOOL, weeklySummary: BOOL, followups: BOOL, notifications: BOOL, dockBadge: BOOL,
+  enabled: BOOL, morningBrief: BOOL, platformCheck: BOOL, deadlineReminders: BOOL, prepareAhead: BOOL, examOffers: BOOL, weeklySummary: BOOL, followups: BOOL, notifications: BOOL, dockBadge: BOOL,
   morningTime: TIME, platformCheckTime: TIME, weeklyTime: TIME,
   platformCheckDays: (v, k) => [...new Set(list(v, k, 7, (x) => int(x, k, 1, 7)))].sort((a, b) => a - b),
   reminderHours: (v, k) => [...new Set(list(v, k, 8, (x) => num(x, k, 0.25, 24 * 14)))].sort((a, b) => b - a),

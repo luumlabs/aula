@@ -206,6 +206,7 @@ export function decodeProactive(v: unknown): ProactiveSettings {
     platformCheck: bool(v.platformCheck) ?? def.platformCheck,
     platformCheckTime: parseTime(v.platformCheckTime) ?? def.platformCheckTime,
     platformCheckDays: (Array.isArray(v.platformCheckDays) ? nums(v.platformCheckDays) : def.platformCheckDays).filter((d) => Number.isInteger(d) && d >= 1 && d <= 7),
+    prepareAhead: bool(v.prepareAhead) ?? def.prepareAhead,
     deadlineReminders: bool(v.deadlineReminders) ?? def.deadlineReminders,
     reminderHours: (Array.isArray(v.reminderHours) ? nums(v.reminderHours) : def.reminderHours).filter((h) => h > 0),
     examOffers: bool(v.examOffers) ?? def.examOffers,
@@ -316,7 +317,7 @@ function decodeLedger(v: unknown): NoticeLedger {
 }
 
 export function emptyBook(): AutomationBook {
-  return { states: {}, usage: {}, followups: {}, offeredEvents: [], notices: { sent: [], held: [] }, recentCosts: [], announced: {}, signInNeeded: {}, aiFailureStreak: 0, aiPauseLevel: 0 }
+  return { states: {}, usage: {}, followups: {}, offeredEvents: [], preparedEvents: [], preparedPerDay: {}, notices: { sent: [], held: [] }, recentCosts: [], announced: {}, signInNeeded: {}, aiFailureStreak: 0, aiPauseLevel: 0 }
 }
 
 export function decodeBook(v: unknown): AutomationBook {
@@ -328,6 +329,8 @@ export function decodeBook(v: unknown): AutomationBook {
     usage: numRecord(v.usage),
     followups: numRecord(v.followups),
     offeredEvents: strings(v.offeredEvents),
+    preparedEvents: strings(v.preparedEvents),
+    preparedPerDay: numRecord(v.preparedPerDay),
     readUpdatesAt: date(v.readUpdatesAt),
     budgetNotifiedDay: str(v.budgetNotifiedDay),
     lastTick: date(v.lastTick),

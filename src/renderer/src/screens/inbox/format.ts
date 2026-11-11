@@ -95,7 +95,7 @@ export const KIND_ICONS: Record<InboxKind, IconName> = {
 }
 
 export const ROUTINE_ICONS: Record<ProactiveRoutine, IconName> = {
-  morningBrief: 'today', platformCheck: 'inbox', deadlineReminders: 'bell', examOffers: 'exam', weeklySummary: 'calendar'
+  morningBrief: 'today', platformCheck: 'inbox', deadlineReminders: 'bell', prepareAhead: 'refine', examOffers: 'exam', weeklySummary: 'calendar'
 }
 
 /** El icono que manda el proceso principal (si no existe, uno neutro). */

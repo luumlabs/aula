@@ -73,6 +73,10 @@ export function runCardAction(a: AssistantCardAction, entry: InboxEntry): void {
     case 'cancelAutomation':
       if (v) inboxOps.remove(v)
       return
+    case 'openDocument':
+      // una guía que Aula dejó hecha: se abre en el lector
+      if (v) return navigate({ name: 'documents', doc: v })
+      return
     case 'openToday':
       return navigate({ name: 'home' })
     case 'openCalendar':

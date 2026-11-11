@@ -20,6 +20,7 @@ export function defaultProactiveSettings(): ProactiveSettings {
     platformCheckDays: [...WEEKDAYS.schoolDays],
     deadlineReminders: true,
     reminderHours: [24, 2],
+    prepareAhead: true,
     examOffers: true,
     examOfferDays: 21,
     weeklySummary: true,
@@ -89,6 +90,8 @@ export function routineSchedule(p: ProactiveSettings, r: ProactiveRoutine): Auto
     case 'platformCheck': return { ...base, times: [p.platformCheckTime], weekdays: [...p.platformCheckDays] }
     case 'deadlineReminders': return { ...defaultSchedule('beforeEvents'), hoursBefore: p.reminderHours.length ? [...p.reminderHours] : [24, 2] }
     case 'examOffers': return { ...base, times: [timeFromMinutes(timeMinutes(p.morningTime) + 1)] }
+    // cada tres horas mira si hay algo cercano que adelantar (sin nada, la pasada no gasta)
+    case 'prepareAhead': return { ...defaultSchedule('interval'), everyHours: 3 }
     case 'weeklySummary': return { ...base, times: [p.weeklyTime], weekdays: [p.weeklyDay] }
   }
 }

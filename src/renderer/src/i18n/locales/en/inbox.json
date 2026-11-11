@@ -128,7 +128,9 @@
     "runsLeft_other": "Enough left today for about {{count}} more checks.",
     "exhausted": "Today’s budget is used up. Urgent items still come through from a reserve; the rest resumes tomorrow.",
     "upNext": "Coming up",
-    "upNextEmpty": "When you turn on “Aula always on”, this is where you’ll see what it will do and when."
+    "upNextEmpty": "When you turn on “Aula always on”, this is where you’ll see what it will do and when.",
+    "moreDetail": "What it does and when",
+    "lessDetail": "Hide the detail"
   },
   "routines": {
     "morningBrief": "Morning summary",
@@ -142,7 +144,10 @@
     "examOffersDetail": "If an exam is coming up and you don’t have a course for it, offers to help you prepare.",
     "weeklySummaryDetail": "How your week went and what’s coming.",
     "examOffersWhen_one": "≤ {{count}} day",
-    "examOffersWhen_other": "≤ {{count}} days"
+    "examOffersWhen_other": "≤ {{count}} days",
+    "prepareAhead": "Get ahead",
+    "prepareAheadDetail": "If a quiz or a deadline is near, it leaves you a review or a guide.",
+    "prepareAheadWhen": "every 3 h"
   },
   "health": {
     "paused": "Paused",
@@ -284,7 +289,7 @@
     "day": "{{day}} at {{time}}"
   },
   "settingsCard": {
-    "hint": "Summarizes your day, reminds you of deadlines and exams, checks your platform and prepares reviews, even with the window closed. On your platform it only reads: it never submits, starts exams, sends messages or changes anything.",
+    "hint": "Turn it on and Aula keeps working for you even with the window closed. There is nothing else to set up.",
     "style": "Style",
     "styles": {
       "quiet": "Quiet",
@@ -306,6 +311,13 @@
     "openAtLoginHint": "When you close the window, Aula stays in the tray doing what’s scheduled.",
     "followups": "Let Aula schedule follow-ups",
     "followupsHint": "“Tonight I’ll check whether the teacher posted the slides and tell you.” They use the same budget.",
-    "manage": "Routines and automations"
+    "manage": "Routines and automations",
+    "does": [
+      "It checks your platform and your calendar and tells you what is coming.",
+      "If a quiz or a deadline is near, it leaves you a short review or a guide to plan it.",
+      "It only reads your platform: it never submits, writes or changes anything there."
+    ],
+    "more": "More options",
+    "less": "Fewer options"
   }
 }

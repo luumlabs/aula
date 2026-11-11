@@ -41,6 +41,8 @@ export interface TurnContext {
   proactive: ProactiveSettings
   now: Date
   tz: string
+  /** Adelantar trabajo: lo que está cerca y hay que dejar preparado en esta pasada. */
+  candidates?: readonly { eventID: string; title: string; kind: 'review' | 'guide'; eventKind: string; start: Date; hoursLeft: number; course?: string; courseID?: string; url?: string }[]
 }
 
 export function turnPrompt(a: Automation, c: TurnContext): string {
@@ -57,7 +59,7 @@ export function turnPrompt(a: Automation, c: TurnContext): string {
   if (c.previous) {
     const prev = plainText(c.previous.summary).slice(0, 400)
     s += `Last check: ${c.previous.started} — ${prev || '(no summary)'}\n`
-  } else {
+  } else if (a.routine !== 'prepareAhead') {
     s += 'This is the FIRST check of this task: describe briefly what is there now and say you will keep an eye on it.\n'
   }
   if (c.known.length) {
@@ -81,6 +83,13 @@ export function turnPrompt(a: Automation, c: TurnContext): string {
   }
   s += `Web search: off. Daily study goal: ${c.dailyMinutes} min.\n`
   if (proactiveIsActive(c.proactive, c.now.getTime()) && c.proactive.followups) s += 'You may schedule ONE follow-up for later with schedule_followup if it really helps (e.g. check again tonight); never at night.\n'
+  if (c.candidates?.length) {
+    s += '\n## What is close (prepare something for EACH of these now)\n'
+    for (const k of c.candidates) {
+      const left = k.hoursLeft < 36 ? `in about ${Math.max(1, Math.round(k.hoursLeft))} h` : `in ${Math.round(k.hoursLeft / 24)} days`
+      s += `- event_id=${k.eventID} · ${k.eventKind} «${k.title}» · ${left} (${k.start.toISOString()})${k.course ? ` · course: ${k.course}${k.courseID ? ` (course_id=${k.courseID})` : ' (not in Aula)'}` : ''}${k.url ? ` · ${k.url}` : ''} → ${k.kind === 'review' ? 'prepare_review' : 'save_guide'}\n`
+    }
+  }
   const guide = routineGuide(a)
   if (guide) s += '\n## How to do this routine\n' + guide + '\n'
   s += '\nDo the task now and finish with report_check.'
@@ -100,6 +109,11 @@ End with one friendly line proposing to start together («¿Empezamos con…?»)
     case 'platformCheck':
       return `Look at the student's study platform(s) for what's NEW since the last check: announcements, new materials/files, new assignments, grade changes; and, for each class held today (calendar_events), what the professor posted for it.
 For new class material: read it and write a short «repasito» in the summary (3–5 key ideas + 2 quick check questions). If it belongs to an Aula course you may propose a fuller review with offer_review. If nothing is new, say it in one line.`
+    case 'prepareAhead':
+      return `You are getting ahead FOR the student, on your own initiative, like a good tutor who sees what is coming. For each event listed under «What is close»:
+- An exam or quiz (→ prepare_review): look at study_overview to see how they are doing in that course (readiness, mistakes and cards due) and, if the platform is available and the event has a page, read what it covers. Then call prepare_review with a precise instruction: the topics it covers, the weakest ones first, a compact recap of the key ideas, one worked example per type of problem and 8–10 exam-style exercises. It must be SHORT: something they can do the evening before.
+- An assignment (→ save_guide): read its page on the platform if you can (platform_read on its address) to know exactly what is asked, the format and the rubric. Then write the guide: what they are asking in plain words, what to review first (name the lessons of the Aula course that cover it), a step-by-step plan with realistic times that ends before the deadline, a checklist to verify before handing in, and the mistakes that cost points. You NEVER do the assignment: no answers, no solved problems of the assignment, no text to hand in.
+Do not ask permission and do not offer: make it. Then finish with report_check: a warm, short summary (≤ 90 words) that says what you prepared, for what and why («Mañana tienes la prueba de límites y es lo que más te cuesta: te dejé un repaso de 15 minutos en el curso»), and set important=true. Put each event in \`items\` (key = event id). If you could not prepare something, say what and why in one line.`
     case 'weeklySummary':
       return 'Weekly summary (≤ 150 words): how the week went (study_overview: progress, weakest lessons, mistakes and cards due), what is coming next week (calendar_events for 7 days: exams and deadlines) and a short suggested plan for the week. Propose one concrete thing to do together.'
     default:

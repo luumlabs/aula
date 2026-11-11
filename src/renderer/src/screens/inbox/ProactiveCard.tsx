@@ -1,6 +1,7 @@
 // «Aula siempre activa» en «Novedades» (ProactiveViews.swift): la marca de Aula con su estado (el sol sale y se pone mientras
 // revisa), el interruptor, lo que necesita al estudiante con su arreglo, las rutinas con su hora y lo usado hoy. Debajo, lo
 // próximo que hará, en una tarjeta que flota despacio.
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { AulaMark, Button, Card, Floating, Icon, Menu, ProgressBar, SectionTitle, Switch, cx } from '@renderer/design'
@@ -29,6 +30,7 @@ function routineWhen(t: (k: string, o?: Record<string, unknown>) => string, p: P
     case 'platformCheck': return timeDisplay(p.platformCheckTime)
     case 'deadlineReminders': return [...p.reminderHours].sort((a, b) => b - a).map((h) => hoursText(t as never, h)).join(' · ')
     case 'examOffers': return t('routines.examOffersWhen', { count: p.examOfferDays })
+    case 'prepareAhead': return t('routines.prepareAheadWhen')
     case 'weeklySummary': return `${weekdayName(p.weeklyDay, 'short').replace('.', '')} ${timeDisplay(p.weeklyTime)}`
   }
 }
@@ -48,6 +50,7 @@ export function ProactiveCard({ snapshot: s, compact }: { snapshot: AutomationsS
   const enabled = settings?.persistent.enabled ?? s.proactive.enabled
   const p = s.proactive
   const issue = s.health[0]
+  const [more, setMore] = useState(false)
   const mark = s.running.length ? 'working' : enabled && s.active ? 'idle' : 'paused'
   const pauseItems = [
     { label: t('proactive.pauseHour'), onSelect: () => pauseProactive(Date.now() + 3_600_000) },
@@ -79,9 +82,15 @@ export function ProactiveCard({ snapshot: s, compact }: { snapshot: AutomationsS
           )}
         </div>
       )}
+      {/* las rutinas, una a una, quedan plegadas: para que funcione basta el interruptor de arriba */}
       {!compact && (
+        <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="mt-4 inline-flex items-center gap-1.5 rounded-[8px] t-ui font-medium text-text2 hover:text-text outline-none focus-visible:ring-2 focus-visible:ring-accent-line">
+          <Icon name={more ? 'chevron-up' : 'chevron-down'} size={14} />{t(more ? 'proactive.lessDetail' : 'proactive.moreDetail')}
+        </button>
+      )}
+      {!compact && more && (
         <>
-          <div className="t-ui font-semibold text-text2 mt-5 mb-1">{t('proactive.routines')}</div>
+          <div className="t-ui font-semibold text-text2 mt-3 mb-1">{t('proactive.routines')}</div>
           <div className="flex flex-col">
             {PROACTIVE_ROUTINES.map((r, i) => {
               const light = LIGHT_ROUTINES.includes(r)

@@ -2,6 +2,7 @@
 // (Discreta · Equilibrada · Muy atenta), horas de silencio, notificaciones, lo no leído en el icono, abrir al iniciar sesión,
 // los seguimientos de Aula, lo usado hoy y el acceso a las rutinas y automatizaciones. Sustituye a la tarjeta sencilla de
 // «Aula siempre activa» de Ajustes. Lo que es de settings.json va por 'settings.update'; lo del modo, por 'automations.*'.
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { AulaMark, Button, Card, Icon, ProgressBar, SegmentedTabs, Switch, cx } from '@renderer/design'
@@ -28,11 +29,11 @@ export function AutomationsSettingsCard() {
   const settings = useSettings((s) => s.settings)
   const update = useSettings((s) => s.update)
   const { data: snap } = useRpc('automations.snapshot', undefined, { events: ['automations.changed', 'settings.changed'] })
+  const [more, setMore] = useState(false)
   if (!settings) return null
   const ps = settings.persistent
   const on = ps.enabled
   const p = snap?.proactive
-  const style = p?.style === 'custom' ? 'custom' : ps.style
   const quiet = ps.quietHours
   const status = !on ? t('proactive.off') : snap && !snap.active ? t('proactive.paused') : snap?.nextUp ? t('proactive.next', { what: snap.nextUp.routine ? t(`routines.${snap.nextUp.routine}`) : snap.nextUp.title, when: whenText(t, snap.nextUp.at) }) : t('proactive.on')
   return (
@@ -51,13 +52,18 @@ export function AutomationsSettingsCard() {
         </div>
       </div>
 
-      <motion.div initial={false} animate={{ opacity: on ? 1 : 0.5 }} className="mt-5 flex flex-col gap-3">
-        <div className="t-ui font-semibold text-text2">{t('settingsCard.style')}</div>
-        <SegmentedTabs fill value={style === 'custom' ? ps.style : style} onChange={(v) => void update({ persistent: { style: v } })} items={(['quiet', 'balanced', 'attentive'] as const).map((s) => ({ id: s, label: t(`settingsCard.styles.${s}`) }))} />
-        <p className="t-footnote text-text3 -mt-1">{t(`settingsCard.styleDetail.${style}`)}</p>
-      </motion.div>
+      {/* lo que hace, en tres líneas: nada que configurar para que funcione */}
+      <ul className="mt-4 flex flex-col gap-1.5">
+        {(t('settingsCard.does', { returnObjects: true }) as unknown as string[]).map((line, i) => (
+          <li key={i} className="flex items-start gap-2 t-callout text-text2"><Icon name="check" size={14} className="mt-[3px] shrink-0 text-accent-text" /><span>{line}</span></li>
+        ))}
+      </ul>
 
-      <div className="mt-3">
+      <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="mt-4 inline-flex items-center gap-1.5 self-start rounded-[8px] t-ui font-medium text-text2 hover:text-text outline-none focus-visible:ring-2 focus-visible:ring-accent-line">
+        <Icon name={more ? 'chevron-up' : 'chevron-down'} size={14} />{t(more ? 'settingsCard.less' : 'settingsCard.more')}
+      </button>
+      {more && (
+        <div className="mt-1">
         <div className="flex items-start justify-between gap-4 py-3">
           <div className="min-w-0">
             <div className="t-callout font-medium">{t('settingsCard.quietHours')}</div>
@@ -73,11 +79,7 @@ export function AutomationsSettingsCard() {
           <Switch checked={!!quiet} onChange={(v) => void update({ persistent: { quietHours: v ? { from: p?.quiet.from ?? '22:30', to: p?.quiet.to ?? '07:30' } : null } })} label={t('settingsCard.quietHours')} />
         </div>
         <Toggle title={t('settingsCard.notifications')} hint={t('settingsCard.notificationsHint')} checked={p?.notifications ?? true} onChange={(v) => setProactive({ notifications: v })} disabled={!p} />
-        <Toggle title={t('settingsCard.badge')} checked={p?.dockBadge ?? true} onChange={(v) => setProactive({ dockBadge: v })} disabled={!p} />
         <Toggle title={t('settingsCard.openAtLogin')} hint={t('settingsCard.openAtLoginHint')} checked={ps.openAtLogin} onChange={(v) => void update({ persistent: { openAtLogin: v } })} />
-        <Toggle title={t('settingsCard.followups')} hint={t('settingsCard.followupsHint')} checked={p?.followups ?? true} onChange={(v) => setProactive({ followups: v })} disabled={!p || !on} />
-      </div>
-
       {on && snap && (
         <div className="mt-2">
           <div className="flex items-baseline justify-between t-ui">
@@ -89,9 +91,11 @@ export function AutomationsSettingsCard() {
         </div>
       )}
 
-      <div className="mt-4">
-        <Button variant="secondary" icon={<Icon name="repeat" size={14} />} onClick={() => openInboxTab('automations')}>{t('settingsCard.manage')}</Button>
-      </div>
+          <div className="mt-4">
+            <Button variant="secondary" icon={<Icon name="repeat" size={14} />} onClick={() => openInboxTab('automations')}>{t('settingsCard.manage')}</Button>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
