@@ -84,7 +84,7 @@ A small SwiftUI app, no third-party packages:
 | File | What it does |
 |---|---|
 | `Aula/AulaApp.swift`, `AppModel.swift`, `RootView.swift`, `Texts.swift` | The app, its state machine (sign in → find the Mac → open) and the waiting screens (es/en) |
-| `Aula/WebView.swift` | The `WKWebView` that shows Aula through the loopback tunnel; outside links open in the browser |
+| `Aula/WebView.swift` | The `WKWebView` that shows Aula through the loopback tunnel; outside links open in the browser. It tells the page the real safe-area margins (SwiftUI hides them from a full-screen view), turns off iOS 26's blur under the status bar, and makes the page behave like an app: no zoom, no long-press menus on links and images, no selecting the text of buttons |
 | `Aula/Tailnet/TailnetController.swift` | Owns the embedded TailscaleKit node, finds `aula-mac` among the tailnet's machines |
 | `Aula/Tailnet/LoopbackForwarder.swift` | `127.0.0.1` listener piped through the tailnet. Only connections that present the listener's secret (the `aula_gate` cookie the app sets for the web view, or `_ft` for native requests) are dialed; the port and secret change after a suspension |
 | `Aula/DemoServer.swift` | The demo (*Try it with an example course*): a tiny HTTP server on `127.0.0.1` that plays back a recording of the real app, so Aula can be tried with no Mac. See below |
@@ -184,11 +184,19 @@ Verified on a Mac, by tests in this repository:
   *Create course*, which answers "This isn't part of the demo". `_verify/DemoTest` checks the server on macOS against the recording (dates moved to today, files, recorded
   and substituted calls, chat events).
 
-Not verified yet (it needs a signed-in tailnet and a real device):
+- On a real iPad (iPadOS 27.2), built with the owner's development team and installed over the cable
+  (`xcodebuild … -allowProvisioningUpdates DEVELOPMENT_TEAM=<team>` and `xcrun devicectl device install app`): signing
+  in to Tailscale, finding `aula-mac`, typing the code and using the Aula of the Mac through the tunnel (Today, a chat
+  with its answer). After reinstalling the app it reconnects by itself. The interface starts below the time and the
+  battery, with nothing blurred under them.
+- In the iPhone simulator, a two-finger pinch does not zoom the interface, and the bottom tabs sit above the home
+  indicator.
 
-- Everything after signing in to Tailscale: finding `aula-mac`, typing the code and using Aula through the tunnel.
-- Running it on a real iPhone or iPad (it needs your Apple ID as the signing team).
-- A full session over a real tailnet between a device and the Mac.
+Not verified yet:
+
+- A real iPhone.
+- On a real device: that a pinch or a double tap does not zoom (only tried in the simulator), the camera and the
+  microphone, and a long session with the device going to sleep and coming back.
 - Recordings playing through the tunnel inside `WKWebView` (media requests must carry the tunnel cookie).
 
 Known limits: no push notifications on the phone (that needs Apple's push service and a paid developer account; the

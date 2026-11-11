@@ -16,6 +16,27 @@ struct WebView: PlatformViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(onFailure: onFailure) }
 
+    #if canImport(UIKit)
+    /// Que se sienta una app y no una página: sin zoom (ni con dos dedos ni con doble toque), sin el menú de mantener
+    /// pulsado sobre enlaces e imágenes, sin el destello gris al tocar y sin seleccionar el texto de los botones. El
+    /// texto que se lee (lecciones, chat) y el que se escribe sí se pueden seleccionar.
+    private static let solid = """
+    (() => {
+      const meta = document.querySelector('meta[name="viewport"]') || document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'viewport' }));
+      meta.setAttribute('content', 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+      const style = document.createElement('style');
+      style.textContent = `
+        html { -webkit-text-size-adjust: 100%; touch-action: manipulation; overscroll-behavior: none; }
+        body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        * { -webkit-tap-highlight-color: transparent; }
+        a, img, svg { -webkit-user-drag: none; }
+        input, textarea, [contenteditable], p, li, td, th, pre, code, blockquote, .katex { -webkit-user-select: text; user-select: text; }
+      `;
+      document.head.appendChild(style);
+    })();
+    """
+    #endif
+
     private func makeView(_ context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
@@ -23,7 +44,12 @@ struct WebView: PlatformViewRepresentable {
         // las grabaciones de clase se ven dentro de la página, no a pantalla completa por la fuerza
         config.allowsInlineMediaPlayback = true
         #endif
+        #if canImport(UIKit)
+        config.userContentController.addUserScript(WKUserScript(source: Self.solid, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        let view = AulaWebView(frame: .zero, configuration: config)
+        #else
         let view = WKWebView(frame: .zero, configuration: config)
+        #endif
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         view.allowsBackForwardNavigationGestures = false
@@ -34,6 +60,16 @@ struct WebView: PlatformViewRepresentable {
         // la interfaz ya deja sitio a la muesca y a la barra de inicio (env(safe-area-inset-*)) y se desplaza por dentro
         view.scrollView.contentInsetAdjustmentBehavior = .never
         view.scrollView.bounces = false
+        // una app, no una página: sin vista previa al mantener pulsado un enlace y sin zoom con los dedos
+        view.allowsLinkPreview = false
+        view.scrollView.delegate = context.coordinator
+        // iOS 26 difumina lo que pasa por debajo de la hora y la batería: la interfaz ya deja ese hueco limpio
+        if #available(iOS 26.0, *) {
+            view.scrollView.topEdgeEffect.isHidden = true
+            view.scrollView.bottomEdgeEffect.isHidden = true
+            view.scrollView.leftEdgeEffect.isHidden = true
+            view.scrollView.rightEdgeEffect.isHidden = true
+        }
         #endif
         context.coordinator.show(base, in: view)
         return view
@@ -114,3 +150,49 @@ struct WebView: PlatformViewRepresentable {
         }
     }
 }
+
+#if canImport(UIKit)
+extension WebView.Coordinator: UIScrollViewDelegate {
+    /// La página ya pide que no haya zoom; por si WebKit lo deja pasar, el gesto de dos dedos se apaga aquí.
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+        scrollView.pinchGestureRecognizer?.isEnabled = false
+    }
+}
+
+/// La vista web a toda pantalla. SwiftUI le quita los márgenes seguros a una vista que los ignora, y la página, que deja
+/// sitio a la hora y la batería con env(safe-area-inset-*), se quedaba debajo. Aquí se le dicen los de verdad: los de la
+/// ventana, descontando lo que ya tapa otra cosa (la barra de la demostración).
+final class AulaWebView: WKWebView {
+    private var told: UIEdgeInsets = .zero
+
+    override var safeAreaInsets: UIEdgeInsets {
+        guard let window else { return super.safeAreaInsets }
+        let frame = convert(bounds, to: window)
+        let safe = window.safeAreaInsets
+        return UIEdgeInsets(
+            top: max(0, safe.top - frame.minY),
+            left: max(0, safe.left - frame.minX),
+            bottom: max(0, safe.bottom - (window.bounds.maxY - frame.maxY)),
+            right: max(0, safe.right - (window.bounds.maxX - frame.maxX))
+        )
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        retell()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        retell()
+    }
+
+    /// WebKit vuelve a leer los márgenes cuando se le avisa de que cambiaron.
+    private func retell() {
+        let now = safeAreaInsets
+        guard now != told else { return }
+        told = now
+        safeAreaInsetsDidChange()
+    }
+}
+#endif
