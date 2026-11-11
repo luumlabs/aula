@@ -1,6 +1,6 @@
 // El corto, de principio a fin: qué escena pinta cada instante y el acabado común (formato panorámico, viñeta, grano).
 import { col, ease, H, P, seg, W, bell } from './engine/core.ts'
-import { finish, sheet, type Ctx, type Sheet } from './engine/paint.ts'
+import { finish, sheet, temp, type Ctx, type Sheet } from './engine/paint.ts'
 import { drawNight, initNight } from './scenes/night.ts'
 import { bloomMask, drawFar, drawGate, initArch } from './scenes/arch.ts'
 import { drawExam, drawStairs, initDawn } from './scenes/dawn.ts'
@@ -37,14 +37,21 @@ export function drawFilm(ctx: Ctx, t: number, frame: number): void {
       alt.ctx.globalAlpha = 1
       alt.ctx.clearRect(0, 0, W, H)
       drawStairs(alt.ctx, 31.6, frame)
+      // la mancha tiene el borde corrido, como acuarela sobre papel mojado, y un cerco de pigmento dorado
+      const m = temp(5)
+      m.ctx.filter = 'blur(54px)'
+      m.ctx.fillStyle = '#fff'
+      m.ctx.fill(mask)
+      m.ctx.filter = 'none'
+      m.ctx.globalCompositeOperation = 'source-in'
+      m.ctx.drawImage(alt.canvas, 0, 0)
+      ctx.drawImage(m.canvas, 0, 0)
       ctx.save()
-      ctx.filter = 'blur(10px)'
-      ctx.clip(mask)
-      ctx.drawImage(alt.canvas, 0, 0)
-      ctx.restore()
-      ctx.save()
-      ctx.clip(mask)
-      ctx.drawImage(alt.canvas, 0, 0)
+      ctx.globalCompositeOperation = 'screen'
+      ctx.filter = 'blur(26px)'
+      ctx.strokeStyle = col(P.glow, 0.55 * (1 - seg(t, 31.2, 31.75)))
+      ctx.lineWidth = 46
+      ctx.stroke(mask)
       ctx.restore()
     }
     const flash = bell(t, 30.0, 30.45, 30.5, 31.3)

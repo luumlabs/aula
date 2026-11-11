@@ -2,7 +2,7 @@
 // escalera; por el camino flotan las cosas que antes eran apuntes; el sol cuenta los nueve días. Arriba, el examen: listo.
 import { bell, clamp, col, ease, H, hash, lerp, mix, noise1, P, seg, smooth, W, type Pt } from '../engine/core.ts'
 import { blob, brush, ellipsePts, glow, paperOver, pen, rays, sheet, sky, title, wash, type Ctx, type Sheet } from '../engine/paint.ts'
-import { arch, desk, groundLine, paperSheet } from '../engine/props.ts'
+import { arch, desk, groundLine, paperSheet, stack } from '../engine/props.ts'
 import { student } from '../engine/figure.ts'
 import { subtitle } from './night.ts'
 
@@ -199,7 +199,7 @@ export function drawStairs(ctx: Ctx, t: number, frame: number): void {
       ctx.ellipse(p.x + 6, p.y + 13, 60, 9, 0, 0, Math.PI * 2)
       ctx.fill()
       const pressed = i === Math.floor(climb) ? Math.sin(f * Math.PI) * 4 : 0
-      paperSheet(ctx, { x: p.x + ox, y: p.y + oy + pressed, w: 118, rot: lerp(hash(i, 803) * 5, -0.1 + (hash(i, 804) - 0.5) * 0.08, land), flip: lerp(hash(i, 805) * 6, 1.3, land), seed: 900 + i, shade: 0.02 + (1 - land) * 0.1, tint: P.paper, toward: P.paperShade })
+      paperSheet(ctx, { x: p.x + ox, y: p.y + oy + pressed, w: 118, rot: lerp(hash(i, 803) * 5, -0.1 + (hash(i, 804) - 0.5) * 0.08, land), flip: lerp(hash(i, 805) * 6, 1.3, land), seed: 900 + i, shade: 0.02 + (1 - land) * 0.1, tint: '#fffaf0', toward: P.paperShade, outline: col(P.ink, 0.22) })
     }
     const reach = bell(t, 33.3, 33.9, 34.6, 35.2) * 0.9 + bell(t, 36.6, 37.1, 37.8, 38.4) * 0.9
     student(ctx, { x: sx, y: sy - 2, size: 158, kind: 'climb', phase: climb * 0.5, lean: 0.16, reach, wind: 0.45, time: t, frame })
@@ -268,16 +268,35 @@ export function drawExam(ctx: Ctx, t: number, frame: number): void {
   ctx.fill()
   ctx.restore()
   groundLine(ctx, 60, W - 60, 842, 51, P.ink, 9)
+  // motas de polvo en el haz de luz
+  for (let i = 0; i < 70; i++) {
+    const s = hash(i, 301)
+    const mx = lerp(win.cx, 500, s) + Math.sin(t * 0.4 + i) * 22 + (hash(i, 302) - 0.5) * 300 * s
+    const my = lerp(win.ground - 330, 980, s) - ((t * (5 + hash(i, 303) * 8) + hash(i, 304) * 200) % 200) + 100
+    ctx.fillStyle = col(P.sunCore, 0.75 * (0.3 + hash(i, 305) * 0.7))
+    ctx.beginPath()
+    ctx.arc(mx, my, 1.3 + hash(i, 306) * 1.6, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  // unas pocas hojas, ya en orden, apiladas junto a la mesa; y la sombra de la mesa en el suelo
+  stack(ctx, 1010, 840, 96, 7, 811, 0.08)
+  ctx.save()
+  ctx.filter = 'blur(10px)'
+  ctx.fillStyle = col(P.brickDeep, 0.14)
+  ctx.beginPath()
+  ctx.ellipse(700, 850, 330, 16, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
   // la mesa y el estudiante, erguido, tranquilo
   brush(ctx, [{ x: 552, y: 768 }, { x: 640, y: 767 }], { width: 9, color: P.ink, seed: 71, taper: 0.3 })
   brush(ctx, [{ x: 566, y: 770 }, { x: 558, y: 840 }], { width: 6, color: P.ink, seed: 72, taper: 0.3 })
   brush(ctx, [{ x: 628, y: 770 }, { x: 636, y: 840 }], { width: 6, color: P.ink, seed: 73, taper: 0.3 })
   desk(ctx, 800, 732, 440, 81)
-  student(ctx, { x: 598, y: 840, size: 266, kind: 'sit', lean: 0.1, wind: 0.08, time: t, frame })
+  student(ctx, { x: 598, y: 840, size: 266, kind: 'sit', lean: 0.1 + Math.sin(t * 1.1) * 0.015, wind: 0.08, time: t, frame })
   // la hoja del examen baja meciéndose y se posa
   const fall = ease.io(seg(t, 41.9, 45.0))
   const sway = Math.sin(fall * Math.PI * 3) * 130 * (1 - fall)
-  paperSheet(ctx, { x: 790 + sway, y: lerp(120, 724, fall), w: 104, rot: lerp(0.9, -0.05, fall) + sway * 0.002, flip: lerp(0.4, 1.38, fall) + Math.sin(fall * 9) * 0.25 * (1 - fall), seed: 5, shade: 0.02, toward: P.paperShade })
+  paperSheet(ctx, { x: 790 + sway, y: lerp(120, 724, fall), w: 104, rot: lerp(0.9, -0.05, fall) + sway * 0.002, flip: lerp(0.4, 1.38, fall) + Math.sin(fall * 9) * 0.25 * (1 - fall), seed: 5, shade: 0, tint: '#fffaf0', toward: P.paperShade, outline: col(P.ink, 0.55) })
   ctx.restore()
   paperOver(ctx, 1)
   // inserto: la hoja de cerca, y la marca

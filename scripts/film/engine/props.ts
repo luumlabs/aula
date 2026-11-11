@@ -18,6 +18,8 @@ export interface SheetOptions {
   alpha?: number
   /** Renglones de apuntes. */
   lines?: boolean
+  /** Filo a tinta (para que una hoja clara se lea sobre un fondo claro). */
+  outline?: string
   /** Hacia qué color se va la hoja en sombra (de noche, el azul; de día, el papel viejo). */
   toward?: string
   /** Rastro de movimiento (px, en el sentido de `vx`,`vy`). */
@@ -55,6 +57,12 @@ export function paperSheet(ctx: Ctx, o: SheetOptions): void {
   ctx.lineTo(-w / 2 + hash(seed, 2) * 3, h / 2)
   ctx.closePath()
   ctx.fill()
+  if (o.outline) {
+    ctx.strokeStyle = o.outline
+    ctx.lineWidth = Math.max(1.2, w * 0.022)
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+  }
   if (lines && !back && w > 16) {
     ctx.strokeStyle = mix(P.night3, P.ink, 0.3, 0.32 * (1 - shade * 0.5))
     ctx.lineWidth = Math.max(0.6, w * 0.012)
