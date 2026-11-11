@@ -1,9 +1,11 @@
-// Herramientas a mano: baldosas neutras que se levantan; el icono se inclina un poco al pasar el ratón.
+// Herramientas a mano: baldosas que se levantan, cada una con su loseta pintada; la loseta se inclina un poco al pasar
+// el ratón.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { SectionTitle } from '@renderer/design'
 import { navigate } from '@renderer/app/router'
 import { TOOLS } from '@renderer/tools/registry'
+import { ToolTile } from '@renderer/tools/ToolTile'
 
 export function ToolsStrip() {
   const { t } = useTranslation(['home', 'tools'])
@@ -20,7 +22,6 @@ export function ToolsStrip() {
       />
       <div className="grid gap-3 mt-3 grid-cols-3 @3xl:grid-cols-6">
         {list.map((tool, i) => {
-          const Glyph = tool.icon
           return (
             <motion.button
               key={tool.id}
@@ -32,11 +33,10 @@ export function ToolsStrip() {
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate({ name: 'tools', tool: tool.id })}
             >
-              <span className="grid place-items-center w-11 h-11 rounded-[14px] bg-tile text-text2 group-hover:text-accent-text transition-colors">
-                <motion.span className="grid place-items-center" whileHover={{ rotate: -8 }}>
-                  <Glyph size={20} strokeWidth={1.7} />
-                </motion.span>
-              </span>
+              {/* la misma loseta pintada que en «Herramientas», un poco más pequeña */}
+              <motion.span className="block w-11 h-11" whileHover={{ rotate: -6 }}>
+                <ToolTile tool={tool} size={44} />
+              </motion.span>
               <span className="t-ui font-medium text-center leading-tight">{t(`tools:${tool.id}.name`)}</span>
             </motion.button>
           )
