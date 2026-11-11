@@ -25,7 +25,7 @@ export async function initAula(): Promise<string[]> {
   for (let i = 0; i < 10; i++) {
     wash(back.ctx, blob(ellipsePts(hash(i, 151) * W, hash(i, 152) * H, 300 + hash(i, 153) * 380, 110 + hash(i, 154) * 170, 14), 30, i + 160, 0.004), i % 3 === 0 ? P.dawn1 : i % 3 === 1 ? P.paperShade : P.dawn0, { alpha: 0.22, bleed: 46, edge: 0.08, grain: 0.6 })
   }
-  const names = ['today', 'lesson', 'molecules', 'grapher', 'physics', 'chat', 'quiz', 'exam', 'calendar', 'periodic', 'stats'].map((n) => `${n}.png`)
+  const names = [...new Set(SHOTS.map((s) => s.img))].filter((n) => n !== 'devices').map((n) => `${n}.png`)
   const mol = Array.from({ length: MOL_FRAMES }, (_, i) => `mol-${String(i).padStart(2, '0')}.jpg`)
   await Promise.all([...names, ...mol, 'ipad.jpg', 'iphone.jpg'].map(load))
   return Object.keys(shots)
@@ -100,16 +100,24 @@ function caption(ctx: Ctx, a: string, b: string, x: number, y: number, k: number
 
 const SHOTS: { img: string; a: string; b: string }[] = [
   { img: 'today', a: 'Your notes', b: 'become a course.' },
+  { img: 'create', a: 'PDFs, slides, photos,', b: 'recordings: all of it.' },
+  { img: 'materials', a: 'Built from', b: 'your own sources.' },
   { img: 'lesson', a: 'It teaches', b: 'before it asks.' },
   { img: 'molecules', a: 'Molecules in 3D', b: 'you can turn.' },
   { img: 'grapher', a: 'Graphs', b: 'you can play with.' },
   { img: 'physics', a: 'Simulations', b: 'to see why.' },
+  { img: 'tutor', a: 'Stuck? It knows', b: "what you're doing." },
+  { img: 'mistakes', a: 'Your mistakes,', b: 'kept and reviewed.' },
+  { img: 'reader', a: 'Ask about a document,', b: 'get the page cited.' },
   { img: 'chat', a: 'Ask Aula', b: 'anything.' },
+  { img: 'chat-course', a: 'Make or change a course', b: 'just by asking.' },
   { img: 'quiz', a: 'A quiz on the spot,', b: 'graded instantly.' },
   { img: 'exam', a: 'Mock exams,', b: 'like the real one.' },
   { img: 'calendar', a: 'It studies with you,', b: 'every day.' },
+  { img: 'inbox', a: 'Always on: it checks', b: 'your school platform.' },
   { img: 'periodic', a: 'Every tool', b: 'a student needs.' },
   { img: 'stats', a: 'Watch yourself', b: 'get better.' },
+  { img: 'settings', a: 'Your own AI,', b: 'even offline.' },
   { img: 'devices', a: 'On your Mac,', b: 'your iPad, your iPhone.' }
 ]
 if (SHOTS.length !== N_SHOTS) throw new Error('timing.ts → N_SHOTS no coincide con las pantallas')

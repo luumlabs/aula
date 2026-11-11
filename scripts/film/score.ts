@@ -282,19 +282,19 @@ export async function renderScore(duration: number): Promise<Score> {
   thump(52.0, 0.5, 70, 40, 1.2)
   const prog: number[][] = [[41, 53, 60, 69, 72], [38, 50, 57, 65, 69], [34, 46, 53, 62, 65], [36, 48, 55, 64, 67]]
   const tune: number[][] = [[77, 76, 72], [74, 72, 69], [70, 74, 77], [79, 76, 72]]
-  // una pantalla, un acorde: tres vueltas a fa · re menor · si bemol · do, cada una un poco más llena
+  // una pantalla, un acorde: vueltas a fa · re menor · si bemol · do, cada una un poco más llena
   for (let i = 0; i < N_SHOTS; i++) {
     const t = S0 + i * LEN
     const c = prog[i % 4]
     const lap = Math.floor(i / 4)
-    pad(t, c, LEN + 0.55, 0.5 + lap * 0.07, 0.45, 1500 + lap * 350)
+    pad(t, c, LEN + 0.55, 0.5 + lap * 0.05, 0.45, 1500 + lap * 280)
     air(t - 0.1, 0.7, [[0.3, 0.2], [1, 0]], 1200, 4200, 1, 'bandpass', 0.6, -0.4)
     piano(t, c[0], 0.5, 4)
     if (lap > 0) piano(t, c[0] - 12, 0.4, 4)
-    c.slice(1).forEach((m, k) => piano(t + 0.16 + k * 0.22, m + (lap === 2 ? 12 : 0), 0.3 + lap * 0.03, 3, (k - 1.5) * 0.25))
-    tune[i % 4].forEach((m, k) => piano(t + 1.1 + k * 0.42, m, 0.4 + lap * 0.03, 3.2, 0.2))
-    if (lap > 0) bell(t, c[3] + 24, 0.2 + lap * 0.06, 3, i % 2 ? 0.4 : -0.4)
-    if (lap === 2) thump(t, 0.34, 66, 42, 0.5)
+    c.slice(1).forEach((m, k) => piano(t + 0.16 + k * 0.2, m + (lap >= 3 ? 12 : 0), 0.3 + lap * 0.025, 3, (k - 1.5) * 0.25))
+    tune[i % 4].forEach((m, k) => piano(t + 1.02 + k * 0.4, m + (lap === 4 ? 12 : 0), 0.4 + lap * 0.025, 3.2, 0.2))
+    if (lap > 0) bell(t, c[3] + 24, 0.2 + lap * 0.04, 3, i % 2 ? 0.4 : -0.4)
+    if (lap >= 2) thump(t, 0.3 + lap * 0.03, 66, 42, 0.5)
   }
   // el final: si bemol, do, fa
   pad(END, [34, 46, 53, 62, 65], 1.4, 0.6, 0.4, 1700)
