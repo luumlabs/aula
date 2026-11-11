@@ -19,10 +19,11 @@ export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'>
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-7 px-2.5 text-[13px] gap-1.5 rounded-[8px]',
-  md: 'h-8 px-3 text-[13px] gap-1.5 rounded-[10px]',
-  lg: 'h-10 px-4 text-[14px] gap-2 rounded-[10px]',
-  xl: 'h-12 px-5 text-[15px] gap-2 rounded-[12px]'
+  // píldoras: nada de esquinas de formulario
+  sm: 'h-7 px-3 text-[13px] gap-1.5 rounded-full',
+  md: 'h-8 px-3.5 text-[13px] gap-1.5 rounded-full',
+  lg: 'h-10 px-5 text-[14px] gap-2 rounded-full',
+  xl: 'h-12 px-6 text-[15px] gap-2 rounded-full'
 }
 
 const looks: Record<Variant, string> = {

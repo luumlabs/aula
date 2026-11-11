@@ -2,7 +2,7 @@
 // A la derecha, el curso del momento: su icono pixel-art se enciende píxel a píxel dentro del anillo de la meta de hoy.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { Button, Card, Floating, ProgressRing, AnimatedNumber, CourseIcon, Chip, Icon, PixelSky, BrushUnderline } from '@renderer/design'
+import { Button, Card, Floating, ProgressRing, AnimatedNumber, CourseIcon, Chip, Icon, PixelSky, BrushUnderline, Wash, washSceneFor } from '@renderer/design'
 import type { HomeSummary } from '@shared/ipc/home'
 import { capitalize, fmtDate } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -25,8 +25,9 @@ export function Hero({ data }: { data: HomeSummary }) {
   const ratio = Math.min(1, data.today.minutesDone / goal)
 
   return (
-    <Card enterAnim padded={false} mark="var(--pigment-sun)" className="h-full min-h-[280px] overflow-hidden">
-      {/* el sol del día: una muestra de su pigmento en la esquina (pintura quieta, no un resplandor) */}
+    <Card enterAnim padded={false} className="relative isolate h-full min-h-[280px] overflow-hidden">
+      {/* el cielo de la hora que es, en acuarela (pintura quieta, no un resplandor): mañana, mediodía, tarde o noche */}
+      <Wash scene={washSceneFor(new Date().getHours())} seed={7} className="-z-10 bottom-auto! h-[72%]" />
       <div className="relative grid h-full grid-cols-1 @3xl:grid-cols-[1fr_auto] gap-6 p-7 @3xl:p-8">
         <div className="flex flex-col justify-between min-w-0">
           <div>

@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { AulaMark, Button, Companion, InkArrow, PixelMedal, TextField, cx, spring, useTabTrap } from '@renderer/design'
+import { AulaMark, Button, Companion, InkArrow, PixelMedal, TextField, Wash, cx, spring, useTabTrap } from '@renderer/design'
 import { useSettings } from '@renderer/lib/settings'
 import { useCourses } from '@renderer/lib/courses'
 import { navigate } from '@renderer/app/router'
@@ -42,7 +42,9 @@ export function Onboarding() {
               <div className="flex flex-col items-center text-center max-w-[560px]">
                 {/* la marca a pincel, en ladrillo como el icono de la app: el pincel la dibuja, el sol sale y luego respira, y la
                     línea «hierve» casi sin verse */}
-                <div className="text-[var(--pigment-brick)]">
+                <div className="relative isolate text-[var(--pigment-brick)]">
+                  {/* el amanecer en acuarela detrás de la marca (quieto) */}
+                  <Wash scene="dawn" seed={9} fade="around" className="-z-10 -inset-x-56! -inset-y-24!" />
                   <AulaMark size={96} state="idle" draw alive boil />
                 </div>
                 <h1 className="t-display mt-6">{t('hello')}</h1>

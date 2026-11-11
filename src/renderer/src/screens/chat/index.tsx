@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LayoutGroup, motion } from 'motion/react'
-import { AulaMark, Button, Card, Chip, Companion, Drawer, Icon, toast, useMarkPhase } from '@renderer/design'
+import { AulaMark, Button, Card, Chip, Companion, Drawer, Icon, toast, useMarkPhase, Wash } from '@renderer/design'
 import { useAmbient } from '@renderer/design/ambient'
 import { useRoute } from '@renderer/app/router'
 import { useScreenTitle } from '@renderer/app/title'
@@ -94,7 +94,9 @@ export default function ChatScreen() {
   const moving = useAmbient()
   const emptyView = (
     <div className="flex flex-col items-center text-center pt-[12vh]">
-      <div className="text-text">
+      {/* la marca sobre una mancha tranquila de acuarela (quieta) */}
+      <div className="relative isolate text-text">
+        <Wash scene="still" seed={3} fade="around" className="-z-10 -inset-x-40! -inset-y-16!" />
         <AulaMark size={72} state={emptyMark} hover />
       </div>
       <h1 className="t-display text-[36px] mt-5">{t('emptyTitle')}</h1>

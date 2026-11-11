@@ -48,7 +48,7 @@ function UserMessage({ m }: { m: AssistantMessage }) {
       transition={spring.smooth}
       style={{ transformOrigin: '100% 100%' }}
     >
-      <div className="max-w-[78%] rounded-[20px] rounded-br-[8px] bg-bubble px-4 py-2.5 t-body selectable">
+      <div className="max-w-[78%] rounded-[20px] rounded-br-[6px] bg-bubble px-4 py-2.5 t-body selectable">
         {m.text && <RichText text={m.text} />}
         {m.mentions.length > 0 && (
           <div className={cx('flex flex-wrap gap-1.5', m.text && 'mt-2')}>

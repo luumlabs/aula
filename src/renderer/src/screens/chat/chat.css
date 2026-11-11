@@ -15,6 +15,14 @@
   42% { opacity: 0.5; transform: translateY(0); }
 }
 
+/* La voz de Aula: sus palabras van en serif sobre el papel, sin burbuja (lo que escribe el estudiante va en la suya, en
+   la letra de la interfaz). El código, las tablas y las fórmulas conservan su letra. */
+.chat-para .aula-rich > :is(p, ul, ol, blockquote) {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
 /* Párrafos que llegan: aparecen subiendo un poco */
 .chat-para + .chat-para { margin-top: 0.7em; }
 .chat-live .chat-para {
