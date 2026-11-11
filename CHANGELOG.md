@@ -3,6 +3,54 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.2.0] - 2026-11-11
+
+### New
+- **Aula on your iPad and iPhone (from a Mac).** *Settings → Aula on your devices*: use Aula from your own iPad or
+  iPhone while your courses, the AI and your data stay on the Mac. Aula carries its own Tailscale component (sign in
+  once) and each device is linked once with a 6-digit code. On the device, with the Tailscale app connected, open
+  `http://aula-mac` in Safari and add it to the Home Screen. The iPad shows the whole app; the iPhone gets bottom tabs
+  (Inbox, Aula, Calendar, Today). A device can never read keys, change settings, export or delete. Off by default.
+  The source of a native iPhone and iPad app is in `native/ios` (to build with Xcode; it isn't on the App Store).
+- **Aula's browser, live.** When a study platform asks you to sign in again, or you want Aula to look at your work,
+  Aula shows its browser inside the app, also on the iPad or iPhone. You take control to sign in or do your assignment,
+  hand it to Aula so it reads what is on the page and explains your mistakes, and take it back to finish and submit.
+  Aula only reads there: it never fills in, submits or takes a test for you, and it never reads password fields.
+- **Recordings as course materials.** Audio and video recordings (a lecture, for example) can be materials of a course
+  and attachments in the chat. Aula transcribes them from the subtitles next to the file (`.vtt` / `.srt`) or with the
+  transcription service of an API key you have added (Groq, OpenAI or Mistral), and a citation opens the recording at
+  the minute where it was said, in a player with the transcript beside it.
+- **Courses that show things and teach first.** While a course is written, a lesson that is only text is no longer
+  accepted: it needs figures (plots, diagrams, charts, drawings, 3D…), no long runs of paragraphs, and the idea
+  explained before the first example or question. Courses about real things, with web search on, get real pictures
+  from Wikimedia Commons with their author and license. Lessons on functions of two variables get a 3D graph: the 3D
+  block now draws surfaces z = f(x, y), curves, points and vectors on axes. Lessons refer to each other by title, and
+  the tutor explains a concept before handing over exercises.
+- **Aula gets ahead on its own.** With *Aula always on*, when an exam or an assignment is close Aula prepares a short
+  review inside the course, or a guide for the assignment, and leaves it in the Inbox. It never does the assignment.
+  *Always on* is now one switch; the rest is under *More options*.
+- **A simpler Inbox:** All · Unread · Needs you, with what needs you first.
+- **Aula's own drawings and a new icon.** Ink-and-wash drawings painted by code: the arch with the light of the hour
+  on Today and on the welcome screen, and study objects on empty screens and in the empty chat. The app icon is drawn
+  in the same hand. The drifting light behind the cards is gone; the selected row is a brush pass; slides, tables and
+  charts are restyled.
+
+### Fixed
+- Google Gemini: an API key that isn't valid is now reported as a problem with the key (Google answers it with a
+  generic error). Gemini works with an API key; its help says why there is no sign-in with a Google account.
+- Windows: saving no longer fails now and then when another program (an antivirus, another Aula process) has the file
+  open for an instant, or when two Aula processes (the app and an AI agent's helper) reach for the same course at once.
+
+### Updating from 0.1.x
+- **Install 0.2.0 by hand once.** The keys that signed the 0.1.x updates, and the macOS signing certificate, were lost.
+  0.2.0 is signed with new ones, so a 0.1.x copy refuses it as an update ("invalid signature"): download 0.2.0 and
+  install it over your copy; courses and settings stay. From 0.2.0 on, updates install themselves again. On macOS the
+  system asks once more for access to Aula's saved keys.
+
+### Packaging
+- The macOS package includes the Tailscale component for *Aula on your devices* (`scripts/release-local.sh` builds it
+  and refuses to continue without it).
+
 ## [0.1.3] - 2026-11-03
 
 ### New

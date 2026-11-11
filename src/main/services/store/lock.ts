@@ -42,6 +42,17 @@ function ownerAlive(lockDir: string): boolean | undefined {
   }
 }
 
+/**
+ * ¿El fallo al crear la carpeta del cerrojo quiere decir «lo tiene otro»? EEXIST siempre. En Windows también
+ * EPERM/EACCES/EBUSY: una carpeta que otro proceso está borrando (acaba de soltar el cerrojo) sigue «pendiente de borrar»
+ * un instante, y crearla encima falla así aunque nada esté mal.
+ */
+export function lockIsBusy(err: unknown, platform: string = process.platform): boolean {
+  const code = (err as NodeJS.ErrnoException | undefined)?.code
+  if (code === 'EEXIST') return true
+  return platform === 'win32' && (code === 'EPERM' || code === 'EACCES' || code === 'EBUSY')
+}
+
 function acquire(lockDir: string, opts: LockOptions): void {
   const timeout = opts.timeoutMs ?? 15_000
   const stale = opts.staleMs ?? 60_000
@@ -54,12 +65,20 @@ function acquire(lockDir: string, opts: LockOptions): void {
       try { writeFileSync(join(lockDir, 'owner'), `${process.pid} ${Date.now()}`) } catch { /* sin dueño escrito: caduca por tiempo */ }
       return
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+      if (!lockIsBusy(err)) throw err
     }
     // ¿abandonado? (dueño muerto o demasiado viejo)
     const alive = ownerAlive(lockDir)
     let age = 0
-    try { age = Date.now() - statSync(lockDir).mtimeMs } catch { continue }
+    try {
+      age = Date.now() - statSync(lockDir).mtimeMs
+    } catch {
+      // ya no está (o Windows la está borrando): se vuelve a intentar, con una pausa y sin pasar del plazo
+      if (Date.now() > deadline) throw new LockTimeoutError(lockDir)
+      sleepSync(wait)
+      wait = Math.min(wait * 2, 25)
+      continue
+    }
     if (alive === false || (alive === undefined && age > 2_000) || age > stale) {
       try { rmSync(lockDir, { recursive: true, force: true }) } catch { /* otro lo quitó */ }
       continue

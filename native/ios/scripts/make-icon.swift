@@ -1,6 +1,7 @@
 // Genera el icono de la app de iPhone/iPad a partir del icono de Aula para macOS (build/icon.png, con su rejilla y
 // esquinas transparentes): iOS quiere un cuadrado entero y opaco, sin márgenes (él recorta las esquinas).
 //   xcrun swift native/ios/scripts/make-icon.swift build/icon.png native/ios/Aula/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+// Los dibujos de la pantalla de conexión (el arco de la hora y el flexo) salen de la app: node scripts/dev/ios-art.mjs
 import AppKit
 import CoreGraphics
 import ImageIO

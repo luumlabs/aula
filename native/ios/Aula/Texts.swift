@@ -24,4 +24,14 @@ enum Texts {
     static var signOut: String { t("Cerrar sesión de Tailscale", "Sign out of Tailscale") }
     static var signOutConfirm: String { t("Este dispositivo dejará de estar en tu red privada. Tus cursos siguen en tu Mac.", "This device will leave your private network. Your courses stay on your Mac.") }
     static var cancel: String { t("Cancelar", "Cancel") }
+
+    /// Los tres pasos de la conexión (1…3).
+    static func step(_ n: Int) -> String {
+        switch n {
+        case 1: return t("Inicia sesión", "Sign in")
+        case 2: return t("Encuentra tu Mac", "Find your Mac")
+        default: return t("Escribe el código", "Type the code")
+        }
+    }
+    static func stepsLabel(_ current: Int) -> String { t("Paso \(current) de 3: \(step(current))", "Step \(current) of 3: \(step(current))") }
 }
