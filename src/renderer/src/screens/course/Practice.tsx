@@ -152,7 +152,7 @@ function RecentStrip({ credits, ink }: { credits: number[]; ink: string }) {
           return (
             <motion.span
               key={i}
-              className={cx('h-[22px] flex-1 max-w-[26px] rounded-[6px]', c === undefined && 'border border-dashed border-line-strong/50')}
+              className={cx('h-[22px] flex-1 max-w-[26px] rounded-[6px]', c === undefined ? 'border border-dashed border-line-strong/50' : 'dab')}
               style={{ background: bg }}
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
