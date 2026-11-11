@@ -19,7 +19,7 @@ export default function DocumentsScreen() {
   if (!doc) return <LibraryScreen />
   const parsed = parseDocKey(doc)
   if (!parsed) return <BadLink />
-  return <Reader key={doc.split('@')[0]} docRef={parsed.ref} initialPage={parsed.page} />
+  return <Reader key={doc.split('@')[0]} docRef={parsed.ref} initialPage={parsed.page} initialTime={parsed.time} />
 }
 
 function LibraryScreen() {

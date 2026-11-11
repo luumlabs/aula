@@ -3,6 +3,7 @@ import type { PageRasterizer } from '@shared/ingest'
 import type { ProgressCallback } from './core/progress'
 import type { OcrEngine } from './extract/ocr'
 import type { HttpTransport } from './extract/web'
+import type { TranscriptionEngine } from '../media/transcribe'
 
 export interface IngestOptions {
   /** Idioma del curso («es», «ja», «pt-BR»…): el OCR lo pone primero. */
@@ -33,9 +34,20 @@ export interface IngestOptions {
   maxWebBytes: number
   /** Transporte HTTP (pruebas o la red de Electron). Por defecto, node:http/https con DNS validado. */
   transport?: HttpTransport
+  /**
+   * Quien transcribe las grabaciones (audio y vídeo): se pregunta al leer cada una, porque depende de los servicios de IA
+   * que el estudiante tenga conectados en ese momento. Sin él, una grabación solo vale si trae sus subtítulos al lado.
+   */
+  transcription?: () => TranscriptionEngine | undefined
 }
 
 let defaultRasterizer: PageRasterizer | undefined
+let defaultTranscription: (() => TranscriptionEngine | undefined) | undefined
+
+/** La capa de IA instala aquí cómo se elige el servicio de transcripción (el de un proveedor conectado que sepa hacerlo). */
+export function setDefaultTranscription(pick: (() => TranscriptionEngine | undefined) | undefined): void {
+  defaultTranscription = pick
+}
 
 /** La capa de Electron instala aquí su dibujante de páginas: así todas las lecturas pueden hacer OCR de lo escaneado. */
 export function setDefaultRasterizer(r: PageRasterizer | undefined): void {
@@ -45,6 +57,7 @@ export function setDefaultRasterizer(r: PageRasterizer | undefined): void {
 export function defaultOptions(): IngestOptions {
   return {
     rasterizer: defaultRasterizer,
+    transcription: defaultTranscription,
     ocrWhenTextShorterThan: 40,
     maxPages: 2000,
     includeSpeakerNotes: true,

@@ -262,5 +262,11 @@
     "savedInCourse": "Guardado en el curso: lo tienes en Documentos.",
     "show": "Mostrar",
     "saveFailed": "No se pudo guardar"
+  },
+  "media": {
+    "transcript": "Transcripción",
+    "playFrom": "Escuchar desde {{time}}",
+    "cannotPlay": "Este equipo no puede reproducir la grabación, pero aquí está todo lo que se dice.",
+    "empty": "No hay nada transcrito en esta grabación."
   }
 }

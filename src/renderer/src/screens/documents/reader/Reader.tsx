@@ -1,6 +1,7 @@
 // El lector de documentos: PDF (páginas dibujadas con pdf.js, texto seleccionable), texto (Word, Markdown, web…) con la letra
 // de lectura, y fotos. Barra lateral (páginas, índice, marcas, buscar), zoom, ir a una página, subrayados y notas que se guardan
 // aparte (el original no cambia) y Aula al lado con acciones de un clic sobre lo que se lee.
+import { MediaView } from './MediaView'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
@@ -26,7 +27,7 @@ import './reader.css'
 const ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3]
 const PT = 96 / 72
 
-export function Reader({ docRef, initialPage }: { docRef: DocumentRef; initialPage?: number }) {
+export function Reader({ docRef, initialPage, initialTime }: { docRef: DocumentRef; initialPage?: number; initialTime?: number }) {
   const { t } = useTranslation('documents')
   const key = docKey(docRef)
   const reset = useReader((s) => s.reset)
@@ -84,10 +85,10 @@ export function Reader({ docRef, initialPage }: { docRef: DocumentRef; initialPa
   if (!view || view.entry.key !== key) {
     return <div className="grid flex-1 place-items-center text-text3"><span className="flex items-center gap-2 t-callout"><Spinner size={14} /> {t('reader.opening')}</span></div>
   }
-  return <ReaderLayout hasAI={hasAI} />
+  return <ReaderLayout hasAI={hasAI} initialTime={initialTime} />
 }
 
-function ReaderLayout({ hasAI }: { hasAI: boolean | null }) {
+function ReaderLayout({ hasAI, initialTime }: { hasAI: boolean | null; initialTime?: number }) {
   const view = useReader((s) => s.view)!
   const showSidebar = useReader((s) => s.showSidebar)
   const aula = useReader((s) => s.aula)
@@ -121,8 +122,8 @@ function ReaderLayout({ hasAI }: { hasAI: boolean | null }) {
           )}
         </AnimatePresence>
         <div className="relative min-w-0 flex-1 overflow-hidden rounded-[22px] bg-sunken border-[0.5px] border-line-soft">
-          {view.entry.mode === 'pdf' ? <PdfView entry={view.entry} /> : <TextView entry={view.entry} pages={view.pages} />}
-          <PageBadge />
+          {view.entry.mode === 'pdf' ? <PdfView entry={view.entry} /> : view.entry.mode === 'media' ? <MediaView entry={view.entry} pages={view.pages} initialTime={initialTime} /> : <TextView entry={view.entry} pages={view.pages} />}
+          {view.entry.mode !== 'media' && <PageBadge />}
         </div>
         <AnimatePresence initial={false}>
           {aula && (

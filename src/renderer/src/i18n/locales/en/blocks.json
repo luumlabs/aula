@@ -16,7 +16,8 @@
     "page": "p. {{page}}",
     "pages": "pp. {{from}}–{{to}}",
     "yours": "From your materials",
-    "open": "Open this material"
+    "open": "Open this material",
+    "listen": "Listen to that moment ({{time}})"
   },
   "recap": {
     "title": "Key points"

@@ -1,6 +1,7 @@
 // Dónde está cada documento en disco, validado: nada de lo que llegue de la interfaz (ids de curso, de material o de archivo
 // importado) puede salir de la carpeta de datos de Aula. Los materiales de un curso viven en `Packs/<curso>/sources/<id>/`,
 // los importados en `<datos>/Documents/sources/<id>/` y los documentos que creó Aula en `Packs/<curso>/documents/`.
+import { mediaKindForExtension } from '../media/formats'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { Hashing, IDs } from '@engine/base/ids'
@@ -63,6 +64,8 @@ export function modeFor(filePath: string | undefined): DocumentMode {
   const ext = extname(filePath).slice(1).toLowerCase()
   if (ext === 'pdf') return 'pdf'
   if (IMAGE_EXTENSIONS.has(ext)) return 'image'
+  // una grabación: el lector la reproduce junto a su transcripción
+  if (mediaKindForExtension(ext)) return 'media'
   return 'text'
 }
 

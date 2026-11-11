@@ -35,7 +35,8 @@ const MIME: Record<string, string> = {
   '.wasm': 'application/wasm', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif', '.ico': 'image/x-icon', '.woff': 'font/woff',
   '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
-  '.mp4': 'video/mp4', '.webm': 'video/webm', '.txt': 'text/plain; charset=utf-8', '.glb': 'model/gltf-binary',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.m4a': 'audio/mp4', '.m4b': 'audio/mp4', '.aac': 'audio/aac', '.flac': 'audio/flac',
+  '.opus': 'audio/ogg', '.oga': 'audio/ogg', '.weba': 'audio/webm', '.m4v': 'video/mp4', '.mov': 'video/quicktime', '.ogv': 'video/ogg', '.txt': 'text/plain; charset=utf-8', '.glb': 'model/gltf-binary',
   '.gltf': 'model/gltf+json', '.bcmap': 'application/octet-stream', '.pfb': 'application/octet-stream'
 }
 

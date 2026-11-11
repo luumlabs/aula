@@ -1,6 +1,7 @@
 // Herramientas de lectura (port de ResearchTools.swift, OpenResearchTools.swift, PageImages.swift y ChemistryTools.swift):
 // materiales del estudiante (listar, buscar, leer, ver una página), calculadora exacta, química, web, Wikipedia y guardar una
 // página como material del curso. Lo que escribe una página o un archivo ajeno llega con valla (dato, nunca orden).
+import { timecode } from '@shared/ingest'
 import { readFileSync, statSync } from 'node:fs'
 import { extname } from 'node:path'
 import { isJSONObject, Schema } from '@engine/base/json'
@@ -58,7 +59,7 @@ function snippet(text: string, term: string, width = 260): string {
 }
 
 export function searchSources(ctx: ToolContext): AgentTool {
-  return defineTool(ctx, 'search_sources', 'Search the user\'s materials (by words, and by meaning across languages when the meaning model is installed). Returns the best passages with source id, page and a snippet. Use specific terms (a concept name, a formula, a question phrase). Then call read_source with the chunk_id or page range for the full text.',
+  return defineTool(ctx, 'search_sources', 'Search the user\'s materials (by words, and by meaning across languages when the meaning model is installed). Returns the best passages with source id, page and a snippet; for a recording (audio or video) also the moment it is said (`time`, and `at` in seconds, to cite it). Use specific terms (a concept name, a formula, a question phrase). Then call read_source with the chunk_id or page range for the full text.',
     Schema.object([['query', Schema.string('What to look for, in the language of the materials or the course.')], ['limit', Schema.integer('Max results (default 6, max 12)', 1, 12)],
       ['source_ids', Schema.array(Schema.string(), 'Restrict to these sources')]], { required: ['query'] }),
     async (a) => {
@@ -69,13 +70,28 @@ export function searchSources(ctx: ToolContext): AgentTool {
       const ids = list ? new Set(list) : undefined
       let hits: SourceHit[] = ctx.search ? await ctx.search.search(q, limit, ids) : naiveSearch(ctx, q, limit, ids)
       hits = hits.slice(0, limit)
-      const results = hits.map((h) => ({ chunk_id: h.chunkID, source_id: h.sourceID, source_title: h.sourceTitle ?? '', page: h.page ?? null, heading: h.heading ?? null, snippet: plainSnippet(h.snippet), score: Math.round(h.score * 100) / 100 }))
+      // en una grabación, cada pasaje lleva el minuto en el que se dice
+      const starts = new Map<string, Map<string, number>>()
+      const startOf = (h: SourceHit): number | undefined => {
+        if (h.start !== undefined) return h.start
+        let bySource = starts.get(h.sourceID)
+        if (!bySource) {
+          bySource = new Map()
+          for (const c of ctx.store.loadChunks(h.sourceID)) if (c.start !== undefined) bySource.set(c.id, c.start)
+          starts.set(h.sourceID, bySource)
+        }
+        return bySource.get(h.chunkID)
+      }
+      const results = hits.map((h) => {
+        const at = startOf(h)
+        return { chunk_id: h.chunkID, source_id: h.sourceID, source_title: h.sourceTitle ?? '', page: h.page ?? null, ...(at !== undefined ? { time: timecode(at), at: Math.floor(at) } : {}), heading: h.heading ?? null, snippet: plainSnippet(h.snippet), score: Math.round(h.score * 100) / 100 }
+      })
       return ToolOut.json({ ok: true, query: q, count: results.length, results })
     })
 }
 
 export function readSource(ctx: ToolContext): AgentTool {
-  return defineTool(ctx, 'read_source', 'Read text from one of the user\'s materials. Give a chunk_id (from search_sources) or a page range. Long texts are paginated: use next_offset to continue. Text keeps [p.N] page markers.',
+  return defineTool(ctx, 'read_source', 'Read text from one of the user\'s materials. Give a chunk_id (from search_sources) or a page range. Long texts are paginated: use next_offset to continue. Text keeps [p.N] page markers; the transcript of a recording (audio or video) keeps [m:ss] time markers instead — cite those with `"at"` in seconds.',
     Schema.object([['source_id', Schema.string('Source id from list_sources')], ['chunk_id', Schema.string('Read exactly this chunk (plus a little context)')], ['page_from', Schema.integer()], ['page_to', Schema.integer()],
       ['offset', Schema.integer('Character offset to continue from (default 0)')], ['max_chars', Schema.integer('Max characters to return (default 6000, max 12000)', 500, 12000)]], { required: ['source_id'] }),
     (a) => {
@@ -95,7 +111,8 @@ export function readSource(ctx: ToolContext): AgentTool {
       let text = ''
       let lastPage: number | undefined
       for (const c of sel) {
-        if (c.page !== undefined && c.page !== lastPage) { text += `\n[p.${c.page}] `; lastPage = c.page }
+        if (c.start !== undefined) text += `\n[${timecode(c.start)}] `
+        else if (c.page !== undefined && c.page !== lastPage) { text += `\n[p.${c.page}] `; lastPage = c.page }
         if (c.heading && !text.endsWith(c.heading)) text += `(${c.heading}) `
         text += c.text + '\n'
       }

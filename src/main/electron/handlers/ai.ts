@@ -1,4 +1,6 @@
 // IPC de la capa de IA. La lógica vive en src/main/services/ai/service.ts (sin Electron, con pruebas); aquí solo se conecta.
+import { setDefaultTranscription } from '@main/services/ingest/options'
+import { pickTranscriptionEngine } from '@main/services/media/engines'
 import { app } from 'electron'
 import { handle, emit } from '../rpc'
 import { onSettingsChange } from '@main/services/settings'
@@ -16,6 +18,8 @@ function refreshArg(args: unknown): boolean {
 }
 
 export function register(): void {
+  // las grabaciones (audio y vídeo) se transcriben con el servicio de un proveedor conectado que sepa hacerlo
+  setDefaultTranscription(() => pickTranscriptionEngine())
   // pruebas de extremo a extremo y demostraciones: IA simulada, sin red ni claves
   if (process.env.AULA_FAKE_AI === '1') setModelOverride(createFakeModel)
   // los agentes CLI (claude, codex, opencode) se usan a través del registro de proveedores

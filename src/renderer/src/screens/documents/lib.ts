@@ -5,14 +5,18 @@ import type { DocumentEntry, DocumentRef } from '@shared/documents'
 import { docKey } from '@shared/documents'
 import { navigate } from '@renderer/app/router'
 
-/** Abre un documento en el lector de Aula (en una página, si se da). Lo pueden usar otras pantallas (p. ej. Materiales). */
-export function openDocument(ref: DocumentRef, page?: number): void {
-  navigate({ name: 'documents', doc: docKey(ref) + (page && page > 1 ? `@${page}` : '') })
+/**
+ * Abre un documento en el lector de Aula: en una página, o en un segundo de una grabación (`time`). Lo pueden usar otras
+ * pantallas (p. ej. Materiales).
+ */
+export function openDocument(ref: DocumentRef, page?: number, time?: number): void {
+  const where = time !== undefined && time >= 0 ? `@t${Math.floor(time)}` : page && page > 1 ? `@${page}` : ''
+  navigate({ name: 'documents', doc: docKey(ref) + where })
 }
 
-/** Abre un material de un curso en el lector (atajo para las fuentes del curso y las citas «Apuntes · p. 12»). */
-export function openCourseSource(packId: string, sourceId: string, page?: number): void {
-  openDocument({ kind: 'source', packId, sourceId }, page)
+/** Abre un material de un curso en el lector (atajo para las fuentes del curso y las citas «Apuntes · p. 12», «Clase 3 · 41:20»). */
+export function openCourseSource(packId: string, sourceId: string, page?: number, time?: number): void {
+  openDocument({ kind: 'source', packId, sourceId }, page, time)
 }
 
 export const KIND_ICON: Record<string, IconName> = {
@@ -35,6 +39,8 @@ export function kindLabel(kind: string): string {
   if (['md', 'markdown'].includes(k)) return 'Markdown'
   if (k === 'epub') return 'EPUB'
   if (['web', 'html', 'url'].includes(k)) return 'Web'
+  if (k === 'audio') return 'Audio'
+  if (k === 'video') return 'Vídeo'
   return k.toUpperCase().slice(0, 6)
 }
 

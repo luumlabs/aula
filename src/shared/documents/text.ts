@@ -21,11 +21,15 @@ export function docKey(ref: DocumentRef): string {
 }
 
 /** La referencia de una clave (y la página, si la clave lleva «@12» al final). undefined si no se entiende. */
-export function parseDocKey(key: string): { ref: DocumentRef; page?: number } | undefined {
+export function parseDocKey(key: string): { ref: DocumentRef; page?: number; time?: number } | undefined {
   const at = key.lastIndexOf('@')
-  const pageRaw = at > 0 ? Number(key.slice(at + 1)) : NaN
+  const tail = at > 0 ? key.slice(at + 1) : ''
+  // «@12» = página 12; «@t2480» = el segundo 2480 de una grabación
+  const timeRaw = /^t\d{1,6}$/.test(tail) ? Number(tail.slice(1)) : NaN
+  const time = Number.isInteger(timeRaw) ? timeRaw : undefined
+  const pageRaw = at > 0 && time === undefined ? Number(tail) : NaN
   const page = Number.isInteger(pageRaw) && pageRaw >= 1 ? pageRaw : undefined
-  const base = page !== undefined ? key.slice(0, at) : key
+  const base = page !== undefined || time !== undefined ? key.slice(0, at) : key
   const parts = base.split(':')
   const d = (s: string | undefined): string | undefined => {
     if (s === undefined || s === '') return undefined
@@ -42,7 +46,7 @@ export function parseDocKey(key: string): { ref: DocumentRef; page?: number } | 
     const packId = d(parts[1]), savedId = d(parts[2])
     if (packId && savedId) ref = { kind: 'saved', packId, savedId }
   }
-  return ref ? { ref, page } : undefined
+  return ref ? { ref, page, ...(time !== undefined ? { time } : {}) } : undefined
 }
 
 /** La referencia de un argumento de IPC (forma estricta) o undefined. */
