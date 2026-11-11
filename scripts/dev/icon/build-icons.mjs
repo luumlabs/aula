@@ -13,11 +13,17 @@
 //   build/icon.png (1024, rejilla de macOS) · build/icon.icns (iconutil, con dibujo propio a 16/32 px)
 //   build/icon.ico (16–256, Windows) · build/icons/<n>x<n>.png (Linux) · resources/icon.png (512, ventana/avisos en Linux)
 //   resources/tray/{trayTemplate,trayTemplate@2x,tray,tray@2x}.png · docs/media/aula-icon.png (512, README)
+//   Claro, oscuro y tintado (solo las propuestas a tinta, que tienen los tres aspectos):
+//   build/icon.icon/ (Icon Composer) y build/Assets.car (compilado con actool de Xcode 26+): el icono que macOS 26+
+//   cambia con el modo del sistema; los macOS anteriores siguen con icon.icns
+//   native/ios/Aula/Assets.xcassets/AppIcon.appiconset/ (iPhone y iPad): claro, oscuro (sin fondo) y tintado
+//   --looks DIR     además, los tres aspectos en DIR para verlos (mac sobre claro y oscuro, e iOS)
 // Las pintadas usan dos cuadros: el de 1648 px para ≥ 64 px y un dibujo simplificado para ≤ 32 px (16, 16@2x y 32).
 // Las láminas de las propuestas pintadas las hace paint-icons.mjs.
 import { app, BrowserWindow } from 'electron'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { deflateSync } from 'node:zlib'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -72,6 +78,63 @@ async function raster(svg, size) {
     return c.toDataURL('image/png')
   })()`)
   return Buffer.from(url.split(',')[1], 'base64')
+}
+
+/** SVG → píxeles RGBA (Buffer) al tamaño exacto. */
+async function rasterRGBA(svg, size) {
+  const w = await page()
+  const src = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')
+  const b64 = await w.webContents.executeJavaScript(`(async () => {
+    const img = new Image(); img.src = ${JSON.stringify(src)}; await img.decode()
+    const c = document.createElement('canvas'); c.width = c.height = ${size}
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, ${size}, ${size})
+    const d = g.getImageData(0, 0, ${size}, ${size}).data
+    let s = ''
+    for (let i = 0; i < d.length; i += 0x8000) s += String.fromCharCode.apply(null, d.subarray(i, i + 0x8000))
+    return btoa(s)
+  })()`)
+  return Buffer.from(b64, 'base64')
+}
+
+const CRC = (() => {
+  const table = new Uint32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    table[n] = c >>> 0
+  }
+  return (buf) => {
+    let c = 0xffffffff
+    for (const b of buf) c = table[(c ^ b) & 0xff] ^ (c >>> 8)
+    return (c ^ 0xffffffff) >>> 0
+  }
+})()
+
+/** PNG sin canal alfa (RGB de 8 bits): el App Store no admite iconos con transparencia. */
+function opaquePng(rgba, size) {
+  const row = size * 3 + 1
+  const raw = Buffer.alloc(row * size)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4
+      const o = y * row + 1 + x * 3
+      raw[o] = rgba[i]; raw[o + 1] = rgba[i + 1]; raw[o + 2] = rgba[i + 2]
+    }
+  }
+  const chunk = (type, data) => {
+    const head = Buffer.alloc(8)
+    head.writeUInt32BE(data.length, 0)
+    head.write(type, 4, 'ascii')
+    const crc = Buffer.alloc(4)
+    crc.writeUInt32BE(CRC(Buffer.concat([head.subarray(4), data])), 0)
+    return Buffer.concat([head, data, crc])
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(size, 0)
+  ihdr.writeUInt32BE(size, 4)
+  ihdr.writeUInt8(8, 8) // bits por canal
+  ihdr.writeUInt8(2, 9) // color: RGB
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))])
 }
 
 /** Icono pintado (paint-art.mjs) a `size` px: el cuadro grande para ≥ 64 px y el simplificado para ≤ 32 px. */
@@ -152,6 +215,87 @@ async function buildRepoAssets(id) {
   write(at('resources/tray/tray.png'), await icon(id, { size: 16, platform: 'plain' }))
   write(at('resources/tray/tray@2x.png'), await icon(id, { size: 32, platform: 'plain' }))
   console.log(`✓ icono «${nameOf(id)}» escrito en build/, resources/ y docs/media/`)
+  if (hasLooks(id)) await buildLooks(id)
+  else console.warn('· sin aspectos oscuro y tintado: esta propuesta no los tiene (solo las de tinta)')
+}
+
+// ── Claro, oscuro y tintado ──────────────────────────────────────────────────────────────────────────────────────────
+const LOOKS = ['light', 'dark', 'tinted']
+/** ¿La propuesta sabe dibujarse en oscuro y tintado? (hoy, «Arco a tinta»). */
+const hasLooks = (id) => id === 'inkA'
+/** El dibujo a sangre (sin esquinas ni sombra) en un aspecto: lo que piden iOS y las capas de Icon Composer. */
+const square = (id, look, size = 1024) => iconSvg(id, { size, platform: 'square', look, detail: 'full' })
+
+async function buildLooks(id) {
+  const at = (p) => join(ROOT, p)
+  // iPhone y iPad: el claro y el tintado, opacos; el oscuro, sin fondo (lo pone el sistema)
+  const ios = at('native/ios/Aula/Assets.xcassets/AppIcon.appiconset')
+  const names = { light: 'icon-1024.png', dark: 'icon-1024-dark.png', tinted: 'icon-1024-tinted.png' }
+  for (const look of LOOKS) {
+    write(join(ios, names[look]), look === 'dark' ? await raster(square(id, look), 1024) : opaquePng(await rasterRGBA(square(id, look), 1024), 1024))
+  }
+  write(join(ios, 'Contents.json'), JSON.stringify({
+    images: LOOKS.map((look) => ({
+      ...(look === 'light' ? {} : { appearances: [{ appearance: 'luminosity', value: look }] }),
+      filename: names[look], idiom: 'universal', platform: 'ios', size: '1024x1024'
+    })),
+    info: { author: 'xcode', version: 1 }
+  }, null, 2) + '\n')
+  // macOS 26+: Icon Composer, una capa por aspecto; el fondo claro es el papel y el oscuro, el del sistema
+  const composer = at('build/icon.icon')
+  rmSync(composer, { recursive: true, force: true })
+  for (const look of LOOKS) write(join(composer, 'Assets', `aula-${look}.png`), await raster(square(id, look), 1024))
+  write(join(composer, 'icon.json'), JSON.stringify({
+    'fill-specializations': [
+      { value: { 'automatic-gradient': 'srgb:0.97255,0.95294,0.91765,1.00000' } },
+      { appearance: 'dark', value: 'system-dark' }
+    ],
+    groups: [{
+      layers: [{
+        'image-name-specializations': [
+          { value: 'aula-light.png' },
+          { appearance: 'dark', value: 'aula-dark.png' },
+          { appearance: 'tinted', value: 'aula-tinted.png' }
+        ],
+        name: 'Arco a tinta',
+        glass: false
+      }],
+      shadow: { kind: 'none', opacity: 0 },
+      translucency: { enabled: false, value: 0.5 },
+      specular: false
+    }],
+    'supported-platforms': { squares: ['macOS'] }
+  }, null, 2) + '\n')
+  compileAssetCatalog(composer, at('build/Assets.car'))
+  console.log('✓ claro, oscuro y tintado: build/icon.icon, build/Assets.car y el catálogo de iOS')
+}
+
+/** Icon Composer → Assets.car con actool (Xcode 26 o posterior). El icono se llama «Icon» (CFBundleIconName). */
+function compileAssetCatalog(composer, out) {
+  if (process.platform !== 'darwin') return console.warn('· build/Assets.car no se rehace fuera de macOS (hace falta actool, de Xcode)')
+  const dir = mkdtempSync(join(tmpdir(), 'aula-actool-'))
+  try {
+    cpSync(composer, join(dir, 'Icon.icon'), { recursive: true })
+    mkdirSync(join(dir, 'out'))
+    execFileSync('xcrun', ['actool', join(dir, 'Icon.icon'), '--compile', join(dir, 'out'), '--output-format', 'human-readable-text', '--notices', '--warnings',
+      '--output-partial-info-plist', join(dir, 'out', 'partial.plist'), '--app-icon', 'Icon', '--include-all-app-icons', '--enable-on-demand-resources', 'NO',
+      '--development-region', 'en', '--target-device', 'mac', '--minimum-deployment-target', '26.0', '--platform', 'macosx'], { stdio: ['ignore', 'pipe', 'pipe'] })
+    if (!existsSync(join(dir, 'out', 'Assets.car'))) throw new Error('actool no dejó Assets.car')
+    cpSync(join(dir, 'out', 'Assets.car'), out)
+  } catch (e) {
+    console.warn(`· build/Assets.car no se pudo compilar (¿Xcode 26 o posterior?): ${String(e.stderr || e.message).trim().split('\n').pop()}`)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+/** Los tres aspectos, para verlos: el de macOS con su squircle sobre el fondo que le toca, y el de iOS a sangre. */
+async function previewLooks(id, dir) {
+  for (const look of LOOKS) {
+    write(join(dir, `ios-${look}.png`), await raster(square(id, look), 512))
+    for (const size of [512, 64, 32]) write(join(dir, `mac-${look}-${size}.png`), await raster(iconSvg(id, { size, look }), size))
+  }
+  console.log(`✓ los tres aspectos en ${dir}`)
 }
 
 // ── Lámina comparativa ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -241,6 +385,7 @@ app.whenReady().then(async () => {
   try {
     if (sheetDir) await buildSheet(sheetDir)
     if (!args.includes('--no-repo')) await buildRepoAssets(variant)
+    if (opt('--looks') && hasLooks(variant)) await previewLooks(variant, resolve(opt('--looks')))
   } catch (e) {
     console.error(e)
     process.exitCode = 1

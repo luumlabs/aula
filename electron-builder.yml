@@ -62,6 +62,12 @@ mac:
   category: public.app-category.education
   # icono: lo genera `npx electron scripts/dev/icon/build-icons.mjs` (icns con dibujo propio a 16/32 px, .ico y build/icons)
   icon: build/icon.icns
+  # macOS 26+: el icono con sus aspectos claro, oscuro y tintado (build/icon.icon, compilado en build/Assets.car por el
+  # mismo guion). El sistema lo busca por CFBundleIconName; los macOS anteriores siguen usando icon.icns. No se pone
+  # `icon: build/icon.icon` porque electron-builder rehace entonces el .icns a partir de él y se pierde el dibujo propio
+  # de los tamaños pequeños.
+  extendInfo:
+    CFBundleIconName: Icon
   # Sin certificado Developer ID: identity "-" y scripts/build/mac-sign.cjs firma con el certificado propio y estable
   # «Aula Local Signing» (~/.aula-signing/) si está, o ad hoc si no (mismo requisito designado en todas las versiones: macOS
   # no vuelve a pedir el llavero tras actualizar; A1-P1-5). Sin «hardened runtime» (sin certificado de Apple, la validación
@@ -76,6 +82,7 @@ mac:
   # Se firma con el resto de la app. Si no se compiló, el paquete sale sin él y Ajustes lo dice («no trae la red privada»).
   extraResources:
     - { from: native/tsnet/bin, to: bin, filter: ["aula-tsnet"] }
+    - { from: build, to: ".", filter: ["Assets.car"] }
   # el .zip (lo que descargan las actualizaciones) se llama como el .dmg: Aula-<v>-mac.zip
   artifactName: Aula-${version}-mac.${ext}
   target:

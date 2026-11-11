@@ -551,8 +551,15 @@ export function detailFor(size) {
  * @param {{ size: number, platform?: 'mac' | 'plain', detail?: 'full' | 'mid' | 'small', art?: string }} o
  *   `art`: otro dibujo para la misma caja (el vídeo pide el icono sin el sol).
  */
-export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size), art = PROPOSALS[id].art(detail) }) {
-  // mac: squircle de 824 en (100,100) del lienzo 1024. plain: casi a sangre (margen de 1/32).
+export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size), look = 'light', art = PROPOSALS[id].art(detail, look === 'light' ? undefined : { look }) }) {
+  // mac: squircle de 824 en (100,100) del lienzo 1024. plain: casi a sangre (margen de 1/32). square: el dibujo a sangre,
+  // sin esquinas ni sombra (iOS y las capas de Icon Composer: la forma y el fondo los pone el sistema).
+  if (platform === 'square') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${BOX} ${BOX}">
+  <defs><clipPath id="mask"><rect width="${BOX}" height="${BOX}"/></clipPath></defs>
+  <g clip-path="url(#mask)">${art}</g>
+</svg>`
+  }
   const box = platform === 'mac' ? { x: 100, y: 100, s: 824 } : { x: 32, y: 32, s: 960 }
   const k = box.s / BOX
   const shadow =
