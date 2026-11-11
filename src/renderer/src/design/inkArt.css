@@ -77,6 +77,48 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* El arco vivo (`ArchLight live`): cuatro láminas apiladas. Mientras el ratón está encima (`data-live`), cada una se
+   aparta a su profundidad siguiendo al puntero (`--ix`, `--iy`, de -1 a 1) y la luz del arco sube. Todo son transiciones
+   largas (cámara lenta), nunca un bucle: al irse el ratón, vuelve a su sitio igual de despacio. Solo `transform`, en el
+   compositor: los filtros no se repintan. */
+@layer components {
+  .ink-live {
+    position: relative;
+    flex: none;
+    --ix: 0;
+    --iy: 0;
+  }
+  .ink-live > .ink-live-layer {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 84%; /* el suelo del arco */
+    transform: translate3d(calc(var(--ix) * var(--dx, 0px)), calc(var(--iy) * var(--dy, 0px) + var(--rise, 0px)), 0) scale(var(--grow, 1));
+    transition: transform 3200ms cubic-bezier(0.3, 0.02, 0.12, 1); /* arranca despacio y llega aún más despacio */
+    will-change: transform;
+  }
+}
+/* cada lámina es su propia capa, así que el fundido con el papel va en la lámina (no en el grupo de dentro) */
+.ink-live-tint { mix-blend-mode: multiply; }
+.dark .ink-live-tint { mix-blend-mode: screen; }
+/* la profundidad: la aguada, lejos, se va al revés que el puntero; la tinta, delante, lo sigue un poco */
+.ink-live-wash { --dx: -16px; --dy: -10px; }
+.ink-live-fill { --dx: -6px; --dy: -4px; }
+.ink-live-light { --dx: -10px; --dy: -6px; }
+.ink-live-ink { --dx: 5px; --dy: 3px; }
+.ink-live[data-live] > .ink-live-layer { --grow: 1.05; }
+.ink-live[data-live] > .ink-live-wash { --grow: 1.18; }
+/* la luz, aún más despacio: el sol del amanecer crece desde el suelo, el de la tarde se hunde, el del mediodía y la luna suben */
+.ink-live > .ink-live-light { transition-duration: 4600ms; }
+.ink-live[data-scene='dawn'][data-live] > .ink-live-light { --grow: 1.3; }
+.ink-live[data-scene='dusk'][data-live] > .ink-live-light { --grow: 0.76; }
+.ink-live[data-scene='noon'] > .ink-live-light { transform-origin: 51% 54%; }
+.ink-live[data-scene='noon'][data-live] > .ink-live-light { --grow: 1.16; --rise: -9px; }
+.ink-live[data-scene='night'] > .ink-live-light { transform-origin: 55% 50%; }
+.ink-live[data-scene='night'][data-live] > .ink-live-light { --grow: 1.1; --rise: -11px; }
+
 @media (prefers-reduced-motion: reduce) {
   .ink-art-color, .ink-art-line > * { animation: none; }
+  .ink-live > .ink-live-layer { transition: none; transform: none; }
 }
+.reduce-motion .ink-live > .ink-live-layer { transition: none; transform: none; }

@@ -1,9 +1,11 @@
 // Dibujos a tinta y acuarela, pintados por código: la misma mano que Faro (una línea con pulso y aguadas que se salen de
 // ella) pero con los motivos de Aula: su arco con la luz dentro y los objetos del estudio. No son imágenes: son trazos
 // simples pasados por filtros (ruido que hace temblar la línea, el borde del agua, el pigmento irregular). La tinta se
-// dibuja UNA vez al aparecer y el dibujo se queda quieto.
-import { useId, type ReactNode } from 'react'
+// dibuja UNA vez al aparecer y el dibujo se queda quieto. Solo el arco «vivo» (`ArchLight live`, el grande de Hoy) se
+// mueve, y solo mientras el ratón está encima: despacio, por capas, y vuelve a su sitio.
+import { useEffect, useId, useRef, type PointerEvent, type ReactNode } from 'react'
 import { cx } from './cx'
+import { useTheme } from './theme'
 import './inkArt.css'
 
 export type ArchLightScene = 'dawn' | 'noon' | 'dusk' | 'night'
@@ -49,6 +51,15 @@ function Filters({ uid, seed }: { uid: string; seed: number }) {
 }
 
 interface Drawing { /** Manchas sueltas (detrás de todo). */ wash?: ReactNode; /** Colores de las formas. */ fill: ReactNode; /** La línea. */ ink: ReactNode }
+/** El arco por piezas, para poder mover cada una a su profundidad. */
+interface ArchParts { wash: ReactNode; sky: ReactNode; ground: ReactNode; light: ReactNode; ink: ReactNode; lightInk: ReactNode }
+
+/** Hacia dónde se inclina el dibujo según dónde está el puntero dentro de su caja: de -1 (izquierda/arriba) a 1. */
+export function leanFrom(box: { left: number; top: number; width: number; height: number }, x: number, y: number): { x: number; y: number } {
+  const clamp = (v: number): number => Math.max(-1, Math.min(1, v))
+  if (box.width <= 0 || box.height <= 0) return { x: 0, y: 0 }
+  return { x: clamp(((x - box.left) / box.width) * 2 - 1), y: clamp(((y - box.top) / box.height) * 2 - 1) }
+}
 
 function Frame({ drawing, seed, className, label }: { drawing: Drawing; seed: number; className?: string; label?: string }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
@@ -89,7 +100,7 @@ const SKY: Record<ArchLightScene, { sky: string; far: string; depth: number }> =
   night: { sky: 'var(--wc-sky-night)', far: 'var(--wc-slate)', depth: 0.8 }
 }
 
-function archDrawing(scene: ArchLightScene): Drawing {
+function archParts(scene: ArchLightScene): ArchParts {
   const cx = 120
   const g = GROUND
   const { sky, far, depth } = SKY[scene]
@@ -118,23 +129,86 @@ function archDrawing(scene: ArchLightScene): Drawing {
     )
   return {
     wash: <ellipse cx={cx + 6} cy="100" rx="96" ry="62" fill={far} opacity="0.22" />,
-    fill: (
+    sky: (
       <>
         <path d={`M${cx - 44} ${g} L${cx - 44} 96 A44 44 0 0 1 ${cx + 44} 96 L${cx + 44} ${g} Z`} fill={sky} opacity={depth} />
         <path d={band(cx + 2, 46, 132, 30, g)} fill="var(--wc-brick)" opacity="0.8" />
-        {light}
-        <ellipse cx={cx} cy={g + 8} rx="96" ry="7" fill="var(--wc-sand)" opacity="0.9" />
       </>
     ),
+    ground: <ellipse cx={cx} cy={g + 8} rx="96" ry="7" fill="var(--wc-sand)" opacity="0.9" />,
+    light,
     ink: (
       <>
         <L d={arch(cx, 44, 134, g)} i={0} />
         <L d={arch(cx, 76, 76, g)} i={1} />
-        {lightInk}
         <L d={`M14 ${g + 2} Q70 ${g - 3} ${cx} ${g + 1} T226 ${g}`} o={0.8} i={2} />
       </>
-    )
+    ),
+    lightInk
   }
+}
+
+/** El arco quieto: todas las piezas en un solo dibujo. */
+function archDrawing(scene: ArchLightScene): Drawing {
+  const p = archParts(scene)
+  return { wash: p.wash, fill: <>{p.sky}{p.light}{p.ground}</>, ink: <>{p.ink}{p.lightInk}</> }
+}
+
+/**
+ * El arco vivo: cuatro láminas apiladas (la aguada, el color, la luz con su trazo y la tinta). Mientras el ratón está
+ * encima, cada una se aparta a su profundidad siguiendo al puntero con mucho retraso y la luz del arco sube (inkArt.css):
+ * cámara lenta, sin bucles. Aquí solo se apunta dónde está el puntero, una vez por fotograma como mucho.
+ */
+function LiveArch({ scene, seed, className, label }: { scene: ArchLightScene; seed: number; className?: string; label?: string }) {
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
+  const ref = useRef<HTMLDivElement>(null)
+  const frame = useRef(0)
+  const p = archParts(scene)
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
+  const lean = (e: PointerEvent<HTMLDivElement>): void => {
+    const el = ref.current
+    if (!el || e.pointerType === 'touch') return
+    const { x, y } = leanFrom(el.getBoundingClientRect(), e.clientX, e.clientY)
+    cancelAnimationFrame(frame.current)
+    frame.current = requestAnimationFrame(() => {
+      el.style.setProperty('--ix', x.toFixed(3))
+      el.style.setProperty('--iy', y.toFixed(3))
+    })
+  }
+  const enter = (e: PointerEvent<HTMLDivElement>): void => {
+    if (e.pointerType === 'touch') return
+    ref.current?.setAttribute('data-live', '')
+    lean(e)
+  }
+  const leave = (): void => {
+    const el = ref.current
+    if (!el) return
+    cancelAnimationFrame(frame.current)
+    el.removeAttribute('data-live')
+    el.style.setProperty('--ix', '0')
+    el.style.setProperty('--iy', '0')
+  }
+  const layer = (name: string, tint: boolean, body: ReactNode, defs = false): ReactNode => (
+    <svg viewBox="0 0 240 200" className={cx('ink-art ink-live-layer', `ink-live-${name}`, tint && 'ink-live-tint')} aria-hidden>
+      {defs && <Filters uid={uid} seed={seed} />}
+      {body}
+    </svg>
+  )
+  return (
+    <div ref={ref} className={cx('ink-live', className)} data-scene={scene} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} onPointerEnter={enter} onPointerMove={lean} onPointerLeave={leave}>
+      {layer('wash', true, <g className="ink-art-color" filter={`url(#${uid}-wash)`}>{p.wash}</g>, true)}
+      {layer('fill', true, <g className="ink-art-color" filter={`url(#${uid}-fill)`}>{p.sky}{p.ground}</g>)}
+      {layer(
+        'light',
+        true,
+        <>
+          <g className="ink-art-color" filter={`url(#${uid}-fill)`}>{p.light}</g>
+          <g className="ink-art-line" filter={`url(#${uid}-hand)`}>{p.lightInk}</g>
+        </>
+      )}
+      {layer('ink', false, <g className="ink-art-line" filter={`url(#${uid}-hand)`}>{p.ink}</g>)}
+    </div>
+  )
 }
 
 const SPOTS: Record<InkSpotName, Drawing> = {
@@ -261,8 +335,11 @@ const SPOTS: Record<InkSpotName, Drawing> = {
 
 const SEEDS: Record<InkSpotName, number> = { books: 6, cards: 9, pencil: 12, flask: 15, calendar: 18, lamp: 21 }
 
-/** El arco de Aula con la luz dentro: amanece, es mediodía, atardece o es de noche. */
-export function ArchLight({ scene, className, label }: { scene: ArchLightScene; className?: string; label?: string }) {
+/** El arco de Aula con la luz dentro: amanece, es mediodía, atardece o es de noche. Con `live`, se mueve despacio
+ *  mientras el ratón está encima (con «Reducir movimiento», se queda quieto). */
+export function ArchLight({ scene, className, label, live }: { scene: ArchLightScene; className?: string; label?: string; live?: boolean }) {
+  const { reducedMotion } = useTheme()
+  if (live && !reducedMotion) return <LiveArch scene={scene} seed={3 + scene.length} className={className} label={label} />
   return <Frame drawing={archDrawing(scene)} seed={3 + scene.length} className={className} label={label} />
 }
 

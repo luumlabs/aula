@@ -11,7 +11,7 @@ export default function Gallery() {
       <Card className="col-span-12" padded="lg">
         <SectionTitle title="Tinta y acuarela: el arco según la hora y los objetos del estudio" />
         <div className="flex flex-wrap items-end gap-4 mt-3">
-          {(['dawn', 'noon', 'dusk', 'night'] as const).map((scene) => <ArchLight key={scene} scene={scene} className="h-[150px] w-[180px]" />)}
+          {(['dawn', 'noon', 'dusk', 'night'] as const).map((scene) => <ArchLight key={scene} live scene={scene} className="h-[150px] w-[180px]" />)}
         </div>
         <div className="flex flex-wrap items-end gap-4 mt-4">
           {(['books', 'cards', 'pencil', 'flask', 'calendar', 'lamp'] as const).map((name) => <InkSpot key={name} name={name} className="h-[120px] w-[144px]" />)}

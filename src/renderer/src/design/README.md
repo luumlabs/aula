@@ -93,7 +93,10 @@ grano de papel muy suave, algo fuera de registro de su línea. Minimalista y ama
   el arco de Aula con la luz dentro (`dawn`, `noon`, `dusk`, `night`; `archLightFor(hora)`): en el saludo de Hoy y en la
   bienvenida. `InkSpot` son objetos del estudio (`books`, `cards`, `pencil`, `flask`, `calendar`, `lamp`) para las
   pantallas vacías (`EmptyState art="…"`) y el chat sin empezar. La tinta se dibuja UNA vez al aparecer y el dibujo se
-  queda quieto. Tonos `--wc-*` (ladrillo y sol más cuatro apagados), más hondos en oscuro. Un dibujo por pantalla, nunca
+  queda quieto. La única excepción es el arco grande de Hoy (`ArchLight live`): mientras el ratón está encima se mueve
+  a cámara lenta —sus cuatro láminas (aguada, color, luz y tinta) se apartan cada una a su profundidad siguiendo al
+  puntero con retraso, y la luz sube—, con transiciones de más de dos segundos y sin bucles; al irse el ratón vuelve a su
+  sitio, y con «Reducir movimiento» no se mueve. Tonos `--wc-*` (ladrillo y sol más cuatro apagados), más hondos en oscuro. Un dibujo por pantalla, nunca
   de fondo de una tarjeta ni debajo de texto. El icono de la app sigue la misma receta (`scripts/dev/icon/ink-art.mjs`).
 - **Profundidad suave**: las tarjetas llevan su borde fino y una sombra larga y baja, metida hacia dentro (`--e1`, `--e2`),
   no un halo alrededor. **Botones en píldora** (`Button`: `rounded-full` en todos los tamaños).
