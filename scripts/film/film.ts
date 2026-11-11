@@ -1,0 +1,69 @@
+// El corto, de principio a fin: qué escena pinta cada instante y el acabado común (formato panorámico, viñeta, grano).
+import { col, ease, H, P, seg, W, bell } from './engine/core.ts'
+import { finish, sheet, type Ctx, type Sheet } from './engine/paint.ts'
+import { drawNight, initNight } from './scenes/night.ts'
+import { bloomMask, drawFar, drawGate, initArch } from './scenes/arch.ts'
+import { drawExam, drawStairs, initDawn } from './scenes/dawn.ts'
+import { drawAula, initAula } from './scenes/aula.ts'
+
+export const DURATION = 72
+/** Altura de las franjas del formato panorámico (2,39:1). */
+export const BARS = Math.round((H - W / 2.39) / 2)
+let alt: Sheet
+
+export async function initFilm(): Promise<void> {
+  initNight()
+  initArch()
+  initDawn()
+  await initAula()
+  alt = sheet()
+}
+
+export function drawFilm(ctx: Ctx, t: number, frame: number): void {
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.globalAlpha = 1
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.filter = 'none'
+  ctx.clearRect(0, 0, W, H)
+  let vignette = 0.55
+  if (t < 18) drawNight(ctx, t, frame)
+  else if (t < 27) drawFar(ctx, t, frame)
+  else if (t < 31.6) {
+    drawGate(ctx, t, frame)
+    // al cruzar, el color se derrama desde el arco: el amanecer asoma por una mancha que crece
+    const mask = bloomMask(t)
+    if (mask) {
+      alt.ctx.setTransform(1, 0, 0, 1, 0, 0)
+      alt.ctx.globalAlpha = 1
+      alt.ctx.clearRect(0, 0, W, H)
+      drawStairs(alt.ctx, 31.6, frame)
+      ctx.save()
+      ctx.filter = 'blur(10px)'
+      ctx.clip(mask)
+      ctx.drawImage(alt.canvas, 0, 0)
+      ctx.restore()
+      ctx.save()
+      ctx.clip(mask)
+      ctx.drawImage(alt.canvas, 0, 0)
+      ctx.restore()
+    }
+    const flash = bell(t, 30.0, 30.45, 30.5, 31.3)
+    if (flash > 0) {
+      ctx.fillStyle = col(P.sunCore, flash * 0.85)
+      ctx.fillRect(0, 0, W, H)
+    }
+    vignette = 0.55 - seg(t, 30.4, 31.6) * 0.3
+  } else if (t < 41.6) {
+    drawStairs(ctx, t, frame)
+    vignette = 0.25
+  } else if (t < 49.6) {
+    drawExam(ctx, t, frame)
+    vignette = 0.22
+  } else {
+    drawAula(ctx, t, frame)
+    vignette = 0.16
+  }
+  // las franjas se abren con la floración: el cuadro pasa de panorámico a pantalla completa
+  const bars = BARS * (1 - ease.io(seg(t, 30.4, 31.9)))
+  finish(ctx, { frame, bars, vignette, grain: t < 31 ? 0.085 : 0.06 })
+}
