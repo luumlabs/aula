@@ -3,6 +3,26 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.2.2] - 2026-11-11
+
+### New
+- **Settings on your iPad and iPhone.** A linked device can now open Settings with the daily-use part: choose among
+  the AIs already set up on the Mac (and their model and reasoning level), appearance, language and reminders, *Aula
+  always on* with its quiet hours, and what Aula remembers (add, correct, pause, forget one item). They are the
+  settings of the Aula on the Mac: a change made on the device changes Aula everywhere. On the iPad the gear is in
+  the sidebar; on the iPhone, at the top of Today. API keys and new services, platforms, devices, privacy and data,
+  updates and clearing the whole memory stay on the Mac, and the Mac refuses them if a device asks.
+- **The icon follows the system's look.** On macOS 26 or later the app icon has its light, dark and tinted looks
+  (before, it stayed light in dark mode). Older macOS, Windows and Linux keep the light icon.
+
+### The iPhone and iPad app (`native/ios`, source only; it isn't on the App Store yet)
+- The app icon has its light, dark and tinted looks on the Home Screen.
+- For the App Store: the listing in English and Spanish (`docs/app-store/listing.md`), the privacy policy
+  (`docs/PRIVACY.md`) and a way to take the screenshots from the demo.
+
+### Updating
+- From 0.2.0 or 0.2.1, Aula updates itself. From 0.1.x, install this version by hand once (see 0.2.0 below).
+
 ## [0.2.1] - 2026-11-11
 
 ### Fixed
