@@ -2,6 +2,7 @@
 // cuerdas, campanas, viento y papel. Sigue la historia: re menor en la noche, fa mayor cuando se derrama el color.
 import { hash, rng } from './engine/core.ts'
 import { integratedLoudness, master, truePeak } from '../video/audio/loudness.ts'
+import { END, LEN, N_SHOTS, S0 } from './timing.ts'
 
 export interface Score { channels: Float32Array[]; sampleRate: number; lufs: number; peak: number }
 
@@ -281,23 +282,29 @@ export async function renderScore(duration: number): Promise<Score> {
   thump(52.0, 0.5, 70, 40, 1.2)
   const prog: number[][] = [[41, 53, 60, 69, 72], [38, 50, 57, 65, 69], [34, 46, 53, 62, 65], [36, 48, 55, 64, 67]]
   const tune: number[][] = [[77, 76, 72], [74, 72, 69], [70, 74, 77], [79, 76, 72]]
-  prog.forEach((c, i) => {
-    const t = 54.4 + i * 2.95
-    pad(t, c, 3.5, 0.52, 0.5, 1500)
+  // una pantalla, un acorde: tres vueltas a fa · re menor · si bemol · do, cada una un poco más llena
+  for (let i = 0; i < N_SHOTS; i++) {
+    const t = S0 + i * LEN
+    const c = prog[i % 4]
+    const lap = Math.floor(i / 4)
+    pad(t, c, LEN + 0.55, 0.5 + lap * 0.07, 0.45, 1500 + lap * 350)
     air(t - 0.1, 0.7, [[0.3, 0.2], [1, 0]], 1200, 4200, 1, 'bandpass', 0.6, -0.4)
     piano(t, c[0], 0.5, 4)
-    c.slice(1).forEach((m, k) => piano(t + 0.2 + k * 0.28, m, 0.3, 3, (k - 1.5) * 0.25))
-    tune[i].forEach((m, k) => piano(t + 1.3 + k * 0.5, m, 0.4, 3.2, 0.2))
-  })
+    if (lap > 0) piano(t, c[0] - 12, 0.4, 4)
+    c.slice(1).forEach((m, k) => piano(t + 0.16 + k * 0.22, m + (lap === 2 ? 12 : 0), 0.3 + lap * 0.03, 3, (k - 1.5) * 0.25))
+    tune[i % 4].forEach((m, k) => piano(t + 1.1 + k * 0.42, m, 0.4 + lap * 0.03, 3.2, 0.2))
+    if (lap > 0) bell(t, c[3] + 24, 0.2 + lap * 0.06, 3, i % 2 ? 0.4 : -0.4)
+    if (lap === 2) thump(t, 0.34, 66, 42, 0.5)
+  }
   // el final: si bemol, do, fa
-  pad(66.2, [34, 46, 53, 62, 65], 1.4, 0.6, 0.4, 1700)
-  pad(67.4, [36, 48, 55, 64, 67], 1.4, 0.62, 0.4, 1800)
-  pad(68.6, [41, 53, 60, 65, 69, 72], 4, 0.7, 0.5, 2000)
-  piano(68.6, 41, 0.6, 5)
-  ;[65, 69, 72, 77, 81].forEach((m, i) => piano(68.6 + i * 0.16, m, 0.44, 4.5, (i - 2) * 0.2))
-  bell(68.62, 89, 0.5, 5)
-  bell(69.3, 96, 0.3, 4.5, 0.3)
-  thump(68.6, 0.6, 70, 40, 1.4)
+  pad(END, [34, 46, 53, 62, 65], 1.4, 0.6, 0.4, 1700)
+  pad(END + 1.2, [36, 48, 55, 64, 67], 1.4, 0.62, 0.4, 1800)
+  pad(END + 2.4, [41, 53, 60, 65, 69, 72], 3.4, 0.7, 0.5, 2000)
+  piano(END + 2.4, 41, 0.6, 5)
+  ;[65, 69, 72, 77, 81].forEach((m, i) => piano(END + 2.4 + i * 0.16, m, 0.44, 4.5, (i - 2) * 0.2))
+  bell(END + 2.42, 89, 0.5, 5)
+  bell(END + 3.1, 96, 0.3, 4.5, 0.3)
+  thump(END + 2.4, 0.6, 70, 40, 1.4)
 
   const rendered = await ctx.startRendering()
   const n = Math.round(duration * RATE)

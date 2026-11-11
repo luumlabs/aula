@@ -4,6 +4,7 @@ import { bell, clamp, col, ease, H, hash, lerp, P, seg, smooth, W } from '../eng
 import { blob, brush, ellipsePts, glow, paperOver, sheet, sky, title, wash, type Ctx, type Sheet } from '../engine/paint.ts'
 import { arch, groundLine } from '../engine/props.ts'
 import { student } from '../engine/figure.ts'
+import { END, LEN, N_SHOTS, S0 } from '../timing.ts'
 
 let back: Sheet
 const shots: Record<string, ImageBitmap> = {}
@@ -24,12 +25,19 @@ export async function initAula(): Promise<string[]> {
   for (let i = 0; i < 10; i++) {
     wash(back.ctx, blob(ellipsePts(hash(i, 151) * W, hash(i, 152) * H, 300 + hash(i, 153) * 380, 110 + hash(i, 154) * 170, 14), 30, i + 160, 0.004), i % 3 === 0 ? P.dawn1 : i % 3 === 1 ? P.paperShade : P.dawn0, { alpha: 0.22, bleed: 46, edge: 0.08, grain: 0.6 })
   }
-  await Promise.all(['today.png', 'course.png', 'lesson.png', 'cards.png', 'calendar.png', 'ipad.jpg', 'iphone.jpg'].map(load))
+  const names = ['today', 'lesson', 'molecules', 'grapher', 'physics', 'chat', 'quiz', 'exam', 'calendar', 'periodic', 'stats'].map((n) => `${n}.png`)
+  const mol = Array.from({ length: MOL_FRAMES }, (_, i) => `mol-${String(i).padStart(2, '0')}.jpg`)
+  await Promise.all([...names, ...mol, 'ipad.jpg', 'iphone.jpg'].map(load))
   return Object.keys(shots)
 }
 
-/** Una pantalla de la app como una lámina sobre el papel: esquinas redondas, sombra suave y un leve vuelco. */
-function card(ctx: Ctx, img: ImageBitmap | undefined, x: number, y: number, w: number, tilt: number, alpha: number, radius = 22, bezel = 0): void {
+/** Fotogramas de la molécula girando y su recuadro dentro de la captura de 1440×900 (scripts/film/shots.mjs → MOL). */
+const MOL_FRAMES = 36
+const MOL = { x: 300, y: 118, w: 730, h: 580 }
+
+/** Una pantalla de la app como una lámina sobre el papel: esquinas redondas, sombra suave y un leve vuelco. `over` pinta
+ *  encima un recorte animado (la molécula que gira). */
+function card(ctx: Ctx, img: ImageBitmap | undefined, x: number, y: number, w: number, tilt: number, alpha: number, radius = 22, bezel = 0, over?: ImageBitmap): void {
   if (!img || alpha <= 0) return
   const h = (w * img.height) / img.width
   ctx.save()
@@ -56,6 +64,10 @@ function card(ctx: Ctx, img: ImageBitmap | undefined, x: number, y: number, w: n
   ctx.clip()
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(img, -w / 2, -h / 2, w, h)
+  if (over) {
+    const k = w / 1440
+    ctx.drawImage(over, -w / 2 + MOL.x * k, -h / 2 + MOL.y * k, MOL.w * k, MOL.h * k)
+  }
   ctx.restore()
   ctx.strokeStyle = col(P.ink, 0.16)
   ctx.lineWidth = 1.5
@@ -66,8 +78,13 @@ function card(ctx: Ctx, img: ImageBitmap | undefined, x: number, y: number, w: n
 /** Rótulo de dos líneas a la izquierda; la segunda, en cursiva ladrillo. */
 function caption(ctx: Ctx, a: string, b: string, x: number, y: number, k: number, size = 82): void {
   if (k <= 0) return
-  const font = (italic: boolean): string => `${italic ? 'italic ' : ''}500 ${size}px "New York", ui-serif, "Iowan Old Style", Georgia, serif`
+  const face = (italic: boolean, px: number): string => `${italic ? 'italic ' : ''}500 ${px}px "New York", ui-serif, "Iowan Old Style", Georgia, serif`
   ctx.save()
+  // que el rótulo nunca pise la pantalla: si no cabe en su columna, se encoge
+  ctx.font = face(false, size)
+  const wide = Math.max(ctx.measureText(a).width, ctx.measureText(b).width * 1.02)
+  if (wide > 600) size = Math.floor((size * 600) / wide)
+  const font = (italic: boolean): string => face(italic, size)
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
   ctx.globalAlpha = clamp(k * 1.6)
@@ -84,16 +101,23 @@ function caption(ctx: Ctx, a: string, b: string, x: number, y: number, k: number
 const SHOTS: { img: string; a: string; b: string }[] = [
   { img: 'today', a: 'Your notes', b: 'become a course.' },
   { img: 'lesson', a: 'It teaches', b: 'before it asks.' },
+  { img: 'molecules', a: 'Molecules in 3D', b: 'you can turn.' },
+  { img: 'grapher', a: 'Graphs', b: 'you can play with.' },
+  { img: 'physics', a: 'Simulations', b: 'to see why.' },
+  { img: 'chat', a: 'Ask Aula', b: 'anything.' },
+  { img: 'quiz', a: 'A quiz on the spot,', b: 'graded instantly.' },
+  { img: 'exam', a: 'Mock exams,', b: 'like the real one.' },
   { img: 'calendar', a: 'It studies with you,', b: 'every day.' },
+  { img: 'periodic', a: 'Every tool', b: 'a student needs.' },
+  { img: 'stats', a: 'Watch yourself', b: 'get better.' },
   { img: 'devices', a: 'On your Mac,', b: 'your iPad, your iPhone.' }
 ]
-const S0 = 54.4
-const LEN = 2.95
+if (SHOTS.length !== N_SHOTS) throw new Error('timing.ts → N_SHOTS no coincide con las pantallas')
 
 export function drawAula(ctx: Ctx, t: number, frame: number): void {
   ctx.drawImage(back.canvas, 0, 0)
-  const product = t >= S0 - 0.5 && t < S0 + SHOTS.length * LEN + 0.4
-  const end = smooth(seg(t, S0 + SHOTS.length * LEN - 0.2, S0 + SHOTS.length * LEN + 1.0))
+  const product = t >= S0 - 0.5 && t < END + 0.4
+  const end = smooth(seg(t, END - 0.2, END + 1.0))
   // el logo: grande al nacer, pequeño arriba a la izquierda durante las pantallas, y grande otra vez al final
   const small = smooth(seg(t, S0 - 0.7, S0 + 0.2)) * (1 - end)
   const cx = lerp(W / 2, 150, small)
@@ -124,36 +148,42 @@ export function drawAula(ctx: Ctx, t: number, frame: number): void {
   if (product) {
     SHOTS.forEach((s, i) => {
       const a = S0 + i * LEN
-      const k = bell(t, a, a + 0.55, a + LEN - 0.3, a + LEN + 0.12)
+      // cada pantalla entra mientras la anterior aún se va: sin huecos en blanco entre una y otra
+      const k = bell(t, a - 0.08, a + 0.3, a + LEN - 0.14, a + LEN + 0.24)
       if (k <= 0) return
-      const enter = ease.outExpo(seg(t, a, a + 0.9))
-      const leave = ease.in(seg(t, a + LEN - 0.35, a + LEN + 0.12))
-      const drift = (t - a) * 9
-      const x = 1275 + (1 - enter) * 520 - leave * 240 - drift
+      const enter = ease.outExpo(seg(t, a - 0.08, a + 0.8))
+      const leave = ease.in(seg(t, a + LEN - 0.3, a + LEN + 0.24))
+      const drift = (t - a) * 11
+      const x = 1318 + (1 - enter) * 520 - leave * 240 - drift
       const y = 590 + (1 - enter) * 30
       if (s.img === 'devices') {
         card(ctx, shots.ipad, x - 190, y + 6, 560, -0.012, k, 30, 14)
         card(ctx, shots.iphone, x + 300, y + 70, 236, 0.014, clamp(k * 1.4 - 0.3), 36, 10)
-      } else card(ctx, shots[s.img], x, y, 1130, -0.012 + enter * 0.004, k)
-      caption(ctx, s.a, s.b, 120, 520, bell(t, a + 0.15, a + 0.8, a + LEN - 0.35, a + LEN))
+      } else if (s.img === 'molecules') {
+        // la molécula gira de verdad: fotogramas de la app, de ida y vuelta
+        const f = Math.floor((t - a) * 12) % (MOL_FRAMES * 2 - 2)
+        const n = f < MOL_FRAMES ? f : MOL_FRAMES * 2 - 2 - f
+        card(ctx, shots.molecules, x, y, 1090, -0.012 + enter * 0.004, k, 22, 0, shots[`mol-${String(n).padStart(2, '0')}`])
+      } else card(ctx, shots[s.img], x, y, 1090, -0.012 + enter * 0.004, k)
+      caption(ctx, s.a, s.b, 120, 520, bell(t, a + 0.12, a + 0.65, a + LEN - 0.32, a + LEN), s.a.length + s.b.length > 34 ? 70 : 82)
     })
   }
 
   // el final: el estudiante llega, pequeño, y se queda mirando el sol bajo el arco
   if (end > 0) {
-    const walk = seg(t, 66.4, 69.2)
+    const walk = seg(t, END + 0.2, END + 3.0)
     const x = lerp(W / 2 - 520, W / 2 - 58, ease.out(walk))
-    student(ctx, { x, y: 603, size: 104, kind: walk < 1 ? 'walk' : 'stand', phase: (t - 66.4) * 1.6, lean: 0.08, wind: 0.3, time: t, frame, alpha: smooth(seg(t, 66.3, 67)) })
-    const info = ease.out(seg(t, 67.2, 68.2))
+    student(ctx, { x, y: 603, size: 104, kind: walk < 1 ? 'walk' : 'stand', phase: (t - END) * 1.6, lean: 0.08, wind: 0.3, time: t, frame, alpha: smooth(seg(t, END + 0.1, END + 0.8)) })
+    const info = ease.out(seg(t, END + 1.0, END + 2.0))
     title(ctx, 'Free and open source  ·  Mac, Windows, Linux  ·  iPad and iPhone', W / 2, 962, 30, P.inkSoft, info * 0.8, 1, 400)
-    title(ctx, 'github.com/luumlabs/aula', W / 2, 1010, 30, P.brick, ease.out(seg(t, 67.8, 68.8)), 1, 500)
+    title(ctx, 'github.com/luumlabs/aula', W / 2, 1010, 30, P.brick, ease.out(seg(t, END + 1.6, END + 2.6)), 1, 500)
   }
   const inn = 1 - ease.out(seg(t, 49.6, 50.3))
   if (inn > 0) {
     ctx.fillStyle = col(P.paper, inn)
     ctx.fillRect(0, 0, W, H)
   }
-  const out = seg(t, 71.3, 72)
+  const out = seg(t, END + 5.1, END + 5.8)
   if (out > 0) {
     ctx.fillStyle = `rgba(0,0,0,${out})`
     ctx.fillRect(0, 0, W, H)

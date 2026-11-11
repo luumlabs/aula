@@ -19,6 +19,8 @@ await win.setViewportSize({ width: 1440, height: 900 })
 await win.waitForLoadState('domcontentloaded')
 await win.waitForTimeout(2500)
 const ID = 'exam-2-math112'
+// el recuadro del visor 3D de moléculas en la ventana de 1440×900
+const MOL = { x: 300, y: 118, width: 730, height: 580 }
 const go = async (route, wait = 2200) => {
   await win.evaluate((r) => window.__aula?.navigate?.(r), route)
   await win.waitForTimeout(wait)
@@ -44,4 +46,38 @@ await win.waitForTimeout(1400)
 await shot('cards')
 await go({ name: 'calendar', view: 'month' }, 2400)
 await shot('calendar')
+// modelos en 3D, gráficas y herramientas
+// la molécula gira sola: una secuencia de fotogramas (solo su recuadro), para que en el corto gire de verdad
+await go({ name: 'tools', tool: 'molecules' }, 4200)
+await shot('molecules')
+for (let i = 0; i < 36; i++) {
+  await win.screenshot({ path: join(OUT, `mol-${String(i).padStart(2, '0')}.jpg`), type: 'jpeg', quality: 90, clip: MOL })
+  await win.waitForTimeout(40)
+}
+console.log('✓ molécula girando (36 fotogramas)')
+await go({ name: 'tools', tool: 'grapher' }, 3600)
+await shot('grapher')
+await go({ name: 'tools', tool: 'periodic' }, 3200)
+await shot('periodic')
+await go({ name: 'tools', tool: 'physics' }, 3800)
+await win.getByRole('button', { name: /Launch/ }).first().click({ timeout: 5000 }).catch(() => undefined)
+await win.waitForTimeout(1500)
+await shot('physics')
+await go({ name: 'tools' }, 2600)
+await shot('tools')
+await go({ name: 'stats' }, 3200)
+await shot('stats')
+await go({ name: 'study', id: ID, mode: 'exam' }, 3000)
+await shot('exam')
+// el apartado de la IA: preguntarle a Aula y un cuestionario en la conversación
+await go({ name: 'chat' }, 2600)
+const box = win.locator('textarea').first()
+await box.fill('Give me a quick quiz')
+await box.press('Enter')
+await win.waitForSelector('[data-studyset="quiz"]', { timeout: 30000 }).catch(() => undefined)
+await win.waitForTimeout(2500)
+await shot('chat')
+await win.getByRole('button', { name: /^Start$/ }).first().click({ timeout: 5000 }).catch(() => undefined)
+await win.waitForTimeout(1500)
+await shot('quiz')
 await app.close()

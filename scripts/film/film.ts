@@ -6,7 +6,7 @@ import { bloomMask, drawFar, drawGate, initArch } from './scenes/arch.ts'
 import { drawExam, drawStairs, initDawn } from './scenes/dawn.ts'
 import { drawAula, initAula } from './scenes/aula.ts'
 
-export const DURATION = 72
+export { DURATION } from './timing.ts'
 /** Altura de las franjas del formato panorámico (2,39:1). */
 export const BARS = Math.round((H - W / 2.39) / 2)
 let alt: Sheet
