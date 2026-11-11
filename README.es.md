@@ -47,14 +47,15 @@ Descarga el archivo de tu sistema desde la [última versión](https://github.com
 
 | Sistema | Archivo | La primera vez |
 | --- | --- | --- |
-| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.2.0-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
-| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.2.0.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
-| Linux x64 | `Aula-0.2.0-linux-x86_64.AppImage` o `Aula-0.2.0-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.2.0-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.2.0-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
+| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.2.1-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
+| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.2.1.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
+| Linux x64 | `Aula-0.2.1-linux-x86_64.AppImage` o `Aula-0.2.1-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.2.1-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.2.1-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
 
-> **Si vienes de la 0.1.x:** instala la 0.2.0 a mano esta única vez (descárgala aquí e instálala encima de tu copia;
-> tus cursos y ajustes se quedan). Aula 0.1.x dirá que la firma de la versión nueva no es válida: la 0.2.0 va firmada
-> con claves nuevas, porque las anteriores se perdieron. A partir de la 0.2.0, Aula vuelve a actualizarse sola. En un
+> **Si vienes de la 0.1.x:** instala la versión actual a mano esta única vez (descárgala aquí e instálala encima de tu
+> copia; tus cursos y ajustes se quedan). Aula 0.1.x dirá que la firma de la versión nueva no es válida: desde la 0.2.0
+> Aula va firmada con claves nuevas, porque las anteriores se perdieron. A partir de la 0.2.0, Aula vuelve a
+> actualizarse sola. En un
 > Mac, macOS vuelve a pedir una vez permiso para usar las claves guardadas de Aula.
 
 En Linux necesitas una distribución de 64 bits con glibc. Instala también GNOME Keyring o KWallet; si no, Aula tiene

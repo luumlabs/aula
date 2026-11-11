@@ -3,6 +3,25 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.2.1] - 2026-11-11
+
+### Fixed
+- Today: the tools at the bottom are drawn on the same hand-painted tiles, each with its own colour, as on the Tools
+  screen (they were grey icons on flat tiles).
+- Aula on your phone: on Today, the small arch no longer sits on top of the *Ask Aula* button; it is now next to the
+  date.
+
+### The iPhone and iPad app (`native/ios`, source only; it isn't on the App Store yet)
+- **Try it without a Mac.** The first screen offers *Try it with an example course*: the real interface with the
+  example course, served by the app itself from a recording of the real app. Nothing leaves the device and nothing is
+  saved.
+- The first screen says where to get Aula for Mac, with a button to send the link to the Mac.
+- Ready to be sent to the App Store: privacy manifest, permission texts in English and Spanish. `docs/DEVICES.md`
+  says what is left for the owner of the Apple account.
+
+### Updating
+- From 0.2.0, Aula updates itself. From 0.1.x, install this version by hand once (see 0.2.0 below).
+
 ## [0.2.0] - 2026-11-11
 
 ### New
