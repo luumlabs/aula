@@ -180,7 +180,8 @@ Verified on a Mac, by tests in this repository:
   starts the embedded node and opens Tailscale's sign-in page in Safari. The connect screen was checked on both, in light and dark. The *Aula for Mac* sheet opens from the connect screen.
 - The demo, in both simulators: it opens on *Today* with the example course, the course and the inbox open, the
   sample quiz in the chat grades answers, a new question gets the demo reply, and *Exit* returns to the connect
-  screen. `_verify/DemoTest` checks the server on macOS against the recording (dates moved to today, files, recorded
+  screen. On the iPad also: the day's plan, a flashcard review (flip and rate), the calendar, statistics, tools, and
+  *Create course*, which answers "This isn't part of the demo". `_verify/DemoTest` checks the server on macOS against the recording (dates moved to today, files, recorded
   and substituted calls, chat events).
 
 Not verified yet (it needs a signed-in tailnet and a real device):
