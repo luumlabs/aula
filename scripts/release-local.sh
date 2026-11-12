@@ -186,6 +186,8 @@ for p in "${ONLY[@]}"; do
          [ -x "$OUT/mac-universal/Aula.app/Contents/Resources/bin/aula-tsnet" ] || die "El paquete de macOS salió sin Resources/bin/aula-tsnet." ;;
     win) npx electron-builder --win --publish never -c.directories.output="$OUT" ;;
     linux)
+      # el componente de Tailscale para Linux (x64 y arm64): «Aula en tus dispositivos» y Aula como servidor
+      native/tsnet/build.sh linux || die "No se pudo compilar native/tsnet/bin/linux-*/aula-tsnet (lo dice native/tsnet/build.sh)."
       DEB_OPTS=()
       if [ "$(uname)" = Darwin ]; then
         # la .deb necesita GNU tar en macOS: el de brew o el que trae electron-builder en su caché (linux-tools-mac)

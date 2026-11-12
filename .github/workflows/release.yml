@@ -78,6 +78,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # the Tailscale sidecar inside the Linux app (Aula on your devices, and Aula as a server: docs/SERVER.md); the runner's
+      # Go fetches the version in native/tsnet/go.mod and the modules (checked against go.sum)
+      - name: Build the Tailscale sidecar for Linux
+        if: runner.os == 'Linux'
+        run: native/tsnet/build.sh linux
       # the tests are logic and were written on Linux (paths, links): they run there; CI runs them on every change too
       - name: Type check and unit tests
         if: runner.os == 'Linux'

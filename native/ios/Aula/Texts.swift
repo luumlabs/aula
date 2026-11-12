@@ -7,18 +7,22 @@ enum Texts {
 
     static var starting: String { t("Preparando tu red privada…", "Setting up your private network…") }
     static var signInTitle: String { t("Conecta con tu Aula", "Connect to your Aula") }
-    static var signInBody: String { t("Aula vive en tu Mac. Para llegar a ella desde aquí, inicia sesión en Tailscale con la misma cuenta que usaste en el Mac. Solo se hace una vez.", "Aula lives on your Mac. To reach it from here, sign in to Tailscale with the same account you used on the Mac. You only do this once.") }
+    static var signInBody: String { t("Aula vive en tu Mac o en tu servidor. Para llegar a ella desde aquí, inicia sesión en Tailscale con la misma cuenta que usaste allí. Solo se hace una vez.", "Aula lives on your Mac or your server. To reach it from here, sign in to Tailscale with the same account you used there. You only do this once.") }
     static var signInAction: String { t("Iniciar sesión en Tailscale", "Sign in to Tailscale") }
     static var signInAfter: String { t("Cuando termines, vuelve a Aula: sigue sola.", "When you’re done, come back to Aula: it carries on by itself.") }
     static var approvalTitle: String { t("Falta aprobar este dispositivo", "This device needs approval") }
     static var approvalBody: String { t("Tu red de Tailscale pide aprobar los dispositivos nuevos. Quien la administra puede hacerlo en su panel; en cuanto lo haga, Aula sigue sola.", "Your Tailscale network asks for new devices to be approved. Whoever manages it can do so in the admin panel; Aula carries on by itself once they do.") }
-    static var lookingTitle: String { t("No encuentro tu Mac", "I can’t find your Mac") }
-    static var lookingBody: String { t("En tu Mac, abre Aula → Ajustes → «Aula en tus dispositivos», enciéndelo e inicia sesión en Tailscale con esta misma cuenta.", "On your Mac, open Aula → Settings → “Aula on your devices”, turn it on and sign in to Tailscale with this same account.") }
-    static var unreachableTitle: String { t("Tu Mac no responde", "Your Mac isn’t answering") }
+    static var lookingTitle: String { t("No encuentro tu Aula", "I can’t find your Aula") }
+    static var lookingBody: String { t("En tu Mac, abre Aula → Ajustes → «Aula en tus dispositivos», enciéndelo e inicia sesión en Tailscale con esta misma cuenta. Si tu Aula es un servidor, comprueba que está en marcha y en Tailscale con esta cuenta.", "On your Mac, open Aula → Settings → “Aula on your devices”, turn it on and sign in to Tailscale with this same account. If your Aula is a server, check that it is running and on Tailscale with this account.") }
+    static var unreachableTitle: String { t("Tu Aula no responde", "Your Aula isn’t answering") }
     static func unreachableBody(_ mac: String?) -> String {
         let name = mac ?? "aula-mac"
-        return t("Encontré «\(name)» en tu red, pero Aula no contesta. Comprueba que el Mac está encendido y despierto y que Aula sigue abierta. Lo vuelvo a intentar cada pocos segundos.", "I found “\(name)” on your network, but Aula isn’t answering. Check that the Mac is on and awake and that Aula is still open. I’ll keep trying every few seconds.")
+        return t("Encontré «\(name)» en tu red, pero Aula no contesta. Comprueba que el equipo está encendido (un Mac, despierto y con Aula abierta). Lo vuelvo a intentar cada pocos segundos.", "I found “\(name)” on your network, but Aula isn’t answering. Check that the computer is on (a Mac, awake and with Aula open). I’ll keep trying every few seconds.")
     }
+    static var chooseTitle: String { t("¿Qué Aula abres?", "Which Aula do you want to open?") }
+    static var chooseBody: String { t("Hay más de una Aula en tu red. Elige una: la próxima vez se abre sola. Para cambiar, Ajustes → Abrir otra Aula.", "There is more than one Aula on your network. Choose one: next time it opens by itself. To change, Settings → Open another Aula.") }
+    static var chooseOffline: String { t("sin conexión", "offline") }
+    static var chooseAnother: String { t("Abrir otra Aula", "Open another Aula") }
     static var failedTitle: String { t("La red privada no arranca", "The private network won’t start") }
     static var retry: String { t("Reintentar", "Try again") }
     static var signOut: String { t("Cerrar sesión de Tailscale", "Sign out of Tailscale") }
@@ -46,7 +50,7 @@ enum Texts {
     static func step(_ n: Int) -> String {
         switch n {
         case 1: return t("Inicia sesión", "Sign in")
-        case 2: return t("Encuentra tu Mac", "Find your Mac")
+        case 2: return t("Encuentra tu Aula", "Find your Aula")
         default: return t("Escribe el código", "Type the code")
         }
     }

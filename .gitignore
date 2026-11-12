@@ -61,3 +61,6 @@ docs/app-store/screenshots/
 # El corto animado: lo que se renderiza y las capturas de la app que usa
 scripts/film/work/
 scripts/film/assets/
+
+# AppImages locales para probar la imagen del servidor (server/Dockerfile)
+server/dist/*.AppImage

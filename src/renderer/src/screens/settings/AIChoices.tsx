@@ -52,7 +52,7 @@ export function AIChoices() {
   const reload = () => void load()
   return (
     <Card padded="lg" className="flex flex-col gap-2" data-testid="ai-choices">
-      {choices.length === 0 && <p className="t-body text-text2">{t('ai.remote.none')}</p>}
+      {choices.length === 0 && <p className="t-body text-text2">{api.server ? t('ai.remote.noneServer') : t('ai.remote.none')}</p>}
       {choices.map((p) => {
         const pickModel = !!p.models && p.models.length > 1
         const live = p.group === 'custom'
@@ -61,7 +61,7 @@ export function AIChoices() {
             key={p.id}
             active={activeId === p.id}
             title={NAMES[p.id] ? t(NAMES[p.id]) : p.label}
-            detail={[t('ai.remote.ready'), !pickModel && !live ? p.model : undefined].filter(Boolean).join(' · ')}
+            detail={[api.server ? t('ai.remote.readyServer') : t('ai.remote.ready'), !pickModel && !live ? p.model : undefined].filter(Boolean).join(' · ')}
             ready
             action={(el) => void use(p.id, el)}
             busy={busy === p.id}
@@ -78,7 +78,7 @@ export function AIChoices() {
       })}
       <p className="t-footnote text-text3 mt-1 flex items-start gap-1.5">
         <Icon name="info" size={12} className="mt-[3px] shrink-0" />
-        {t('ai.remote.hint')}
+        {api.server ? t('ai.remote.hintServer') : t('ai.remote.hint')}
       </p>
     </Card>
   )

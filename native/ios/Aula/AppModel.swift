@@ -1,4 +1,5 @@
-// Lo que la app sabe en cada momento: en qué punto está la conexión con la Aula del Mac y qué enseñar.
+// Lo que la app sabe en cada momento: en qué punto está la conexión con la Aula del estudiante (en su Mac o en su servidor)
+// y qué enseñar. Si en su red hay más de una Aula, pregunta cuál abrir y lo recuerda.
 import Foundation
 import Observation
 import WebKit
@@ -14,8 +15,10 @@ enum Stage: Equatable {
     case signIn(URL)
     /// La red del estudiante exige aprobar este dispositivo en su panel.
     case waitingApproval
-    /// Conectado a la red, pero no hay ningún Mac con Aula en ella.
+    /// Conectado a la red, pero no hay ninguna Aula en ella.
     case lookingForMac
+    /// Hay más de una Aula en la red (un Mac y un servidor, dos Macs…): el estudiante elige cuál abrir.
+    case choosing([AulaPeer])
     /// El Mac está en la red pero Aula no responde (Mac dormido, Aula cerrada o el acceso apagado en Ajustes).
     case macUnreachable
     /// Todo listo: la interfaz de Aula, por el túnel local.
@@ -27,8 +30,14 @@ enum Stage: Equatable {
 @Observable
 final class AppModel {
     private(set) var stage: Stage = .starting
-    /// El Mac encontrado en la red («aula-mac»), para decirlo en pantalla.
+    /// La Aula que se abre («aula-mac», «aula-server»), para decirlo en pantalla.
     private(set) var macName: String?
+    /// La Aula elegida la última vez (si hay varias en la red).
+    private static let chosenKey = "aula.host"
+    private var chosen: String? {
+        get { UserDefaults.standard.string(forKey: Self.chosenKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.chosenKey) }
+    }
     /// Se está preguntando si cerrar la sesión de Tailscale.
     var askingSignOut = false
     /// Se está enseñando dónde descargar Aula para Mac.
@@ -97,9 +106,16 @@ final class AppModel {
         }
     }
 
+    /// La Aula que toca abrir: la elegida si sigue en la red; si solo hay una, esa; si hay varias sin elegir, ninguna (se
+    /// pregunta).
+    private func target(_ snap: TailnetSnapshot) -> String? {
+        if let c = chosen, snap.aulas.contains(where: { $0.host == c }) { return c }
+        return snap.aulas.count == 1 ? snap.aulas[0].host : nil
+    }
+
     private func apply(_ snap: TailnetSnapshot) async {
         last = snap
-        macName = snap.macHost
+        macName = target(snap) ?? snap.macHost
         // con la demostración abierta, la red privada sigue a lo suyo sin cambiar de pantalla
         if inDemo { return }
         switch snap.state {
@@ -116,6 +132,8 @@ final class AppModel {
             stage = .failed(snap.message ?? "Tailscale")
         case .running:
             if case .ready = stage { return }
+            // eligiendo: la lista se pone al día, sin decidir por el estudiante
+            if case .choosing = stage { stage = .choosing(snap.aulas); return }
             await openMac(force: false)
         }
     }
@@ -124,10 +142,11 @@ final class AppModel {
     private func openMac(force: Bool) async {
         guard !inDemo, !opening, last.state == .running else { return }
         if !force, case .ready = stage { return }
-        guard let mac = last.macHost else {
-            stage = .lookingForMac
+        guard let mac = target(last) else {
+            stage = last.aulas.count > 1 ? .choosing(last.aulas) : .lookingForMac
             return
         }
+        macName = mac
         opening = true
         defer { opening = false }
         do {
@@ -154,6 +173,21 @@ final class AppModel {
             guard !Task.isCancelled, let self else { return }
             if self.stage == .macUnreachable { await self.openMac(force: false) }
         }
+    }
+
+    /// El estudiante eligió qué Aula abrir: se recuerda para la próxima vez.
+    func choose(_ host: String) async {
+        chosen = host
+        macName = host
+        stage = .starting
+        await openMac(force: true)
+    }
+
+    /// «Abrir otra Aula» (desde la interfaz o desde una pantalla de espera): vuelve a la lista.
+    func chooseAnother() {
+        guard !inDemo, last.state == .running else { return }
+        retry?.cancel()
+        stage = last.aulas.isEmpty ? .lookingForMac : .choosing(last.aulas)
     }
 
     /// «Reintentar» de las pantallas de espera.

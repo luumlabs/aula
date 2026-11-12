@@ -2,7 +2,9 @@
   "title": "Ajustes",
   "subtitle": "Todo viene encendido salvo «Aula siempre activa». Cambia solo lo que necesites.",
   "remote": {
-    "subtitle": "Son los ajustes de Aula en tu Mac: lo que cambies aquí cambia en todas partes. Las claves, las plataformas, los dispositivos y los datos se gestionan en el Mac."
+    "subtitle": "Son los ajustes de Aula en tu Mac: lo que cambies aquí cambia en todas partes. Las claves, las plataformas, los dispositivos y los datos se gestionan en el Mac.",
+    "subtitleServer": "Son los ajustes de tu servidor de Aula: lo que cambies aquí cambia en todos tus dispositivos. La IA y sus claves, las plataformas y los dispositivos los lleva su propietario.",
+    "subtitleOwner": "Son los ajustes de tu servidor de Aula: lo que cambies aquí cambia en todos tus dispositivos. Como propietario, llevas también la IA y sus claves, las plataformas y los dispositivos."
   },
   "ai": {
     "logo": {
@@ -20,7 +22,11 @@
       "detail": "Elige entre las que ya tienes listas en tu Mac",
       "ready": "Lista en tu Mac",
       "none": "No hay ninguna IA lista en tu Mac. Conecta una en Aula, en tu Mac: Ajustes → Tu IA.",
-      "hint": "Para conectar otra IA, cambiar una clave o poner un tope de gasto, abre Ajustes en tu Mac."
+      "hint": "Para conectar otra IA, cambiar una clave o poner un tope de gasto, abre Ajustes en tu Mac.",
+      "detailServer": "Elige entre las que ya están listas en el servidor",
+      "readyServer": "Lista en el servidor",
+      "noneServer": "No hay ninguna IA lista en el servidor. El propietario la conecta en Ajustes → Tu IA.",
+      "hintServer": "Para conectar otra IA, cambiar una clave o poner un tope de gasto hace falta un dispositivo propietario."
     },
     "subscription": "Con tu suscripción",
     "subscriptionHint": "Sin claves ni pagos extra",
@@ -210,7 +216,19 @@
     "cancel": "Cancelar",
     "removeTitle": "¿Quitar «{{name}}»?",
     "removeBody": "Ese dispositivo dejará de poder entrar en Aula. Para volver a usarlo tendrás que vincularlo con un código nuevo.",
-    "failed": "No se pudo cambiar"
+    "failed": "No se pudo cambiar",
+    "owner": "Propietario",
+    "server": {
+      "title": "Tus dispositivos",
+      "hint": "Este servidor de Aula se usa desde tus dispositivos (iPhone, iPad, Android), que llegan a él por tu red privada de Tailscale, cifrada de extremo a extremo. Un propietario, como tú, lleva además la IA, las plataformas y los dispositivos.",
+      "netAs": "{{user}} · este servidor se llama «{{name}}»",
+      "step1": "En el dispositivo, abre la app de Aula y entra en Tailscale con tu misma cuenta.",
+      "step2": "Si te pregunta qué Aula abrir, elige «{{name}}».",
+      "linkOwner": "Otro propietario",
+      "ownerCodeTitle": "Código de propietario: quien lo use llevará también la IA, las plataformas y los dispositivos",
+      "removeOwnerBody": "Dejará de poder abrir Aula. Si es el último propietario, solo la consola del servidor («aula-server link») podrá dar otro código de propietario.",
+      "netLoginHint": "Este servidor tiene que entrar en Tailscale con tu cuenta: la página para hacerlo sale en su consola («aula-server status»)."
+    }
   },
   "general": {
     "title": "Idioma y avisos",
@@ -245,7 +263,9 @@
     "source": "Código fuente",
     "noKeyring": "Este sistema no tiene llavero: tus claves y sesiones se guardan solo con permisos de archivo, sin cifrar. Instala GNOME Keyring o KWallet para protegerlas.",
     "licenses": "Licencias de terceros",
-    "support": "Apoya a Aula ♡"
+    "support": "Apoya a Aula ♡",
+    "noKeyringServer": "En este servidor las claves se guardan sin cifrar en su carpeta de datos, que solo puede leer Aula: protégela como protegerías el servidor.",
+    "switchAula": "Abrir otra Aula"
   },
   "memory": {
     "title": "Lo que Aula recuerda",
@@ -286,6 +306,8 @@
       "assistant": "Del chat",
       "practice": "De la práctica",
       "course": "Al crear un curso"
-    }
+    },
+    "bodyServer": "Tus preferencias, exámenes y lo que te cuesta, para ayudarte mejor. Se guarda solo en tu servidor de Aula.",
+    "offServer": "Desactivada: se enciende desde la consola del servidor o desde un dispositivo propietario"
   }
 }

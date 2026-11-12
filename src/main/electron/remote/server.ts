@@ -5,6 +5,8 @@
 //  · `/rpc`: los mismos métodos que la ventana, pero solo los de la lista de remote/policy.ts y solo de un dispositivo
 //    emparejado (ficha en una cookie o en `Authorization`).
 //  · `/events`: los eventos de la app, uno por línea. `/asset/…`: imágenes, materiales y grabaciones (con rangos).
+//  · Aula como servidor (sin ventana): un dispositivo propietario hace de ventana (remote/policy.ts) y `/admin/…` es la
+//    consola del propio servidor (`aula-server link`): solo desde este ordenador y con la clave de `Remote/admin.json`.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createReadStream, readFileSync, statSync } from 'node:fs'
@@ -18,6 +20,8 @@ import { tr } from '@shared/ai/i18n'
 import { APP_CSP, mimeFor, resolveAppUrl, resolveAssetUrl } from '../protocol'
 import { dispatchRemote, onEmit } from '../rpc'
 
+/** La cookie con la ficha del dispositivo. Cada instalación usa la suya (`aula_device_<id>`): un dispositivo que abre un Mac y
+ *  un servidor (los dos en 127.0.0.1 a través de su túnel) guarda las dos fichas sin que una pise a la otra. */
 export const DEVICE_COOKIE = 'aula_device'
 /** Cabeceras que solo puede poner el proceso auxiliar de Tailscale (con su clave); de un cliente se ignoran. */
 export const PROXY_KEY_HEADER = 'x-aula-proxy-key'
@@ -41,11 +45,18 @@ export interface RemoteServerOptions {
   port?: number
   /** Avisa de que cambió algo que la interfaz del Mac enseña (un dispositivo nuevo). */
   onChange?: () => void
+  /** El nombre de la cookie de esta instalación (por defecto, el de siempre). Se sigue aceptando `aula_device`. */
+  cookieName?: string
+  /** Dónde corre Aula: en el Mac (con su ventana) o como servidor. Cambia lo que dicen la página de vincular y los avisos. */
+  host?: 'mac' | 'server'
+  /** La consola del servidor (`/admin/…`), solo en Aula como servidor. */
+  admin?: { token: string; status: () => unknown; link: (owner: boolean) => unknown }
 }
 
 export class RemoteServer {
   private server: Server | null = null
-  private streams = new Set<ServerResponse>()
+  /** Quién escucha cada flujo de eventos (los de los dispositivos, `remote.*`, solo llegan a un propietario). */
+  private streams = new Map<ServerResponse, RemoteDeviceView>()
   private stopTap: (() => void) | null = null
   port = 0
 
@@ -70,7 +81,7 @@ export class RemoteServer {
   async stop(): Promise<void> {
     this.stopTap?.()
     this.stopTap = null
-    for (const s of this.streams) { try { s.end() } catch { /* ya cerrado */ } }
+    for (const s of this.streams.keys()) { try { s.end() } catch { /* ya cerrado */ } }
     this.streams.clear()
     const server = this.server
     this.server = null
@@ -84,7 +95,12 @@ export class RemoteServer {
     if (!this.streams.size) return
     let line: string
     try { line = rewriteAssets(JSON.stringify({ event, payload })) + '\n' } catch { return }
-    for (const s of this.streams) { try { s.write(line) } catch { this.streams.delete(s) } }
+    // los dispositivos vinculados y sus códigos son cosa de la ventana o de un propietario
+    const ownersOnly = event.startsWith('remote.')
+    for (const [s, device] of this.streams) {
+      if (ownersOnly && !device.owner) continue
+      try { s.write(line) } catch { this.streams.delete(s) }
+    }
   }
 
   // MARK: Quién llama
@@ -103,11 +119,28 @@ export class RemoteServer {
     return host === `127.0.0.1:${this.port}` || host === `localhost:${this.port}` || host === `[::1]:${this.port}`
   }
 
-  private device(req: IncomingMessage): RemoteDeviceView | undefined {
+  private get cookieName(): string { return this.o.cookieName ?? DEVICE_COOKIE }
+
+  /** El dispositivo que llama; `renew` si llegó con la cookie de antes (`aula_device`) y hay que darle la de esta instalación. */
+  private device(req: IncomingMessage): { device?: RemoteDeviceView; renew?: string } {
     const auth = req.headers.authorization
-    if (auth?.startsWith('Bearer ')) return this.o.devices.authenticate(auth.slice(7).trim())
-    const cookie = (req.headers.cookie ?? '').split(';').map((c) => c.trim()).find((c) => c.startsWith(DEVICE_COOKIE + '='))
-    return cookie ? this.o.devices.authenticate(decodeURIComponent(cookie.slice(DEVICE_COOKIE.length + 1))) : undefined
+    if (auth?.startsWith('Bearer ')) return { device: this.o.devices.authenticate(auth.slice(7).trim()) }
+    const cookies = (req.headers.cookie ?? '').split(';').map((c) => c.trim())
+    const read = (name: string): string | undefined => {
+      const c = cookies.find((x) => x.startsWith(name + '='))
+      if (!c) return undefined
+      try { return decodeURIComponent(c.slice(name.length + 1)) } catch { return undefined }
+    }
+    const own = read(this.cookieName)
+    const mine = own ? this.o.devices.authenticate(own) : undefined
+    if (mine || this.cookieName === DEVICE_COOKIE) return { device: mine }
+    const legacy = read(DEVICE_COOKIE)
+    const device = legacy ? this.o.devices.authenticate(legacy) : undefined
+    return device ? { device, renew: legacy } : {}
+  }
+
+  private deviceCookie(token: string): string {
+    return `${this.cookieName}=${encodeURIComponent(token)}; Path=/; Max-Age=${COOKIE_DAYS * 86_400}; HttpOnly; SameSite=Strict`
   }
 
   // MARK: Rutas
@@ -130,22 +163,42 @@ export class RemoteServer {
       return
     }
     if (path === '/remote-bridge.js') return this.send(res, 200, 'text/javascript; charset=utf-8', REMOTE_BRIDGE_JS, { 'cache-control': 'no-cache' })
+    if (path.startsWith('/admin/')) return this.admin(req, res, path, method)
     if (path === '/pair' && method === 'GET') {
       const nonce = randomBytes(16).toString('base64')
-      return this.send(res, 200, 'text/html; charset=utf-8', pairingPage(this.o.language(), nonce), {
+      return this.send(res, 200, 'text/html; charset=utf-8', pairingPage(this.o.language(), nonce, this.o.host ?? 'mac'), {
         'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
         'cache-control': 'no-store'
       })
     }
     if (path === '/pair/complete' && method === 'POST') return this.pair(req, res)
 
-    const device = this.device(req)
+    const { device, renew } = this.device(req)
+    // llegó con la cookie de antes: se le da la de esta instalación (la vieja se queda para la otra Aula que la use)
+    if (device && renew) res.setHeader('set-cookie', this.deviceCookie(renew))
     if (path === '/rpc' && method === 'POST') return device ? this.rpc(req, res, device) : this.fail(res, 401, 'forbidden')
-    if (path === '/events' && method === 'GET') return device ? this.events(req, res) : this.fail(res, 401, 'forbidden')
+    if (path === '/events' && method === 'GET') return device ? this.events(req, res, device) : this.fail(res, 401, 'forbidden')
     if (path.startsWith('/asset/')) return device ? this.asset(req, res, path) : this.fail(res, 401, 'forbidden')
     if (path.startsWith('/upload/') && method === 'PUT') return device ? this.upload(req, res, path, device) : this.fail(res, 401, 'forbidden')
     if (method !== 'GET' && method !== 'HEAD') return this.fail(res, 405, 'invalid_args')
-    return this.page(res, path, !!device, method === 'HEAD')
+    return this.page(res, path, device, method === 'HEAD')
+  }
+
+  /** La consola del servidor: `aula-server status` y `aula-server link`. Solo desde este ordenador (nunca por la red privada)
+   *  y con la clave que Aula deja en `Remote/admin.json` (legible solo por quien la ejecuta). */
+  private async admin(req: IncomingMessage, res: ServerResponse, path: string, method: string): Promise<void> {
+    const admin = this.o.admin
+    const auth = req.headers.authorization ?? ''
+    const ok = !!admin && !this.viaTailnet(req) && auth.startsWith('Bearer ') && auth.length - 7 === admin.token.length && timingSafeEqual(Buffer.from(auth.slice(7)), Buffer.from(admin.token))
+    if (!ok) return this.fail(res, 404, 'not_found')
+    if (path === '/admin/status' && method === 'GET') return this.json(res, 200, { ok: true, value: admin.status() })
+    if (path === '/admin/link' && method === 'POST') {
+      const body = await this.body(req, res)
+      if (body === undefined) return
+      const owner = (body as { owner?: unknown } | null)?.owner !== false
+      return this.json(res, 200, { ok: true, value: admin.link(owner) })
+    }
+    return this.fail(res, 404, 'not_found')
   }
 
   private async pair(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -156,7 +209,7 @@ export class RemoteServer {
       const r = this.o.devices.completePairing(String(b.code ?? ''), String(b.name ?? ''), String(b.platform ?? 'web'))
       this.o.onChange?.()
       this.json(res, 200, { ok: true, token: r.token, device: r.device }, {
-        'set-cookie': `${DEVICE_COOKIE}=${encodeURIComponent(r.token)}; Path=/; Max-Age=${COOKIE_DAYS * 86_400}; HttpOnly; SameSite=Strict`,
+        'set-cookie': this.deviceCookie(r.token),
         'cache-control': 'no-store'
       })
     } catch (err) {
@@ -171,8 +224,14 @@ export class RemoteServer {
     const call = body as { method?: unknown; args?: unknown } | null
     const method = typeof call?.method === 'string' ? call.method : ''
     // los métodos acotados (ajustes, olvidar un recuerdo, elegir la IA) pasan solo con los argumentos ya comprobados
-    const { verdict, args } = remoteCall(method, call?.args ?? undefined)
-    if (verdict === 'deny') return this.json(res, 200, { ok: false, error: { message: tr('Esto solo se puede hacer desde Aula en tu Mac.', 'This can only be done from Aula on your Mac.'), code: 'forbidden' } })
+    // un propietario (Aula como servidor) pasa como la ventana, salvo lo que necesita la pantalla del servidor
+    const { verdict, args } = remoteCall(method, call?.args ?? undefined, { owner: device.owner === true })
+    if (verdict === 'deny') {
+      const message = this.o.host === 'server'
+        ? device.owner ? tr('Esto no se puede hacer desde un dispositivo: hazlo en la consola del servidor.', 'This can\'t be done from a device: do it on the server\'s console.') : tr('Esto solo lo puede hacer el propietario de este servidor de Aula.', 'Only the owner of this Aula server can do this.')
+        : tr('Esto solo se puede hacer desde Aula en tu Mac.', 'This can only be done from Aula on your Mac.')
+      return this.json(res, 200, { ok: false, error: { message, code: 'forbidden' } })
+    }
     if (verdict === 'noop') return this.json(res, 200, { ok: true, value: noopValue(method) })
     const envelope = await dispatchRemote(method, this.o.uploads.resolve(device.id, args), device.id)
     this.send(res, 200, 'application/json; charset=utf-8', rewriteAssets(JSON.stringify(envelope) ?? '{"ok":true}'), { 'cache-control': 'no-store' })
@@ -196,10 +255,10 @@ export class RemoteServer {
     }
   }
 
-  private events(req: IncomingMessage, res: ServerResponse): void {
+  private events(req: IncomingMessage, res: ServerResponse, device: RemoteDeviceView): void {
     res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no', connection: 'keep-alive' })
     res.write('\n')
-    this.streams.add(res)
+    this.streams.set(res, device)
     // una línea vacía cada poco mantiene viva la conexión por la red privada
     const beat = setInterval(() => { try { res.write('\n') } catch { /* cerrado */ } }, 20_000)
     const close = (): void => { clearInterval(beat); this.streams.delete(res) }
@@ -234,7 +293,8 @@ export class RemoteServer {
   }
 
   /** La interfaz: sus archivos tal cual; la página, con el puente delante y solo para un dispositivo emparejado. */
-  private page(res: ServerResponse, path: string, paired: boolean, head: boolean): void {
+  private page(res: ServerResponse, path: string, device: RemoteDeviceView | undefined, head: boolean): void {
+    const paired = !!device
     const file = resolveAppUrl('app://aula' + path, this.o.rendererRoot)
     if (!file) return this.fail(res, 404, 'not_found')
     const type = mimeFor(file)
@@ -243,7 +303,7 @@ export class RemoteServer {
       let html: string
       try { html = readFileSync(file, 'utf8') } catch { return this.fail(res, 404, 'not_found') }
       // la página trae su propia política en una etiqueta <meta>; aquí vale la del servidor, y el puente va antes que la app
-      html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<head>/i, '<head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><script src="/remote-bridge.js"></script>')
+      html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<head>/i, '<head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' + (this.o.host === 'server' ? '<meta name="aula-host" content="server">' : '') + (device?.owner ? '<meta name="aula-device" content="owner">' : '') + '<script src="/remote-bridge.js"></script>')
       return this.send(res, 200, type, head ? '' : html, { 'content-security-policy': REMOTE_CSP, 'cache-control': 'no-store' })
     }
     let size: number

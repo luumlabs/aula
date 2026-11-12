@@ -1,6 +1,8 @@
 // Ajustes → «Aula en tus dispositivos»: usar Aula desde el iPad o el iPhone con todo (cursos, IA, datos) en este Mac.
 // Un interruptor, el estado de la red privada (Tailscale, dentro de Aula), el código para vincular un dispositivo y la
 // lista de los vinculados. Apagado por defecto. La lógica está en el proceso principal ('remote.*').
+// Con Aula como servidor (sin Mac) la ve el dispositivo propietario: siempre encendida, sin cerrar la sesión de Tailscale (se
+// quedaría fuera), con la opción de dar un código de propietario y la marca de quién lo es.
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RemoteDeviceInfo, RemoteStatus } from '@shared/ipc/remote'
@@ -9,7 +11,7 @@ import { api } from '@renderer/lib/api'
 import { useRpc } from '@renderer/lib/useRpc'
 import { rowTime } from '../inbox/format'
 
-const DEVICE_ICONS: Record<string, IconName> = { ipad: 'tablet', iphone: 'phone', web: 'browser' }
+const DEVICE_ICONS: Record<string, IconName> = { ipad: 'tablet', iphone: 'phone', android: 'phone', web: 'browser' }
 
 /** «9:41» que queda para que caduque el código (vacío si ya caducó). */
 function useCountdown(expires: string | undefined): string {
@@ -41,10 +43,12 @@ export function DevicesCard() {
     try { setData(await call()) } catch (e) { toast.error(t('devices.failed'), e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
   }
   if (!status) return null
+  const server = status.server === true
   const on = status.enabled
   const net = status.tailnet
   const ready = on && net.state === 'running'
   const address = status.deviceURL ?? 'http://aula-mac'
+  const name = status.tailnet.name ?? (server ? 'aula-server' : 'aula-mac')
   const headline = !on ? t('devices.off') : ready ? (status.connected ? t('devices.connected', { count: status.connected }) : t('devices.ready')) : t(`devices.net.${net.state}`)
 
   return (
@@ -55,11 +59,12 @@ export function DevicesCard() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="t-title2">{t('devices.title')}</h2>
-            <Switch checked={on} disabled={busy} onChange={(v) => void run(() => api.invoke('remote.setEnabled', { enabled: v }))} label={t('devices.title')} />
+            <h2 className="t-title2">{server ? t('devices.server.title') : t('devices.title')}</h2>
+            {/* un servidor no se apaga desde un dispositivo: dejaría fuera a todos */}
+            {!server && <Switch checked={on} disabled={busy} onChange={(v) => void run(() => api.invoke('remote.setEnabled', { enabled: v }))} label={t('devices.title')} />}
           </div>
           <p className="t-ui text-text2 mt-1" aria-live="polite">{headline}</p>
-          <p className="t-callout text-text2 mt-2">{t('devices.hint')}</p>
+          <p className="t-callout text-text2 mt-2">{server ? t('devices.server.hint') : t('devices.hint')}</p>
         </div>
       </div>
 
@@ -71,7 +76,7 @@ export function DevicesCard() {
             <div className="border-t-[0.5px] border-line-soft py-3">
               {status.pairing && left ? (
                 <div>
-                  <div className="t-callout font-medium">{t('devices.codeTitle')}</div>
+                  <div className="t-callout font-medium">{status.pairing.owner ? t('devices.server.ownerCodeTitle') : t('devices.codeTitle')}</div>
                   <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
                     <div aria-label={status.pairing.code.split('').join(' ')} className="font-serif text-[40px] font-medium leading-none tracking-[0.12em] tabular text-text select-text">
                       {status.pairing.code.slice(0, 3)}<span className="mx-[0.12em] text-text3">·</span>{status.pairing.code.slice(3)}
@@ -79,8 +84,8 @@ export function DevicesCard() {
                     <div className="t-ui text-text3 tabular pb-1">{t('devices.codeExpires', { left })}</div>
                   </div>
                   <ol className="mt-3 flex list-decimal flex-col gap-1 pl-5 t-callout text-text2">
-                    <li>{t('devices.step1')}</li>
-                    <li>{t('devices.step2', { address })}</li>
+                    <li>{server ? t('devices.server.step1') : t('devices.step1')}</li>
+                    <li>{server ? t('devices.server.step2', { name }) : t('devices.step2', { address })}</li>
                     <li>{t('devices.step3')}</li>
                   </ol>
                   <Button size="sm" variant="ghost" className="mt-2 -ml-2" onClick={() => void run(() => api.invoke('remote.cancelPairing'))}>{t('devices.cancelCode')}</Button>
@@ -91,7 +96,10 @@ export function DevicesCard() {
                     <div className="t-callout font-medium">{t('devices.link')}</div>
                     <div className="t-ui text-text3 mt-0.5">{t('devices.linkHint')}</div>
                   </div>
-                  <Button variant={status.devices.length ? 'secondary' : 'primary'} disabled={busy} icon={<Icon name="plus" size={14} />} onClick={() => void run(() => api.invoke('remote.startPairing'))}>{t('devices.linkAction')}</Button>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                    {server && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => api.invoke('remote.startPairing', { owner: true }))}>{t('devices.server.linkOwner')}</Button>}
+                    <Button variant={status.devices.length ? 'secondary' : 'primary'} disabled={busy} icon={<Icon name="plus" size={14} />} onClick={() => void run(() => api.invoke('remote.startPairing'))}>{t('devices.linkAction')}</Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -103,7 +111,10 @@ export function DevicesCard() {
                 <li key={d.id} className="flex items-center gap-3 py-2">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-fill2 text-text2"><Icon name={DEVICE_ICONS[d.platform] ?? 'browser'} size={17} /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="t-callout font-medium truncate">{d.name}</div>
+                    <div className="t-callout font-medium flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">{d.name}</span>
+                      {d.owner && <span className="t-caption shrink-0 rounded-full bg-accent-wash px-2 py-0.5 text-accent-text">{t('devices.owner')}</span>}
+                    </div>
                     <div className="t-ui text-text3">{t('devices.lastSeen', { when: rowTime(t, d.lastSeen) })}</div>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setRemoving(d)}>{t('devices.remove')}</Button>
@@ -119,7 +130,7 @@ export function DevicesCard() {
         onClose={() => setRemoving(null)}
         onConfirm={() => { const d = removing; if (d) void run(() => api.invoke('remote.revoke', { id: d.id })) }}
         title={t('devices.removeTitle', { name: removing?.name ?? '' })}
-        description={t('devices.removeBody')}
+        description={server && removing?.owner ? t('devices.server.removeOwnerBody') : t('devices.removeBody')}
         confirmLabel={t('devices.remove')}
         cancelLabel={t('devices.cancel')}
         danger
@@ -139,12 +150,15 @@ function Network({ status, busy, run }: { status: RemoteStatus; busy: boolean; r
         <div className={row}>
           <div className="min-w-0">
             <div className="t-callout font-medium flex items-center gap-1.5"><Icon name="check-circle" size={15} className="text-accent-text" />{t('devices.netRunning')}</div>
-            <div className="t-ui text-text3 mt-0.5 truncate">{net.user ? t('devices.netAs', { user: net.user, name: net.name ?? 'aula-mac' }) : net.name}</div>
+            <div className="t-ui text-text3 mt-0.5 truncate">{net.user ? t(status.server ? 'devices.server.netAs' : 'devices.netAs', { user: net.user, name: net.name ?? (status.server ? 'aula-server' : 'aula-mac') }) : net.name}</div>
           </div>
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => api.invoke('remote.tailnetLogout'))}>{t('devices.netLogout')}</Button>
+          {/* la sesión de Tailscale de un servidor se cierra en su consola: desde aquí el dispositivo se quedaría fuera */}
+          {!status.server && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => api.invoke('remote.tailnetLogout'))}>{t('devices.netLogout')}</Button>}
         </div>
       )
     case 'needsLogin':
+      // un servidor inicia sesión en Tailscale desde su consola (la página sale en su registro y en «aula-server status»)
+      if (status.server) return <Note row={row} title={t('devices.netLoginTitle')} body={t('devices.server.netLoginHint')} />
       return (
         <div className={row}>
           <div className="min-w-0">

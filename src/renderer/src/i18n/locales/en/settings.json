@@ -2,7 +2,9 @@
   "title": "Settings",
   "subtitle": "Everything is on by default except “Aula always on”. Change only what you need.",
   "remote": {
-    "subtitle": "These are Aula’s settings on your Mac: what you change here changes everywhere. Keys, platforms, devices and data are managed on the Mac."
+    "subtitle": "These are Aula’s settings on your Mac: what you change here changes everywhere. Keys, platforms, devices and data are managed on the Mac.",
+    "subtitleServer": "These are your Aula server’s settings: what you change here changes on all your devices. The AI and its keys, platforms and devices are managed by its owner.",
+    "subtitleOwner": "These are your Aula server’s settings: what you change here changes on all your devices. As the owner, you also manage the AI and its keys, platforms and devices."
   },
   "ai": {
     "logo": {
@@ -20,7 +22,11 @@
       "detail": "Choose among the ones already set up on your Mac",
       "ready": "Ready on your Mac",
       "none": "No AI is ready on your Mac. Connect one in Aula on your Mac: Settings → Your AI.",
-      "hint": "To connect another AI, change a key or set a spending cap, open Settings on your Mac."
+      "hint": "To connect another AI, change a key or set a spending cap, open Settings on your Mac.",
+      "detailServer": "Choose among the ones already set up on the server",
+      "readyServer": "Ready on the server",
+      "noneServer": "No AI is ready on the server. The owner connects one in Settings → Your AI.",
+      "hintServer": "To connect another AI, change a key or set a spending cap, use an owner device."
     },
     "subscription": "With your subscription",
     "subscriptionHint": "No keys, no extra cost",
@@ -210,7 +216,19 @@
     "cancel": "Cancel",
     "removeTitle": "Remove “{{name}}”?",
     "removeBody": "That device will no longer be able to open Aula. To use it again you’ll have to link it with a new code.",
-    "failed": "Couldn’t change that"
+    "failed": "Couldn’t change that",
+    "owner": "Owner",
+    "server": {
+      "title": "Your devices",
+      "hint": "This Aula server is used from your devices (iPhone, iPad, Android), which reach it over your private Tailscale network, encrypted end to end. An owner, like you, also manages the AI, platforms and devices.",
+      "netAs": "{{user}} · this server is called “{{name}}”",
+      "step1": "On the device, open the Aula app and sign in to Tailscale with the same account.",
+      "step2": "If it asks which Aula to open, choose “{{name}}”.",
+      "linkOwner": "Another owner",
+      "ownerCodeTitle": "Owner code: whoever uses it will also manage the AI, platforms and devices",
+      "removeOwnerBody": "It will no longer be able to open Aula. If it is the last owner, only the server’s console (“aula-server link”) can give another owner code.",
+      "netLoginHint": "This server has to sign in to Tailscale with your account: the page to do it is on its console (“aula-server status”)."
+    }
   },
   "general": {
     "title": "Language and reminders",
@@ -245,7 +263,9 @@
     "source": "Source code",
     "noKeyring": "This system has no keyring: your keys and sessions are stored with file permissions only, unencrypted. Install GNOME Keyring or KWallet to protect them.",
     "licenses": "Third-party licenses",
-    "support": "Support Aula ♡"
+    "support": "Support Aula ♡",
+    "noKeyringServer": "On this server, keys are stored unencrypted in its data folder, which only Aula can read: protect it as you would protect the server.",
+    "switchAula": "Open another Aula"
   },
   "memory": {
     "title": "What Aula remembers",
@@ -286,6 +306,8 @@
       "assistant": "From the chat",
       "practice": "From practice",
       "course": "When creating a course"
-    }
+    },
+    "bodyServer": "Your preferences, exams and what you find hard, to help you better. Stored only on your Aula server.",
+    "offServer": "Off: turn it on from the server’s console or from an owner device"
   }
 }

@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Readable } from 'node:stream'
 import { DeviceRegistry, MAX_ATTEMPTS, PAIRING_MINUTES, PairingError, TOKEN_DAYS } from './devices'
-import { noopValue, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
+import { noopValue, ownerVerdict, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
+import { isAulaHostname, isDeviceHostname, isServerMode, serverHostname } from './server-mode'
 import { safeUploadName, UploadError, UploadStore } from './uploads'
 import { pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from './bridge'
 
@@ -63,6 +64,65 @@ describe('emparejar un dispositivo', () => {
     now += TOKEN_DAYS * 86_400_000 + 3_600_000 + 1
     expect(reg.authenticate(b.token)).toBeUndefined()
     expect(reg.list()).toEqual([])
+  })
+})
+
+describe('propietario (Aula como servidor)', () => {
+  const reg = (): DeviceRegistry => new DeviceRegistry(join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json'))
+  it('solo es propietario quien usa un código de propietario; queda guardado y se ve', () => {
+    const r = reg()
+    expect(r.hasOwner()).toBe(false)
+    const first = r.startPairing({ owner: true })
+    expect(first.owner).toBe(true)
+    const a = r.completePairing(first.code, 'iPad de Ana', 'ipad')
+    expect(a.device.owner).toBe(true)
+    expect(r.hasOwner()).toBe(true)
+    const second = r.startPairing()
+    const b = r.completePairing(second.code, 'Móvil', 'android')
+    expect(b.device.owner).toBeUndefined()
+    expect(b.device.platform).toBe('android')
+    expect(r.authenticate(a.token)?.owner).toBe(true)
+    expect(r.authenticate(b.token)?.owner).toBeUndefined()
+    // otra lectura del archivo: lo mismo
+    const file = join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json')
+    const r1 = new DeviceRegistry(file)
+    const t = r1.completePairing(r1.startPairing({ owner: true }).code, 'x', 'web').token
+    expect(new DeviceRegistry(file).authenticate(t)?.owner).toBe(true)
+  })
+  it('un propietario pide lo que la ventana, menos lo que necesita la pantalla del servidor o deja fuera a todos', () => {
+    for (const m of ['ai.setKey', 'ai.configure', 'platforms.add', 'platforms.remove', 'remote.startPairing', 'remote.revoke', 'remote.status', 'local.download', 'courses.delete', 'memory.clear', 'secrets.status', 'settings.update'])
+      expect([m, ownerVerdict(m)]).toEqual([m, 'allow'])
+    for (const m of ['documents.pick', 'documents.reveal', 'courses.export', 'courses.import', 'calendar.importICS', 'calendar.exportICS', 'data.exportAll', 'data.deleteAll', 'memory.export',
+      'updates.install', 'updates.check', 'remote.setEnabled', 'remote.tailnetLogout', 'remote.tailnetLogin', 'app.showItemInFolder', 'app.openLicenses', 'nada', ''])
+      expect([m, ownerVerdict(m)]).toEqual([m, 'deny'])
+    expect(ownerVerdict('app.setTheme')).toBe('noop')
+    // sin acotar: la clave y la dirección pasan tal cual (un dispositivo normal no puede ni pedirlo)
+    expect(remoteCall('ai.configure', { providerId: 'custom', baseURL: 'https://x.example/v1', key: 'k' }, { owner: true })).toEqual({ verdict: 'allow', args: { providerId: 'custom', baseURL: 'https://x.example/v1', key: 'k' } })
+    expect(remoteCall('ai.configure', { providerId: 'custom', baseURL: 'https://x.example/v1' }).verdict).toBe('deny')
+    expect(remoteCall('settings.update', { privacy: { telemetry: false } }, { owner: true }).verdict).toBe('allow')
+    expect(remoteCall('settings.update', { privacy: { telemetry: false } }).verdict).toBe('deny')
+    expect(remoteCall('remote.startPairing', { owner: true }).verdict).toBe('deny')
+    // ChatGPT: solo con el código de un solo uso (la página normal vuelve al propio servidor)
+    expect(remoteCall('agents.codexLogin', { deviceAuth: true }, { owner: true })).toEqual({ verdict: 'allow', args: { deviceAuth: true } })
+    expect(remoteCall('agents.codexLogin', undefined, { owner: true }).verdict).toBe('deny')
+    expect(remoteCall('agents.codexLogin', { deviceAuth: true, extra: 1 }, { owner: true }).verdict).toBe('deny')
+    expect(remoteCall('agents.codexLogin', { deviceAuth: true }).verdict).toBe('deny')
+  })
+  it('modo servidor y nombres en la red: «aula-…» es un equipo con Aula, salvo los de los dispositivos', () => {
+    expect(isServerMode(['electron', '.', '--server'], {})).toBe(true)
+    expect(isServerMode(['aula'], { AULA_SERVER: '1' })).toBe(true)
+    expect(isServerMode(['aula'], { AULA_SERVER: 'true' })).toBe(true)
+    expect(isServerMode(['aula'], {})).toBe(false)
+    expect(isServerMode(['aula'], { AULA_SERVER: '0' })).toBe(false)
+    expect(serverHostname(undefined)).toBe('aula-server')
+    expect(serverHostname('aula-casa')).toBe('aula-casa')
+    expect(serverHostname(' Aula-NAS ')).toBe('aula-nas')
+    for (const bad of ['casa', 'aula-', 'aula-ipad', 'aula-android-2', 'aula-a_b', 'aula-' + 'x'.repeat(60), '-aula-x'])
+      expect([bad, serverHostname(bad)]).toEqual([bad, 'aula-server'])
+    expect(isDeviceHostname('aula-iphone-3')).toBe(true)
+    expect(isDeviceHostname('aula-iphones')).toBe(false)
+    for (const yes of ['aula-mac', 'aula-mac-1', 'aula-server', 'aula-casa']) expect([yes, isAulaHostname(yes)]).toEqual([yes, true])
+    for (const no of ['aula-ipad', 'aula-android', 'mac', 'aulaserver', 'aula']) expect([no, isAulaHostname(no)]).toEqual([no, false])
   })
 })
 
@@ -273,12 +333,32 @@ describe('lo que recibe el dispositivo', () => {
     expect(fetched).toEqual(['/events'])
     expect(aula.pathForFile({ name: 'apuntes.pdf' })).toBe(`aula-upload://${'07'.repeat(16)}/apuntes.pdf`)
     expect(fetched[1]).toBe(`/upload/${'07'.repeat(16)}`)
+    expect(aula).toMatchObject({ owner: false, server: false })
+  })
+  it('el puente sabe si el dispositivo es propietario, si Aula es un servidor y si es un Android; los enlaces se abren en él', async () => {
+    const opened: string[] = []
+    const fetched: string[] = []
+    const metas: Record<string, string> = { 'aula-device': 'owner', 'aula-host': 'server' }
+    const doc = { querySelector: (sel: string) => { const name = /name="([^"]+)"/.exec(sel)?.[1] ?? ''; return metas[name] ? { getAttribute: () => metas[name] } : null } }
+    const win: Record<string, unknown> = { screen: { width: 412, height: 915 }, open: (u: string) => { opened.push(u) } }
+    const fetch = (url: string): Promise<never> => { fetched.push(url); return new Promise(() => {}) }
+    new Function('window', 'fetch', 'crypto', 'navigator', 'location', 'document', 'setTimeout', REMOTE_BRIDGE_JS)(win, fetch, { getRandomValues: (a: Uint8Array) => a, randomUUID: () => 'x' }, { userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36', platform: 'Linux armv8l', maxTouchPoints: 5, clipboard: {} }, { pathname: '/', replace: () => {} }, doc, () => 0)
+    const aula = win.aula as { platform: string; owner: boolean; server: boolean; invoke: (m: string, a?: unknown) => Promise<{ ok: boolean }> }
+    expect(aula).toMatchObject({ platform: 'android', owner: true, server: true })
+    expect(await aula.invoke('app.openExternal', { url: 'https://platform.deepseek.com/api_keys' })).toEqual({ ok: true, value: null })
+    expect(await aula.invoke('app.openExternal', { url: 'file:///etc/passwd' })).toEqual({ ok: true, value: null })
+    expect(opened).toEqual(['https://platform.deepseek.com/api_keys'])
+    expect(fetched).toEqual(['/events'])
   })
   it('la página para vincular va en el idioma de Aula y con su nonce', () => {
     const es = pairingPage('es', 'N0NCE')
     expect(es).toContain('Vincula este dispositivo')
     expect(es.match(/nonce="N0NCE"/g)?.length).toBe(2)
     expect(pairingPage('en', 'x')).toContain('Link this device')
+    // como servidor no hay Mac: el código sale del servidor (o de un propietario)
+    expect(pairingPage('es', 'x', 'server')).toContain('aula-server link')
+    expect(pairingPage('es', 'x', 'server')).not.toContain('En tu Mac')
+    expect(pairingPage('en', 'x', 'server')).toContain('your Aula server')
     expect(JSON.parse(REMOTE_MANIFEST)).toMatchObject({ display: 'standalone', start_url: '/' })
   })
 })

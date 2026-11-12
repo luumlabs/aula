@@ -12,7 +12,7 @@ struct RootView: View {
             case .ready(let base):
                 VStack(spacing: 0) {
                     if model.showsDemoBar { DemoBar { Task { await model.exitDemo() } } }
-                    WebView(base: base) { Task { await model.webFailed() } }
+                    WebView(base: base, onFailure: { Task { await model.webFailed() } }, onSwitch: { model.chooseAnother() })
                         .ignoresSafeArea(edges: model.showsDemoBar ? [.horizontal, .bottom] : .all)
                 }
                 .transition(.opacity)
@@ -91,7 +91,7 @@ struct ConnectView: View {
     /// Con sesión de Tailscale iniciada (todo lo que no sea arrancar o pedirla) se puede cerrar.
     private var canSignOut: Bool {
         switch model.stage {
-        case .lookingForMac, .macUnreachable, .waitingApproval: return true
+        case .lookingForMac, .macUnreachable, .waitingApproval, .choosing: return true
         default: return false
         }
     }
@@ -108,7 +108,7 @@ struct ConnectView: View {
     private var step: Int {
         switch model.stage {
         case .starting, .signIn, .waitingApproval, .failed: return 1
-        case .lookingForMac, .macUnreachable: return 2
+        case .lookingForMac, .macUnreachable, .choosing: return 2
         case .ready: return 3
         }
     }
@@ -133,7 +133,30 @@ struct ConnectView: View {
             }
         case .macUnreachable:
             Message(title: Texts.unreachableTitle, text: Texts.unreachableBody(model.macName), footnote: nil) {
-                Button(Texts.retry) { Task { await model.tryAgain() } }.buttonStyle(BrickButton())
+                VStack(spacing: 6) {
+                    Button(Texts.retry) { Task { await model.tryAgain() } }.buttonStyle(BrickButton())
+                    Button(Texts.chooseAnother) { model.chooseAnother() }.buttonStyle(QuietButton())
+                }
+            }
+        case .choosing(let aulas):
+            Message(title: Texts.chooseTitle, text: Texts.chooseBody, footnote: nil) {
+                VStack(spacing: 10) {
+                    ForEach(aulas, id: \.host) { aula in
+                        Button { Task { await model.choose(aula.host) } } label: {
+                            HStack(spacing: 10) {
+                                Circle().fill(aula.online ? Color.accentColor : Color.secondary.opacity(0.35)).frame(width: 8, height: 8)
+                                Text(aula.host).font(.body.weight(.medium))
+                                Spacer(minLength: 8)
+                                if !aula.online { Text(Texts.chooseOffline).font(.footnote).foregroundStyle(.secondary) }
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: 360, minHeight: 48)
+                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.primary.opacity(0.06)))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(aula.online ? aula.host : "\(aula.host), \(Texts.chooseOffline)")
+                    }
+                }
             }
         case .failed(let why):
             Message(title: Texts.failedTitle, text: why, footnote: nil) {

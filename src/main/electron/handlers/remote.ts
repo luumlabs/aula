@@ -11,7 +11,8 @@ export function register(): void {
     if (typeof args?.enabled !== 'boolean') throw invalidArgs('Valor no válido')
     return remote.setEnabled(args.enabled)
   })
-  handle('remote.startPairing', () => remote.startPairing())
+  // `owner`: un código de propietario (solo en Aula como servidor; quien llama ya es propietario: remote/policy.ts)
+  handle('remote.startPairing', (args) => remote.startPairing({ owner: !!args && typeof args === 'object' && (args as { owner?: unknown }).owner === true }))
   handle('remote.cancelPairing', () => remote.cancelPairing())
   handle('remote.revoke', (args) => {
     if (typeof args?.id !== 'string' || !/^[0-9a-f]{6,32}$/.test(args.id)) throw invalidArgs('Dispositivo no válido')

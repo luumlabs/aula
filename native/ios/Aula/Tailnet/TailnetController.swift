@@ -27,10 +27,13 @@ struct TailnetSnapshot: Sendable, Equatable {
     var dnsName: String?
     var hostname: String?
     var message: String?
-    /// Aula's Mac as seen in the tailnet: its machine name ("aula-mac", or "aula-mac-1" if the name was taken).
+    /// The best Aula in the tailnet (online first): a Mac ("aula-mac", or "aula-mac-1" if the name was taken) or an Aula
+    /// server ("aula-server"). The app opens the one the student chose if there are several (`aulas`).
     var macHost: String?
-    /// Whether that Mac is reachable right now (Aula open, Mac awake).
+    /// Whether that Aula is reachable right now (Aula open, Mac awake).
     var macOnline = false
+    /// Every Aula in the tailnet, online first.
+    var aulas: [AulaPeer] = []
 
     static let stopped = TailnetSnapshot(state: .stopped)
 }
@@ -190,23 +193,36 @@ private struct IPNStatus: Decodable {
 /// The machine name Aula's Mac app asks for in the tailnet (src/main/electron/remote/tailnet.ts).
 let aulaMacHostname = "aula-mac"
 
-/// Aula's Mac among the tailnet's machines: the one named "aula-mac" (or "aula-mac-N" when that name was taken),
-/// preferring one that is online.
-private func findMac(_ peers: [String: IPNStatus.PeerStatus]?) -> (host: String, online: Bool)? {
-    var best: (host: String, online: Bool)?
+/// An Aula as seen in the tailnet.
+struct AulaPeer: Sendable, Equatable, Hashable {
+    let host: String
+    let online: Bool
+}
+
+/// The names the device apps give themselves: never an Aula (src/main/services/remote/server-mode.ts).
+private let deviceHostnames = ["aula-ipad", "aula-iphone", "aula-android", "aula-device"]
+
+/// Is this machine an Aula? Its name starts with "aula-" and is not a device's ("aula-mac", "aula-server", "aula-casa"…).
+func isAulaHost(_ name: String) -> Bool {
+    let n = name.lowercased()
+    guard n.hasPrefix("aula-"), n.count > 5, n.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) else { return false }
+    for d in deviceHostnames where n == d || (n.hasPrefix(d + "-") && n.dropFirst(d.count + 1).allSatisfy(\.isNumber)) { return false }
+    return true
+}
+
+/// Every Aula among the tailnet's machines, online first, then by name.
+private func findAulas(_ peers: [String: IPNStatus.PeerStatus]?) -> [AulaPeer] {
+    var found: [String: AulaPeer] = [:]
     for peer in (peers ?? [:]).values {
         // the first label of the MagicDNS name is the machine name as the tailnet knows it
         let dns = (peer.DNSName ?? "").split(separator: ".").first.map(String.init) ?? ""
         let name = (dns.isEmpty ? (peer.HostName ?? "") : dns).lowercased()
-        guard name == aulaMacHostname || name.hasPrefix(aulaMacHostname + "-") else { continue }
+        guard isAulaHost(name) else { continue }
         let online = peer.Online ?? false
-        if let b = best {
-            if (online && !b.online) || (online == b.online && name < b.host) { best = (name, online) }
-        } else {
-            best = (name, online)
-        }
+        if let old = found[name], old.online { continue }
+        found[name] = AulaPeer(host: name, online: online)
     }
-    return best
+    return found.values.sorted { ($0.online ? 0 : 1, $0.host) < ($1.online ? 0 : 1, $1.host) }
 }
 
 /// Where the node's events go: the app's model once it is listening.
@@ -499,8 +515,8 @@ actor TailnetController {
             } else if let h = st.Self?.HostName, !h.isEmpty {
                 host = h
             }
-            let mac = findMac(st.Peer)
-            next = TailnetSnapshot(state: .running, ips: ips, dnsName: dns, hostname: host, macHost: mac?.host, macOnline: mac?.online ?? false)
+            let aulas = findAulas(st.Peer)
+            next = TailnetSnapshot(state: .running, ips: ips, dnsName: dns, hostname: host, macHost: aulas.first?.host, macOnline: aulas.first?.online ?? false, aulas: aulas)
         case "NeedsLogin":
             if let url = st.AuthURL, !url.isEmpty {
                 next = TailnetSnapshot(state: .needsLogin, authURL: url, hostname: requested)

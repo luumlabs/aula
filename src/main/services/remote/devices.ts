@@ -2,6 +2,10 @@
 //  · Emparejar: Aula enseña en el Mac un código de un solo uso (6 cifras, 10 minutos); el dispositivo lo envía y recibe
 //    su ficha (un secreto largo que solo él guarda; aquí queda su huella, nunca la ficha).
 //  · Cada petición trae la ficha; caduca si el dispositivo pasa 90 días sin usarla y se puede retirar desde Ajustes.
+//  · Propietario: en Aula como servidor (sin ventana) no hay un Mac desde el que llevar las claves, las plataformas o los
+//    dispositivos, así que el dispositivo de quien la instaló hace de ventana. Solo se es propietario con un código pedido
+//    así: el primero que enseña el servidor al arrancar sin propietario, el de su consola (`aula-server link`) o el que da
+//    otro propietario. En el Mac no hay propietarios: su ventana ya lo es.
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -11,8 +15,10 @@ export interface RemoteDevice {
   id: string
   /** Como lo llama el estudiante («iPad de Ana»). */
   name: string
-  /** ipad, iphone o web. */
+  /** ipad, iphone, android o web. */
   platform: string
+  /** Hace de ventana de Aula como servidor (remote/policy.ts): solo con un código de propietario. */
+  owner?: boolean
   /** sha256 de la ficha. */
   tokenHash: string
   created: string
@@ -39,7 +45,7 @@ export class PairingError extends Error {
 
 export class DeviceRegistry {
   private devices: RemoteDevice[] = []
-  private pairing: { hash: string; expires: number; attempts: number } | null = null
+  private pairing: { hash: string; expires: number; attempts: number; owner: boolean } | null = null
 
   constructor(private readonly file: string, private readonly now: () => number = Date.now) {
     this.load()
@@ -53,7 +59,7 @@ export class DeviceRegistry {
       this.devices = raw.devices.flatMap((d): RemoteDevice[] => {
         const o = d as Partial<RemoteDevice>
         return typeof o?.id === 'string' && typeof o.tokenHash === 'string' && typeof o.name === 'string'
-          ? [{ id: o.id, name: o.name, platform: typeof o.platform === 'string' ? o.platform : 'web', tokenHash: o.tokenHash, created: o.created ?? new Date(0).toISOString(), lastSeen: o.lastSeen ?? new Date(0).toISOString() }]
+          ? [{ id: o.id, name: o.name, platform: typeof o.platform === 'string' ? o.platform : 'web', tokenHash: o.tokenHash, created: o.created ?? new Date(0).toISOString(), lastSeen: o.lastSeen ?? new Date(0).toISOString(), ...(o.owner === true ? { owner: true } : {}) }]
           : []
       })
     } catch { this.devices = [] }
@@ -64,12 +70,19 @@ export class DeviceRegistry {
     writeFileAtomic(this.file, JSON.stringify({ version: 1, devices: this.devices }, null, 2))
   }
 
-  /** Empieza un emparejamiento: devuelve el código que se enseña en el Mac (el anterior deja de valer). */
-  startPairing(): { code: string; expires: string } {
+  /** Empieza un emparejamiento: devuelve el código que se enseña en el Mac (el anterior deja de valer). Con `owner`, quien lo
+   *  use será propietario (solo Aula como servidor los pide). */
+  startPairing(opts: { owner?: boolean } = {}): { code: string; expires: string; owner: boolean } {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0')
     const expires = this.now() + PAIRING_MINUTES * 60_000
-    this.pairing = { hash: sha(code), expires, attempts: 0 }
-    return { code, expires: new Date(expires).toISOString() }
+    const owner = opts.owner === true
+    this.pairing = { hash: sha(code), expires, attempts: 0, owner }
+    return { code, expires: new Date(expires).toISOString(), owner }
+  }
+
+  /** ¿Hay algún propietario vinculado? */
+  hasOwner(): boolean {
+    return this.devices.some((d) => d.owner === true)
   }
 
   cancelPairing(): void { this.pairing = null }
@@ -95,7 +108,8 @@ export class DeviceRegistry {
     const at = new Date(this.now()).toISOString()
     const device: RemoteDevice = {
       id: randomBytes(6).toString('hex'), name: name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 60) || 'Dispositivo',
-      platform: ['ipad', 'iphone', 'web'].includes(platform) ? platform : 'web', tokenHash: sha(token), created: at, lastSeen: at
+      platform: ['ipad', 'iphone', 'android', 'web'].includes(platform) ? platform : 'web', tokenHash: sha(token), created: at, lastSeen: at,
+      ...(p.owner ? { owner: true } : {})
     }
     this.devices.push(device)
     this.save()
@@ -134,5 +148,5 @@ export class DeviceRegistry {
 }
 
 function view(d: RemoteDevice): RemoteDeviceView {
-  return { id: d.id, name: d.name, platform: d.platform, created: d.created, lastSeen: d.lastSeen }
+  return { id: d.id, name: d.name, platform: d.platform, created: d.created, lastSeen: d.lastSeen, ...(d.owner ? { owner: true } : {}) }
 }

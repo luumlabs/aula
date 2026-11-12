@@ -11,6 +11,7 @@ import type { StudyReminderNotice } from '@main/services/automations'
 import { log } from '@main/services/log'
 import { getMainWindow } from './window'
 import { reveal } from './visibility'
+import { isServerMode } from '@main/services/remote/server-mode'
 
 export interface NoticeHandlers {
   /** Tocar la notificación (o «Abrir»): trae Aula con la novedad. */
@@ -49,7 +50,8 @@ export function focusMainWindow(): BrowserWindow | null {
 
 /** Publica (o reemplaza) la notificación de una entrada o de un resumen de avisos. */
 export function postAutomationNotice(n: AutomationNotice, h: NoticeHandlers): void {
-  if (!Notification.isSupported()) return
+  // como servidor no hay escritorio: las novedades se ven en «Novedades» de los dispositivos, en directo
+  if (isServerMode() || !Notification.isSupported()) return
   const urgent = n.level === 'timeSensitive' || n.priority === 2
   if (n.level === 'passive' && n.kind !== 'problem') return
   if (appFocused() && !urgent) return
@@ -84,7 +86,7 @@ export function postAutomationNotice(n: AutomationNotice, h: NoticeHandlers): vo
 
 /** Un recordatorio de estudio («Hora de estudiar», «Mañana: examen de…», el aviso de un evento). */
 export function postReminderNotice(r: StudyReminderNotice, open: (r: StudyReminderNotice) => void): void {
-  if (!Notification.isSupported()) return
+  if (isServerMode() || !Notification.isSupported()) return
   const notif = new Notification({ title: r.title, body: r.body, silent: false, ...(iconPath() ? { icon: iconPath() } : {}) })
   notif.on('click', () => {
     open(r)

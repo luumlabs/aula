@@ -56,7 +56,7 @@ export function MemoryCard() {
     <Card padded="lg" className="h-full flex flex-col">
       <SectionTitle
         title={t('memory.title')}
-        detail={disabled ? t(remote ? 'memory.offRemote' : 'memory.off') : paused ? t('memory.paused') : t('memory.count', { count: status?.active ?? 0 })}
+        detail={disabled ? t(remote ? (api.server ? 'memory.offServer' : 'memory.offRemote') : 'memory.off') : paused ? t('memory.paused') : t('memory.count', { count: status?.active ?? 0 })}
         action={
           <Menu
             trigger={(open) => (
@@ -78,7 +78,7 @@ export function MemoryCard() {
           />
         }
       />
-      <p className="t-ui text-text3 -mt-1 mb-3">{t(remote ? 'memory.bodyRemote' : 'memory.body')}</p>
+      <p className="t-ui text-text3 -mt-1 mb-3">{t(remote ? (api.server ? 'memory.bodyServer' : 'memory.bodyRemote') : 'memory.body')}</p>
       <div className="flex gap-2 mb-3">
         <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('memory.search')} icon={<Icon name="search" size={15} />} className="flex-1" />
       </div>

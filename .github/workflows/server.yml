@@ -1,0 +1,109 @@
+name: Server
+# Aula as a server (no window) in a container: docs/SERVER.md.
+#   · On every pull request that touches what goes inside (and by hand): builds the Linux app from this commit, makes the
+#     image with it and runs the smoke test (server/smoke.sh) on Linux x64 and arm64.
+#   · When an app release is published (or by hand, with «publish»): makes the image from that version's published AppImage
+#     for x64 and arm64, runs the same smoke test on each and pushes ghcr.io/luumlabs/aula-server:<version> and :latest.
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'native/tsnet/**'
+      - 'src/main/**'
+      - 'src/shared/**'
+      - 'electron-builder.yml'
+      - 'package.json'
+      - '.github/workflows/server.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Version to publish to ghcr.io (for example 0.2.4). Empty: only build and test this commit.'
+        required: false
+        default: ''
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.os }})
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish == '')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # the Tailscale sidecar goes inside the Linux app; the runner's Go fetches the version in go.mod
+      - run: native/tsnet/build.sh linux
+      - name: Build the Linux app (AppImage) from this commit
+        run: |
+          npx electron-vite build
+          npx electron-builder --linux AppImage --${{ matrix.arch }} --publish never -c.directories.output=release-ci
+          cp release-ci/Aula-*-linux-*.AppImage server/dist/
+      - run: docker build -t aula-server:smoke server/
+      - run: server/smoke.sh aula-server:smoke
+
+  publish:
+    name: publish (${{ matrix.arch }})
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish != '')
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: amd64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Version
+        id: v
+        env:
+          WANTED: ${{ inputs.publish }}
+        run: |
+          v="${WANTED:-${GITHUB_REF_NAME#v}}"
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Not a version: $v" >&2; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      # from the published AppImage of that version (checked against its latest-linux*.yml), never from this checkout
+      - run: docker build --build-arg AULA_VERSION=${{ steps.v.outputs.version }} -t ghcr.io/luumlabs/aula-server:${{ steps.v.outputs.version }}-${{ matrix.arch }} server/
+      - run: server/smoke.sh ghcr.io/luumlabs/aula-server:${{ steps.v.outputs.version }}-${{ matrix.arch }}
+      - name: Push
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push ghcr.io/luumlabs/aula-server:${{ steps.v.outputs.version }}-${{ matrix.arch }}
+
+  manifest:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    steps:
+      - name: One tag for both architectures
+        env:
+          V: ${{ needs.publish.outputs.version }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker buildx imagetools create -t "ghcr.io/luumlabs/aula-server:$V" -t ghcr.io/luumlabs/aula-server:latest \
+            "ghcr.io/luumlabs/aula-server:$V-amd64" "ghcr.io/luumlabs/aula-server:$V-arm64"
+          docker buildx imagetools inspect "ghcr.io/luumlabs/aula-server:$V"

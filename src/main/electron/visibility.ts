@@ -5,10 +5,12 @@
 //     diapositivas, también la enseñaría). En macOS, además, sin icono en el Dock, como una app LSUIElement.
 //   · Abierta al iniciar sesión con «Aula siempre activa»: solo la PRIMERA ventana empieza escondida; después se enseña
 //     cuando el estudiante la pide (Dock, bandeja, notificación…).
+//   · Aula como servidor (`--server`): tampoco, nunca (no hay pantalla que mirar: se usa desde los dispositivos).
 import type { App, BrowserWindow } from 'electron'
+import { isServerMode } from '@main/services/remote/server-mode'
 
 /** Se lee al cargar el módulo: es lo que pidió quien lanzó Aula, no algo que la app decida después. */
-const alwaysHidden = !!process.env.AULA_HIDDEN
+const alwaysHidden = !!process.env.AULA_HIDDEN || isServerMode()
 let firstHidden = alwaysHidden
 
 /** ¿Lanzada con AULA_HIDDEN? Entonces ninguna ventana se enseña nunca. */

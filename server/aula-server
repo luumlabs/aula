@@ -1,0 +1,102 @@
+#!/bin/bash
+# Aula como servidor (sin ventana) y su consola. Lo usa el contenedor (server/Dockerfile) y sirve igual en un Linux con Aula
+# instalada (la .deb o la AppImage): docs/SERVER.md.
+#
+#   aula-server run              arranca Aula sin ventana (lo que hace el contenedor al empezar)
+#   aula-server status           en qué está: Tailscale, los dispositivos y el código que espera
+#   aula-server link [--device]  un código para vincular un dispositivo: de propietario (lleva la IA, las plataformas y los
+#                                dispositivos) salvo con --device
+#   aula-server health           sale con 0 si Aula responde (para HEALTHCHECK)
+#
+# Variables: AULA_HOME (la carpeta de datos; /data en el contenedor), AULA_BIN (el ejecutable de Aula), AULA_TAILNET_HOSTNAME
+# (el nombre en la red de Tailscale, «aula-…»; por defecto aula-server), TS_AUTHKEY (una clave de Tailscale para entrar sin
+# abrir la página de inicio de sesión).
+set -euo pipefail
+
+AULA_HOME="${AULA_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/Aula}"
+AULA_BIN="${AULA_BIN:-/opt/aula/aula}"
+ADMIN="$AULA_HOME/Remote/admin.json"
+
+die() { echo "aula-server: $*" >&2; exit 1; }
+
+# La consola habla con Aula en este mismo equipo (127.0.0.1) con la clave que Aula deja en Remote/admin.json, legible solo
+# por quien la ejecuta. La clave va a curl por su entrada, nunca en la línea de órdenes (la verían otros procesos).
+admin() {
+  [ -r "$ADMIN" ] || die "$(t "Aula no está en marcha como servidor (no hay $ADMIN). Arráncala con «aula-server run»." "Aula is not running as a server (no $ADMIN). Start it with “aula-server run”.")"
+  local port token
+  port=$(sed -n 's/.*"port":\([0-9][0-9]*\).*/\1/p' "$ADMIN")
+  token=$(sed -n 's/.*"token":"\([A-Za-z0-9_-]*\)".*/\1/p' "$ADMIN")
+  [ -n "$port" ] && [ -n "$token" ] || die "$ADMIN está incompleto."
+  if [ "$1" = GET ]; then
+    printf 'header = "Authorization: Bearer %s"\n' "$token" | curl -fsS -K - "http://127.0.0.1:$port$2"
+  else
+    printf 'header = "Authorization: Bearer %s"\n' "$token" | curl -fsS -K - -X POST -H 'content-type: application/json' --data "$3" "http://127.0.0.1:$port$2"
+  fi
+}
+
+# Los mensajes van en español o en inglés según el idioma del sistema (LANG).
+case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in es*) ES=1 ;; *) ES= ;; esac
+t() { if [ -n "$ES" ]; then printf '%s\n' "$1"; else printf '%s\n' "$2"; fi; }
+
+# Lee el JSON de la consola con el propio Aula (que también es Node: ELECTRON_RUN_AS_NODE) o con node, si lo hay.
+js() {
+  if command -v node >/dev/null 2>&1; then node -e "$1"
+  elif [ -x "$AULA_BIN" ]; then ELECTRON_RUN_AS_NODE=1 "$AULA_BIN" -e "$1"
+  else cat; fi
+}
+FORMAT_STATUS='let raw="";process.stdin.on("data",c=>raw+=c).on("end",()=>{const v=JSON.parse(raw).value||{};const es=!!process.env.ES;const t=(a,b)=>es?a:b;const n=v.tailnet||{};
+const states={running:t("en marcha","running"),needsLogin:t("falta iniciar sesión","needs sign-in"),needsApproval:t("esperando tu aprobación en Tailscale","waiting for your approval in Tailscale"),starting:t("arrancando","starting"),error:t("error","error"),unavailable:t("falta el componente","component missing"),off:t("apagado","off")};
+console.log("Tailscale: "+(states[n.state]||n.state)+(n.name?" · "+n.name:"")+(n.user?" ("+n.user+")":""));
+if(n.authURL)console.log(t("Inicia sesión con TU cuenta de Tailscale: ","Sign in with YOUR Tailscale account: ")+n.authURL);
+if(n.message)console.log("  "+n.message);
+const d=v.devices||[];console.log(d.length?t("Dispositivos:","Devices:"):t("Dispositivos: ninguno todavía","Devices: none yet"));
+for(const x of d)console.log("  · "+x.name+" ("+x.platform+")"+(x.owner?t(" · propietario"," · owner"):""));
+if(v.pairing)console.log((v.pairing.owner?t("Código de propietario esperando: ","Owner code waiting: "):t("Código esperando: ","Code waiting: "))+v.pairing.code);
+if(v.connected)console.log(t("Conectados ahora: ","Connected now: ")+v.connected)})'
+
+run() {
+  [ -x "$AULA_BIN" ] || die "No encuentro Aula en $AULA_BIN (ponlo en AULA_BIN)."
+  mkdir -p "$AULA_HOME"
+  export AULA_HOME
+  local args=(--server --disable-dev-shm-usage --password-store=basic)
+  # el aislamiento de Chromium necesita espacios de nombres de usuario; en Docker suelen estar cerrados: entonces va sin él
+  # (Aula sigue dentro del contenedor, como un usuario sin privilegios) y se avisa
+  if ! unshare --user --map-root-user true 2>/dev/null; then
+    args+=(--no-sandbox)
+    t "Aula · aviso: sin espacios de nombres de usuario, Chromium va sin su aislamiento (--no-sandbox); el contenedor sigue aislando a Aula." "Aula · note: without user namespaces, Chromium runs without its sandbox (--no-sandbox); the container still isolates Aula."
+  fi
+  # las ventanas escondidas (leer PDF, el navegador de las plataformas) necesitan una pantalla: una virtual, sin red
+  if [ -z "${DISPLAY:-}" ]; then
+    local n=99
+    while [ -e "/tmp/.X11-unix/X$n" ] || [ -e "/tmp/.X$n-lock" ]; do n=$((n + 1)); done
+    Xvfb ":$n" -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &
+    for _ in $(seq 1 50); do [ -e "/tmp/.X11-unix/X$n" ] && break; sleep 0.1; done
+    [ -e "/tmp/.X11-unix/X$n" ] || die "No arrancó la pantalla virtual (Xvfb)."
+    export DISPLAY=":$n"
+  fi
+  exec "$AULA_BIN" "${args[@]}"
+}
+
+case "${1:-run}" in
+  run) run ;;
+  status)
+    out=$(admin GET /admin/status)
+    if [ "${2:-}" = "--json" ]; then echo "$out"; exit 0; fi
+    printf '%s' "$out" | ES="$ES" js "$FORMAT_STATUS"
+    exit 0 ;;
+  link)
+    owner=true
+    [ "${2:-}" = "--device" ] && owner=false
+    out=$(admin POST /admin/link "{\"owner\":$owner}")
+    code=$(printf '%s' "$out" | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
+    [ -n "$code" ] || die "$(t 'Aula no dio un código (mira «aula-server status»).' 'Aula did not give a code (see “aula-server status”).')"
+    if [ "$owner" = true ]; then t "Código de propietario: $code" "Owner code: $code"; else t "Código para vincular un dispositivo: $code" "Code to link a device: $code"; fi
+    t "Escríbelo en la app de Aula del dispositivo (con tu misma cuenta de Tailscale). Vale 10 minutos." "Type it in the Aula app on the device (signed in to the same Tailscale account). It is valid for 10 minutes."
+    exit 0 ;;
+  health)
+    [ -r "$ADMIN" ] || exit 1
+    port=$(sed -n 's/.*"port":\([0-9][0-9]*\).*/\1/p' "$ADMIN")
+    curl -fsS -o /dev/null "http://127.0.0.1:$port/health" ;;
+  -h|--help|help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) die "orden desconocida: $1 (run, status, link, health)" ;;
+esac

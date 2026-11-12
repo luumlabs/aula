@@ -11,6 +11,7 @@ import { getMainWindow } from '../window'
 import { secretProtection } from '../secrets'
 import { powerState } from '../power'
 import { noticeNeeded } from '@shared/ipc/power'
+import { isServerMode } from '@main/services/remote/server-mode'
 
 export function register(): void {
   handle('app.info', () => ({
@@ -50,7 +51,7 @@ export function register(): void {
     // «solo si no lo está viendo»: lo sabe el proceso principal (minimizada, oculta, detrás de otra app o bloqueada)
     if (whenAway === true && !noticeNeeded(powerState())) return
     if (!Notification.isSupported()) return
-    new Notification({ title: 'Aula', body: body.trim() }).show()
+    if (!isServerMode()) new Notification({ title: 'Aula', body: body.trim() }).show()
   })
   handle('app.setTheme', ({ dark }) => {
     if (typeof dark !== 'boolean') throw invalidArgs('Tema no válido')

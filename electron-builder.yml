@@ -109,6 +109,10 @@ nsis:
   artifactName: Aula-Setup-${version}.${ext}
 linux:
   icon: build/icons
+  # el componente de Tailscale de «Aula en tus dispositivos» y de Aula como servidor (docs/SERVER.md), uno por arquitectura:
+  # `native/tsnet/build.sh linux` lo deja en bin/linux-x64 y bin/linux-arm64 (el flujo «Release» lo compila antes)
+  extraResources:
+    - { from: "native/tsnet/bin/linux-${arch}", to: bin, filter: ["aula-tsnet"] }
   category: Education
   synopsis: Your study companion
   description: Turns your notes, slides and past exams, or any topic, into an interactive course and studies it with you.

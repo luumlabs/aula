@@ -149,7 +149,9 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
             ready={!!(detection?.codexManagedLoggedIn || codex?.loggedIn)}
             action={loginBusy ? undefined : (e) => {
               chatgptButton.current = e
-              return detection?.codexManagedLoggedIn || codex?.loggedIn ? use('codex-cli', e) : connectChatGPT(e)
+              // desde un dispositivo (propietario de Aula como servidor), con el código de un solo uso: la página normal
+              // volvería a una dirección del servidor que el dispositivo no ve
+              return detection?.codexManagedLoggedIn || codex?.loggedIn ? use('codex-cli', e) : connectChatGPT(e, api.remote)
             }}
             actionLabel={detection?.codexManagedLoggedIn || codex?.loggedIn ? undefined : t('ai.chatgptConnect')}
             busy={busy === 'codex-cli'}
