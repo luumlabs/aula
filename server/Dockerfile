@@ -14,7 +14,7 @@ ARG DEBIAN=debian:trixie-slim
 FROM ${DEBIAN} AS unpack
 ARG TARGETARCH
 ARG AULA_VERSION=
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl openssl \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl openssl squashfs-tools \
  && rm -rf /var/lib/apt/lists/*
 COPY dist/ /tmp/dist/
 RUN set -eu; \
@@ -35,8 +35,18 @@ RUN set -eu; \
       got=$(openssl dgst -sha512 -binary "$image" | base64 -w0); \
       [ -n "$want" ] && [ "$want" = "$got" ] || { echo "$name no coincide con su $feed" >&2; exit 1; }; \
     fi; \
-    chmod +x "$image"; \
-    cd /opt && "$image" --appimage-extract >/dev/null && mv squashfs-root aula; \
+    # la AppImage es un ejecutable pequeño seguido de un squashfs: se abre el squashfs donde acaba el ejecutable (lo dice
+    # su cabecera ELF), sin ejecutar nada de la AppImage (su ejecutable pide librerías que aquí no hay)
+    shoff=$(od -An -t u8 -j 40 -N 8 "$image" | tr -d ' '); \
+    shentsize=$(od -An -t u2 -j 58 -N 2 "$image" | tr -d ' '); \
+    shnum=$(od -An -t u2 -j 60 -N 2 "$image" | tr -d ' '); \
+    offset=$((shoff + shentsize * shnum)); \
+    if ! unsquashfs -q -n -o "$offset" -d /opt/aula "$image" >/dev/null 2>&1; then \
+      rm -rf /opt/aula; \
+      for at in $(grep -obUa hsqs "$image" | cut -d: -f1); do \
+        unsquashfs -q -n -o "$at" -d /opt/aula "$image" >/dev/null 2>&1 && break; rm -rf /opt/aula; \
+      done; \
+    fi; \
     test -x /opt/aula/aula; \
     test -x /opt/aula/resources/bin/aula-tsnet || { echo "Esta Aula no trae el componente de Tailscale" >&2; exit 1; }
 

@@ -8,7 +8,15 @@
 set -euo pipefail
 IMAGE="${1:?uso: server/smoke.sh <imagen>}"
 NAME="aula-smoke-$$"
-fail() { echo "FALLO: $*" >&2; echo "── registro del contenedor ──" >&2; docker logs "$NAME" 2>&1 | tail -60 >&2 || true; exit 1; }
+fail() {
+  echo "FALLO: $*" >&2
+  echo "── estado: $(docker inspect -f '{{.State.Status}} (salida {{.State.ExitCode}})' "$NAME" 2>&1)" >&2
+  echo "── registro del contenedor ──" >&2; docker logs "$NAME" 2>&1 | tail -60 >&2 || true
+  echo "── registro de Aula (/data/Logs/main.log) ──" >&2
+  docker cp "$NAME:/data/Logs/main.log" /tmp/aula-smoke-main.log >/dev/null 2>&1 && tail -80 /tmp/aula-smoke-main.log >&2 || echo "(no hay)" >&2
+  echo "── procesos ──" >&2; docker top "$NAME" 2>&1 | cut -c1-200 >&2 || true
+  exit 1
+}
 ok() { echo "✓ $*"; }
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -17,7 +25,11 @@ docker run -d --name "$NAME" --shm-size=1g -e LANG=es_ES.UTF-8 "$IMAGE" >/dev/nu
 inside() { docker exec "$NAME" "$@"; }
 
 # 1. arranca y deja su consola
-for _ in $(seq 1 90); do inside aula-server status --json >/dev/null 2>&1 && break; sleep 2; done
+for _ in $(seq 1 90); do
+  [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = true ] || fail "el contenedor se paró al arrancar"
+  inside aula-server status --json >/dev/null 2>&1 && break
+  sleep 2
+done
 inside aula-server status --json >/dev/null 2>&1 || fail "la consola no responde"
 docker logs "$NAME" 2>&1 | grep -q "como servidor, sin ventana\|running as a server, without a window" || fail "Aula no dijo que arrancó como servidor"
 ok "Aula arranca sin ventana y su consola responde"
