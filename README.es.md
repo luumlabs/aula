@@ -20,6 +20,12 @@
 </p>
 
 <p align="center">
+  <video src="https://github.com/user-attachments/assets/20fd0765-a471-4f6f-87be-39ccd13d7d93" poster="docs/media/demo/aula-demo-poster.jpg" width="1000" controls muted playsinline></video>
+  <br><sub><b>90 segundos, sin voz.</b> Un curso entero de principio a fin: la lección, un ejercicio que se corrige al
+responder, el cuaderno de errores, las tarjetas y el simulacro</sub>
+</p>
+
+<p align="center">
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
     <img src="docs/media/film-poster.png" width="1000" alt="Mira el corto sobre Aula (1:50): de noche, un estudiante con bufanda roja camina entre hojas que vuelan hacia un gran arco encendido">
   </a>
