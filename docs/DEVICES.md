@@ -1,11 +1,13 @@
-# Aula on your iPad and iPhone
+# Aula on your iPad, iPhone and Android
 
-Aula can be used from the student's own iPad and iPhone while everything (courses, the AI, the data) stays on their
-Mac. The devices are only a window: they reach the Mac over the student's private Tailscale network.
+Aula can be used from the student's own iPad, iPhone and Android phone or tablet while everything (courses, the AI, the
+data) stays on their Mac — or on their own server, with no Mac at all ([SERVER.md](SERVER.md)). The devices are only a
+window: they reach Aula over the student's private Tailscale network (their own account).
 
 - **iPad**: the whole app, as on the Mac (courses, lessons, practice, chat, calendar, documents).
 - **iPhone**: the same interface in a narrow layout built around Aula as an assistant: four tabs at the bottom
   (*Inbox*: what Aula did and what is pending, with the always-on switch first; *Aula*: the chat; *Calendar*; *Today*).
+- **Android**: the same, phone or tablet layout by width (`native/android`, [its README](../native/android/README.md)).
 
 It is off by default. Nothing here runs unless the student turns it on in **Settings → Aula on your devices**.
 
@@ -96,8 +98,17 @@ On the Mac: **Settings → Aula on your devices** → turn it on → **Sign in**
 
 On the device, either:
 
-1. **The Aula app** (`native/ios`, see below): it embeds its own Tailscale node, so the Tailscale app is not needed.
-   Sign in to Tailscale with the same account, the app finds `aula-mac` by itself, type the code.
+1. **The Aula app** (`native/ios`, see below, or `native/android`): it embeds its own Tailscale node, so the Tailscale
+   app is not needed. Sign in to Tailscale with the same account, the app finds your Aula by itself, type the code.
+   It looks for the machines on the tailnet that are **yours** (owned by the same Tailscale user as the device, untagged
+   and not shared in from another tailnet, the same rule the Aula side applies to devices) and whose name is an Aula's:
+   the first label of the MagicDNS name, in ASCII lowercase, is `aula-` plus a DNS label (at most 63 characters, no
+   hyphen at either end) and not a device's own name (`aula-ipad`, `aula-iphone`, `aula-android`, `aula-device`, each
+   maybe followed by `-<digits>`): `aula-mac`, `aula-server`… Another person's Aula on a shared tailnet is never listed
+   or opened, and the app only ever connects to the tailnet address of an Aula it listed (never to a name some other
+   machine could take later). If there are several (a Mac and a server), it asks which one to open and remembers it;
+   *Settings → Open another Aula* changes it, even while the current one is still being tried. Each Aula sets its own
+   link cookie (`aula_device_<installation>`), so a device stays linked to both.
 2. **Safari**, with the Tailscale app installed and connected on the device: open `http://aula-mac`, type the code,
    then *Share → Add to Home Screen* to get a full-screen icon. This needs no Xcode and works today.
 
@@ -112,7 +123,8 @@ A small SwiftUI app, no third-party packages:
 |---|---|
 | `Aula/AulaApp.swift`, `AppModel.swift`, `RootView.swift`, `Texts.swift` | The app, its state machine (sign in → find the Mac → open) and the waiting screens (es/en) |
 | `Aula/WebView.swift` | The `WKWebView` that shows Aula through the loopback tunnel; outside links open in the browser. It tells the page the real safe-area margins (SwiftUI hides them from a full-screen view), turns off iOS 26's blur under the status bar, and makes the page behave like an app: no zoom, no long-press menus on links and images, no selecting the text of buttons |
-| `Aula/Tailnet/TailnetController.swift` | Owns the embedded TailscaleKit node, finds `aula-mac` among the tailnet's machines |
+| `Aula/Tailnet/TailnetController.swift` | Owns the embedded TailscaleKit node, lists the student's Aulas among the tailnet's machines and dials only their tailnet addresses |
+| `Aula/Tailnet/AulaHosts.swift` | Which machines are the student's Aulas (same Tailscale user, untagged, an Aula's name): pure logic, the same rule as the Android app's `native/tsnet/client` and the desktop; `_verify/verify.sh` tests it |
 | `Aula/Tailnet/LoopbackForwarder.swift` | `127.0.0.1` listener piped through the tailnet. Only connections that present the listener's secret (the `aula_gate` cookie the app sets for the web view, or `_ft` for native requests) are dialed; the port and secret change after a suspension |
 | `Aula/DemoServer.swift` | The demo (*Try it with an example course*): a tiny HTTP server on `127.0.0.1` that plays back a recording of the real app, so Aula can be tried with no Mac. See below |
 | `Aula/Assets.xcassets` | The app icon in its three looks (light, dark and tinted: the system picks one with its mode; `npx electron scripts/dev/icon/build-icons.mjs` writes them) and the drawings of the connect screen (the arch at each hour and the desk lamp, in light and dark), taken from the real app with `node scripts/dev/ios-art.mjs` |
@@ -204,7 +216,8 @@ Verified on a Mac, by tests in this repository:
   `ai.choose` with an address or for an AI that is not ready, and a `settings.update` with any field outside the list
   (alone or mixed with a good one), leaving the Mac's settings untouched.
 - The Mac sidecar joining Tailscale's control plane up to "needs sign-in".
-- `native/ios/_verify/verify.sh`: the loopback forwarder at runtime (36 checks), the whole app compiled for macOS in
+- `native/ios/_verify/verify.sh`: the loopback forwarder at runtime (36 checks), which machines are the student's Aulas
+  (`_verify/HostsTest`, the same cases as `native/tsnet/client/main_test.go`), the whole app compiled for macOS in
   Swift 6 mode against TailscaleKit built from source, and the app's Tailscale node started for real up to "needs
   sign-in".
 - With Xcode 27.2: `build-tailscalekit.sh` builds the framework for device and simulator, and `Aula.xcodeproj` builds

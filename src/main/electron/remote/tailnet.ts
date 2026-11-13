@@ -7,6 +7,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import type { RemoteStatus } from '@shared/ipc/remote'
 import { log } from '@main/services/log'
+import { tr } from '@shared/ai/i18n'
 
 export type TailnetView = RemoteStatus['tailnet'] & { dnsName?: string; ips?: string[] }
 
@@ -21,11 +22,12 @@ export class Tailnet {
   private restarts = 0
   private retry: ReturnType<typeof setTimeout> | null = null
 
-  constructor(private readonly o: { binary: string; stateDir: string; proxyKey: string; onChange: () => void }) {
+  constructor(private readonly o: { binary: string; stateDir: string; proxyKey: string; onChange: () => void; /** «aula-mac» o, como servidor, «aula-server». */ hostname?: string }) {
     this.view = { state: existsSync(o.binary) ? 'off' : 'unavailable' }
   }
 
   get status(): TailnetView { return this.view }
+  get hostname(): string { return this.o.hostname ?? TAILNET_HOSTNAME }
   get available(): boolean { return existsSync(this.o.binary) }
 
   /** Arranca la red privada apuntando al servidor remoto de este Mac. */
@@ -34,8 +36,11 @@ export class Tailnet {
     if (this.child || !this.available) { if (!this.available) this.set({ state: 'unavailable' }); return }
     mkdirSync(this.o.stateDir, { recursive: true })
     this.set({ state: 'starting' })
-    const child = spawn(this.o.binary, ['--state-dir', this.o.stateDir, '--hostname', TAILNET_HOSTNAME, '--target', `127.0.0.1:${targetPort}`, '--listen-port', '80'], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(this.o.binary, ['--state-dir', this.o.stateDir, '--hostname', this.hostname, '--target', `127.0.0.1:${targetPort}`, '--listen-port', '80'], { stdio: ['pipe', 'pipe', 'pipe'] })
     this.child = child
+    // si el proceso muere enseguida, escribir en su entrada falla después (EPIPE): sin quien lo escuche, ese error tumbaría
+    // Aula entera; su salida ya dice qué pasó
+    child.stdin?.on('error', (err) => log.warn('[tailnet] entrada', err.message))
     child.stdin?.write(JSON.stringify({ proxyKey: this.o.proxyKey }) + '\n')
     createInterface({ input: child.stdout! }).on('line', (line) => this.onLine(line))
     createInterface({ input: child.stderr! }).on('line', (line) => log.info('[tailnet]', line.slice(0, 400)))
@@ -46,7 +51,7 @@ export class Tailnet {
       // se cayó sin que nadie lo parase: se vuelve a intentar, cada vez con más espera
       this.restarts++
       const wait = Math.min(60_000, 2000 * 2 ** Math.min(this.restarts, 5))
-      this.set({ state: 'error', message: `El componente de Tailscale se cerró (código ${code ?? '?'}); se reintenta.` })
+      this.set({ state: 'error', message: tr(`El componente de Tailscale se cerró (código ${code ?? '?'}); se reintenta.`, `The Tailscale component closed (code ${code ?? '?'}); retrying.`) })
       this.retry = setTimeout(() => { this.retry = null; if (this.wanted) this.start(targetPort) }, wait)
     })
   }
@@ -78,7 +83,7 @@ export class Tailnet {
       case 'needs_machine_auth': return this.set({ state: 'needsApproval', message: e.message })
       case 'running':
         this.restarts = 0
-        return this.set({ state: 'running', name: e.hostname ?? TAILNET_HOSTNAME, dnsName: e.dnsName, ips: Array.isArray(e.ips) ? e.ips.filter((x): x is string => typeof x === 'string') : [], user: e.user })
+        return this.set({ state: 'running', name: e.hostname ?? this.hostname, dnsName: e.dnsName, ips: Array.isArray(e.ips) ? e.ips.filter((x): x is string => typeof x === 'string') : [], user: e.user })
       case 'logged_out': return this.set({ state: 'needsLogin' })
       case 'peer_refused': log.info('[tailnet] se rechazó a otro usuario de la red', e.user ?? '', e.message ?? ''); return
       case 'error': return this.set({ ...this.view, state: 'error', message: e.message })

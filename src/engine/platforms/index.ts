@@ -1,9 +1,13 @@
-// Núcleo puro de las plataformas de estudio: modelo, detección, inicio de sesión, peligro, cookies, sesión viva, archivos.
+// Núcleo puro de las plataformas de estudio: modelo, detección, inicio de sesión, identidad, sitio, peligro, cookies, sesión
+// viva, archivos.
 export * from './model'
 export * from './detector'
 export * from './probe'
 export * from './guides'
 export * from './login'
+// isIdentityHost ya sale por './login'
+export { entraErrorKind, type EntraErrorKind } from './identity'
+export * from './site'
 export * from './danger'
 export * from './text-norm'
 export * from './cookies'

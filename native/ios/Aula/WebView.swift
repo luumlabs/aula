@@ -13,8 +13,15 @@ struct WebView: PlatformViewRepresentable {
     /// El túnel de ahora: http://127.0.0.1:<puerto>. Si cambia (al volver de segundo plano), se recarga en el nuevo.
     let base: URL
     let onFailure: () -> Void
+    /// «Abrir otra Aula» desde la interfaz (Ajustes): la app vuelve a la lista de Aulas de la red.
+    var onSwitch: () -> Void = {}
 
-    func makeCoordinator() -> Coordinator { Coordinator(onFailure: onFailure) }
+    func makeCoordinator() -> Coordinator { Coordinator(onFailure: onFailure, onSwitch: onSwitch) }
+
+    /// Lo que la interfaz sabe de la app que la abre: puede pedir abrir otra Aula (`window.aulaApp.switchAula()`).
+    private static let appBridge = """
+    window.aulaApp = { switchAula: function () { window.webkit.messageHandlers.aulaApp.postMessage('switch') } };
+    """
 
     #if canImport(UIKit)
     /// Que se sienta una app y no una página: sin zoom (ni con dos dedos ni con doble toque), sin el menú de mantener
@@ -44,6 +51,8 @@ struct WebView: PlatformViewRepresentable {
         // las grabaciones de clase se ven dentro de la página, no a pantalla completa por la fuerza
         config.allowsInlineMediaPlayback = true
         #endif
+        config.userContentController.addUserScript(WKUserScript(source: Self.appBridge, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        config.userContentController.add(WeakMessageHandler(context.coordinator), name: "aulaApp")
         #if canImport(UIKit)
         config.userContentController.addUserScript(WKUserScript(source: Self.solid, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         let view = AulaWebView(frame: .zero, configuration: config)
@@ -83,11 +92,22 @@ struct WebView: PlatformViewRepresentable {
     func updateNSView(_ view: WKWebView, context: Context) { context.coordinator.show(base, in: view) }
     #endif
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         private let onFailure: () -> Void
+        private let onSwitch: () -> Void
         private var shown: URL?
 
-        init(onFailure: @escaping () -> Void) { self.onFailure = onFailure }
+        init(onFailure: @escaping () -> Void, onSwitch: @escaping () -> Void) {
+            self.onFailure = onFailure
+            self.onSwitch = onSwitch
+        }
+
+        /// Un mensaje de la interfaz: solo «switch» (abrir otra Aula), y solo de la página de Aula por el túnel.
+        func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "aulaApp", message.body as? String == "switch", message.frameInfo.isMainFrame,
+                  message.frameInfo.request.url?.host == "127.0.0.1" else { return }
+            onSwitch()
+        }
 
         /// Carga la interfaz en el túnel `base` (una sola vez por túnel), en la pantalla en la que estaba: la interfaz
         /// apunta su pantalla en el fragmento de la dirección («#…»).
@@ -196,3 +216,13 @@ final class AulaWebView: WKWebView {
     }
 }
 #endif
+
+/// El controlador de contenido guarda su manejador con fuerza: este intermediario evita que la vista web y su coordinador se
+/// sujeten el uno al otro para siempre.
+final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+    private weak var target: WKScriptMessageHandler?
+    init(_ target: WKScriptMessageHandler) { self.target = target }
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(controller, didReceive: message)
+    }
+}

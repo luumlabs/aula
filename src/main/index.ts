@@ -26,6 +26,7 @@ import { startBackground } from './electron/background'
 import { installRecovery } from './electron/recovery'
 import { migrateFileStorage } from './electron/migrate-storage'
 import { isAuditBuild, refusedDebugSwitch } from './electron/debug-guard'
+import { installServerCrashHandlers, isServerMode } from './services/remote/server-mode'
 
 // la app instalada no abre la depuración remota (CDP): se sale antes de leer datos, sesiones o cookies
 const debugSwitch = refusedDebugSwitch(app.isPackaged, (s) => app.commandLine.hasSwitch(s), isAuditBuild())
@@ -34,6 +35,22 @@ if (debugSwitch) {
   app.exit(1)
 }
 app.setName('Aula')
+// Aula como servidor (`--server`): sin ventana ni escritorio; se usa desde los dispositivos por la red privada. Sin GPU (no
+// hay pantalla) y sin actualizarse sola (un servidor se actualiza con su imagen o su paquete).
+const serverMode = isServerMode()
+if (serverMode) {
+  // lo antes posible: un error sin capturar se apunta y el proceso termina (Docker o systemd lo vuelven a arrancar) en vez
+  // del diálogo de Electron, que en un servidor nadie ve ni cierra y lo dejaría parado (en el Mac, el diálogo de siempre)
+  installServerCrashHandlers({
+    process,
+    streams: [process.stdout, process.stderr],
+    log: (message, err) => log.error(message, err),
+    stderr: (text) => { process.stderr.write(text) },
+    exit: (code) => app.exit(code)
+  })
+  process.env.AULA_NO_UPDATES ||= '1'
+  app.disableHardwareAcceleration()
+}
 // los servicios no importan Electron: así saben si es la app instalada (sin atajos de desarrollo)
 setPackaged(app.isPackaged)
 // Carpeta de datos: la misma que la app Swift (~/Library/Application Support/Aula) o $AULA_HOME.
@@ -99,6 +116,8 @@ if (!primaryInstance) {
   app.whenReady().then(async () => {
     // lanzada con AULA_HIDDEN (pruebas, capturas): sin icono en el Dock que alguien pueda pulsar
     if (windowsAlwaysHidden()) app.dock?.hide()
+    // un servidor se para con una señal (docker stop, systemctl stop): se cierra en orden, con su proceso de Tailscale
+    if (serverMode) for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP'] as const) process.on(signal, () => app.quit())
     // si el llavero no deja leer secrets.enc, el almacén se bloquea (sin perder nada) y la interfaz lo avisa
     setSecretStore(new SafeStorageSecretStore((status) => emit('secrets.changed', status)))
     // con un proxy del sistema (redes de centros), las peticiones del proceso principal lo usan
@@ -116,7 +135,7 @@ if (!primaryInstance) {
     registerAllHandlers()
     // capturas y desarrollo: seis semanas de estudio simuladas con el motor real
     if (!app.isPackaged && process.env.AULA_SEED === 'demo') await import('./dev/seed').then((m) => { m.seedDemoProgress(); m.seedDemoCalendar() }).catch((e) => log.warn('[seed]', e))
-    installMenu()
+    if (!serverMode) installMenu()
     installRasterizer()
     installIngestWorker()
     startBackground()
@@ -124,6 +143,8 @@ if (!primaryInstance) {
     installRecovery()
     // la interfaz ya no va por file://: sus preferencias de localStorage pasan una vez a app://aula
     await migrateFileStorage(paths.browserData())
+    // como servidor no hay ventana: el acceso a distancia ya se encendió al registrar los manejadores (remote.init)
+    if (serverMode) return
     createMainWindow()
     // macOS emite `activate` al lanzar la app y al pulsar su icono del Dock: con AULA_HIDDEN no enseña nada
     app.on('activate', () => {
@@ -134,6 +155,7 @@ if (!primaryInstance) {
   }).catch((err) => log.error('Arranque', err))
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    // como servidor sigue en marcha aunque se cierren sus ventanas escondidas (las de leer PDF, el navegador de plataformas…)
+    if (process.platform !== 'darwin' && !serverMode) app.quit()
   })
 }

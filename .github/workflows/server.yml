@@ -1,0 +1,175 @@
+name: Server
+# Aula as a server (no window) in a container: docs/SERVER.md.
+#   · On every pull request that touches what goes inside (and by hand): builds the Linux app from this commit, makes the
+#     image with it and runs the smoke test (server/smoke.sh) on Linux x64 and arm64.
+#   · When an app release is published as a full release, not a pre-release (or by hand, with «publish»): makes the image
+#     from that version's published AppImage for x64 and arm64, runs the same smoke test on each and pushes
+#     ghcr.io/luumlabs/aula-server:<version>. :latest moves only when that version is the repository's latest release
+#     (what installed copies are offered too), so a pre-release or a rebuild of an older version never moves it.
+#   · Then it checks that anyone can pull the image without logging in. A new package on ghcr.io starts out private and a
+#     GITHUB_TOKEN can't make it public: the first time, make it public by hand (docs/PUBLISHING.md → «The server image»).
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'native/tsnet/**'
+      - 'src/main/**'
+      - 'src/shared/**'
+      - 'electron-builder.yml'
+      - 'package.json'
+      - '.github/workflows/server.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Version to publish to ghcr.io (for example 0.2.4). Empty: only build and test this commit.'
+        required: false
+        default: ''
+  # «released», not «published»: «published» also fires for pre-releases (testers, promos), which must never become
+  # :latest; «released» fires when a full release is published and when a pre-release is promoted to a full one
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.os }})
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish == '')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # the Tailscale sidecar goes inside the Linux app; the runner's Go fetches the version in go.mod
+      - run: native/tsnet/build.sh linux
+      - name: Build the Linux app (AppImage) from this commit
+        run: |
+          npx electron-vite build
+          npx electron-builder --linux AppImage --${{ matrix.arch }} --publish never -c.directories.output=release-ci
+          cp release-ci/Aula-*-linux-*.AppImage server/dist/
+      - run: docker build -t aula-server:smoke server/
+      - run: server/smoke.sh aula-server:smoke
+
+  publish:
+    name: publish (${{ matrix.arch }})
+    if: (github.event_name == 'release' && !github.event.release.prerelease) || (github.event_name == 'workflow_dispatch' && inputs.publish != '')
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: amd64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Version
+        id: v
+        env:
+          WANTED: ${{ inputs.publish }}
+        run: |
+          v="${WANTED:-${GITHUB_REF_NAME#v}}"
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "Not a version: $v" >&2; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      # from the published AppImage of that version (checked against its latest-linux*.yml), never from this checkout
+      - run: docker build --build-arg AULA_VERSION=${{ steps.v.outputs.version }} -t ghcr.io/luumlabs/aula-server:${{ steps.v.outputs.version }}-${{ matrix.arch }} server/
+      - run: server/smoke.sh ghcr.io/luumlabs/aula-server:${{ steps.v.outputs.version }}-${{ matrix.arch }}
+      - name: Push
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push ghcr.io/luumlabs/aula-server:${{ steps.v.outputs.version }}-${{ matrix.arch }}
+
+  manifest:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: One tag for both architectures (and :latest if it's the latest release)
+        env:
+          V: ${{ needs.publish.outputs.version }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          tags=(-t "ghcr.io/luumlabs/aula-server:$V")
+          # :latest is the image of the release installed copies are offered (releases/latest): never a pre-release, and
+          # never moved backwards by a rebuild of an older version
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
+          if [ "$latest" = "v$V" ]; then
+            tags+=(-t ghcr.io/luumlabs/aula-server:latest)
+          elif [ -z "$latest" ]; then
+            echo "::warning title=latest tag not moved::Couldn't read the latest release of $GITHUB_REPOSITORY, so :latest stays where it was. Re-run this workflow (Run workflow, publish=$V) to move it."
+          else
+            echo "::notice title=latest tag not moved::v$V isn't the latest release ($latest): only :$V was pushed."
+          fi
+          docker buildx imagetools create "${tags[@]}" \
+            "ghcr.io/luumlabs/aula-server:$V-amd64" "ghcr.io/luumlabs/aula-server:$V-arm64"
+          docker buildx imagetools inspect "ghcr.io/luumlabs/aula-server:$V"
+      # Like a user would, without logging in. A package GITHUB_TOKEN creates on ghcr.io is PRIVATE (even for a public
+      # repository) and the token can't change that: until someone makes it public by hand, every `docker pull` fails.
+      # It only warns: the release is already out and the image is pushed.
+      - name: Can anyone pull it?
+        continue-on-error: true
+        env:
+          V: ${{ needs.publish.outputs.version }}
+        run: |
+          set +e -uo pipefail
+          img=luumlabs/aula-server
+          accept='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+          state=unknown
+          code=
+          for try in 1 2 3; do
+            # an anonymous pull token, then that token reads the manifest (ghcr.io answers 401/403 for a private package)
+            code=$(curl -sS -o "$RUNNER_TEMP/ghcr-token.json" -w '%{http_code}' "https://ghcr.io/token?scope=repository:$img:pull&service=ghcr.io") || true
+            if [ "$code" = 200 ]; then
+              token=$(jq -r '.token // empty' "$RUNNER_TEMP/ghcr-token.json" 2>/dev/null)
+              code=$(curl -sS -o /dev/null -w '%{http_code}' -I -H "Authorization: Bearer $token" -H "Accept: $accept" \
+                "https://ghcr.io/v2/$img/manifests/$V") || true
+            fi
+            case "$code" in
+              200) state=public; break ;;
+              401|403|404) state=private; break ;;
+              *) sleep 15 ;;
+            esac
+          done
+          settings="https://github.com/users/luumlabs/packages/container/aula-server/settings"
+          case "$state" in
+            public)
+              echo "ghcr.io/$img:$V can be pulled without logging in." ;;
+            private)
+              echo "::warning title=The server image is private::Nobody can pull ghcr.io/$img:$V without logging in. Make the package public once: $settings → Danger Zone → Change visibility → Public (docs/PUBLISHING.md → The server image)."
+              {
+                echo "### The server image is private"
+                echo
+                echo "\`docker pull ghcr.io/$img:$V\` fails for everyone without a login. A package created on ghcr.io starts out"
+                echo "private and a workflow token can't change that. Once, by hand: [package settings]($settings) →"
+                echo "*Danger Zone* → *Change visibility* → *Public*. It stays public for every later version."
+              } >> "$GITHUB_STEP_SUMMARY" ;;
+            *)
+              echo "::warning title=Couldn't check the server image::ghcr.io didn't answer (last HTTP status: ${code:-none}). Check by hand that ghcr.io/$img:$V can be pulled without logging in." ;;
+          esac

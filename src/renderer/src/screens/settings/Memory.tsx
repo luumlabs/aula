@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Card, ConfirmDialog, Icon, IconButton, Menu, SectionTitle, Spinner, TextField, toast, cx } from '@renderer/design'
 import { api } from '@renderer/lib/api'
+import { settingsElsewhere } from '@renderer/lib/device'
 import { fmtDate } from '@renderer/lib/format'
 import type { MemoryRecordView, MemoryStatus } from '@shared/ipc/memory'
 
@@ -52,11 +53,15 @@ export function MemoryCard() {
   const paused = !!status?.pausedUntil
   const disabled = status && !status.enabled
   const remote = api.remote
+  // apagada: se enciende en Privacidad y datos, aquí (la ventana o el propietario de un servidor), en el Mac o desde un
+  // dispositivo propietario (la consola del servidor no cambia ajustes)
+  const elsewhere = settingsElsewhere(api.role)
+  const offKey = elsewhere === 'mac' ? 'memory.offRemote' : elsewhere === 'owner' ? 'memory.offServer' : 'memory.off'
   return (
     <Card padded="lg" className="h-full flex flex-col">
       <SectionTitle
         title={t('memory.title')}
-        detail={disabled ? t(remote ? 'memory.offRemote' : 'memory.off') : paused ? t('memory.paused') : t('memory.count', { count: status?.active ?? 0 })}
+        detail={disabled ? t(offKey) : paused ? t('memory.paused') : t('memory.count', { count: status?.active ?? 0 })}
         action={
           <Menu
             trigger={(open) => (
@@ -78,7 +83,7 @@ export function MemoryCard() {
           />
         }
       />
-      <p className="t-ui text-text3 -mt-1 mb-3">{t(remote ? 'memory.bodyRemote' : 'memory.body')}</p>
+      <p className="t-ui text-text3 -mt-1 mb-3">{t(remote ? (api.server ? 'memory.bodyServer' : 'memory.bodyRemote') : 'memory.body')}</p>
       <div className="flex gap-2 mb-3">
         <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('memory.search')} icon={<Icon name="search" size={15} />} className="flex-1" />
       </div>

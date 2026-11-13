@@ -1,6 +1,7 @@
 // Acceso tipado al proceso principal desde la interfaz.
 import type { RpcArgs, RpcEnvelope, RpcEvent, RpcMethod, RpcPayload, RpcResult } from '@shared/ipc'
 import { tr } from '@shared/ai/i18n'
+import { deviceRole, type DeviceRole } from './device'
 
 export interface AulaClientError extends Error {
   code: string
@@ -22,9 +23,21 @@ export const api = {
   get platform(): string {
     return typeof window !== 'undefined' && window.aula ? window.aula.platform : 'web'
   },
-  /** ¿Aula se está usando desde un dispositivo (iPad, iPhone) y no desde su ventana del Mac? */
+  /** ¿Aula se está usando desde un dispositivo (iPad, iPhone, Android) y no desde su ventana del Mac? */
   get remote(): boolean {
     return typeof window !== 'undefined' && (window.aula as { remote?: boolean } | undefined)?.remote === true
+  },
+  /** Desde un dispositivo propietario de Aula como servidor: hace de ventana (claves, plataformas, dispositivos). */
+  get owner(): boolean {
+    return this.remote && (window.aula as { owner?: boolean } | undefined)?.owner === true
+  },
+  /** ¿La Aula al otro lado es un servidor (sin Mac)? Cambia cómo se habla de ella («tu servidor», no «tu Mac»). */
+  get server(): boolean {
+    return this.remote && (window.aula as { server?: boolean } | undefined)?.server === true
+  },
+  /** Quién usa Aula desde aquí (ventana, propietario, dispositivo de un Mac o de un servidor): lo que se arregla aquí (device.ts). */
+  get role(): DeviceRole {
+    return deviceRole({ remote: this.remote, owner: this.owner, server: this.server })
   },
   pathForFile(file: File): string {
     return bridge().pathForFile(file)

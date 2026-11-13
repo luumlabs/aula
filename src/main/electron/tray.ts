@@ -4,6 +4,7 @@
 import { Menu, Tray, nativeImage } from 'electron'
 import { join } from 'node:path'
 import { tr } from '@shared/ai/i18n'
+import { isServerMode } from '@main/services/remote/server-mode'
 
 export interface TrayHandlers {
   open(): void
@@ -52,6 +53,8 @@ function menu(s: TrayState): Menu {
 
 /** Muestra la bandeja (si no está) con estas acciones. */
 export function showTray(h: TrayHandlers, state: TrayState = last): void {
+  // como servidor no hay escritorio ni bandeja
+  if (isServerMode()) return
   handlers = h
   if (!tray) {
     tray = new Tray(image())

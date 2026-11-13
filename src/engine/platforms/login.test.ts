@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  classifyAuthPage, interpretSessionCheck, isIdentityHost, isLoginURL, isRememberMeLabel, sessionCheckTargets, stripJSONGuard
+  classifyAuthPage, interpretSessionCheck, isAccountLoginURL, isIdentityHost, isLoginURL, isPostLoginStep, isRememberMeLabel, sessionCheckTargets,
+  startsSignIn, stripJSONGuard, type SessionCheckTarget, type SessionProbeResponse
 } from './login'
 import {
   SecretMask, accountAllowsDownloadFrom, accountContains, accountDisplayName, accountForURL, hostMatches, normalizePlatformURL, originOf,
@@ -103,12 +104,33 @@ describe('proveedores de identidad y páginas de acceso', () => {
     expect(isRememberMeLabel('Recordar nombre de usuario')).toBe(false)
     expect(isRememberMeLabel('Acepto las condiciones')).toBe(false)
   })
+
+  it('qué dirección empezaría un inicio de sesión (el sondeo del alta no la pide)', () => {
+    const from = 'https://campus.uni.edu/login/index.php'
+    // el arranque del SSO de la plataforma (auth_oidc guarda una fila de estado) y el proveedor de identidad
+    expect(startsSignIn(from, 'https://campus.uni.edu/auth/oidc/?source=loginpage')).toBe(true)
+    expect(startsSignIn(from, 'https://campus.uni.edu/moodle/auth/saml2/login.php?wants')).toBe(true)
+    expect(startsSignIn(from, 'https://login.microsoftonline.com/t/oauth2/v2.0/authorize?client_id=x')).toBe(true)
+    expect(startsSignIn(from, 'https://sso.uni.edu/idp/profile/SAML2/Redirect/SSO')).toBe(true)
+    expect(startsSignIn('https://uni.instructure.com/login', 'https://uni.instructure.com/login/saml')).toBe(true)
+    expect(startsSignIn(from, 'javascript:alert(1)')).toBe(true)
+    // la portada, la página de acceso, https y otro host del campus, sí
+    expect(startsSignIn('https://campus.uni.edu/', from)).toBe(false)
+    expect(startsSignIn('http://campus.uni.edu/', 'https://campus.uni.edu/')).toBe(false)
+    expect(startsSignIn('https://uni.edu/', 'https://campus.uni.edu/login/index.php')).toBe(false)
+    expect(startsSignIn('https://uni.instructure.com/', 'https://uni.instructure.com/login/canvas')).toBe(false)
+    // un campus que se llama «login.uni.edu» no es por eso el SSO si ya se estaba en él
+    expect(startsSignIn('https://login.uni.edu/', 'https://login.uni.edu/my/')).toBe(false)
+  })
 })
 
 describe('comprobación de la sesión', () => {
   it('direcciones baratas por plataforma', () => {
     expect(sessionCheckTargets(canvas)[0]).toMatchObject({ url: 'https://uni.instructure.com/api/v1/users/self', expect: 'json' })
-    expect(sessionCheckTargets(moodle)[0]).toMatchObject({ url: 'https://campus.uni.edu/moodle/my/', expect: 'page' })
+    expect(sessionCheckTargets(moodle)).toEqual([
+      { url: 'https://campus.uni.edu/moodle/my/', expect: 'page' },
+      { url: 'https://campus.uni.edu/moodle/my/courses.php', expect: 'page' }
+    ])
     expect(sessionCheckTargets({ kind: 'brightspace', baseURL: 'https://lms.uni.edu/d2l/home' }).map((t) => t.expect)).toEqual(['json', 'page'])
     expect(sessionCheckTargets({ kind: 'other', baseURL: 'https://profe.com/curso' })[0].url).toBe('https://profe.com/curso')
   })
@@ -155,5 +177,160 @@ describe('comprobación de la sesión', () => {
     const s = { kind: 'sakai' as const, baseURL: 'https://lms.uni.edu/' }
     expect(interpretSessionCheck(s, sessionCheckTargets(s)[0], res({ body: '{"userEid":null,"userId":null}' })).state).toBe('signedOut')
     expect(interpretSessionCheck(s, sessionCheckTargets(s)[0], res({ body: '{"userEid":"ana","userId":"x"}' })).state).toBe('signedIn')
+  })
+})
+
+// MARK: Moodle (issue #25)
+
+const ROOT = 'https://campus.uni.edu/moodle'
+const PROOF = `<a href="${ROOT}/login/logout.php?sesskey=Ab12Cd34Ef">Cerrar sesión</a>`
+/** Página de Moodle: body con clases, M.cfg y, si hay usuario, el menú con la salida. */
+function moodleHTML(o: { bodyClass?: string; inner?: string; wwwroot?: string; head?: string } = {}): string {
+  const cfg = `<script>M.cfg = {"wwwroot":"${(o.wwwroot ?? ROOT).replace(/\//g, '\\/')}","sesskey":"Ab12Cd34Ef"};</script>`
+  return `<!DOCTYPE html><html><head>${cfg}${o.head ?? ''}</head><body id="page-my-index" class="${o.bodyClass ?? 'path-my'}">${o.inner ?? ''}</body></html>`
+}
+const guestHTML = moodleHTML({ bodyClass: 'path-site', inner: `<span class="login">Está usando el acceso de invitado (<a href="${ROOT}/login/index.php">Acceder</a>)</span>` })
+
+describe('Moodle: pasos tras el acceso', () => {
+  const steps = [`${ROOT}/admin/tool/policy/index.php`, `${ROOT}/admin/tool/policy/view.php?versionid=3&returnurl=x`, `${ROOT}/user/policy.php`, `${ROOT}/user/edit.php?id=5&course=1`]
+
+  it('política del sitio y perfil por completar, también en una carpeta; solo Moodle y solo en su host', () => {
+    for (const u of steps) expect(isPostLoginStep(moodle, u), u).toBe(true)
+    expect(isPostLoginStep(moodle, 'https://campus.uni.edu/user/policy.php')).toBe(true)
+    expect(isPostLoginStep(moodle, `${ROOT}/admin/tool/policy/accept.php`)).toBe(false)
+    expect(isPostLoginStep(moodle, `${ROOT}/my/`)).toBe(false)
+    expect(isPostLoginStep(moodle, 'https://otro.edu/user/policy.php')).toBe(false)
+    expect(isPostLoginStep({ kind: 'canvas', baseURL: 'https://campus.uni.edu/' }, 'https://campus.uni.edu/user/edit.php')).toBe(false)
+    expect(isPostLoginStep({ kind: 'other', baseURL: 'https://campus.uni.edu/' }, 'https://campus.uni.edu/user/policy.php')).toBe(false)
+    expect(isPostLoginStep(moodle, 'no es una dirección')).toBe(false)
+  })
+
+  it('no son páginas de acceso (si lo fueran, la comprobación diría «sesión cerrada»)', () => {
+    for (const u of steps) {
+      expect(isAccountLoginURL(moodle, u), u).toBe(false)
+      expect(isLoginURL(u, 'moodle'), u).toBe(false)
+    }
+  })
+
+  it('el cambio de contraseña forzado sí es una página de acceso, también en una carpeta', () => {
+    expect(isAccountLoginURL(moodle, `${ROOT}/login/change_password.php`)).toBe(true)
+    expect(isLoginURL('https://x.edu/moodle/login/change_password.php', 'moodle')).toBe(true)
+  })
+})
+
+describe('Moodle: comprobación de la sesión', () => {
+  const [my, courses] = sessionCheckTargets(moodle) as [SessionCheckTarget, SessionCheckTarget]
+  const page = (o: Partial<SessionProbeResponse>): SessionProbeResponse => ({ status: 200, finalURL: my.url, redirects: [], contentType: 'text/html', body: '', ...o })
+  const check = (o: Partial<SessionProbeResponse>, target = my) => interpretSessionCheck(moodle, target, page(o))
+
+  it('con un paso tras el acceso en la cadena: no se sabe, y hay un paso pendiente', () => {
+    const policy = `${ROOT}/admin/tool/policy/index.php`
+    expect(check({ redirects: [policy], finalURL: policy, body: moodleHTML({ bodyClass: 'pagelayout-secure' }) })).toEqual({
+      state: 'unknown', reason: 'post-login step (policy/profile)', pendingStep: true
+    })
+    // el perfil sí trae el menú del usuario: aun así no es «iniciada»
+    const edit = `${ROOT}/user/edit.php?id=5&course=1`
+    expect(check({ redirects: [edit], finalURL: edit, body: moodleHTML({ inner: PROOF }) })).toMatchObject({ state: 'unknown', pendingStep: true })
+    expect(check({ redirects: [`${ROOT}/user/policy.php`], finalURL: `${ROOT}/user/policy.php` }, courses).pendingStep).toBe(true)
+  })
+
+  it('la vuelta al acceso se mira antes que el paso: una sesión caducada sigue siendo «cerrada»', () => {
+    const v = check({ redirects: [`${ROOT}/admin/tool/policy/index.php`, `${ROOT}/login/index.php`], finalURL: `${ROOT}/login/index.php`, body: moodleHTML({ bodyClass: 'notloggedin' }) })
+    expect(v.state).toBe('signedOut')
+    expect(v.pendingStep).toBeUndefined()
+    expect(check({ redirects: ['https://login.microsoftonline.com/t/oauth2/v2.0/authorize?x=1'], finalURL: 'https://login.microsoftonline.com/t/oauth2/v2.0/authorize?x=1' }).state).toBe('signedOut')
+  })
+
+  it('invitado: /my/ manda a la portada con redirect=0 → cerrada', () => {
+    for (const front of [`${ROOT}/?redirect=0`, `${ROOT}/index.php?redirect=0`, `${ROOT}?redirect=0`]) {
+      expect(check({ redirects: [front], finalURL: front, body: guestHTML }), front).toEqual({ state: 'signedOut', reason: 'guest session' })
+    }
+    const rootLevel = { kind: 'moodle' as const, baseURL: 'https://m.uni.edu/' }
+    const t = sessionCheckTargets(rootLevel)[0]
+    expect(interpretSessionCheck(rootLevel, t, page({ redirects: ['https://m.uni.edu/?redirect=0'], finalURL: 'https://m.uni.edu/?redirect=0', body: guestHTML })).state).toBe('signedOut')
+  })
+
+  it('redirect=0 en otra página no es la portada; y con la prueba de un usuario, manda la prueba', () => {
+    const other = `${ROOT}/course/view.php?id=2&redirect=0`
+    expect(check({ redirects: [other], finalURL: other, body: guestHTML })).toEqual({ state: 'unknown', reason: 'no user proof' })
+    const front = `${ROOT}/?redirect=0`
+    expect(check({ redirects: [front], finalURL: front, body: moodleHTML({ inner: PROOF }) }).state).toBe('signedIn')
+  })
+
+  it('una página interna sin la prueba de un usuario (invitado en /my/, tema raro): no se sabe, nunca «iniciada»', () => {
+    expect(check({ body: guestHTML })).toEqual({ state: 'unknown', reason: 'no user proof' })
+    expect(check({ body: '<html><body class="path-my">Área personal</body></html>' }, courses)).toEqual({ state: 'unknown', reason: 'no user proof' })
+    expect(check({ body: moodleHTML({ inner: PROOF }) })).toEqual({ state: 'signedIn', reason: 'internal page' })
+  })
+
+  it('la prueba se busca en todo el cuerpo (no solo al principio)', () => {
+    const big = moodleHTML({ inner: '<p>' + 'Contenido del curso. '.repeat(70_000) + '</p>' + PROOF })
+    expect(big.length).toBeGreaterThan(1_400_000)
+    expect(check({ body: big }).state).toBe('signedIn')
+  })
+
+  it('«notloggedin» solo cuenta en la clase del body; la prueba de salida gana a las marcas genéricas', () => {
+    const cssAndJs = '<style>body.notloggedin #x { display: none }</style><script>var k = "notloggedin";</script>'
+    expect(check({ body: moodleHTML({ head: cssAndJs, inner: PROOF }) }).state).toBe('signedIn')
+    expect(check({ body: moodleHTML({ bodyClass: 'path-my notloggedin' }) }).state).toBe('signedOut')
+    // una clave de matriculación o la contraseña de un cuestionario no son una página de acceso
+    expect(check({ body: moodleHTML({ inner: `<input type="password" name="enrolpassword">${PROOF}` }) }).state).toBe('signedIn')
+    // sin la prueba, el campo de contraseña sí manda
+    expect(check({ body: moodleHTML({ inner: '<input type="password" name="password">' }) }).state).toBe('signedOut')
+  })
+
+  it('área personal desactivada: /my/ da 404 (no concluyente) y se prueba «Mis cursos»', () => {
+    expect(check({ status: 404, body: moodleHTML({ inner: PROOF }) })).toEqual({ state: 'unknown', reason: 'HTTP 404' })
+    expect(check({ finalURL: courses.url, body: moodleHTML({ inner: PROOF }) }, courses).state).toBe('signedIn')
+  })
+
+  it('Moodle en otro host del mismo sitio (la dirección guardada es un alias): su página cuenta', () => {
+    const acct = { kind: 'moodle' as const, baseURL: 'https://campus.uni.edu/' }
+    const t = sessionCheckTargets(acct)[0]
+    const ev = 'https://ev.uni.edu/my/'
+    const evPage = (inner: string, wwwroot = 'https://ev.uni.edu') => moodleHTML({ wwwroot, inner: inner.replaceAll(ROOT, 'https://ev.uni.edu') })
+    expect(interpretSessionCheck(acct, t, page({ redirects: [ev], finalURL: ev, body: evPage(PROOF) }))).toEqual({ state: 'signedIn', reason: 'internal page' })
+    expect(interpretSessionCheck(acct, t, page({ redirects: [ev], finalURL: ev, body: evPage('') })).state).toBe('unknown')
+    const policy = 'https://ev.uni.edu/admin/tool/policy/index.php'
+    expect(interpretSessionCheck(acct, t, page({ redirects: [policy], finalURL: policy, body: evPage('') })).pendingStep).toBe(true)
+    // sin un wwwroot de ese host, de otro sitio o de un host de identidad: otro sitio
+    expect(interpretSessionCheck(acct, t, page({ redirects: [ev], finalURL: ev, body: `<html>${PROOF}</html>` }))).toEqual({ state: 'unknown', reason: 'ended on another site' })
+    expect(interpretSessionCheck(acct, t, page({ redirects: [ev], finalURL: ev, body: evPage(PROOF, 'https://campus.uni.edu') })).reason).toBe('ended on another site')
+    const far = 'https://ev.otra.edu/my/'
+    expect(interpretSessionCheck(acct, t, page({ redirects: [far], finalURL: far, body: evPage(PROOF, 'https://ev.otra.edu') })).reason).toBe('ended on another site')
+  })
+})
+
+describe('las demás plataformas no cambian', () => {
+  const page = (o: Partial<SessionProbeResponse>): SessionProbeResponse => ({ status: 200, finalURL: '', redirects: [], contentType: 'text/html', body: '', ...o })
+
+  it('una página interna sin prueba sigue siendo «iniciada»; las rutas de Moodle no son pasos', () => {
+    const other = { kind: 'other' as const, baseURL: 'https://profe.uni.edu/curso/' }
+    const t = sessionCheckTargets(other)[0]
+    expect(interpretSessionCheck(other, t, page({ finalURL: 'https://profe.uni.edu/user/edit.php' })).state).toBe('signedIn')
+    const sch = { kind: 'schoology' as const, baseURL: 'https://app.schoology.com/' }
+    const ts = sessionCheckTargets(sch)[0]
+    expect(interpretSessionCheck(sch, ts, page({ finalURL: ts.url, body: '<div>Inicio</div>' }))).toEqual({ state: 'signedIn', reason: 'internal page' })
+    expect(interpretSessionCheck(sch, ts, page({ finalURL: ts.url, redirects: [], body: '<input type="password">' })).state).toBe('signedOut')
+    const bb = { kind: 'blackboard' as const, baseURL: 'https://learn.uni.edu/' }
+    const tb = sessionCheckTargets(bb)[1]
+    expect(interpretSessionCheck(bb, tb, page({ finalURL: 'https://ev.uni.edu/ultra/course', body: '"wwwroot":"https:\\/\\/ev.uni.edu"' })).reason).toBe('ended on another site')
+  })
+
+  it('la contraseña sigue mandando fuera de Moodle aunque haya un enlace de salida', () => {
+    expect(classifyAuthPage({ url: 'https://uni.instructure.com/x', account: canvas, hasPasswordField: true, html: '<a href="/logout.php?sesskey=1">x</a>' })).toBe('login')
+    expect(classifyAuthPage({ url: 'https://uni.instructure.com/x', account: canvas, html: '<style>.notloggedin{}</style>' })).toBe('authenticated')
+  })
+})
+
+describe('Moodle: clasificación de páginas', () => {
+  it('body notloggedin manda; la prueba de salida gana a la contraseña; el CSS no cuenta', () => {
+    const url = `${ROOT}/course/enrol.php?id=3`
+    expect(classifyAuthPage({ url, account: moodle, hasPasswordField: true, html: moodleHTML({ inner: PROOF }) })).toBe('authenticated')
+    expect(classifyAuthPage({ url, account: moodle, html: moodleHTML({ bodyClass: 'notloggedin', inner: PROOF }) })).toBe('login')
+    expect(classifyAuthPage({ url, account: moodle, html: moodleHTML({ head: '<style>.notloggedin{}</style>' }) })).toBe('authenticated')
+    expect(classifyAuthPage({ url, account: moodle, hasPasswordField: true, html: moodleHTML() })).toBe('login')
+    // fuera de la cuenta, la prueba no la hace «interna»
+    expect(classifyAuthPage({ url: 'https://otro.edu/my/', account: moodle, html: moodleHTML({ inner: PROOF }) })).toBe('unknown')
   })
 })

@@ -176,7 +176,8 @@
     "fixAI": "Elegir en Ajustes",
     "fixRetry": "Reintentar",
     "fixBudget": "Ajustar",
-    "onMac": "Se arregla en Aula, en tu Mac."
+    "onMac": "Se arregla en Aula, en tu Mac.",
+    "onServer": "Lo arregla el propietario de tu servidor de Aula, en Ajustes."
   },
   "automations": {
     "yours": "Tus automatizaciones",

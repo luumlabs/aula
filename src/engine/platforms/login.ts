@@ -2,35 +2,15 @@
 // barata sirve para comprobarlo (y para mantenerla viva). Puro: lo usan la ventana de inicio de sesión, la comprobación en
 // segundo plano y las pruebas.
 import type { PlatformAccount, PlatformKind } from '@shared/settings/platforms'
+import { isIdentityHost } from './identity'
 import { accountContains, hostOf, joinRoot, platformRoot } from './model'
+import { moodleBodyNotLoggedIn, moodleUserProof } from './moodle'
+import { moodleAliasRoot } from './site'
 
 // MARK: Proveedores de identidad (SSO)
 
-/** Hosts exactos o dominios (`*.x`) de proveedores de identidad. */
-const IDENTITY_HOSTS = [
-  'login.microsoftonline.com', 'login.microsoft.com', 'login.windows.net', 'login.live.com', 'account.live.com', 'sts.windows.net',
-  'accounts.google.com', 'accounts.youtube.com', 'appleid.apple.com', 'idmsa.apple.com',
-  '*.okta.com', '*.oktapreview.com', '*.okta-emea.com', '*.auth0.com', '*.duosecurity.com', '*.onelogin.com', '*.pingone.com', '*.pingidentity.com',
-  '*.clever.com', 'clever.com', 'launchpad.classlink.com', '*.classlink.com', '*.cirrusidentity.com', 'wayf.surfnet.nl', '*.eduroam.org',
-  'idp.rediris.es', '*.gakunin.jp', '*.ukfederation.org.uk', '*.incommon.org', '*.b2clogin.com', '*.ciamlogin.com', 'authn.edx.org'
-]
-/** Primeras etiquetas del host típicas de un servidor de identidad propio (sso.uni.edu, idp.uni.edu, cas.uni.edu…). */
-const IDENTITY_PREFIXES = ['sso', 'idp', 'cas', 'shibboleth', 'shib', 'adfs', 'fs', 'sts', 'login', 'auth', 'weblogin', 'websso', 'wayf', 'signin', 'secure-login', 'identity', 'iam', 'accounts', 'passport']
-
-/** ¿Es el host de un proveedor de inicio de sesión único (Microsoft, Google, Okta, Shibboleth, CAS, ADFS…)? */
-export function isIdentityHost(host: string): boolean {
-  const h = host.toLowerCase()
-  if (!h) return false
-  for (const p of IDENTITY_HOSTS) {
-    if (p.startsWith('*.')) {
-      const base = p.slice(2)
-      if (h === base || h.endsWith('.' + base)) return true
-    } else if (h === p) return true
-  }
-  const first = h.split('.')[0] ?? ''
-  if (h.split('.').length >= 3 && IDENTITY_PREFIXES.includes(first)) return true
-  return h.includes('shibboleth') || /(^|[.-])(sso|idp|adfs)([.-]|$)/.test(h)
-}
+// viven en identity.ts (también los usa site.ts); se siguen exportando desde aquí
+export { isIdentityHost } from './identity'
 
 // MARK: Páginas de inicio de sesión
 
@@ -43,7 +23,10 @@ const GENERIC_LOGIN_PATHS = [
 /** Rutas de acceso de cada plataforma. */
 const PLATFORM_LOGIN_PATHS: Partial<Record<PlatformKind, RegExp[]>> = {
   canvas: [/^\/login(\/|$)/],
-  moodle: [/\/login\/index\.php/, /\/login\/signup\.php/, /\/login\/forgot_password\.php/, /\/auth\/(saml2|shibboleth|oidc|cas|oauth2)\//, /\/admin\/tool\/mfa\//],
+  moodle: [
+    /\/login\/index\.php/, /\/login\/signup\.php/, /\/login\/forgot_password\.php/, /\/login\/change_password\.php/,
+    /\/auth\/(saml2|shibboleth|oidc|cas|oauth2)\//, /\/admin\/tool\/mfa\//
+  ],
   blackboard: [/^\/webapps\/login/, /^\/webapps\/bb-auth-provider/, /^\/auth-saml\//, /^\/ultra\/login/],
   brightspace: [/^\/d2l\/login/, /^\/d2l\/lp\/auth\//],
   sakai: [/^\/portal\/x?login/, /^\/container\/login/, /^\/sakai-login-tool\//],
@@ -89,6 +72,54 @@ export function isAccountLoginURL(account: Pick<PlatformAccount, 'kind' | 'baseU
   return loginPathMatches(u, account.kind)
 }
 
+/**
+ * Rutas que EMPIEZAN un inicio de sesión único (piden algo al proveedor o guardan un estado de un solo uso): los plugins de
+ * acceso de Moodle, SAML, CAS, Shibboleth, OAuth y los proveedores de Canvas y Blackboard. La página de acceso en sí no.
+ */
+const SSO_START_PATHS = [
+  /\/auth\/(saml2|shibboleth|oidc|cas|oauth2)\//, /\/saml2?(\/|$)/, /\/sso(\/|$)/, /\/cas\/login/, /^\/idp\//, /\/shibboleth\.sso\//,
+  /\/oauth2?\/(authorize|v2\.0\/authorize|auth)/, /^\/adfs\/ls/, /\/simplesaml\//, /\/profile\/saml2\//,
+  /^\/login\/(saml|cas|openid_connect|oauth2?|google|microsoft|apple|clever)(\/|$)/, /^\/auth-saml\//, /^\/webapps\/bb-auth-provider-[^/]*\/execute\//
+]
+
+/**
+ * ¿Pedir esta dirección empezaría un inicio de sesión (un proveedor de identidad u otra ruta que arranca el SSO)? Lo usa el
+ * sondeo sin sesión del alta para no empezar un acceso de Microsoft de fondo. `from`: la dirección de la que se llega.
+ */
+export function startsSignIn(from: string, url: string): boolean {
+  let u: URL
+  try {
+    u = new URL(url)
+  } catch {
+    return true
+  }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return true
+  if (u.hostname.toLowerCase() !== (hostOf(from) ?? '') && isIdentityHost(u.hostname)) return true
+  const path = u.pathname.toLowerCase()
+  return SSO_START_PATHS.some((r) => r.test(path))
+}
+
+// MARK: Pasos tras el acceso (Moodle)
+
+/**
+ * Lo que Moodle pide DESPUÉS de iniciar sesión: aceptar la política del sitio o completar el perfil. Sin anclar (Moodle
+ * puede vivir en una carpeta). No son páginas de acceso: la sesión está iniciada (por eso no van en las rutas de acceso:
+ * la comprobación diría «sesión cerrada»), pero el estudiante tiene que terminarlo en la ventana.
+ */
+const MOODLE_POST_LOGIN_STEPS = [/\/admin\/tool\/policy\/(index|view)\.php/, /\/user\/policy\.php/, /\/user\/edit\.php/]
+
+/** ¿La dirección es un paso de Moodle tras el acceso (política, perfil)? Solo cuentas Moodle y solo en el host de la cuenta. */
+export function isPostLoginStep(account: Pick<PlatformAccount, 'kind' | 'baseURL'>, url: string): boolean {
+  if (account.kind !== 'moodle' || !accountContains(account, url)) return false
+  let path: string
+  try {
+    path = new URL(url).pathname.toLowerCase()
+  } catch {
+    return false
+  }
+  return MOODLE_POST_LOGIN_STEPS.some((r) => r.test(path))
+}
+
 /** Marcas en el HTML de una página CON la sesión iniciada. */
 const SIGNED_IN_HTML: Partial<Record<PlatformKind, RegExp[]>> = {
   canvas: [/"current_user_id"\s*:\s*"?\d+/],
@@ -99,10 +130,14 @@ const SIGNED_IN_HTML: Partial<Record<PlatformKind, RegExp[]>> = {
   schoology: [/\/logout/, /s-user-id/],
   openedx: [/\/logout/, /"username"\s*:\s*"[^"]+"/]
 }
+/** Una marca en el HTML: una expresión o una prueba propia (p. ej. una clase del `<body>`). */
+type HtmlMark = RegExp | ((html: string) => boolean)
+
 /** Marcas de una página SIN sesión (aunque no tenga campo de contraseña visible, p. ej. un botón «Acceder con SSO»). */
-const SIGNED_OUT_HTML: Partial<Record<PlatformKind, RegExp[]>> = {
+const SIGNED_OUT_HTML: Partial<Record<PlatformKind, HtmlMark[]>> = {
   canvas: [/"current_user_id"\s*:\s*null/, /ic-Login-Body/i, /id="login_form"/],
-  moodle: [/id="page-login-index"/, /\bnotloggedin\b/, /id="login"[^>]*action="[^"]*login\/index\.php/],
+  // `notloggedin` solo cuenta en la clase del <body> (no en CSS ni en JavaScript en línea)
+  moodle: [/id="page-login-index"/, moodleBodyNotLoggedIn, /id="login"[^>]*action="[^"]*login\/index\.php/],
   blackboard: [/class="[^"]*login-page/, /name="login"[^>]*action="\/webapps\/login/],
   brightspace: [/d2l-login/],
   sakai: [/\/portal\/xlogin"/],
@@ -128,8 +163,14 @@ export function classifyAuthPage(input: {
   if (!onPlatform && isIdentityHost(host)) return 'sso'
   const kind = input.account.kind
   if (isAccountLoginURL(input.account, input.url)) return 'login'
-  if (input.hasPasswordField) return 'login'
   const html = input.html ?? ''
+  if (kind === 'moodle' && html) {
+    // Moodle: el body «notloggedin» manda; si no, la prueba de salida gana a las marcas genéricas (una contraseña de
+    // cuestionario, una clave de matriculación, un bloque de acceso…)
+    if (moodleBodyNotLoggedIn(html)) return 'login'
+    if (onPlatform && moodleUserProof(html)) return 'authenticated'
+  }
+  if (input.hasPasswordField) return 'login'
   if (html) {
     if (htmlShowsSignedOut(kind, html)) return 'login'
     if (onPlatform && htmlShowsSignedIn(kind, html)) return 'authenticated'
@@ -144,7 +185,7 @@ export function htmlShowsSignedIn(kind: PlatformKind, html: string): boolean {
 
 /** ¿El HTML trae marcas de una página SIN sesión (formulario de acceso, «notloggedin»…)? */
 export function htmlShowsSignedOut(kind: PlatformKind, html: string): boolean {
-  return (SIGNED_OUT_HTML[kind] ?? []).some((r) => r.test(html))
+  return (SIGNED_OUT_HTML[kind] ?? []).some((m) => (typeof m === 'function' ? m(html) : m.test(html)))
 }
 
 // MARK: Comprobación de la sesión (sin ventana)
@@ -165,7 +206,8 @@ export function sessionCheckTargets(account: Pick<PlatformAccount, 'kind' | 'bas
     case 'canvas':
       return [{ url: joinRoot(root, '/api/v1/users/self'), expect: 'json', headers: json }]
     case 'moodle':
-      return [{ url: joinRoot(root, '/my/'), expect: 'page' }]
+      // si el área personal está desactivada, /my/ da 404 (no concluyente) y se prueba «Mis cursos»
+      return [{ url: joinRoot(root, '/my/'), expect: 'page' }, { url: joinRoot(root, '/my/courses.php'), expect: 'page' }]
     case 'blackboard':
       return [{ url: joinRoot(root, '/learn/api/v1/users/me'), expect: 'json', headers: json }, { url: joinRoot(root, '/ultra/course'), expect: 'page' }]
     case 'brightspace':
@@ -187,7 +229,7 @@ export function sessionCheckTargets(account: Pick<PlatformAccount, 'kind' | 'bas
   }
 }
 
-/** Lo que se sabe de una respuesta (sin el cuerpo completo: basta un trozo). */
+/** Lo que se sabe de una respuesta. */
 export interface SessionProbeResponse {
   status: number
   /** Dirección final tras seguir las redirecciones. */
@@ -195,7 +237,7 @@ export interface SessionProbeResponse {
   /** Saltos de redirección (sin la primera dirección). */
   redirects: string[]
   contentType?: string | null
-  /** Primeros ~200 KB del cuerpo. */
+  /** El cuerpo recibido, entero (con el tope de la petición): la prueba de usuario de Moodle puede ir al final. */
   body?: string
 }
 
@@ -205,6 +247,8 @@ export interface SessionVerdict {
   state: SessionState
   /** Motivo en inglés (registro y depuración; nunca lleva cookies ni el cuerpo). */
   reason: string
+  /** Moodle pide un paso tras el acceso (política, perfil): hay sesión, pero el estudiante tiene que terminarlo. */
+  pendingStep?: boolean
 }
 
 /** Quita el `while(1);` que Canvas antepone a las respuestas JSON con sesión. */
@@ -234,9 +278,15 @@ export function interpretSessionCheck(
   const chain = [...r.redirects, r.finalURL]
   const bounced = chain.find((u) => isAccountLoginURL(account, u))
   if (bounced) return { state: 'signedOut', reason: `redirected to sign-in (${hostOf(bounced) ?? '?'})` }
+  const body = r.body ?? ''
+  // Moodle en otro host del mismo sitio (la dirección guardada es un alias): su página cuenta como la de la cuenta
+  const pageAccount = kind === 'moodle' ? moodleAliasAccount(account, r.finalURL, body) ?? account : account
+  // después del acceso: la política o el perfil por completar (nunca «cerrada», nunca «iniciada»)
+  if (kind === 'moodle' && chain.some((u) => isPostLoginStep(account, u) || isPostLoginStep(pageAccount, u))) {
+    return { state: 'unknown', reason: 'post-login step (policy/profile)', pendingStep: true }
+  }
   if (r.status === 401) return { state: 'signedOut', reason: 'HTTP 401' }
   if (r.status === 407 || r.status === 429 || r.status >= 500) return { state: 'unknown', reason: `HTTP ${r.status}` }
-  const body = r.body ?? ''
   if (target.expect === 'json') {
     if (r.status === 403) {
       // Brightspace contesta 403 a whoami sin sesión; en las demás puede ser un permiso: no concluyente
@@ -262,13 +312,47 @@ export function interpretSessionCheck(
   // Página interna
   if (r.status === 403) return { state: 'unknown', reason: 'HTTP 403' }
   if (r.status >= 200 && r.status < 300) {
-    if (!accountContains(account, r.finalURL) && kind !== 'other') return { state: 'unknown', reason: 'ended on another site' }
+    if (!accountContains(pageAccount, r.finalURL) && kind !== 'other') return { state: 'unknown', reason: 'ended on another site' }
+    if (kind === 'moodle') return moodlePageVerdict(pageAccount, r.finalURL, body)
     const page = classifyAuthPage({ url: r.finalURL, account, html: body, hasPasswordField: hasPasswordInput(body) })
     if (page === 'login' || page === 'sso') return { state: 'signedOut', reason: 'sign-in page' }
     if (page === 'authenticated') return { state: 'signedIn', reason: 'internal page' }
     return { state: 'unknown', reason: 'unclear page' }
   }
   return { state: 'unknown', reason: `HTTP ${r.status}` }
+}
+
+/** La cuenta con la raíz del Moodle en otro host del mismo sitio, si la página lo prueba (ver `moodleAliasRoot`). */
+function moodleAliasAccount(account: Pick<PlatformAccount, 'kind' | 'baseURL'>, url: string, html: string): Pick<PlatformAccount, 'kind' | 'baseURL'> | null {
+  const root = moodleAliasRoot(account, url, html)
+  return root ? { kind: account.kind, baseURL: root + '/' } : null
+}
+
+/** Página interna de Moodle: «iniciada» solo con la prueba de un usuario de verdad (un invitado no la tiene). */
+function moodlePageVerdict(account: Pick<PlatformAccount, 'kind' | 'baseURL'>, url: string, body: string): SessionVerdict {
+  const proof = moodleUserProof(body)
+  // /my/ manda a los invitados a la portada con «redirect=0»
+  if (!proof && isMoodleFrontPageRedirect0(account, url)) return { state: 'signedOut', reason: 'guest session' }
+  const page = classifyAuthPage({ url, account, html: body, hasPasswordField: hasPasswordInput(body) })
+  if (page === 'login' || page === 'sso') return { state: 'signedOut', reason: 'sign-in page' }
+  if (page !== 'authenticated') return { state: 'unknown', reason: 'unclear page' }
+  return proof ? { state: 'signedIn', reason: 'internal page' } : { state: 'unknown', reason: 'no user proof' }
+}
+
+/** ¿Es la portada de Moodle (raíz, `/` o `/index.php`) con `redirect=0`? */
+function isMoodleFrontPageRedirect0(account: Pick<PlatformAccount, 'kind' | 'baseURL'>, url: string): boolean {
+  let u: URL
+  let rootPath: string
+  try {
+    u = new URL(url)
+    rootPath = new URL(platformRoot('moodle', account.baseURL)).pathname.replace(/\/+$/, '').toLowerCase()
+  } catch {
+    return false
+  }
+  if (u.searchParams.get('redirect') !== '0') return false
+  const path = u.pathname.toLowerCase()
+  if (!path.startsWith(rootPath)) return false
+  return ['', '/', '/index.php'].includes(path.slice(rootPath.length))
 }
 
 function jsonVerdict(kind: PlatformKind, data: unknown): SessionVerdict {

@@ -8,6 +8,7 @@ import { api } from '@renderer/lib/api'
 import { useRpc } from '@renderer/lib/useRpc'
 import { useSettings } from '@renderer/lib/settings'
 import { isDemo } from '@renderer/lib/demo'
+import { signInHere } from '@renderer/lib/live'
 import { KNOWN_PLATFORM_KINDS, platformInfo } from '@engine/platforms/model'
 
 const DEMO: PlatformAccountView[] = [
@@ -36,7 +37,10 @@ export function PlatformsCard({ heading = true, className = 'h-full' }: { headin
       const acc = await api.invoke('platforms.add', { url: url.trim() })
       setUrl('')
       await reload()
-      await api.invoke('platforms.signIn', { accountId: acc.id })
+      // desde un dispositivo (el propietario de Aula como servidor) la ventana del equipo no se ve: se inicia sesión en el
+      // navegador de Aula en vivo, aquí mismo
+      if (api.remote) await signInHere(acc.id)
+      else await api.invoke('platforms.signIn', { accountId: acc.id })
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
@@ -98,6 +102,10 @@ function AccountRow({ a, onChanged }: { a: PlatformAccountView; onChanged: () =>
   const signIn = async (el: HTMLElement) => {
     setBusy(true)
     try {
+      if (api.remote) {
+        await signInHere(a.id)
+        return
+      }
       const r = await api.invoke('platforms.signIn', { accountId: a.id })
       if (r.signedIn && el.isConnected) pixelBurst(el, { colors: ['var(--success)', 'var(--sun)'] })
       onChanged()

@@ -2,9 +2,9 @@
 //
 // Owns the embedded TailscaleKit node: starts it, tracks its state (by
 // polling TailscaleNode.statusJSON(), which keeps working across iOS
-// suspension, unlike the loopback LocalAPI), finds the student's Mac in the
-// tailnet (the machine Aula's Mac app registers as "aula-mac") and manages the
-// loopback forwarders that tunnel the web view's TCP connections to it.
+// suspension, unlike the loopback LocalAPI), finds the student's Aulas in the
+// tailnet (AulaHosts.swift: their Mac, "aula-mac", or their server) and manages
+// the loopback forwarders that tunnel the web view's TCP connections to them.
 
 import Foundation
 import os
@@ -27,10 +27,13 @@ struct TailnetSnapshot: Sendable, Equatable {
     var dnsName: String?
     var hostname: String?
     var message: String?
-    /// Aula's Mac as seen in the tailnet: its machine name ("aula-mac", or "aula-mac-1" if the name was taken).
+    /// The best Aula in the tailnet (online first): a Mac ("aula-mac", or "aula-mac-1" if the name was taken) or an Aula
+    /// server ("aula-server"). The app opens the one the student chose if there are several (`aulas`).
     var macHost: String?
-    /// Whether that Mac is reachable right now (Aula open, Mac awake).
+    /// Whether that Aula is reachable right now (Aula open, Mac awake).
     var macOnline = false
+    /// Every Aula in the tailnet, online first.
+    var aulas: [AulaPeer] = []
 
     static let stopped = TailnetSnapshot(state: .stopped)
 }
@@ -125,15 +128,16 @@ struct AulaLogSink: LogSink {
     }
 }
 
-/// Thread-safe flag the (synchronous, background-queue) dialer can check.
+/// Thread-safe state the (synchronous, background-queue) dialer can check.
+/// Lleva también la dirección en la red de cada Aula de esta persona: los únicos equipos a los que se marca.
 final class RunningGate: Sendable {
-    private let lock = OSAllocatedUnfairLock<(handle: TailscaleHandle?, running: Bool)>(initialState: (nil, false))
+    private let lock = OSAllocatedUnfairLock<(handle: TailscaleHandle?, running: Bool, aulas: [String: String])>(initialState: (nil, false, [:]))
 
-    func set(handle: TailscaleHandle?, running: Bool) {
-        lock.withLock { $0 = (handle, running) }
+    func set(handle: TailscaleHandle?, running: Bool, aulas: [String: String] = [:]) {
+        lock.withLock { $0 = (handle, running, running ? aulas : [:]) }
     }
 
-    var current: (handle: TailscaleHandle?, running: Bool) {
+    var current: (handle: TailscaleHandle?, running: Bool, aulas: [String: String]) {
         lock.withLock { $0 }
     }
 }
@@ -146,17 +150,20 @@ final class RunningGate: Sendable {
 /// entry point exported by TailscaleKit.framework (tailscale_dial) is used
 /// directly to get a bidirectional socket.
 func tailnetDial(gate: RunningGate, host: String, port: UInt16) throws -> Int32 {
-    let (handle, running) = gate.current
+    let (handle, running, aulas) = gate.current
     guard let handle else { throw AulaTailscaleError.notStarted }
     // tsnet's Dial blocks until the node is Running; never park a thread on
     // that (e.g. while waiting for the user to log in).
     guard running else { throw AulaTailscaleError.tailscale("Tailscale is not connected yet") }
+    // solo a una Aula de esta persona y a la dirección que dio la red (como Android): el nombre lo podría llevar luego
+    // otro equipo de la red
+    guard let ip = aulas[hostLabel(host)] else { throw AulaTailscaleError.tailscale("\(host) is not one of your Aulas on the tailnet") }
 
     let address: String
-    if host.contains(":") && !host.hasPrefix("[") {
-        address = "[\(host)]:\(port)" // IPv6 literal
+    if ip.contains(":") && !ip.hasPrefix("[") {
+        address = "[\(ip)]:\(port)" // IPv6 literal
     } else {
-        address = "\(host):\(port)"
+        address = "\(ip):\(port)"
     }
     var conn: tailscale_conn = 0
     let rc = tailscale_dial(handle, "tcp", address, &conn)
@@ -173,41 +180,11 @@ func tailnetDial(gate: RunningGate, host: String, port: UInt16) throws -> Int32 
     return conn
 }
 
-/// The subset of ipnstate.Status (JSON) that we need.
-private struct IPNStatus: Decodable {
-    struct PeerStatus: Decodable {
-        var DNSName: String?
-        var HostName: String?
-        var Online: Bool?
-    }
-    var BackendState: String
-    var AuthURL: String?
-    var TailscaleIPs: [String]?
-    var `Self`: PeerStatus?
-    var Peer: [String: PeerStatus]?
-}
-
 /// The machine name Aula's Mac app asks for in the tailnet (src/main/electron/remote/tailnet.ts).
 let aulaMacHostname = "aula-mac"
 
-/// Aula's Mac among the tailnet's machines: the one named "aula-mac" (or "aula-mac-N" when that name was taken),
-/// preferring one that is online.
-private func findMac(_ peers: [String: IPNStatus.PeerStatus]?) -> (host: String, online: Bool)? {
-    var best: (host: String, online: Bool)?
-    for peer in (peers ?? [:]).values {
-        // the first label of the MagicDNS name is the machine name as the tailnet knows it
-        let dns = (peer.DNSName ?? "").split(separator: ".").first.map(String.init) ?? ""
-        let name = (dns.isEmpty ? (peer.HostName ?? "") : dns).lowercased()
-        guard name == aulaMacHostname || name.hasPrefix(aulaMacHostname + "-") else { continue }
-        let online = peer.Online ?? false
-        if let b = best {
-            if (online && !b.online) || (online == b.online && name < b.host) { best = (name, online) }
-        } else {
-            best = (name, online)
-        }
-    }
-    return best
-}
+// IPNStatus, AulaPeer y la regla que distingue las Aulas de esta persona de todo lo demás (dueño, etiquetas, nombre)
+// están en AulaHosts.swift: lógica pura, que native/ios/_verify/HostsTest prueba sola.
 
 /// Where the node's events go: the app's model once it is listening.
 final class TailnetEvents: @unchecked Sendable {
@@ -488,6 +465,7 @@ actor TailnetController {
         }
         let requested = options?.hostname
         var next = TailnetSnapshot(state: .starting, hostname: requested)
+        var aulaAddrs: [String: String] = [:]
         switch st.BackendState {
         case "Running":
             let ips = st.TailscaleIPs ?? []
@@ -499,8 +477,10 @@ actor TailnetController {
             } else if let h = st.Self?.HostName, !h.isEmpty {
                 host = h
             }
-            let mac = findMac(st.Peer)
-            next = TailnetSnapshot(state: .running, ips: ips, dnsName: dns, hostname: host, macHost: mac?.host, macOnline: mac?.online ?? false)
+            let found = findAulas(st.Peer, me: st.Self)
+            aulaAddrs = found.addrs
+            let aulas = found.aulas
+            next = TailnetSnapshot(state: .running, ips: ips, dnsName: dns, hostname: host, macHost: aulas.first?.host, macOnline: aulas.first?.online ?? false, aulas: aulas)
         case "NeedsLogin":
             if let url = st.AuthURL, !url.isEmpty {
                 next = TailnetSnapshot(state: .needsLogin, authURL: url, hostname: requested)
@@ -519,7 +499,7 @@ actor TailnetController {
             kickedLogin = false
         }
         guard gen == generation else { return }
-        update(next)
+        update(next, aulas: aulaAddrs)
     }
 
     /// tsnet requests an auth URL itself at startup; after a later logout or
@@ -540,11 +520,11 @@ actor TailnetController {
         }
     }
 
-    private func update(_ next: TailnetSnapshot) {
+    private func update(_ next: TailnetSnapshot, aulas: [String: String] = [:]) {
         let changed = next != snapshot
         snapshot = next
         // Keep the dial gate in sync (read synchronously by forwarders).
-        gate.set(handle: handle, running: handle != nil && next.state == .running)
+        gate.set(handle: handle, running: handle != nil && next.state == .running, aulas: aulas)
         if changed {
             emit(.status(next))
         }

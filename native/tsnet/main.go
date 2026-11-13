@@ -83,6 +83,7 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/envknob"
 	"tailscale.com/logtail"
@@ -207,7 +208,8 @@ func reserveStdout() (*os.File, error) {
 		return nil, fmt.Errorf("dup stdout: %w", err)
 	}
 	syscall.CloseOnExec(fd)
-	if err := syscall.Dup2(2, 1); err != nil {
+	// unix.Dup2: syscall.Dup2 does not exist on linux/arm64 (only dup3)
+	if err := unix.Dup2(2, 1); err != nil {
 		return nil, fmt.Errorf("redirect stdout: %w", err)
 	}
 	return os.NewFile(uintptr(fd), "status"), nil

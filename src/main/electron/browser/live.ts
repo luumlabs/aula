@@ -17,7 +17,7 @@ import { AulaError } from '@main/services/errors'
 import { log } from '@main/services/log'
 import { getAccount } from '@main/services/platforms/accounts'
 import { AULA_WORLD } from './scripts'
-import { partitionFor, platformSession } from './sessions'
+import { forgetWebContents, partitionFor, platformSession, safeOrigin } from './sessions'
 
 /** Sin nadie mirando ni tocando durante este tiempo, la ventana se cierra sola (la sesión queda guardada). */
 const IDLE_MS = 20 * 60_000
@@ -113,6 +113,8 @@ class LiveView {
       webPreferences: {
         partition: partitionFor(accountId),
         preload: join(__dirname, '../preload/browser.js'),
+        // guarda de las llaves de acceso: en una ventana oculta que se maneja desde el móvil no hay interfaz de passkeys
+        additionalArguments: ['--aula-live'],
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
@@ -147,8 +149,10 @@ class LiveView {
       if (n.ok && !blocked(n.url)) setImmediate(() => { if (!this.closed && !this.wc.isDestroyed()) void this.wc.loadURL(n.url).catch(() => undefined) })
       return { action: 'deny' }
     })
+    const wcId = this.wc.id
     this.win.on('closed', () => {
       this.closed = true
+      forgetWebContents(wcId)
       this.hooks.closed(this.id)
     })
   }
@@ -183,8 +187,11 @@ class LiveView {
   async goto(url: string): Promise<void> {
     this.touch()
     await this.wc.loadURL(url).catch((err: unknown) => {
-      // una navegación que corta a otra (redirecciones del acceso) no es un fallo
-      if (!/ERR_ABORTED/.test(String(err))) log.debug('[en vivo] no se pudo abrir', String(err).slice(0, 200))
+      // una navegación que corta a otra (redirecciones del acceso) no es un fallo; al registro, sin la dirección (lleva el
+      // estado del SSO en la consulta): el código y el origen
+      const e = (err ?? {}) as { errno?: number; code?: string; url?: string }
+      if (e.code === 'ERR_ABORTED' || e.errno === -3) return
+      log.debug(`[en vivo] no se pudo abrir: ${e.code ?? e.errno ?? 'error'}${e.url ? ` ${safeOrigin(e.url)}` : ''}`)
     })
   }
 

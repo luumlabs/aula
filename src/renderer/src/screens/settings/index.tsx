@@ -2,6 +2,8 @@
 // Desde un dispositivo (iPad, iPhone) son los mismos ajustes, los de Aula en el Mac, pero solo lo de uso diario: las claves,
 // las plataformas, los dispositivos, los datos y las actualizaciones se llevan desde el Mac (y el servidor no deja otra cosa:
 // src/main/services/remote/policy.ts).
+// Con Aula como servidor (sin Mac), el dispositivo PROPIETARIO hace de ventana: ve también la IA con sus claves, las
+// plataformas y los dispositivos (no los datos ni las actualizaciones, que se llevan en el servidor).
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fmtPercent } from '@renderer/lib/format'
@@ -37,13 +39,16 @@ export default function SettingsScreen() {
     return () => clearTimeout(timer)
   }, [section, !!settings])
   if (!settings) return null
-  const remote = api.remote
+  // `remote`: un dispositivo con solo lo de uso diario; un propietario ve como la ventana (salvo datos y actualizaciones)
+  const owner = api.owner
+  const remote = api.remote && !owner
+  const subtitle = owner ? t('remote.subtitleOwner') : remote ? (api.server ? t('remote.subtitleServer') : t('remote.subtitle')) : t('subtitle')
   return (
     <div className="@container flex-1 min-h-0 overflow-y-auto px-6 max-[700px]:px-4 pt-2 pb-24">
-      <PageHeader title={t('title')} subtitle={remote ? t('remote.subtitle') : t('subtitle')} className="mb-6" />
+      <PageHeader title={t('title')} subtitle={subtitle} className="mb-6" />
       <Stagger className="grid grid-cols-12 gap-4">
         <StaggerItem className="col-span-12">
-          <SectionTitle title={t('ai.title')} detail={remote ? t('ai.remote.detail') : t('ai.auto')} className="px-1" data-settings-section="ai" />
+          <SectionTitle title={t('ai.title')} detail={remote ? (api.server ? t('ai.remote.detailServer') : t('ai.remote.detail')) : t('ai.auto')} className="px-1" data-settings-section="ai" />
           {remote ? <AIChoices /> : <AIPicker />}
         </StaggerItem>
         {/* plataformas y apariencia, una sobre otra, junto a «Aula siempre activa» (la más alta): sin huecos en las tarjetas */}
@@ -217,7 +222,8 @@ function DataCard({ s, update }: { s: AppSettings; update: Upd }) {
         <ToggleRow title={t('data.memory')} hint={t('data.memoryHint')} checked={s.data.memory} onChange={(v) => void update({ data: { memory: v } })} />
         <ToggleRow title={t('data.web')} hint={t('data.webHint')} checked={s.data.webSearch} onChange={(v) => void update({ data: { webSearch: v } })} />
       </div>
-      <div className="flex flex-wrap gap-2 mt-4">
+      {/* abrir, exportar o borrar los datos de un servidor se hace allí (su carpeta de datos), no desde un propietario */}
+      {!api.remote && <div className="flex flex-wrap gap-2 mt-4">
         <Button size="md" icon={<Icon name="folder-open" size={15} />} onClick={() => info && void api.invoke('app.showItemInFolder', { path: info.dataPath + '/settings.json' })}>
           {t('data.openFolder')}
         </Button>
@@ -227,7 +233,7 @@ function DataCard({ s, update }: { s: AppSettings; update: Upd }) {
         <Button size="md" variant="ghost" className="text-danger!" icon={<Icon name="trash" size={15} />} onClick={() => setConfirm(true)}>
           {t('data.deleteAll')}
         </Button>
-      </div>
+      </div>}
       <ConfirmDialog
         open={confirm}
         onClose={() => setConfirm(false)}
@@ -244,6 +250,9 @@ function DataCard({ s, update }: { s: AppSettings; update: Upd }) {
 
 // Apoyar el desarrollo de Aula (opcional; todo sigue siendo gratis)
 const SPONSORS_URL = 'https://github.com/sponsors/luumlabs'
+
+/** Lo que ofrece la app nativa que abre la interfaz en un dispositivo (native/ios, native/android). */
+const appBridge = (): { switchAula?: () => void } | undefined => (window as { aulaApp?: { switchAula?: () => void } }).aulaApp
 
 const openLegal = (which: LegalDoc) => void api.invoke('app.openLicenses', { which }).catch(() => undefined)
 const openURL = (url: string) => void api.invoke('app.openExternal', { url }).catch(() => undefined)
@@ -262,7 +271,8 @@ function AboutCard({ s, update }: { s: AppSettings; update: Upd }) {
   const upd = useUpdateState()
   const [asked, setAsked] = useState(false)
   const current = info?.version ?? ''
-  // desde un dispositivo: la versión y los avisos legales; las actualizaciones (y lo que abre ventanas) son del Mac
+  // desde un dispositivo: la versión y los avisos legales; las actualizaciones (y lo que abre ventanas) son del Mac (o del
+  // servidor, que se actualiza con su imagen)
   const remote = api.remote
   return (
     <Card padded="lg" className="h-full flex flex-col">
@@ -282,16 +292,21 @@ function AboutCard({ s, update }: { s: AppSettings; update: Upd }) {
           {info?.secretProtection === 'basic' && <div className="t-footnote text-warning mt-2">{t('about.noKeyring')}</div>}
         </>
       )}
+      {api.owner && info?.secretProtection === 'basic' && <div className="t-footnote text-text3 mt-3">{t('about.noKeyringServer')}</div>}
       <div className="mt-auto pt-3 flex items-center justify-between gap-3">
         {/* avisos legales de la AGPL (§0, §5(d)): copyright, sin garantía, la licencia y el código de esta versión */}
         <div className="flex flex-col items-start gap-0.5 min-w-0" data-testid="about-legal">
           <span className="t-footnote text-text3">{t('about.copyright')}</span>
           <span className="t-footnote text-text3">{t('about.license')}</span>
           {remote ? (
-            // un enlace de verdad: se abre en el dispositivo, no en el Mac
-            <a className="t-ui text-accent-text hover:underline" href={sourceCodeURL(current)} target="_blank" rel="noreferrer">
-              {t('about.source')}
-            </a>
+            <span className="flex flex-wrap items-center gap-x-3">
+              {/* un enlace de verdad: se abre en el dispositivo, no en el Mac */}
+              <a className="t-ui text-accent-text hover:underline" href={sourceCodeURL(current)} target="_blank" rel="noreferrer">
+                {t('about.source')}
+              </a>
+              {/* la app del iPhone, el iPad o Android: con más de una Aula en la red (un Mac y un servidor), abrir otra */}
+              {appBridge()?.switchAula && <AboutLink onClick={() => appBridge()?.switchAula?.()}>{t('about.switchAula')}</AboutLink>}
+            </span>
           ) : (
             <span className="flex flex-wrap items-center gap-x-3">
               <AboutLink onClick={() => openLegal('aula')}>{t('about.licenseText')}</AboutLink>

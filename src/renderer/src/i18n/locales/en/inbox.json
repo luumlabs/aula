@@ -176,7 +176,8 @@
     "fixAI": "Choose in Settings",
     "fixRetry": "Try again",
     "fixBudget": "Adjust",
-    "onMac": "Fix it in Aula on your Mac."
+    "onMac": "Fix it in Aula on your Mac.",
+    "onServer": "The owner of your Aula server fixes it, in Settings."
   },
   "automations": {
     "yours": "Your automations",

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos en español. Los mismos que la app del iPhone y el iPad (native/ios/Aula/Texts.swift). -->
+<resources>
+    <string name="app_name">Aula</string>
+    <string name="starting">Preparando tu red privada…</string>
+    <string name="sign_in_title">Conecta con tu Aula</string>
+    <string name="sign_in_body">Aula vive en tu Mac o en tu servidor. Para llegar a ella desde aquí, inicia sesión en Tailscale con la misma cuenta que usaste allí. Solo se hace una vez.</string>
+    <string name="sign_in_action">Iniciar sesión en Tailscale</string>
+    <string name="sign_in_after">Cuando termines, vuelve a Aula: sigue sola.</string>
+    <string name="approval_title">Falta aprobar este dispositivo</string>
+    <string name="approval_body">Tu red de Tailscale pide aprobar los dispositivos nuevos. Quien la administra puede hacerlo en su panel; en cuanto lo haga, Aula sigue sola.</string>
+    <string name="looking_title">No encuentro tu Aula</string>
+    <string name="looking_body">En tu Mac, abre Aula → Ajustes → «Aula en tus dispositivos», enciéndelo e inicia sesión en Tailscale con esta misma cuenta. Si tu Aula es un servidor, comprueba que está en marcha y en Tailscale con esta cuenta.</string>
+    <string name="unreachable_title">Tu Aula no responde</string>
+    <string name="unreachable_body">Encontré «%1$s» en tu red, pero Aula no contesta. Comprueba que el equipo está encendido (un Mac, despierto y con Aula abierta). Lo vuelvo a intentar cada pocos segundos.</string>
+    <string name="choose_title">¿Qué Aula abres?</string>
+    <string name="choose_body">Hay más de una Aula en tu red. Elige una: la próxima vez se abre sola. Para cambiar, Ajustes → Abrir otra Aula.</string>
+    <string name="choose_offline">sin conexión</string>
+    <string name="choose_another">Abrir otra Aula</string>
+    <string name="failed_title">La red privada no arranca</string>
+    <string name="retry">Reintentar</string>
+    <string name="sign_out">Cerrar sesión de Tailscale</string>
+    <string name="sign_out_confirm">Este dispositivo dejará de estar en tu red privada. Tus cursos siguen donde está tu Aula.</string>
+    <string name="cancel">Cancelar</string>
+    <string name="get_aula">¿Aún no tienes Aula?</string>
+    <string name="step_1">Inicia sesión</string>
+    <string name="step_2">Encuentra tu Aula</string>
+    <string name="step_3">Escribe el código</string>
+    <string name="step_label">Paso %1$d de 3: %2$s</string>
+    <string name="no_browser">No hay un navegador en este dispositivo para abrir la página.</string>
+</resources>

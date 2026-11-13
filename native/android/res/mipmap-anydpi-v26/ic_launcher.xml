@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El icono de Aula (el arco a tinta, el mismo que en el iPhone y el Mac): el dibujo entero en el primer plano, dentro de la
+     zona que no recorta ninguna forma de icono; el fondo, del mismo papel. build.sh hace los PNG. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/icon_paper" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

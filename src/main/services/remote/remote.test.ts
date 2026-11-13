@@ -1,12 +1,14 @@
 // Acceso desde los dispositivos del estudiante: emparejar con un código, qué se puede pedir a distancia y los archivos
 // que sube un dispositivo.
 import { describe, expect, it } from 'vitest'
+import { EventEmitter } from 'node:events'
 import { existsSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Readable } from 'node:stream'
 import { DeviceRegistry, MAX_ATTEMPTS, PAIRING_MINUTES, PairingError, TOKEN_DAYS } from './devices'
-import { noopValue, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
+import { noopValue, ownerVerdict, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
+import { hostLabel, installServerCrashHandlers, isAulaHostname, isDeviceHostname, isServerMode, serverHostname } from './server-mode'
 import { safeUploadName, UploadError, UploadStore } from './uploads'
 import { pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from './bridge'
 
@@ -63,6 +65,146 @@ describe('emparejar un dispositivo', () => {
     now += TOKEN_DAYS * 86_400_000 + 3_600_000 + 1
     expect(reg.authenticate(b.token)).toBeUndefined()
     expect(reg.list()).toEqual([])
+  })
+  it('lo que sigue abierto pregunta si su dispositivo aún vale: retirado o caducado, no (y preguntar no cuenta como usarlo)', () => {
+    let now = Date.parse('2026-11-10T10:00:00Z')
+    const reg = new DeviceRegistry(join(tmp(), 'd.json'), () => now)
+    const a = reg.completePairing(reg.startPairing().code, 'iPhone', 'iphone')
+    const b = reg.completePairing(reg.startPairing().code, 'iPad', 'ipad')
+    expect(reg.active(a.device.id)?.name).toBe('iPhone')
+    expect(reg.active('ffffffffffff')).toBeUndefined()
+    reg.revoke(a.device.id)
+    expect(reg.active(a.device.id)).toBeUndefined()
+    now += TOKEN_DAYS * 86_400_000 - 1
+    expect(reg.active(b.device.id)?.lastSeen).toBe(b.device.lastSeen)
+    now += 2
+    expect(reg.active(b.device.id)).toBeUndefined()
+  })
+})
+
+describe('propietario (Aula como servidor)', () => {
+  const reg = (): DeviceRegistry => new DeviceRegistry(join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json'))
+  it('solo es propietario quien usa un código de propietario; queda guardado y se ve', () => {
+    const r = reg()
+    expect(r.hasOwner()).toBe(false)
+    const first = r.startPairing({ owner: true })
+    expect(first.owner).toBe(true)
+    const a = r.completePairing(first.code, 'iPad de Ana', 'ipad')
+    expect(a.device.owner).toBe(true)
+    expect(r.hasOwner()).toBe(true)
+    const second = r.startPairing()
+    const b = r.completePairing(second.code, 'Móvil', 'android')
+    expect(b.device.owner).toBeUndefined()
+    expect(b.device.platform).toBe('android')
+    expect(r.authenticate(a.token)?.owner).toBe(true)
+    expect(r.authenticate(b.token)?.owner).toBeUndefined()
+    // otra lectura del archivo: lo mismo
+    const file = join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json')
+    const r1 = new DeviceRegistry(file)
+    const t = r1.completePairing(r1.startPairing({ owner: true }).code, 'x', 'web').token
+    expect(new DeviceRegistry(file).authenticate(t)?.owner).toBe(true)
+  })
+  it('un propietario pide lo que la ventana, menos lo que necesita la pantalla del servidor o deja fuera a todos', () => {
+    for (const m of ['ai.setKey', 'ai.configure', 'platforms.add', 'platforms.remove', 'remote.startPairing', 'remote.revoke', 'remote.status', 'local.download', 'courses.delete', 'memory.clear', 'secrets.status', 'settings.update'])
+      expect([m, ownerVerdict(m)]).toEqual([m, 'allow'])
+    for (const m of ['documents.pick', 'documents.reveal', 'courses.export', 'courses.import', 'calendar.importICS', 'calendar.exportICS', 'data.exportAll', 'data.deleteAll', 'memory.export',
+      'updates.install', 'updates.check', 'remote.setEnabled', 'remote.tailnetLogout', 'remote.tailnetLogin', 'app.showItemInFolder', 'app.openLicenses', 'nada', ''])
+      expect([m, ownerVerdict(m)]).toEqual([m, 'deny'])
+    expect(ownerVerdict('app.setTheme')).toBe('noop')
+    // sin acotar: la clave y la dirección pasan tal cual (un dispositivo normal no puede ni pedirlo)
+    expect(remoteCall('ai.configure', { providerId: 'custom', baseURL: 'https://x.example/v1', key: 'k' }, { owner: true })).toEqual({ verdict: 'allow', args: { providerId: 'custom', baseURL: 'https://x.example/v1', key: 'k' } })
+    expect(remoteCall('ai.configure', { providerId: 'custom', baseURL: 'https://x.example/v1' }).verdict).toBe('deny')
+    expect(remoteCall('settings.update', { privacy: { telemetry: false } }, { owner: true }).verdict).toBe('allow')
+    expect(remoteCall('settings.update', { privacy: { telemetry: false } }).verdict).toBe('deny')
+    expect(remoteCall('remote.startPairing', { owner: true }).verdict).toBe('deny')
+    // ChatGPT: solo con el código de un solo uso (la página normal vuelve al propio servidor)
+    expect(remoteCall('agents.codexLogin', { deviceAuth: true }, { owner: true })).toEqual({ verdict: 'allow', args: { deviceAuth: true } })
+    expect(remoteCall('agents.codexLogin', undefined, { owner: true }).verdict).toBe('deny')
+    expect(remoteCall('agents.codexLogin', { deviceAuth: true, extra: 1 }, { owner: true }).verdict).toBe('deny')
+    expect(remoteCall('agents.codexLogin', { deviceAuth: true }).verdict).toBe('deny')
+  })
+  it('los códigos de propietario que el servidor da solo tienen un tope de intentos fallidos entre todos (también tras reiniciar)', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json')
+    const r = new DeviceRegistry(file)
+    const wrongFor = (c: string): string => (c === '000000' ? '111111' : '000000')
+    // cada código caduca o se cambia antes de agotar sus intentos: aun así, los fallos se suman
+    let offered = r.offerOwnerCode()!
+    expect(offered.owner).toBe(true)
+    for (let i = 0; i < MAX_ATTEMPTS - 2; i++) expect(code(() => r.completePairing(wrongFor(offered.code), 'x', 'web'))).toBe('wrong')
+    offered = r.offerOwnerCode()!
+    expect(code(() => r.completePairing(wrongFor(offered.code), 'x', 'web'))).toBe('wrong')
+    // el que llega al tope anula el código abierto aunque a este le quedaran intentos, y no se dan más solos
+    expect(code(() => r.completePairing(wrongFor(offered.code), 'x', 'web'))).toBe('tooMany')
+    expect(code(() => r.completePairing(offered.code, 'x', 'web'))).toBe('noCode')
+    expect(r.ownerCodesBlocked()).toBe(true)
+    expect(r.offerOwnerCode()).toBeNull()
+    // reiniciar no da más intentos
+    const again = new DeviceRegistry(file)
+    expect(again.offerOwnerCode()).toBeNull()
+    // los códigos normales no cuentan ni se bloquean
+    const plain = again.startPairing()
+    expect(code(() => again.completePairing(wrongFor(plain.code), 'x', 'web'))).toBe('wrong')
+    expect(again.completePairing(plain.code, 'Móvil', 'android').device.owner).toBeUndefined()
+    // pedirlo a mano (la consola o un propietario) vuelve a dar intentos
+    const manual = again.startPairing({ owner: true })
+    expect(again.ownerCodesBlocked()).toBe(false)
+    expect(again.completePairing(manual.code, 'iPad', 'ipad').device.owner).toBe(true)
+    expect(new DeviceRegistry(file).offerOwnerCode()?.owner).toBe(true)
+  })
+  it('vincular al propietario deja el tope a cero', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json')
+    const r = new DeviceRegistry(file)
+    const offered = r.offerOwnerCode()!
+    expect(code(() => r.completePairing(offered.code === '000000' ? '111111' : '000000', 'x', 'web'))).toBe('wrong')
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ ownerMisses: 1 })
+    r.completePairing(offered.code, 'iPad', 'ipad')
+    expect(JSON.parse(readFileSync(file, 'utf8')).ownerMisses).toBeUndefined()
+  })
+  it('modo servidor y nombres en la red: «aula-…» es un equipo con Aula, salvo los de los dispositivos', () => {
+    expect(isServerMode(['electron', '.', '--server'], {})).toBe(true)
+    expect(isServerMode(['aula'], { AULA_SERVER: '1' })).toBe(true)
+    expect(isServerMode(['aula'], { AULA_SERVER: 'true' })).toBe(true)
+    expect(isServerMode(['aula'], {})).toBe(false)
+    expect(isServerMode(['aula'], { AULA_SERVER: '0' })).toBe(false)
+    expect(serverHostname(undefined)).toBe('aula-server')
+    expect(serverHostname('aula-casa')).toBe('aula-casa')
+    expect(serverHostname(' Aula-NAS ')).toBe('aula-nas')
+    expect(serverHostname('aula-casa.lan')).toBe('aula-server') // una sola etiqueta: con puntos se ignora (docs/SERVER.md)
+    expect(serverHostname('aula-casa.')).toBe('aula-server')
+    expect(serverHostname('aula-' + 'x'.repeat(58))).toBe('aula-' + 'x'.repeat(58)) // 63: el máximo de una etiqueta
+    for (const bad of ['casa', 'aula-', 'aula-ipad', 'aula-android-2', 'aula-device', 'aula-device-2', 'aula-a_b', 'aula-x-', 'aula--', 'aula-' + 'x'.repeat(59), '-aula-x', 'casa.aula-x', 'aula-caf\u00e9', 'aula-\u212a'])
+      expect([bad, serverHostname(bad)]).toEqual([bad, 'aula-server'])
+    expect(isDeviceHostname('aula-iphone-3')).toBe(true)
+    expect(isDeviceHostname('aula-device')).toBe(true)
+    expect(isDeviceHostname('AULA-IPAD-2.tail1234.ts.net.')).toBe(true)
+    expect(isDeviceHostname('aula-iphones')).toBe(false)
+    expect(isDeviceHostname('aula-ipad-')).toBe(false)
+    expect(hostLabel('AULA-Mac.tail1234.ts.net.')).toBe('aula-mac')
+    expect(hostLabel('aula-\u212a')).toBe('') // la «K» de Kelvin no pasa a ser una «k»: no es ASCII, no vale
+    expect(hostLabel('aula-mac.caf\u00e9')).toBe('aula-mac') // solo cuenta la primera etiqueta
+    for (const yes of ['aula-mac', 'aula-mac-1', 'aula-mac-3', 'aula-server', 'aula-server-2', 'aula-casa', 'AULA-SERVER', 'aula-mac.tail1234.ts.net.', 'aula-ipadx', 'aula-ipad-x', 'aula-' + 'x'.repeat(58)])
+      expect([yes, isAulaHostname(yes)]).toEqual([yes, true])
+    for (const no of ['aula-ipad', 'aula-ipad-2', 'aula-iphone-12', 'aula-android-1', 'aula-device', 'aula-device-7', 'AULA-IPAD', 'aula-ipad.tail1234.ts.net', 'mac', 'aulaserver', 'aula', 'aula-', 'aula--', 'aula-x-', 'aula-ipad-', 'aula_x', 'aula-a_b',
+      'aula-caf\u00e9', 'aula-\u2172', 'aula-\u212a', 'aula-' + 'x'.repeat(59), '', '.aula-mac'])
+      expect([no, isAulaHostname(no)]).toEqual([no, false])
+  })
+  it('como servidor, un error sin capturar se apunta y el proceso termina (una sola vez); una promesa rechazada solo se apunta', () => {
+    const proc = new EventEmitter()
+    const out = new EventEmitter()
+    const logged: string[] = []
+    const written: string[] = []
+    const exits: number[] = []
+    installServerCrashHandlers({ process: proc, streams: [out], log: (m) => { logged.push(m) }, stderr: (t) => { written.push(t) }, exit: (c) => { exits.push(c) } })
+    proc.emit('unhandledRejection', new Error('sin red'))
+    expect([logged.length, exits]).toEqual([1, []])
+    // la consola cerrada no tumba nada
+    expect(() => out.emit('error', Object.assign(new Error('EPIPE'), { code: 'EPIPE' }))).not.toThrow()
+    proc.emit('uncaughtException', new Error('roto'))
+    proc.emit('uncaughtException', new Error('otra vez'))
+    expect(exits).toEqual([1])
+    expect(written).toHaveLength(1)
+    expect(written[0]).toContain('roto')
+    expect(logged).toHaveLength(2)
   })
 })
 
@@ -273,12 +415,49 @@ describe('lo que recibe el dispositivo', () => {
     expect(fetched).toEqual(['/events'])
     expect(aula.pathForFile({ name: 'apuntes.pdf' })).toBe(`aula-upload://${'07'.repeat(16)}/apuntes.pdf`)
     expect(fetched[1]).toBe(`/upload/${'07'.repeat(16)}`)
+    expect(aula).toMatchObject({ owner: false, server: false })
+  })
+  it('el puente sabe si el dispositivo es propietario, si Aula es un servidor y si es un Android; los enlaces se abren en él', async () => {
+    const opened: string[] = []
+    const fetched: string[] = []
+    const metas: Record<string, string> = { 'aula-device': 'owner', 'aula-host': 'server' }
+    const doc = { querySelector: (sel: string) => { const name = /name="([^"]+)"/.exec(sel)?.[1] ?? ''; return metas[name] ? { getAttribute: () => metas[name] } : null } }
+    const win: Record<string, unknown> = { screen: { width: 412, height: 915 }, open: (u: string) => { opened.push(u) } }
+    const fetch = (url: string): Promise<never> => { fetched.push(url); return new Promise(() => {}) }
+    new Function('window', 'fetch', 'crypto', 'navigator', 'location', 'document', 'setTimeout', REMOTE_BRIDGE_JS)(win, fetch, { getRandomValues: (a: Uint8Array) => a, randomUUID: () => 'x' }, { userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36', platform: 'Linux armv8l', maxTouchPoints: 5, clipboard: {} }, { pathname: '/', replace: () => {} }, doc, () => 0)
+    const aula = win.aula as { platform: string; owner: boolean; server: boolean; invoke: (m: string, a?: unknown) => Promise<{ ok: boolean }> }
+    expect(aula).toMatchObject({ platform: 'android', owner: true, server: true })
+    expect(await aula.invoke('app.openExternal', { url: 'https://platform.deepseek.com/api_keys' })).toEqual({ ok: true, value: null })
+    expect(await aula.invoke('app.openExternal', { url: 'file:///etc/passwd' })).toEqual({ ok: true, value: null })
+    expect(opened).toEqual(['https://platform.deepseek.com/api_keys'])
+    expect(fetched).toEqual(['/events'])
+  })
+  it('los avisos del puente van en el idioma de la interfaz', async () => {
+    const run = (lang: string, host: string | null, rpc: () => Promise<unknown>): { invoke: (m: string) => Promise<{ error?: { message: string; code: string } }> } => {
+      const doc = { documentElement: { lang }, querySelector: (sel: string) => (host && sel.includes('aula-host') ? { getAttribute: () => host } : null) }
+      const win: Record<string, unknown> = { screen: { width: 390, height: 844 } }
+      const fetch = (url: string): Promise<unknown> => (url === '/rpc' ? rpc() : new Promise(() => {}))
+      new Function('window', 'fetch', 'crypto', 'navigator', 'location', 'document', 'setTimeout', REMOTE_BRIDGE_JS)(win, fetch, { getRandomValues: (a: Uint8Array) => a, randomUUID: () => 'x' }, { clipboard: {} }, { pathname: '/', replace: () => {} }, doc, () => 0)
+      return win.aula as never
+    }
+    const offline = (): Promise<never> => Promise.reject(new Error('sin red'))
+    const gone = (): Promise<unknown> => Promise.resolve({ status: 401 })
+    expect((await run('en', 'server', offline).invoke('courses.list')).error).toEqual({ message: 'Could not reach your Aula server.', code: 'offline' })
+    expect((await run('es', 'server', offline).invoke('courses.list')).error?.message).toBe('No se pudo conectar con tu servidor de Aula.')
+    expect((await run('en', null, offline).invoke('courses.list')).error?.message).toBe('Could not reach Aula on your Mac.')
+    expect((await run('es-ES', null, offline).invoke('courses.list')).error?.message).toBe('No se pudo conectar con Aula en tu Mac.')
+    expect((await run('en', null, gone).invoke('courses.list')).error).toEqual({ message: 'This device is no longer linked.', code: 'forbidden' })
+    expect((await run('es', null, gone).invoke('courses.list')).error?.message).toBe('Este dispositivo ya no está vinculado.')
   })
   it('la página para vincular va en el idioma de Aula y con su nonce', () => {
     const es = pairingPage('es', 'N0NCE')
     expect(es).toContain('Vincula este dispositivo')
     expect(es.match(/nonce="N0NCE"/g)?.length).toBe(2)
     expect(pairingPage('en', 'x')).toContain('Link this device')
+    // como servidor no hay Mac: el código sale del servidor (o de un propietario)
+    expect(pairingPage('es', 'x', 'server')).toContain('aula-server link')
+    expect(pairingPage('es', 'x', 'server')).not.toContain('En tu Mac')
+    expect(pairingPage('en', 'x', 'server')).toContain('your Aula server')
     expect(JSON.parse(REMOTE_MANIFEST)).toMatchObject({ display: 'standalone', start_url: '/' })
   })
 })

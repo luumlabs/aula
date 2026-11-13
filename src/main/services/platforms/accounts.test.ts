@@ -7,14 +7,14 @@ import { setDataRoot } from '../paths'
 import { resetSettingsCache, getSettings } from '../settings'
 import { MemorySecretStore, secrets, setSecretStore } from '../secrets'
 import { log } from '../log'
-import { addAccount, getAccount, listAccounts, removeAccount, requireAccount, sanitizeAccount, setCanvasToken, updateAccount, canvasToken } from './accounts'
+import { addAccount, changeAccountBaseURL, getAccount, listAccounts, removeAccount, requireAccount, sanitizeAccount, setCanvasToken, updateAccount, canvasToken } from './accounts'
 import { clearCookieSnapshot, cookiesToRestore, loadCookieSnapshot, saveCookieSnapshot } from './cookie-store'
 import { accountView, platformStatus } from './status'
 import { platformCalendarURL, savePlatformCalendarURL } from './calendar'
 import { canvasCoursesToPlatform, moodleCoursesToPlatform, sortPlatformCourses } from './courses'
 import { platformDownloadsDir, stagingPath, storeDownloadedFile, verifyDownloadedFile, cleanupPlatformDownloads } from './downloads'
-import { probePlatform } from './probe'
-import { fakeHttp, html } from './fake-http'
+import { probePlatform, probeWwwroot } from './probe'
+import { fakeHttp, html, redirectTo } from './fake-http'
 
 log.setSink(() => undefined)
 let root = ''
@@ -73,6 +73,21 @@ describe('cuentas', () => {
     expect(JSON.stringify(view)).not.toContain('7777')
     expect(setCanvasToken(a.id, null).tokenSecretRef).toBeUndefined()
     expect(secrets().keys()).toEqual([])
+  })
+
+  it('cambiar la dirección: validada, sin chocar con otra cuenta y conservando todo lo demás', () => {
+    const m = addAccount({ url: 'https://campus.uni.edu/login/index.php', kind: 'moodle', label: 'Campus' })
+    secrets().set(platformSecretKeys.cookies(m.id), 'x')
+    const moved = changeAccountBaseURL(m.id, 'https://ev.uni.edu/moodle')
+    expect(moved).toMatchObject({ id: m.id, kind: 'moodle', label: 'Campus', baseURL: 'https://ev.uni.edu/moodle', createdAt: m.createdAt })
+    expect(getAccount(m.id)?.baseURL).toBe('https://ev.uni.edu/moodle')
+    expect(secrets().get(platformSecretKeys.cookies(m.id))).toBe('x')
+    expect(() => changeAccountBaseURL(m.id, 'javascript:alert(1)')).toThrow(expect.objectContaining({ code: 'invalid_args' }))
+    expect(() => changeAccountBaseURL(m.id, 'https://user:pw@ev.uni.edu/')).toThrow(expect.objectContaining({ code: 'invalid_args' }))
+    const other = addAccount({ url: 'https://otro.uni.edu', kind: 'moodle' })
+    expect(() => changeAccountBaseURL(m.id, 'https://otro.uni.edu/moodle')).toThrow(expect.objectContaining({ code: 'conflict' }))
+    // la misma cuenta puede quedarse en su origen (p. ej. cambiar solo la carpeta)
+    expect(changeAccountBaseURL(other.id, 'https://otro.uni.edu/m/').baseURL).toBe('https://otro.uni.edu/m/')
   })
 
   it('la vista usa el estado de esta ejecución o el último guardado', () => {
@@ -164,7 +179,48 @@ describe('sondeo sin sesión', () => {
     const h = fakeHttp({ 'https://campus.uni.edu/': html('https://campus.uni.edu/login/index.php', '<title>Campus: Acceso</title><script>M.cfg = {"sesskey":"x"}</script>', 200, ['https://campus.uni.edu/login/index.php']) })
     const r = await probePlatform('campus.uni.edu', h.fetch)
     expect(r).toMatchObject({ kind: 'moodle', confidence: 'high', title: 'Campus: Acceso', finalURL: 'https://campus.uni.edu/login/index.php', httpStatus: 200 })
-    expect(h.calls[0].init).toMatchObject({ truncate: true, redirect: 'follow' })
+    expect(h.calls[0].init).toMatchObject({ truncate: true, redirect: 'manual' })
+  })
+
+  it('auth_oidc forzado: sigue hasta la página de acceso y para ANTES de /auth/oidc/ (sin empezar el acceso de Microsoft)', async () => {
+    const h = fakeHttp({
+      'http://moodle.uni.edu/': redirectTo('http://moodle.uni.edu/', 'https://moodle.uni.edu/', 301),
+      'https://moodle.uni.edu/': redirectTo('https://moodle.uni.edu/', '/login/index.php', 303),
+      'https://moodle.uni.edu/login/index.php': redirectTo('https://moodle.uni.edu/login/index.php', '/auth/oidc/?source=loginpage', 303),
+      'https://moodle.uni.edu/auth/oidc/?source=loginpage': redirectTo('x', 'https://login.microsoftonline.com/t/oauth2/authorize?state=1', 302)
+    })
+    const r = await probePlatform('http://moodle.uni.edu', h.fetch)
+    expect(h.calls.map((c) => c.url)).toEqual(['http://moodle.uni.edu/', 'https://moodle.uni.edu/', 'https://moodle.uni.edu/login/index.php'])
+    // la página de la plataforma de antes del salto (por https): así el alta guarda https
+    expect(r).toMatchObject({ kind: 'moodle', confidence: 'high', finalURL: 'https://moodle.uni.edu/login/index.php' })
+  })
+
+  it('nunca pide el proveedor de identidad (la dirección final es la última de la plataforma)', async () => {
+    const h = fakeHttp({
+      'https://campus.uni.edu/': redirectTo('https://campus.uni.edu/', 'https://login.microsoftonline.com/t/saml2?SAMLRequest=abc', 302)
+    })
+    const r = await probePlatform('campus.uni.edu', h.fetch)
+    expect(h.calls).toHaveLength(1)
+    expect(r.finalURL).toBe('https://campus.uni.edu/')
+    expect(JSON.stringify(r)).not.toContain('SAMLRequest')
+  })
+
+  it('demasiadas redirecciones: se detecta por la dirección', async () => {
+    const h = fakeHttp({ 'https://loop.uni.edu/': redirectTo('https://loop.uni.edu/', 'https://loop.uni.edu/', 302) })
+    const r = await probePlatform('loop.uni.edu', h.fetch)
+    expect(r.error).toContain('No pude abrir')
+    expect(h.calls.length).toBeLessThanOrEqual(11)
+  })
+
+  it('Moodle: trae el wwwroot de la página final (solo si es una dirección web)', async () => {
+    const page = '<title>Acceso</title><script>M.cfg = {"wwwroot":"https:\\/\\/ev.uni.edu\\/moodle","sesskey":"x"};</script>'
+    const h = fakeHttp({ 'https://campus.uni.edu/': html('https://ev.uni.edu/moodle/login/index.php', page, 200, ['https://ev.uni.edu/moodle/login/index.php']) })
+    expect(await probePlatform('campus.uni.edu', h.fetch)).toMatchObject({ kind: 'moodle', wwwroot: 'https://ev.uni.edu/moodle', finalURL: 'https://ev.uni.edu/moodle/login/index.php' })
+    const plain = fakeHttp({ 'https://web.uni.edu/': html('https://web.uni.edu/', '<title>Web</title>') })
+    expect(await probePlatform('web.uni.edu', plain.fetch)).not.toHaveProperty('wwwroot')
+    expect(probeWwwroot('<script>M.cfg = {"wwwroot":"javascript:alert(1)"};</script>')).toBeNull()
+    expect(probeWwwroot('<script>M.cfg = {"wwwroot":"https://a:b@x.edu"};</script>')).toBeNull()
+    expect(probeWwwroot('<script>M.cfg = {"wwwroot":"http:\\/\\/x.edu"};</script>')).toBe('http://x.edu')
   })
 
   it('sin red detecta por la dirección; avisa de plataformas cerradas; dirección mala', async () => {

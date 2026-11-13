@@ -56,3 +56,41 @@ jobs:
           name: e2e-results-${{ matrix.os }}
           path: test-results/
           retention-days: 7
+
+  native:
+    # the Tailscale sidecar (Mac/Linux and the Android client) with its tests, and the Android app (debug key) built
+    # with the runner's Android SDK; the APK is kept for a week to try it in an emulator or on a phone. Then the release
+    # mode once more with a throwaway key (Aula's own key never comes here), only to catch its bugs
+    name: native (tsnet, android)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Go tests and the Linux sidecar
+        run: native/tsnet/build.sh test linux
+      - name: Android SDK pieces (build-tools 37, android-36)
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKM" ] || SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | tail -1)"
+          yes | "$SDKM" --licenses >/dev/null || true
+          "$SDKM" --install "build-tools;37.0.0" "platforms;android-36" >/dev/null
+      - name: Build the Android app (debug key)
+        run: native/android/build.sh --debug
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: aula-android-debug
+          path: native/android/build/Aula-*-android-debug.apk
+          retention-days: 7
+      # el modo de publicación (el de scripts/release-local.sh) con una clave de usar y tirar: así los fallos que solo
+      # tiene ese modo (bash, apksigner, la contraseña en su archivo) se ven aquí. La contraseña nunca va al registro y
+      # el APK no se guarda
+      - name: Build the Android app (release mode, throwaway key)
+        run: |
+          KEYS="$RUNNER_TEMP/android-throwaway"
+          mkdir -m 700 "$KEYS"
+          (umask 077 && openssl rand -hex 32 > "$KEYS/throwaway.pass")
+          "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$KEYS/throwaway.keystore" -storetype PKCS12 -alias aula \
+            -keyalg EC -groupname secp256r1 -validity 2 -dname "CN=Aula CI throwaway" \
+            -storepass:file "$KEYS/throwaway.pass" -keypass:file "$KEYS/throwaway.pass" >/dev/null
+          AULA_ANDROID_KEYSTORE="$KEYS/throwaway.keystore" native/android/build.sh
+          rm -rf "$KEYS" native/android/build/Aula-*-android.apk

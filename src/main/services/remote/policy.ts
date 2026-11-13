@@ -4,6 +4,8 @@
 // De los ajustes pasa solo lo de uso diario, campo a campo (`remoteSettingsPatch`); de la IA, elegir entre las que ya están
 // listas en el Mac (`ai.choose`: ni claves, ni direcciones, ni servicios nuevos); de la memoria, añadir, corregir, pausar y
 // olvidar de uno en uno. Las plataformas, los dispositivos y los datos se llevan desde el Mac.
+// Un PROPIETARIO (solo en Aula como servidor, remote/devices.ts) hace de ventana: puede pedir todo lo que pide la ventana
+// menos lo que necesita la pantalla del equipo donde corre Aula o deja sin acceso a todos (`OWNER_DENIED`).
 import type { SettingsPatch } from '@shared/settings'
 import { settingsPatchChecks } from '@shared/settings/patch'
 
@@ -28,6 +30,38 @@ const METHODS_OPEN: ReadonlySet<string> = new Set([
 const METHODS_LOCAL_NOOP: ReadonlySet<string> = new Set(['app.setTheme', 'app.notify', 'app.powerState', 'updates.state', 'secrets.status'])
 
 export type RemoteVerdict = 'allow' | 'noop' | 'deny'
+
+/**
+ * Lo que ni un propietario puede pedir: lo que abre un diálogo, una carpeta o la ventana en el equipo donde corre Aula (en un
+ * servidor nadie los vería y la llamada se quedaría esperando), las actualizaciones (un servidor se actualiza con su imagen),
+ * apagar el acceso o cerrar la sesión de Tailscale del servidor (dejaría fuera a todos sus dispositivos: se hace en su
+ * consola) y borrar o exportar todo (se hace con su carpeta de datos). ChatGPT, solo con código (`ownerCodexLogin`): su
+ * página normal vuelve a una dirección del propio servidor que el dispositivo no ve.
+ */
+const OWNER_DENIED: ReadonlySet<string> = new Set([
+  'app.showItemInFolder', 'app.openLicenses', 'app.focus', 'app.command',
+  'calendar.exportICS', 'calendar.importICS',
+  'courses.export', 'courses.import',
+  'documents.pick', 'documents.reveal', 'documents.save', 'documents.revealSaved',
+  'data.exportAll', 'data.deleteAll', 'memory.export',
+  'updates.check', 'updates.install', 'updates.openDownloadPage',
+  'remote.setEnabled', 'remote.tailnetLogin', 'remote.tailnetLogout'
+])
+
+/** Conectar ChatGPT desde un propietario: solo con el código de un solo uso, que se escribe en cualquier navegador. */
+export function ownerCodexLogin(args: unknown): { deviceAuth: true } | null {
+  return typeof args === 'object' && args !== null && (args as { deviceAuth?: unknown }).deviceAuth === true && Object.keys(args).length === 1 ? { deviceAuth: true } : null
+}
+
+/** Lo que en un propietario no hace nada: el marco de la ventana y sus avisos (los del dispositivo los da su app). */
+const OWNER_NOOP: ReadonlySet<string> = new Set(['app.setTheme', 'app.notify', 'app.powerState', 'updates.state'])
+
+/** El veredicto para un propietario: lo de la ventana, menos `OWNER_DENIED`. */
+export function ownerVerdict(method: string): RemoteVerdict {
+  if (method.indexOf('.') <= 0) return 'deny'
+  if (OWNER_NOOP.has(method)) return 'noop'
+  return OWNER_DENIED.has(method) ? 'deny' : 'allow'
+}
 
 export function remoteVerdict(method: string): RemoteVerdict {
   const dot = method.indexOf('.')
@@ -130,8 +164,16 @@ const METHODS_NARROWED: ReadonlyMap<string, (args: unknown) => unknown | null> =
   ['ai.choose', remoteAIChoice]
 ])
 
-/** El veredicto de una llamada con sus argumentos: los métodos acotados pasan solo con lo que su comprobación deja pasar. */
-export function remoteCall(method: string, args: unknown): { verdict: RemoteVerdict; args: unknown } {
+/** El veredicto de una llamada con sus argumentos: los métodos acotados pasan solo con lo que su comprobación deja pasar. Un
+ *  propietario pasa como la ventana (sin acotar), salvo lo de `OWNER_DENIED`. */
+export function remoteCall(method: string, args: unknown, opts: { owner?: boolean } = {}): { verdict: RemoteVerdict; args: unknown } {
+  if (opts.owner) {
+    if (method === 'agents.codexLogin') {
+      const clean = ownerCodexLogin(args)
+      return clean ? { verdict: 'allow', args: clean } : { verdict: 'deny', args: undefined }
+    }
+    return { verdict: ownerVerdict(method), args }
+  }
   const narrow = METHODS_NARROWED.get(method)
   if (!narrow) return { verdict: remoteVerdict(method), args }
   const clean = narrow(args)
