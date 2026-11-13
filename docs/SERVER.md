@@ -166,7 +166,7 @@ server through it. Without it, `aula-server` uses `~/.config/Aula` (or `$XDG_CON
 Aula of the same user uses on Linux: both would share courses, settings, keys, the linked devices and the Tailscale
 identity, and only one of them can run at a time. The server does not save the remote-access switch
 (`Remote/state.json`), so a desktop Aula that opens a folder a server used does not turn remote access on by itself; but
-a folder used by a server of version 0.2.3 (builds from before the server was released, which did save it) can still
+a folder used by a test build of the server from before 0.2.4 (those did save it) can still
 have it on, and the desktop app then turns remote access on when it starts (*Settings → Aula on your devices* turns it
 off).
 

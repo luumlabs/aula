@@ -72,10 +72,11 @@ Descarga el archivo de tu sistema desde la [última versión](https://github.com
 
 | Sistema | Archivo | La primera vez |
 | --- | --- | --- |
-| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.2.3-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
-| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.2.3.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
-| Linux x64 | `Aula-0.2.3-linux-x86_64.AppImage` o `Aula-0.2.3-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.2.3-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.2.3-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
+| macOS 13 o posterior (Apple Silicon e Intel) | `Aula-0.2.4-mac.dmg` | Abre el .dmg y arrastra Aula a *Aplicaciones*. Aula aún no está notarizada por Apple, así que la primera vez macOS te pide confirmarlo. En macOS 15 o posterior, intenta abrirla, ve a *Ajustes del Sistema → Privacidad y seguridad* y pulsa *Abrir igualmente*. En macOS 13 y 14, haz clic derecho en Aula y elige *Abrir*. |
+| Windows 10 y 11 (x64 y ARM, un solo instalador) | `Aula-Setup-0.2.4.exe` | Ejecuta el instalador (no pide permisos de administrador). Si aparece SmartScreen, pulsa *Más información → Ejecutar de todas formas*. Aula aún no está firmada. |
+| Linux x64 | `Aula-0.2.4-linux-x86_64.AppImage` o `Aula-0.2.4-linux-amd64.deb` | AppImage: hazla ejecutable (`chmod +x Aula-*.AppImage`) y ábrela. Debian o Ubuntu: `sudo apt install ./Aula-0.2.4-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.2.4-linux-arm64.AppImage` | Hazla ejecutable (`chmod +x`) y ábrela. |
+| Android 8 o posterior (teléfonos y tabletas) | `Aula-0.2.4-android.apk` | Ábrela en el teléfono y permite instalar desde esa app cuando Android lo pregunte. Es una ventana a Aula en tu Mac o en [un servidor tuyo](docs/SERVER.md): mira [Dispositivos](docs/DEVICES.md). |
 
 > **Si vienes de la 0.1.x:** instala la versión actual a mano esta única vez (descárgala aquí e instálala encima de tu
 > copia; tus cursos y ajustes se quedan). Aula 0.1.x dirá que la firma de la versión nueva no es válida: desde la 0.2.0

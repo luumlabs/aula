@@ -132,5 +132,5 @@ publish:
   releaseType: draft
 # título y notas de la versión (inglés y español); al publicar otra versión, apuntar a sus notas
 releaseInfo:
-  releaseName: Aula 0.2.3
-  releaseNotesFile: docs/release-notes/0.2.3.md
+  releaseName: Aula 0.2.4
+  releaseNotesFile: docs/release-notes/0.2.4.md

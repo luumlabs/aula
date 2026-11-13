@@ -3,6 +3,52 @@
 All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 [GitHub release](https://github.com/luumlabs/aula/releases) with installers for macOS, Windows and Linux, and installed copies update themselves (except the Linux `.deb`). Release notes in English and Spanish: [`docs/release-notes/`](docs/release-notes).
 
+## [0.2.4] - 2026-11-13
+
+### Fixed
+- **Signing in to Moodle with your university's Microsoft account no longer gets stuck or loops**
+  ([#25](https://github.com/luumlabs/aula/issues/25)). It had several causes, all fixed:
+  - When Microsoft asked for a passkey (or a security key, face or fingerprint), the sign-in window waited forever:
+    Electron has no passkey window on macOS or Linux. Now that step gives up after a few seconds, Microsoft goes back
+    to its list of methods, and the window tells you to choose *Other ways to sign in* (an Authenticator code, a text
+    message or your password). On Windows, Windows Hello keeps working.
+  - When Moodle asked you to accept its site policy or complete your profile right after signing in, Aula closed the
+    window two seconds later, and every new attempt closed it again. Now the window stays open until you finish (Aula
+    never accepts anything for you). If a step is still pending later, the platform card says so and *Sign in* takes
+    you there.
+  - A session check that was already running when you opened the window could start a second sign-in behind your back
+    and spoil yours. Checks now stop before the sign-in page, never reach Microsoft, and opening the window cancels them.
+  - The window now starts at your Moodle's home page. A Moodle saved with its sign-in page used to open on Moodle's
+    *You are already logged in* page and never close.
+  - Aula recognises your Moodle when it lives on another address of the same university, moves accounts saved with
+    `http://` to `https://`, and no longer takes a Moodle guest session for a signed-in one.
+  - An error from Moodle right after signing in no longer asks you to sign in again straight away: Aula checks first.
+  - When something stops the sign-in, the window says what: a VPN or proxy that sends Microsoft to a private address
+    (Aula keeps blocking those, and now names the host), a university that only lets registered devices in, Microsoft's
+    loop protection, a step that wants to open another app, or Moodle sending you back to sign in again and again.
+
+### New
+- **Aula as a server.** Run Aula without a window on a computer that is always on (a home server, a NAS, a Linux
+  container: `ghcr.io/luumlabs/aula-server`, x64 and ARM64) and use it only from your iPad, iPhone or Android phone. It
+  joins **your own** Tailscale network (everyone uses their own account) as `aula-server`. The first device you link
+  with the code it prints becomes its owner, and sets up the AI, your platform and more devices from there. What only
+  makes sense on the server itself (its files, deleting all data, turning remote access off) stays on the server, with
+  `aula-server status` and `aula-server link` in its console. See [docs/SERVER.md](docs/SERVER.md).
+- **Aula for Android** (`Aula-0.2.4-android.apk`, Android 8 or later, phones and tablets): the same window to your Aula
+  as on the iPad and iPhone. It has Tailscale built in (no Tailscale app needed): sign in with your account and it
+  finds your Aula, on your Mac or on your server.
+
+### Security
+- A device you remove from *Your devices* is cut off at once, also from live updates. Before, a connection it already
+  had open kept receiving them, linking codes included.
+
+### The iPhone and iPad app (`native/ios`, source only; it isn't on the App Store yet)
+- It finds every Aula on your Tailscale account (your Mac and your server) and lets you choose; *Open another Aula*
+  switches. It only lists Aulas of your own Tailscale user.
+
+### Updating
+- From 0.2.0 or later, Aula updates itself. From 0.1.x, install this version by hand once (see 0.2.0 below).
+
 ## [0.2.3] - 2026-11-11
 
 ### New
