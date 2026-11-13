@@ -320,7 +320,8 @@ function hostOf(url: string | undefined): string | undefined {
   }
 }
 
-/** Las IA que ya están listas en el Mac, para elegir una desde un dispositivo: sin pistas de claves ni direcciones. */
+/** Las IA que ya están listas en el equipo de Aula (Mac o servidor), para elegir una desde un dispositivo: sin pistas de
+ *  claves ni direcciones. */
 export async function aiChoices(opts: ServiceOptions = {}): Promise<AIProviderView[]> {
   return (await aiProviderViews(opts)).filter(isReady).map((v) => {
     const c: AIProviderView = { ...v, help: '', label: v.group === 'custom' ? (hostOf(v.baseURL) ?? v.label) : v.label }
@@ -347,15 +348,15 @@ async function offersModel(s: ProviderState, model: string, opts: ServiceOptions
 }
 
 /**
- * Elegir entre las IA que YA están listas en el Mac (lo que puede hacer un dispositivo): el proveedor y, de él, un modelo de
+ * Elegir entre las IA que YA están listas en el equipo de Aula (lo que puede hacer un dispositivo): el proveedor y, de él, un modelo de
  * su lista y un nivel de razonamiento de los suyos. Nada más: ni direcciones, ni claves, ni proveedores nuevos, ni el modo
- * automático (eso es `configureAI`, desde el Mac). Cualquier otro campo se rechaza entero.
+ * automático (eso es `configureAI`, desde la ventana o un propietario). Cualquier otro campo se rechaza entero.
  */
 export async function chooseAI(raw: unknown, opts: ServiceOptions = {}): Promise<AIStatus> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw invalidArgs(tr('Ajustes de IA no válidos.', 'Invalid AI settings.'))
   const a = raw as Record<string, unknown>
   const extra = Object.keys(a).find((k) => !CHOICE_FIELDS.includes(k))
-  if (extra) throw invalidArgs(tr(`«${extra}» solo se cambia desde Aula en tu Mac.`, `“${extra}” can only be changed from Aula on your Mac.`))
+  if (extra) throw invalidArgs(tr(`«${extra}» solo se cambia en la ventana de Aula o, si Aula es un servidor, desde un dispositivo propietario.`, `“${extra}” can only be changed in Aula’s window or, if Aula is a server, from an owner device.`))
   if (typeof a.providerId !== 'string' || !a.providerId.trim()) throw invalidArgs(tr('Falta el proveedor.', 'The provider is missing.'))
   if (a.activate !== undefined && typeof a.activate !== 'boolean') throw invalidArgs(tr('«activate» no es válido.', '“activate” isn’t valid.'))
   const providerId = a.providerId.trim()
@@ -363,7 +364,7 @@ export async function chooseAI(raw: unknown, opts: ServiceOptions = {}): Promise
   const reasoning = optionalString(a.reasoning, 'reasoning', 20)?.toLowerCase()
   const s = (await listAvailableProviders(aiSettings(), { deps: opts.deps })).find((x) => x.id === providerId)
   if (!s || !isReady(s)) {
-    throw new AIError('other', tr(`Esa IA no está lista en tu Mac. Conéctala allí, en ${settingsPath('ai', 'es')}.`, `That AI isn’t ready on your Mac. Connect it there, in ${settingsPath('ai', 'en')}.`), { code: 'ai_no_provider' })
+    throw new AIError('other', tr(`Esa IA no está lista en el equipo donde está Aula. Conéctala en ${settingsPath('ai', 'es')}: en la ventana de Aula o, si Aula es un servidor, desde un dispositivo propietario.`, `That AI isn’t ready on the computer where Aula runs. Connect it in ${settingsPath('ai', 'en')}: in Aula’s window or, if Aula is a server, from an owner device.`), { code: 'ai_no_provider' })
   }
   if (model && !(await offersModel(s, model, opts))) throw invalidArgs(tr('Ese modelo no está en la lista de esta IA.', 'That model isn’t in this AI’s list.'))
   if (reasoning && reasoning !== 'auto' && !reasoningFor(s, model || modelShown(s)).efforts.includes(reasoning)) {

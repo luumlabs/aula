@@ -7,6 +7,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import type { RemoteStatus } from '@shared/ipc/remote'
 import { log } from '@main/services/log'
+import { tr } from '@shared/ai/i18n'
 
 export type TailnetView = RemoteStatus['tailnet'] & { dnsName?: string; ips?: string[] }
 
@@ -37,6 +38,9 @@ export class Tailnet {
     this.set({ state: 'starting' })
     const child = spawn(this.o.binary, ['--state-dir', this.o.stateDir, '--hostname', this.hostname, '--target', `127.0.0.1:${targetPort}`, '--listen-port', '80'], { stdio: ['pipe', 'pipe', 'pipe'] })
     this.child = child
+    // si el proceso muere enseguida, escribir en su entrada falla después (EPIPE): sin quien lo escuche, ese error tumbaría
+    // Aula entera; su salida ya dice qué pasó
+    child.stdin?.on('error', (err) => log.warn('[tailnet] entrada', err.message))
     child.stdin?.write(JSON.stringify({ proxyKey: this.o.proxyKey }) + '\n')
     createInterface({ input: child.stdout! }).on('line', (line) => this.onLine(line))
     createInterface({ input: child.stderr! }).on('line', (line) => log.info('[tailnet]', line.slice(0, 400)))
@@ -47,7 +51,7 @@ export class Tailnet {
       // se cayó sin que nadie lo parase: se vuelve a intentar, cada vez con más espera
       this.restarts++
       const wait = Math.min(60_000, 2000 * 2 ** Math.min(this.restarts, 5))
-      this.set({ state: 'error', message: `El componente de Tailscale se cerró (código ${code ?? '?'}); se reintenta.` })
+      this.set({ state: 'error', message: tr(`El componente de Tailscale se cerró (código ${code ?? '?'}); se reintenta.`, `The Tailscale component closed (code ${code ?? '?'}); retrying.`) })
       this.retry = setTimeout(() => { this.retry = null; if (this.wanted) this.start(targetPort) }, wait)
     })
   }

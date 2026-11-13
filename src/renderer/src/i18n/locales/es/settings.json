@@ -63,6 +63,9 @@
     "pasteKey": "Pega tu clave (sk-…)",
     "detected": "Detectado: {{provider}}",
     "keySafe": "La clave se guarda cifrada en este ordenador y solo se envía a su proveedor.",
+    "keySafeBasic": "La clave se guarda en este ordenador sin cifrar (no hay llavero) y solo se envía a su proveedor.",
+    "keySafeServer": "La clave se guarda cifrada en tu servidor de Aula y solo se envía a su proveedor.",
+    "keySafeServerBasic": "La clave se guarda en tu servidor de Aula, sin cifrar en su carpeta de datos, y solo se envía a su proveedor.",
     "save": "Guardar y usar",
     "test": "Probar",
     "testing": "Probando…",
@@ -308,6 +311,6 @@
       "course": "Al crear un curso"
     },
     "bodyServer": "Tus preferencias, exámenes y lo que te cuesta, para ayudarte mejor. Se guarda solo en tu servidor de Aula.",
-    "offServer": "Desactivada: se enciende desde la consola del servidor o desde un dispositivo propietario"
+    "offServer": "Desactivada: se enciende desde un dispositivo propietario, en Privacidad y datos"
   }
 }

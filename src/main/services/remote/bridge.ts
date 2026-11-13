@@ -45,6 +45,13 @@ export const REMOTE_BRIDGE_JS = String.raw`(function () {
   }
   var owner = meta('aula-device') === 'owner'
   var server = meta('aula-host') === 'server'
+  // los avisos del puente, en el idioma de la interfaz (lo pone en <html lang> al elegirlo; como ella: lo que no es español
+  // va en inglés)
+  function say(es, en) {
+    var lang = ''
+    try { lang = (document.documentElement && document.documentElement.lang) || navigator.language || '' } catch (err) { /* sin documento */ }
+    return String(lang).toLowerCase().indexOf('es') === 0 ? es : en
+  }
   function deliver(event, payload) {
     var set = listeners[event]
     if (!set) return
@@ -103,10 +110,10 @@ export const REMOTE_BRIDGE_JS = String.raw`(function () {
       var ready = uploads.length && body.indexOf('aula-upload://') >= 0 ? Promise.all(uploads.slice()) : Promise.resolve()
       return ready.then(function () { return fetch('/rpc', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: body }) })
         .then(function (res) {
-          if (res.status === 401) { gone(); return { ok: false, error: { message: 'Este dispositivo ya no está vinculado.', code: 'forbidden' } } }
+          if (res.status === 401) { gone(); return { ok: false, error: { message: say('Este dispositivo ya no está vinculado.', 'This device is no longer linked.'), code: 'forbidden' } } }
           return res.json()
         })
-        .catch(function () { return { ok: false, error: { message: server ? 'No se pudo conectar con tu servidor de Aula.' : 'No se pudo conectar con Aula en tu Mac.', code: 'offline' } } })
+        .catch(function () { return { ok: false, error: { message: server ? say('No se pudo conectar con tu servidor de Aula.', 'Could not reach your Aula server.') : say('No se pudo conectar con Aula en tu Mac.', 'Could not reach Aula on your Mac.'), code: 'offline' } } })
     },
     on: function (event, fn) {
       if (!listeners[event]) listeners[event] = []

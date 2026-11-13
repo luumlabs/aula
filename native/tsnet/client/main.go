@@ -4,8 +4,9 @@
 // over stdin/stdout, like the Mac app talks to aula-tsnet.
 //
 // It joins the person's own tailnet as its own node ("aula-android"; no
-// Tailscale app or VPN needed), finds the Aulas on it (a Mac or a server: any
-// machine called "aula-…" that is not a device, as the iPhone app does) and,
+// Tailscale app or VPN needed), finds the Aulas on it (a Mac or a server of the
+// same Tailscale user, untagged: any machine called "aula-…" that is not a
+// device, as the iPhone app does) and,
 // when asked, opens a loopback HTTP proxy (127.0.0.1:<random port>) to one of
 // them. The WebView loads Aula through that proxy.
 //
@@ -69,6 +70,7 @@ import (
 	"tailscale.com/ipn/ipnstate"
 	"tailscale.com/logtail"
 	"tailscale.com/net/netns"
+	"tailscale.com/tailcfg"
 	"tailscale.com/tsnet"
 )
 
@@ -112,47 +114,103 @@ func (e *emitter) emit(ev Event) {
 	e.out.Write(append(b, '\n'))
 }
 
-var deviceNames = regexp.MustCompile(`^aula-(ipad|iphone|android|device)(-[0-9]+)?$`)
-var aulaName = regexp.MustCompile(`^aula-[a-z0-9-]+$`)
+// La regla de los nombres, la misma en el escritorio (src/main/services/remote/server-mode.ts), en la app del iPhone y el
+// iPad (native/ios/Aula/Tailnet/AulaHosts.swift) y aquí: la primera etiqueta DNS del nombre, en minúsculas ASCII, es una
+// Aula si es «aula-» y una etiqueta DNS (63 caracteres como mucho, sin guion en los extremos) y no el nombre de un
+// dispositivo («aula-ipad», «aula-iphone-2»…).
+var (
+	aulaName    = regexp.MustCompile(`^aula-[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+	deviceNames = regexp.MustCompile(`^aula-(ipad|iphone|android|device)(-[0-9]+)?$`)
+)
 
-// IsAulaHost: an Aula's machine name starts with "aula-" and is not a device's
-// (src/main/services/remote/server-mode.ts has the same rule).
-func IsAulaHost(name string) bool {
-	n := strings.ToLower(name)
-	return aulaName.MatchString(n) && !deviceNames.MatchString(n)
+// maxLabel: lo más larga que puede ser una etiqueta DNS.
+const maxLabel = 63
+
+// firstLabel: lo que va antes del primer punto, tal cual.
+func firstLabel(name string) string {
+	first, _, _ := strings.Cut(name, ".")
+	return first
 }
 
-// machineName is the first label of the MagicDNS name (the name the tailnet
-// gave the machine, e.g. aula-mac-1), or its host name.
-func machineName(p *ipnstate.PeerStatus) string {
-	if first, _, _ := strings.Cut(strings.TrimSuffix(p.DNSName, "."), "."); first != "" {
-		return strings.ToLower(first)
+// HostLabel: la primera etiqueta DNS del nombre en minúsculas ASCII, o "" si lleva algo que no es ASCII
+// (strings.ToLower convertiría, p. ej., el signo de Kelvin en «k» y dejaría pasar un nombre que lo imita).
+func HostLabel(name string) string {
+	first := firstLabel(name)
+	b := make([]byte, len(first))
+	for i := 0; i < len(first); i++ {
+		c := first[i]
+		if c >= 0x80 {
+			return ""
+		}
+		if 'A' <= c && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		b[i] = c
 	}
-	return strings.ToLower(p.HostName)
+	return string(b)
 }
 
-// FindAulas lists the Aulas among the peers (online first, then by name) and
-// where to reach each one.
-func FindAulas(peers []*ipnstate.PeerStatus) ([]Aula, map[string]netip.Addr) {
-	addrs := map[string]netip.Addr{}
-	online := map[string]bool{}
+// IsAulaHost: ¿el equipo que se llama así (nombre corto o nombre MagicDNS completo) es una Aula y no un dispositivo?
+func IsAulaHost(name string) bool {
+	l := HostLabel(name)
+	return len(l) <= maxLabel && aulaName.MatchString(l) && !deviceNames.MatchString(l)
+}
+
+// machineName: la primera etiqueta del nombre MagicDNS (el que la red le dio al equipo, p. ej. aula-mac-1) o, si no
+// tiene, la de su nombre de equipo; en minúsculas ASCII ("" si no es ASCII).
+func machineName(p *ipnstate.PeerStatus) string {
+	if firstLabel(p.DNSName) != "" {
+		return HostLabel(p.DNSName)
+	}
+	return HostLabel(p.HostName)
+}
+
+// ownedBy: ¿el equipo es del usuario de Tailscale owner, como este dispositivo? La misma regla que aplica la Aula
+// (native/tsnet/proxy.go, ownerGate): los demás usuarios de una red compartida, los equipos compartidos desde otra red y
+// los equipos con etiquetas nunca son una Aula de esta persona. Sin dueño conocido, ninguno lo es.
+func ownedBy(p *ipnstate.PeerStatus, owner tailcfg.UserID) bool {
+	if owner.IsZero() || p.UserID != owner || !p.AltSharerUserID.IsZero() || p.ShareeNode {
+		return false
+	}
+	return p.Tags == nil || p.Tags.Len() == 0
+}
+
+// FindAulas: las Aulas de quien inició sesión en este dispositivo (self) entre los equipos de la red (primero las que
+// están en línea, luego por nombre) y dónde está cada una. Si dos equipos responden al mismo nombre no sale ninguno: el
+// proxy marca por nombre y el orden de un mapa nunca debe elegir entre ellos.
+func FindAulas(self *ipnstate.PeerStatus, peers []*ipnstate.PeerStatus) ([]Aula, map[string]netip.Addr) {
+	type found struct {
+		addr   netip.Addr
+		online bool
+		twice  bool
+	}
+	var owner tailcfg.UserID
+	if self != nil {
+		owner = self.UserID
+	}
+	byName := map[string]*found{}
 	for _, p := range peers {
-		if p == nil || len(p.TailscaleIPs) == 0 {
+		if p == nil || len(p.TailscaleIPs) == 0 || !ownedBy(p, owner) {
 			continue
 		}
 		name := machineName(p)
 		if !IsAulaHost(name) {
 			continue
 		}
-		if _, seen := addrs[name]; seen && online[name] {
+		if f, seen := byName[name]; seen {
+			f.twice = true
 			continue
 		}
-		addrs[name] = p.TailscaleIPs[0]
-		online[name] = p.Online
+		byName[name] = &found{addr: p.TailscaleIPs[0], online: p.Online}
 	}
-	out := make([]Aula, 0, len(addrs))
-	for name := range addrs {
-		out = append(out, Aula{Host: name, Online: online[name]})
+	addrs := map[string]netip.Addr{}
+	out := make([]Aula, 0, len(byName))
+	for name, f := range byName {
+		if f.twice {
+			continue
+		}
+		addrs[name] = f.addr
+		out = append(out, Aula{Host: name, Online: f.online})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Online != out[j].Online {
@@ -255,9 +313,11 @@ func (c *client) proxyFor(host string) http.Handler {
 }
 
 // connect opens (or moves) the loopback proxy to host.
-func (c *client) connect(host string) {
+func (c *client) connect(name string) {
+	// el nombre corto, como lo lista FindAulas (y como se marca)
+	host := HostLabel(name)
 	if !IsAulaHost(host) {
-		c.em.emit(Event{Type: "error", Message: "not an Aula: " + host})
+		c.em.emit(Event{Type: "error", Message: "not an Aula: " + name})
 		return
 	}
 	c.mu.Lock()
@@ -310,7 +370,7 @@ func (c *client) refresh(ctx context.Context, force bool) {
 		for _, p := range st.Peer {
 			peers = append(peers, p)
 		}
-		aulas, addrs := FindAulas(peers)
+		aulas, addrs := FindAulas(st.Self, peers)
 		c.addrs = addrs
 		hostname, user := c.hostname, ""
 		if st.Self != nil {
@@ -360,7 +420,7 @@ func (c *client) commands(ctx context.Context, r *bufio.Reader, done func()) {
 			if json.Unmarshal(line, &cmd) == nil {
 				switch cmd.Cmd {
 				case "connect":
-					c.connect(strings.ToLower(strings.TrimSpace(cmd.Host)))
+					c.connect(strings.TrimSpace(cmd.Host))
 				case "refresh":
 					c.refresh(ctx, true)
 				case "logout":

@@ -4,7 +4,8 @@
 # Arranca el contenedor y comprueba, sin cuenta de Tailscale, lo que se puede comprobar de verdad: Aula arranca sin ventana,
 # su componente de Tailscale llega hasta pedir que se inicie sesión, la consola da un código de propietario, un dispositivo
 # se vincula con él (por el servidor local del contenedor, como llegaría por la red privada) y, como propietario, usa Aula:
-# guarda una clave, da otro código y abre el navegador de Aula en vivo, que pinta una página en la pantalla virtual.
+# guarda una clave, da otro código y abre el navegador de Aula en vivo, que pinta una página en la pantalla virtual. Antes,
+# dentro de la imagen, las pruebas de aula-server (server/aula-server.test.sh); y Aula va en la zona horaria que se le da.
 set -euo pipefail
 IMAGE="${1:?uso: server/smoke.sh <imagen>}"
 NAME="aula-smoke-$$"
@@ -21,8 +22,16 @@ ok() { echo "✓ $*"; }
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-docker run -d --name "$NAME" --shm-size=1g -e LANG=es_ES.UTF-8 "$IMAGE" >/dev/null
+# una zona sin horario de verano (México no lo tiene desde 2022): la comprobación no depende de la fecha
+ZONE=America/Mexico_City
+docker run -d --name "$NAME" --shm-size=1g -e LANG=es_ES.UTF-8 -e TZ="$ZONE" "$IMAGE" >/dev/null
 inside() { docker exec "$NAME" "$@"; }
+
+# 0. las pruebas de la consola, con el bash y las herramientas de la imagen
+tests=$(inside bash -c "$(cat "$(dirname "$0")/aula-server.test.sh")" aula-server.test.sh /usr/local/bin/aula-server 2>&1) \
+  || fail "las pruebas de aula-server fallaron:
+$tests"
+ok "las pruebas de aula-server pasan dentro de la imagen ($(printf '%s\n' "$tests" | grep -c '^✓') casos)"
 
 # 1. arranca y deja su consola
 for _ in $(seq 1 90); do
@@ -35,6 +44,20 @@ inside aula-server status --json >/dev/null 2>&1 || fail "la consola no responde
 logged() { for _ in $(seq 1 15); do docker logs "$NAME" 2>&1 | grep -q "$1" && return 0; sleep 1; done; return 1; }
 logged "como servidor, sin ventana\|running as a server, without a window" || fail "Aula no dijo que arrancó como servidor"
 ok "Aula arranca sin ventana y su consola responde"
+# si va sin el aislamiento de Chromium, lo dice como lo que es: un contenedor (no un equipo al que le falte la .deb)
+if docker logs "$NAME" 2>&1 | grep -q -- '--no-sandbox'; then
+  logged "el contenedor sigue aislando a Aula" || fail "va con --no-sandbox sin decir que el contenedor la aísla"
+  ok "sin espacios de nombres: --no-sandbox, y dice que el contenedor sigue aislando a Aula"
+fi
+# la zona horaria: la dice al arrancar, la usan las herramientas (tzdata) y la usa Aula (su ICU, la de los recordatorios)
+logged "zona horaria: $ZONE" || fail "no dijo su zona horaria ($ZONE)"
+[ "$(inside date +%z)" = "-0600" ] || fail "date no va en $ZONE: $(inside date 2>&1)"
+aulazone=$(inside env ELECTRON_RUN_AS_NODE=1 /opt/aula/aula -e 'process.stdout.write(Intl.DateTimeFormat().resolvedOptions().timeZone)' 2>/tmp/aula-smoke-zone.err) || true
+[ "$aulazone" = "$ZONE" ] || fail "Aula no va en $ZONE: «$aulazone» $(head -c 400 /tmp/aula-smoke-zone.err 2>/dev/null)"
+ok "Aula va en la zona horaria que se le da ($ZONE)"
+# los nombres antiguos (tzdata-legacy) también son zonas para date y para aula-server, no solo para la ICU de Aula
+[ "$(inside env TZ=America/Buenos_Aires date +%z)" = "-0300" ] || fail "falta tzdata-legacy: date no conoce America/Buenos_Aires"
+ok "los nombres antiguos de zona (America/Buenos_Aires) valen también fuera de Aula"
 
 # 2. Tailscale llega hasta pedir que se inicie sesión (sin cuenta, no puede ir más allá)
 for _ in $(seq 1 60); do inside aula-server status --json | grep -q '"state":"needsLogin","authURL":"https://login.tailscale.com/' && break; sleep 2; done

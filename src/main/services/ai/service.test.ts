@@ -222,6 +222,19 @@ describe('elegir desde un dispositivo', () => {
     await configureAI({ providerId: 'deepseek', enabled: true, activate: false }, { deps })
     expect(JSON.parse(JSON.stringify(getSettings().ai)).activeProvider).toBe(JSON.parse(before).activeProvider)
   })
+  it('los avisos valen para un Mac y para un servidor (no hablan de «tu Mac»), en español y en inglés', async () => {
+    const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY })
+    const message = async (args: unknown): Promise<string> => {
+      const err: unknown = await chooseAI(args, { deps }).then(() => null, (e: unknown) => e)
+      return err instanceof Error ? err.message : ''
+    }
+    expect(await message({ providerId: 'openai' })).toBe('Esa IA no está lista en el equipo donde está Aula. Conéctala en Ajustes → Tu IA: en la ventana de Aula o, si Aula es un servidor, desde un dispositivo propietario.')
+    expect(await message({ providerId: 'deepseek', baseURL: 'https://malo.example/v1' })).toBe('«baseURL» solo se cambia en la ventana de Aula o, si Aula es un servidor, desde un dispositivo propietario.')
+    setAILocale('en')
+    expect(await message({ providerId: 'openai' })).toBe('That AI isn’t ready on the computer where Aula runs. Connect it in Settings → Your AI: in Aula’s window or, if Aula is a server, from an owner device.')
+    expect(await message({ providerId: 'deepseek', baseURL: 'https://malo.example/v1' })).toBe('“baseURL” can only be changed in Aula’s window or, if Aula is a server, from an owner device.')
+    for (const m of [await message({ providerId: 'openai' }), await message({ providerId: 'deepseek', key: 'x' })]) expect(m).not.toMatch(/Mac/)
+  })
   it('ni direcciones, ni claves, ni ningún otro campo: se rechaza entero y no cambia nada', async () => {
     const deps = testDeps(net().fetch, { 'ai.key.deepseek': KEY })
     const before = JSON.stringify(getSettings().ai)

@@ -55,8 +55,9 @@ export interface RemoteServerOptions {
 
 export class RemoteServer {
   private server: Server | null = null
-  /** Quién escucha cada flujo de eventos (los de los dispositivos, `remote.*`, solo llegan a un propietario). */
-  private streams = new Map<ServerResponse, RemoteDeviceView>()
+  /** Quién escucha cada flujo de eventos: el identificador de su dispositivo. El dispositivo se vuelve a mirar en cada evento
+   *  (uno retirado o caducado se corta) y los de los dispositivos, `remote.*`, solo llegan a un propietario. */
+  private streams = new Map<ServerResponse, string>()
   private stopTap: (() => void) | null = null
   port = 0
 
@@ -81,8 +82,7 @@ export class RemoteServer {
   async stop(): Promise<void> {
     this.stopTap?.()
     this.stopTap = null
-    for (const s of this.streams.keys()) { try { s.end() } catch { /* ya cerrado */ } }
-    this.streams.clear()
+    for (const s of [...this.streams.keys()]) this.drop(s)
     const server = this.server
     this.server = null
     if (server) await new Promise<void>((resolve) => { server.close(() => resolve()); server.closeAllConnections?.() })
@@ -91,14 +91,33 @@ export class RemoteServer {
   /** Cuántos dispositivos están escuchando ahora mismo. */
   get listeners(): number { return this.streams.size }
 
+  /** Corta ya los flujos de eventos de un dispositivo (se acaba de retirar): no recibe nada más, ni el aviso de su retirada. */
+  disconnect(id: string): void {
+    for (const [s, deviceId] of [...this.streams]) if (deviceId === id) this.drop(s)
+  }
+
+  private drop(s: ServerResponse): void {
+    this.streams.delete(s)
+    try { s.end() } catch { /* ya cerrado */ }
+  }
+
+  /** ¿Hace de ventana? Solo en Aula como servidor: en el Mac no hay propietarios (su ventana ya lo es), aunque la carpeta de
+   *  datos venga de un servidor y su lista de dispositivos traiga uno. */
+  private isOwner(device: RemoteDeviceView | undefined): boolean {
+    return this.o.host === 'server' && device?.owner === true
+  }
+
   private broadcast(event: string, payload: unknown): void {
     if (!this.streams.size) return
     let line: string
     try { line = rewriteAssets(JSON.stringify({ event, payload })) + '\n' } catch { return }
     // los dispositivos vinculados y sus códigos son cosa de la ventana o de un propietario
     const ownersOnly = event.startsWith('remote.')
-    for (const [s, device] of this.streams) {
-      if (ownersOnly && !device.owner) continue
+    for (const [s, id] of [...this.streams]) {
+      // el dispositivo de ahora, no el de cuando se conectó: uno retirado o caducado se corta sin recibir nada más
+      const device = this.o.devices.active(id)
+      if (!device) { this.drop(s); continue }
+      if (ownersOnly && !this.isOwner(device)) continue
       try { s.write(line) } catch { this.streams.delete(s) }
     }
   }
@@ -225,10 +244,11 @@ export class RemoteServer {
     const method = typeof call?.method === 'string' ? call.method : ''
     // los métodos acotados (ajustes, olvidar un recuerdo, elegir la IA) pasan solo con los argumentos ya comprobados
     // un propietario (Aula como servidor) pasa como la ventana, salvo lo que necesita la pantalla del servidor
-    const { verdict, args } = remoteCall(method, call?.args ?? undefined, { owner: device.owner === true })
+    const owner = this.isOwner(device)
+    const { verdict, args } = remoteCall(method, call?.args ?? undefined, { owner })
     if (verdict === 'deny') {
       const message = this.o.host === 'server'
-        ? device.owner ? tr('Esto no se puede hacer desde un dispositivo: hazlo en la consola del servidor.', 'This can\'t be done from a device: do it on the server\'s console.') : tr('Esto solo lo puede hacer el propietario de este servidor de Aula.', 'Only the owner of this Aula server can do this.')
+        ? owner ? tr('Esto no se puede hacer desde un dispositivo: hazlo en la consola del servidor.', 'This can\'t be done from a device: do it on the server\'s console.') : tr('Esto solo lo puede hacer el propietario de este servidor de Aula.', 'Only the owner of this Aula server can do this.')
         : tr('Esto solo se puede hacer desde Aula en tu Mac.', 'This can only be done from Aula on your Mac.')
       return this.json(res, 200, { ok: false, error: { message, code: 'forbidden' } })
     }
@@ -258,11 +278,15 @@ export class RemoteServer {
   private events(req: IncomingMessage, res: ServerResponse, device: RemoteDeviceView): void {
     res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no', connection: 'keep-alive' })
     res.write('\n')
-    this.streams.set(res, device)
-    // una línea vacía cada poco mantiene viva la conexión por la red privada
-    const beat = setInterval(() => { try { res.write('\n') } catch { /* cerrado */ } }, 20_000)
+    this.streams.set(res, device.id)
+    // una línea vacía cada poco mantiene viva la conexión por la red privada; si el dispositivo ya no vale, se corta
+    const beat = setInterval(() => {
+      if (!this.o.devices.active(device.id)) { this.drop(res); return }
+      try { res.write('\n') } catch { /* cerrado */ }
+    }, 20_000)
     const close = (): void => { clearInterval(beat); this.streams.delete(res) }
     req.on('close', close)
+    res.on('close', close)
     res.on('error', close)
   }
 
@@ -303,7 +327,7 @@ export class RemoteServer {
       let html: string
       try { html = readFileSync(file, 'utf8') } catch { return this.fail(res, 404, 'not_found') }
       // la página trae su propia política en una etiqueta <meta>; aquí vale la del servidor, y el puente va antes que la app
-      html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<head>/i, '<head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' + (this.o.host === 'server' ? '<meta name="aula-host" content="server">' : '') + (device?.owner ? '<meta name="aula-device" content="owner">' : '') + '<script src="/remote-bridge.js"></script>')
+      html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<head>/i, '<head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' + (this.o.host === 'server' ? '<meta name="aula-host" content="server">' : '') + (this.isOwner(device) ? '<meta name="aula-device" content="owner">' : '') + '<script src="/remote-bridge.js"></script>')
       return this.send(res, 200, type, head ? '' : html, { 'content-security-policy': REMOTE_CSP, 'cache-control': 'no-store' })
     }
     let size: number

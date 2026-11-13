@@ -7,6 +7,7 @@ import { motion } from 'motion/react'
 import { AulaMark, Button, Card, Floating, Icon, Menu, ProgressBar, SectionTitle, Switch, cx } from '@renderer/design'
 import { useSettings } from '@renderer/lib/settings'
 import { api } from '@renderer/lib/api'
+import { settingsElsewhere } from '@renderer/lib/device'
 import { navigate } from '@renderer/app/router'
 import { toast } from '@renderer/design'
 import { LIGHT_ROUTINES, PROACTIVE_ROUTINES, type AutomationHealthIssue, type AutomationsSnapshot, type ProactiveRoutine, type ProactiveSettings } from '@shared/automations'
@@ -156,13 +157,14 @@ function HealthRow({ issue }: { issue: AutomationHealthIssue }) {
       title = t('health.failing', { title: issue.title }); detail = issue.message; fix = { label: t('health.fixRetry'), run: () => void inboxOps.runNow(issue.id) }
       break
   }
-  // desde un dispositivo: la IA, las plataformas y el presupuesto se arreglan en el Mac (sus Ajustes solo traen lo de uso diario)
-  if (api.remote && issue.kind === 'signIn') {
-    // la sesión caducada sí se arregla desde aquí: en el navegador de Aula en vivo
-    fix = { label: t('health.fixSignIn'), run: () => void signInHere() }
-  } else if (api.remote && (issue.kind === 'noAI' || issue.kind === 'budget')) {
+  // desde un dispositivo, la sesión caducada se arregla aquí mismo: en el navegador de Aula en vivo
+  if (api.remote && issue.kind === 'signIn') fix = { label: t('health.fixSignIn'), run: () => void signInHere() }
+  // la IA y el presupuesto, en los Ajustes de la ventana o del propietario de un servidor (que los tiene); un dispositivo
+  // con solo lo de uso diario no puede: se dice quién lo arregla (en el Mac, o el propietario del servidor)
+  const elsewhere = settingsElsewhere(api.role)
+  if (elsewhere && (issue.kind === 'noAI' || issue.kind === 'budget')) {
     fix = null
-    detail = `${detail} ${t('health.onMac')}`
+    detail = `${detail} ${t(elsewhere === 'mac' ? 'health.onMac' : 'health.onServer')}`
   }
   return (
     <div className="mt-4 rounded-[14px] bg-fill1 px-3.5 py-3 flex items-start gap-2.5">

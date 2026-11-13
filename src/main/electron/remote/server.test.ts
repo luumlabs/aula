@@ -23,6 +23,21 @@ let devices: import('@main/services/remote/devices').DeviceRegistry
 let seen: { method: string; args: unknown; device?: string }[] = []
 
 const get = (path: string, headers: Record<string, string> = {}): Promise<Response> => fetch(url + path, { headers, redirect: 'manual' })
+/** Lee un flujo de eventos hasta que aparece `word`. */
+const until = async (r: ReadableStreamDefaultReader<Uint8Array>, word: string): Promise<string> => {
+  let text = ''
+  while (!text.includes(word)) text += new TextDecoder().decode((await r.read()).value)
+  return text
+}
+/** Lee un flujo de eventos hasta que el servidor lo cierra (si no lo cierra, la prueba se queda esperando y falla). */
+const drain = async (r: ReadableStreamDefaultReader<Uint8Array>): Promise<string> => {
+  let text = ''
+  for (;;) {
+    const { done, value } = await r.read()
+    if (done) return text
+    text += new TextDecoder().decode(value)
+  }
+}
 const rpc = async (method: string, args?: unknown, headers: Record<string, string> = { cookie }): Promise<{ ok: boolean; value?: unknown; error?: { code: string } }> =>
   (await fetch(url + '/rpc', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ method, args }) })).json() as never
 
@@ -265,24 +280,43 @@ describe('servidor remoto de Aula como servidor (sin ventana)', () => {
     expect(phoneNo.error).toMatchObject({ code: 'forbidden', message: expect.stringContaining('propietario') })
     expect(seen.map((s) => s.method)).toEqual(['ai.setKey', 'ai.configure', 'memory.clear'])
   })
+  const open = async (c: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => (await fetch(surl + '/events', { headers: { cookie: c } })).body!.getReader()
+  /** El dispositivo de una cookie («aula_device_…=<ficha>»). */
+  const idOf = (c: string): string => reg.authenticate(decodeURIComponent(c.slice(c.indexOf('=') + 1)))!.id
+
   it('los eventos de los dispositivos (con sus códigos) solo llegan al propietario', async () => {
     const owner = await link(true)
     const phone = await link(false)
-    const open = async (c: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => (await fetch(surl + '/events', { headers: { cookie: c } })).body!.getReader()
     const ro = await open(owner)
     const rp = await open(phone)
     const { emit } = await import('../rpc')
     emit('remote.changed' as never, { pairing: { code: '654321' } } as never)
     emit('calendar.changed' as never, {} as never)
-    const until = async (r: ReadableStreamDefaultReader<Uint8Array>, word: string): Promise<string> => {
-      let text = ''
-      while (!text.includes(word)) text += new TextDecoder().decode((await r.read()).value)
-      return text
-    }
     expect(await until(ro, 'calendar.changed')).toContain('654321')
     expect(await until(rp, 'calendar.changed')).not.toContain('654321')
     await ro.cancel()
     await rp.cancel()
+  })
+  it('un dispositivo retirado deja de recibir eventos y se le corta el flujo: ni el código del propietario que lo sustituye', async () => {
+    const owner = await link(true)
+    const phone = await link(false)
+    const [ownerId, phoneId] = [idOf(owner), idOf(phone)]
+    const ro = await open(owner)
+    const rp = await open(phone)
+    const { emit } = await import('../rpc')
+    // retirado del registro y nada más: el evento siguiente ya no le llega, y su flujo se cierra
+    reg.revoke(ownerId)
+    emit('remote.changed' as never, { pairing: { code: '777777', owner: true } } as never)
+    emit('calendar.changed' as never, { curso: 'secreto' } as never)
+    const got = await drain(ro)
+    expect(got).not.toContain('777777')
+    expect(got).not.toContain('calendar.changed')
+    // el otro, aún vinculado, sí lo recibió (sin el código: no es propietario)
+    expect(await until(rp, 'calendar.changed')).not.toContain('777777')
+    // «Retirar» (RemoteAccess.revoke) además lo corta en el acto, sin esperar a ningún evento
+    reg.revoke(phoneId)
+    srv.disconnect(phoneId)
+    await drain(rp)
   })
   it('un dispositivo con la cookie de antes («aula_device») sigue entrando y recibe la de esta instalación', async () => {
     const t = reg.completePairing(reg.startPairing().code, 'iPad viejo', 'ipad').token
@@ -292,5 +326,59 @@ describe('servidor remoto de Aula como servidor (sin ventana)', () => {
     // y una cookie de otra Aula (con otro nombre) no estorba: cada una lleva la suya
     const both = await fetch(surl + '/rpc', { method: 'POST', headers: { 'content-type': 'application/json', cookie: `aula_device_ffffffffffff=otra; aula_device_abc123def456=${t}` }, body: '{"method":"courses.list"}' })
     expect((await both.json() as { ok: boolean }).ok).toBe(true)
+  })
+})
+
+describe('servidor remoto en el Mac: sin propietarios, y una ficha caducada corta su flujo', () => {
+  let srv: import('./server').RemoteServer
+  let reg: import('@main/services/remote/devices').DeviceRegistry
+  let murl = ''
+  let now = Date.now()
+  const pair = async (owner: boolean): Promise<string> => {
+    const { code } = reg.startPairing({ owner })
+    const res = await fetch(murl + '/pair/complete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: 'iPad', platform: 'ipad' }) })
+    return (res.headers.get('set-cookie') ?? '').split(';')[0]
+  }
+  const open = async (c: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => (await fetch(murl + '/events', { headers: { cookie: c } })).body!.getReader()
+
+  beforeAll(async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'aula-remote-mac-'))
+    const renderer = join(dir, 'renderer')
+    mkdirSync(renderer, { recursive: true })
+    writeFileSync(join(renderer, 'index.html'), '<!doctype html><html><head><title>Aula</title></head><body></body></html>')
+    const { DeviceRegistry } = await import('@main/services/remote/devices')
+    const { UploadStore } = await import('@main/services/remote/uploads')
+    const { RemoteServer } = await import('./server')
+    reg = new DeviceRegistry(join(dir, 'devices.json'), () => now)
+    srv = new RemoteServer({ devices: reg, uploads: new UploadStore(join(dir, 'uploads'), { grant: () => true }), rendererRoot: renderer, language: () => 'es', version: '9.9.9', proxyKey: KEY })
+    murl = `http://127.0.0.1:${await srv.start()}`
+  })
+  afterAll(async () => { await srv.stop() })
+
+  it('un dispositivo marcado como propietario (la carpeta de datos de un servidor) es en el Mac un dispositivo más', async () => {
+    const c = await pair(true)
+    expect(reg.list()[0].owner).toBe(true)
+    const page = await (await fetch(murl + '/', { headers: { cookie: c } })).text()
+    expect(page).toContain('<script src="/remote-bridge.js">')
+    expect(page).not.toContain('aula-device')
+    seen = []
+    const res = await (await fetch(murl + '/rpc', { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ method: 'ai.setKey', args: { providerId: 'deepseek', key: 'sk-1234567890abcdef' } }) })).json() as { ok: boolean; error?: { code: string; message: string } }
+    expect(res.error).toMatchObject({ code: 'forbidden', message: expect.stringContaining('Mac') })
+    expect(seen).toEqual([])
+    // ni los avisos de los dispositivos (con el código que enseña la ventana)
+    const r = await open(c)
+    const { emit } = await import('../rpc')
+    emit('remote.changed' as never, { pairing: { code: '424242' } } as never)
+    emit('calendar.changed' as never, {} as never)
+    expect(await until(r, 'calendar.changed')).not.toContain('424242')
+    await r.cancel()
+  })
+  it('una ficha que pasa 90 días sin usarse deja de recibir eventos y su flujo se cierra', async () => {
+    const { TOKEN_DAYS } = await import('@main/services/remote/devices')
+    const r = await open(await pair(false))
+    now += TOKEN_DAYS * 86_400_000 + 1
+    const { emit } = await import('../rpc')
+    emit('calendar.changed' as never, { curso: 'secreto' } as never)
+    expect(await drain(r)).not.toContain('calendar.changed')
   })
 })

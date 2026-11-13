@@ -20,7 +20,12 @@ enum Texts {
         return t("Encontré «\(name)» en tu red, pero Aula no contesta. Comprueba que el equipo está encendido (un Mac, despierto y con Aula abierta). Lo vuelvo a intentar cada pocos segundos.", "I found “\(name)” on your network, but Aula isn’t answering. Check that the computer is on (a Mac, awake and with Aula open). I’ll keep trying every few seconds.")
     }
     static var chooseTitle: String { t("¿Qué Aula abres?", "Which Aula do you want to open?") }
-    static var chooseBody: String { t("Hay más de una Aula en tu red. Elige una: la próxima vez se abre sola. Para cambiar, Ajustes → Abrir otra Aula.", "There is more than one Aula on your network. Choose one: next time it opens by itself. To change, Settings → Open another Aula.") }
+    /// Lo que se dice sobre la lista: con una sola Aula (se llegó con «Abrir otra Aula») no se habla de «más de una».
+    static func chooseBody(_ count: Int) -> String {
+        count > 1
+            ? t("Hay más de una Aula en tu red. Elige una: la próxima vez se abre sola. Para cambiar, Ajustes → Abrir otra Aula.", "There is more than one Aula on your network. Choose one: next time it opens by itself. To change, Settings → Open another Aula.")
+            : t("Ahora mismo esta es la única Aula de tu red. Tócala para abrirla; si enciendes otra, aparecerá aquí.", "Right now this is the only Aula on your network. Tap it to open it; if you turn on another one, it will show up here.")
+    }
     static var chooseOffline: String { t("sin conexión", "offline") }
     static var chooseAnother: String { t("Abrir otra Aula", "Open another Aula") }
     static var failedTitle: String { t("La red privada no arranca", "The private network won’t start") }

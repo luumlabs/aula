@@ -13,12 +13,19 @@ services:
     volumes:
       - aula-data:/data
     environment:
-      # El nombre en tu red de Tailscale (empieza por «aula-»; las apps lo encuentran solas).
+      # El nombre en tu red de Tailscale: «aula-» y letras, números o guiones (así las apps lo encuentran solas); nunca el de
+      # un dispositivo (aula-ipad, aula-iphone, aula-android, aula-device, ni esos con -2, -3…).
       AULA_TAILNET_HOSTNAME: aula-server
       # Opcional: una clave de autenticación de Tailscale (de tu cuenta, no etiquetada) para entrar sin abrir la página.
       # TS_AUTHKEY: tskey-auth-...
-      # Idioma de los mensajes de la consola (es o en).
-      LANG: es_ES.UTF-8
+      # Tu zona horaria: quita el # y cámbiala por la tuya (America/Mexico_City, America/Bogota, America/Argentina/Buenos_Aires,
+      # Europe/Madrid…). Los recordatorios, las horas de silencio, las automatizaciones y el calendario van por ella; sin ella,
+      # el contenedor va en UTC y el registro lo avisa al arrancar.
+      # TZ: Europe/Madrid
+      # El idioma del servidor mientras «Idioma de Aula» (Ajustes → Idioma y avisos) sea «El del sistema»: la consola, la
+      # página para vincular y los textos que genera Aula (sin LANG, en inglés). Cada dispositivo muestra la interfaz en su
+      # propio idioma.
+      # LANG: es_ES.UTF-8
 
 volumes:
   aula-data:

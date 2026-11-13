@@ -60,9 +60,11 @@ LABEL org.opencontainers.image.title="Aula server" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.version="${AULA_VERSION}"
 # lo que Chromium (Electron) necesita sin escritorio: GTK, NSS, sonido, una pantalla virtual (Xvfb) y fuentes; tini como
-# proceso 1 (pasa las señales a Aula y recoge a sus hijos)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl jq tini xvfb xauth util-linux \
+# proceso 1 (pasa las señales a Aula y recoge a sus hijos); tzdata para que TZ (la zona horaria) valga también fuera de Aula
+# (date, la consola) y aula-server pueda comprobarla, y tzdata-legacy con los nombres antiguos que la ICU de Aula sí conoce
+# (America/Buenos_Aires, US/Eastern, Asia/Calcutta…: en Debian 13 ya no van en tzdata)
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates curl jq tini tzdata tzdata-legacy xvfb xauth util-linux \
       libgtk-3-0t64 libnss3 libgbm1 libasound2t64 libxss1 libxtst6 libatk-bridge2.0-0t64 libatspi2.0-0t64 libcups2t64 \
       libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libcairo2 libnotify4 libsecret-1-0 \
       libxshmfence1 libuuid1 \
@@ -75,10 +77,13 @@ RUN useradd --create-home --uid 1000 --shell /usr/sbin/nologin aula \
  && mkdir -p /data && chown aula:aula /data && chmod 700 /data \
  && chmod 755 /usr/local/bin/aula-server
 USER aula
+# container: lo que pone un gestor de contenedores (la convención de systemd); aula-server sabe así, también fuera de Docker,
+# que va en un contenedor. TZ se deja sin poner: sin ella va en UTC y aula-server lo avisa al arrancar (docs/SERVER.md).
 ENV AULA_HOME=/data \
     AULA_BIN=/opt/aula/aula \
     AULA_SERVER=1 \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    container=oci
 VOLUME ["/data"]
 HEALTHCHECK --interval=1m --timeout=10s --start-period=2m CMD ["/usr/local/bin/aula-server", "health"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/aula-server"]

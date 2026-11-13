@@ -8,6 +8,9 @@ name: Release
 # It refuses to run if v<version> is already published, or if its draft already has files (e.g. uploaded and tested
 # with scripts/release-local.sh) — it never replaces installers that are already there.
 # Without GitHub Actions: scripts/release-local.sh on a Mac does the same (docs/PUBLISHING.md).
+# Never here: the Mac files (Aula's own certificate) and the Android APK (Aula's Android release key). Both keys live only
+# on the maintainer's Mac, which adds those files to this same draft afterwards with
+# `scripts/release-local.sh --only mac --only android` and then `--upload` (it adds to an existing draft, never replaces).
 on:
   workflow_dispatch:
 
@@ -65,7 +68,7 @@ jobs:
       matrix:
         # No macOS here: the Mac app is signed with Aula's own certificate («Aula Local Signing»), which only exists on the
         # maintainer's Mac, and installed copies reject an update with any other signature. Build and upload the Mac
-        # files locally with scripts/release-local.sh --only mac (docs/PUBLISHING.md).
+        # files (and the Android APK) locally with scripts/release-local.sh --only mac --only android (docs/PUBLISHING.md).
         os: [windows-2025, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -80,9 +83,15 @@ jobs:
       - run: npm ci
       # the Tailscale sidecar inside the Linux app (Aula on your devices, and Aula as a server: docs/SERVER.md); the runner's
       # Go fetches the version in native/tsnet/go.mod and the modules (checked against go.sum)
+      # if it's missing, electron-builder only warns ("file source doesn't exist") and uploads packages without it: check
+      # both architectures are there before anything is built or uploaded
       - name: Build the Tailscale sidecar for Linux
         if: runner.os == 'Linux'
-        run: native/tsnet/build.sh linux
+        run: |
+          native/tsnet/build.sh linux
+          for a in x64 arm64; do
+            test -x "native/tsnet/bin/linux-$a/aula-tsnet" || { echo "::error::native/tsnet/build.sh linux left no native/tsnet/bin/linux-$a/aula-tsnet"; exit 1; }
+          done
       # the tests are logic and were written on Linux (paths, links): they run there; CI runs them on every change too
       - name: Type check and unit tests
         if: runner.os == 'Linux'
@@ -115,6 +124,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draft"
           gh release download "v$V" -R "${{ github.repository }}" --dir "$RUNNER_TEMP/draft"
           node scripts/release-verify.mjs "$RUNNER_TEMP/draft" "$V"
+          # the Mac files and the Android APK never come from here (their keys live only on the maintainer's Mac)
+          for f in latest-mac.yml "Aula-$V-android.apk"; do
+            test -f "$RUNNER_TEMP/draft/$f" || echo "::notice title=Still to add from the Mac::$f isn't on the draft yet: scripts/release-local.sh --only mac --only android, then --upload --repo ${{ github.repository }} (it adds to this draft)."
+          done
       - name: Check Aula's update signature on every latest*.yml (Ed25519)
         env:
           V: ${{ needs.prepare.outputs.version }}
@@ -124,4 +137,4 @@ jobs:
             echo "::error::The latest*.yml files aren't signed: installed copies would refuse v$V. Sign them on the maintainer's computer (docs/PUBLISHING.md#update-signatures-ed25519) and upload them again before publishing."
             exit 1
           }
-          echo "Draft v$V is complete and signed. Test it, then press «Publish release» on GitHub."
+          echo "Draft v$V is signed. Once it has every system and the APK, test it, then press «Publish release» on GitHub."

@@ -139,7 +139,7 @@ struct ConnectView: View {
                 }
             }
         case .choosing(let aulas):
-            Message(title: Texts.chooseTitle, text: Texts.chooseBody, footnote: nil) {
+            Message(title: Texts.chooseTitle, text: Texts.chooseBody(aulas.count), footnote: nil) {
                 VStack(spacing: 10) {
                     ForEach(aulas, id: \.host) { aula in
                         Button { Task { await model.choose(aula.host) } } label: {

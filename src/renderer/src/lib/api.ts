@@ -1,6 +1,7 @@
 // Acceso tipado al proceso principal desde la interfaz.
 import type { RpcArgs, RpcEnvelope, RpcEvent, RpcMethod, RpcPayload, RpcResult } from '@shared/ipc'
 import { tr } from '@shared/ai/i18n'
+import { deviceRole, type DeviceRole } from './device'
 
 export interface AulaClientError extends Error {
   code: string
@@ -33,6 +34,10 @@ export const api = {
   /** ¿La Aula al otro lado es un servidor (sin Mac)? Cambia cómo se habla de ella («tu servidor», no «tu Mac»). */
   get server(): boolean {
     return this.remote && (window.aula as { server?: boolean } | undefined)?.server === true
+  },
+  /** Quién usa Aula desde aquí (ventana, propietario, dispositivo de un Mac o de un servidor): lo que se arregla aquí (device.ts). */
+  get role(): DeviceRole {
+    return deviceRole({ remote: this.remote, owner: this.owner, server: this.server })
   },
   pathForFile(file: File): string {
     return bridge().pathForFile(file)

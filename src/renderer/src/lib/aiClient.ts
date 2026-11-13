@@ -2,6 +2,7 @@
 import type { AIProviderView, AIStatus, AITestResult, AICostsView, ModelCatalogView } from '@shared/ai/views'
 import type { AgentsDetection } from '@shared/agents'
 import { api } from './api'
+import { settingsElsewhere, type DeviceRole } from './device'
 
 const invoke = api.invoke as unknown as (m: string, a?: unknown) => Promise<unknown>
 
@@ -13,12 +14,21 @@ export const aiClient = {
   configure: (args: { providerId: string | null; model?: string; reasoning?: string; baseURL?: string; key?: string; activate?: boolean }) => invoke('ai.configure', args) as Promise<AIStatus>,
   /** Las IA que ya están listas en el Mac (lo que se puede elegir desde un dispositivo). */
   choices: () => invoke('ai.choices') as Promise<AIProviderView[]>,
-  /** Usar un proveedor o cambiar su modelo o su razonamiento. Desde un dispositivo solo se elige entre lo ya listo ('ai.choose'). */
-  select: (args: { providerId: string; model?: string; reasoning?: string; activate?: boolean }) => invoke(api.remote ? 'ai.choose' : 'ai.configure', args) as Promise<AIStatus>,
+  /** Usar un proveedor o cambiar su modelo o su razonamiento (con el método que toca según quién lo pide: aiSelectMethod). */
+  select: (args: { providerId: string; model?: string; reasoning?: string; activate?: boolean }) => invoke(aiSelectMethod(api.role), args) as Promise<AIStatus>,
   models: (providerId: string, refresh = false) => invoke('ai.models', { providerId, refresh }) as Promise<ModelCatalogView>,
   test: (providerId: string) => invoke('ai.test', { providerId }) as Promise<AITestResult>,
   costs: () => invoke('ai.costs') as Promise<AICostsView>,
   detect: (refresh = false) => api.invoke('agents.detect', { refresh }) as Promise<AgentsDetection>
+}
+
+/**
+ * Con qué método se cambia la IA. Un dispositivo con solo lo de uso diario elige entre lo ya listo ('ai.choose', que
+ * exige que el proveedor esté listo); la ventana y el propietario de un servidor, que ven el selector completo,
+ * configuran como la ventana ('ai.configure'), también un proveedor que aún no está listo.
+ */
+export function aiSelectMethod(role: DeviceRole): 'ai.choose' | 'ai.configure' {
+  return settingsElsewhere(role) ? 'ai.choose' : 'ai.configure'
 }
 
 /** Proveedor probable a partir del prefijo de una clave pegada (para no preguntar). */

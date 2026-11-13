@@ -1,13 +1,17 @@
 # Publishing a release
 
-Aula ships as a GitHub release with one installer per system. Installed copies look for new versions there, download
-them in the background and install them when the student restarts (or quits) Aula.
+Aula ships as a GitHub release with one installer per system and the Android app (`Aula-<version>-android.apk`).
+Installed copies look for new versions there, download them in the background and install them when the student
+restarts (or quits) Aula. Publishing a release also builds the server image (`ghcr.io/luumlabs/aula-server`,
+docs/SERVER.md).
 
 - [How updates work](#how-updates-work)
 - [Checklist](#checklist)
 - [Publishing from your computer](#publishing-from-your-computer-no-github-actions) (while GitHub Actions is off)
 - [Publishing with GitHub Actions](#publishing-with-github-actions)
+- [The Android app (APK)](#the-android-app-apk)
 - [Test, then publish](#test-then-publish)
+- [The server image (ghcr.io)](#the-server-image-ghcrio)
 - [Testing the published installers on Windows and Linux](#testing-the-published-installers-on-windows-and-linux)
 - [Rehearsing an update locally](#rehearsing-an-update-locally)
 - [Signing](#signing)
@@ -108,24 +112,38 @@ A failed *automatic* check (e.g. offline) stays silent.
    CI (`.github/workflows/ci.yml`) runs the same on Linux and Windows, x64 and arm64. On a Linux machine without a
    desktop, the e2e tests need a window manager and libnotify like a real desktop has (`sudo apt install openbox
    libnotify4`, then `xvfb-run -a sh -c 'openbox & npx playwright test -c tests/e2e/playwright.config.ts'`).
-5. Commit and push to `main`.
+5. **Android.** On the Mac you publish from: the Android toolchain (`native/android/setup.sh`, once) and Aula's Android
+   release key in `~/.aula-signing/android/` (restored from its backup, see [The Android app](#the-android-app-apk)).
+   Its fingerprint must be committed in `native/android/release-cert.sha256` (once, before the first APK: the script
+   tells you the value). `scripts/release-local.sh` builds and checks the APK; Actions never does (the key never leaves
+   that Mac).
+6. Commit and push to `main`.
+7. **After publishing**: the *Server* workflow builds the server image for that version. The first time only, make
+   the package public by hand ([The server image](#the-server-image-ghcrio)), or nobody can `docker pull` it.
 
 ## Publishing from your computer (no GitHub Actions)
 
 While GitHub Actions can't run (billing), build on a Mac — it's the only system that can build all three:
 
 ```bash
-scripts/release-local.sh            # checks + macOS, Windows and Linux installers in release/<version>/
+scripts/release-local.sh            # checks + the Android APK and the macOS, Windows and Linux installers in release/<version>/
 ```
 
 It refuses to start if `VERSION`, `CHANGELOG.md`, the release notes or `releaseInfo` don't match `package.json`, or the
-tag already exists. It runs `npm run typecheck`, `npm test` and `npm run build`, then `electron-builder --publish never`
-once per system (nothing is uploaded), and finally `scripts/release-verify.mjs`, which checks that every `latest*.yml`
-is for this version and that the SHA-512 of each file matches. Options: `--only mac|win|linux` (repeatable; it
-rebuilds only that system and leaves the files of the others as they are — only **before** the version is released:
-once the tag `v<version>` exists the script stops, see [Adding a `.deb` to a published release](#adding-a-deb-to-a-published-release)),
-`--skip-checks`. It also writes `release/<version>/BUILD_INFO.<system>` (the commit and tree each system was built from,
-and whether there were uncommitted changes).
+tag already exists. Before compiling anything it checks the keys (update signatures, the macOS certificate, and the
+Android release key, which must match the fingerprint in `native/android/release-cert.sha256`) and the tools: Go for
+the Tailscale component, and for Android everything `native/android/build.sh` uses (JDK 17+, the SDK build-tools with
+`apksigner`, `aapt2`, `d8` and `zipalign`, and the `android-36` platform). It runs `npm run typecheck` and `npm test`,
+then builds the **APK first** (`native/android/build.sh`: a few seconds, and the step with the most prerequisites, so
+if it fails it does so before the long desktop builds), then `npm run build` and `electron-builder --publish never`
+once per system (nothing is uploaded). Each system is finished as soon as it's built: its `latest*.yml` signed and
+`release/<version>/BUILD_INFO.<system>` written (the commit and tree it was built from, and whether there were
+uncommitted changes). So if a later system fails, the ones before it stay ready to upload, and the script says which:
+build only the rest with `--only`. Finally `scripts/release-verify.mjs` checks that every `latest*.yml` is for this
+version and that the SHA-512 of each file matches. Options: `--only mac|win|linux|android` (repeatable; it rebuilds
+only that system and leaves the files of the others as they are — only **before** the version is released: once the
+tag `v<version>` exists the script stops, see [Adding a `.deb` to a published release](#adding-a-deb-to-a-published-release)
+and [The Android app](#the-android-app-apk)), `--skip-checks`.
 
 What you get in `release/<version>/`:
 
@@ -134,11 +152,19 @@ What you get in `release/<version>/`:
 | macOS (universal) | `Aula-<v>-mac.dmg`, `Aula-<v>-mac.zip` (+ `.blockmap`s) and `latest-mac.yml` — **updates download the zip** |
 | Windows (x64 + arm64 in one installer) | `Aula-Setup-<v>.exe` (+ `.blockmap`) and `latest.yml` |
 | Linux | `Aula-<v>-linux-x86_64.AppImage`, `Aula-<v>-linux-arm64.AppImage` (+ `latest-linux.yml`, `latest-linux-arm64.yml`) and `Aula-<v>-linux-amd64.deb` |
+| Android (arm64-v8a + x86_64, Android 8.0+) | `Aula-<v>-android.apk`, signed with Aula's Android release key. No `latest*.yml`: the app doesn't update itself, people install the new APK over the old one |
 
 Notes for building on a Mac:
 - macOS carries the Tailscale component of *Aula on your devices* (`Resources/bin/aula-tsnet`, see `docs/DEVICES.md`).
   Git doesn't keep it: the script builds it with `native/tsnet/build.sh`, which needs the project-local Go toolchain in
   `.toolchain/go` (the script says how to get it), and stops if the package comes out without it.
+- The Linux packages carry it too (`resources/bin/aula-tsnet`, one per architecture: *Aula on your devices* and Aula as
+  a server, `docs/SERVER.md`). `native/tsnet/build.sh linux` builds it into `native/tsnet/bin/linux-x64` and
+  `linux-arm64` with the same Go toolchain, **before** `electron-builder`: if it's missing, electron-builder only warns
+  and makes packages without it. The script checks it's in both packages.
+- Android needs the JDK and the Android SDK in `.toolchain` (`native/android/setup.sh`, once), Go (its Tailscale
+  component, `native/tsnet/build.sh android`) and the release key matching `native/android/release-cert.sha256`; see
+  [The Android app](#the-android-app-apk).
 - Windows needs nothing else (no Wine): the installer is unsigned.
 - The Linux `.deb` needs GNU tar on the `PATH` as `gtar` (`brew install gnu-tar`, or the `gtar` that electron-builder
   keeps in `~/Library/Caches/electron-builder/linux-tools-mac*`). Without it the script builds only the AppImages (the
@@ -147,8 +173,9 @@ Notes for building on a Mac:
   line about `@napi-rs/canvas-*` is expected and harmless (pdf.js only uses it to draw in Node, and Aula draws pages in a
   hidden window).
 
-**Smoke-test** the files: open `release/<version>/mac-universal/Aula.app` (or the `.dmg`), and on a Windows / Linux
-machine run the `.exe` / AppImage. To try the actual update, see [Rehearsing an update locally](#rehearsing-an-update-locally).
+**Smoke-test** the files: open `release/<version>/mac-universal/Aula.app` (or the `.dmg`), on a Windows / Linux
+machine run the `.exe` / AppImage, and install the APK on an Android phone (over the previous version's app, if there is
+one). To try the actual update, see [Rehearsing an update locally](#rehearsing-an-update-locally).
 
 **Upload** (you run this; it never publishes):
 
@@ -160,16 +187,34 @@ scripts/release-local.sh --upload --repo luumlabs/aula # asks you to type «yes�
 The repository is always given explicitly (it's never guessed from `origin`) and must be the one in
 `electron-builder.yml → publish`, the one installed copies check. **Upload from a clone of the public repository**: the
 release points at your current commit, which must already be on `luumlabs/aula`. The script re-verifies
-`release/<version>/`, requires a clean tree, refuses files built from other content or from uncommitted changes
-(`BUILD_INFO.<system>`; a copy with the same tree, like the public repository's clean commit, is fine), warns if the repository isn't public, and creates a **draft** release `v<version>` (title:
-`releaseInfo.releaseName`; description: the English part of `docs/release-notes/<version>.md`) with the installers,
-zips, `.blockmap`s and `latest*.yml` from that folder — exactly the files you tested. The tag is created by GitHub when
-you publish. Without the script:
+`release/<version>/` (and the APK, see [The Android app](#the-android-app-apk)), requires a clean tree, refuses files
+built from other content or from uncommitted changes (`BUILD_INFO.<system>`; a copy with the same tree, like the public
+repository's clean commit, is fine), warns if the repository isn't public, and creates a **draft** release `v<version>`
+(title: `releaseInfo.releaseName`; description: the English part of `docs/release-notes/<version>.md`) with the
+installers, zips, `.blockmap`s, `latest*.yml` and the APK from that folder — exactly the files you tested. The tag is
+created by GitHub when you publish.
+
+If the draft **already exists** (the one the Actions *Release* workflow made, or one you uploaded before, e.g. with
+`--partial`), `--upload` **adds** to it instead, only if the draft points at a commit with this same content. It never
+replaces a file (a `latest*.yml` must stay with the files of its own build). For each file in `release/<version>/`:
+
+- not on the draft yet: it's uploaded;
+- already on the draft **with the same content** (GitHub's SHA-256 of the asset; downloaded and compared if GitHub
+  doesn't give one): it's skipped. So `release/<version>/` can keep the systems you already uploaded: after
+  `--upload --partial` without the APK, `--only android` and then `--upload` adds just the APK;
+- already on the draft with **other content** (another build): it refuses and names the files. Move that system's files
+  out of `release/<version>/`, or delete that system's files on GitHub (its `latest*.yml` with all its files) and upload
+  again.
+
+That's also how the Mac files and the APK join a draft built by Actions. It refuses to upload unless all three systems
+(`latest-mac.yml`, `latest.yml`, `latest-linux.yml`, `latest-linux-arm64.yml`) and `Aula-<v>-android.apk` end up on the
+release, counting what the draft already has; `--partial` uploads anyway, on purpose. Every `Aula-…` file the release
+notes name must be there too. Without the script:
 
 ```bash
 awk '/<!-- *lang:es *-->/ { exit } { print }' docs/release-notes/0.1.1.md > /tmp/notes.md
 shopt -s nullglob   # bash: a kind of file that wasn't built (e.g. no .deb) is skipped instead of failing
-files=(release/0.1.1/latest*.yml release/0.1.1/*.{dmg,zip,exe,AppImage,deb,blockmap})
+files=(release/0.1.1/latest*.yml release/0.1.1/*.{dmg,zip,exe,AppImage,deb,blockmap,apk})
 gh release create v0.1.1 -R luumlabs/aula --draft --target "$(git rev-parse HEAD)" --title "Aula 0.1.1" \
   --notes-file /tmp/notes.md "${files[@]}"
 ```
@@ -186,16 +231,20 @@ as long as it's built from **the tag's code** and uploaded **alone**. (Built tog
 it.) From a clone of the public repository:
 
 ```bash
-git worktree add /tmp/aula-v0.1.0 v0.1.0                      # the exact tree of the release
-cd /tmp/aula-v0.1.0 && npm ci                                  # or symlink the clone's node_modules
+git worktree add /tmp/aula-v0.2.4 v0.2.4                      # the exact tree of the release
+cd /tmp/aula-v0.2.4 && npm ci                                  # or symlink the clone's node_modules
 npm run build
+native/tsnet/build.sh linux                                    # from 0.2.4 on: the Tailscale sidecar goes inside
+test -x native/tsnet/bin/linux-x64/aula-tsnet                  # (electron-builder makes the .deb without it otherwise)
 npx electron-builder --linux deb --x64 --publish never -c.directories.output=/tmp/aula-deb
-gh release upload v0.1.0 /tmp/aula-deb/Aula-0.1.0-linux-amd64.deb -R luumlabs/aula   # ONLY the .deb
+gh release upload v0.2.4 /tmp/aula-deb/Aula-0.2.4-linux-amd64.deb -R luumlabs/aula   # ONLY the .deb
 ```
 
-Never upload the `latest-linux.yml` electron-builder leaves next to it: it would replace the signed one of the
-AppImages. Don't use `scripts/release-local.sh --only linux` for this: it stops because the tag exists, and it would
-rebuild the AppImages with other SHA-512s.
+`native/tsnet/build.sh linux` needs Go: the project-local `.toolchain/go` (symlink the clone's `.toolchain` into the
+worktree) or `go` on the `PATH`. Tags before 0.2.4 have no sidecar: skip those two lines. Never upload the
+`latest-linux.yml` electron-builder leaves next to it: it would replace the signed one of the AppImages. Don't use
+`scripts/release-local.sh --only linux` for this: it stops because the tag exists, and it would rebuild the AppImages
+with other SHA-512s.
 
 ## Publishing with GitHub Actions
 
@@ -205,9 +254,12 @@ rebuild the AppImages with other SHA-512s.
 > [Update signatures](#update-signatures-ed25519)), or store the key as the `AULA_UPDATE_SIGNING_KEY` secret and add a
 > signing step before the upload.
 >
-> **No macOS in Actions.** The Mac app must be signed with the project's own certificate (see [Signing](#signing)),
-> which only exists on the maintainer's Mac, so the workflow builds Windows and Linux only. Add the Mac files to the
-> same draft from your Mac with `scripts/release-local.sh --only mac` and `--upload`.
+> **No macOS and no Android in Actions.** The Mac app must be signed with the project's own certificate (see
+> [Signing](#signing)) and the APK with Aula's Android release key, and both exist only on the maintainer's Mac, so
+> the workflow builds Windows and Linux only. Add the Mac files and the APK to the same draft from your Mac:
+> `scripts/release-local.sh --only mac --only android`, then `scripts/release-local.sh --upload --repo luumlabs/aula`
+> (it adds them to the existing draft; see [Upload](#publishing-from-your-computer-no-github-actions)). The *verify*
+> job lists what's still missing.
 
 When Actions is available: *Actions → Release → Run workflow* on `main`. The **Release** workflow
 (`.github/workflows/release.yml`) is **manual only** — it never runs when a tag is pushed, because publishing the draft
@@ -216,23 +268,113 @@ creates the tag and a tag-triggered build would upload untested installers over 
 1. **prepare**: checks `VERSION`, `CHANGELOG.md`, the notes and `releaseInfo`; stops if `v<version>` is already
    published or if its draft already has files (it never replaces installers); otherwise creates the empty draft
    (English notes, title from `releaseInfo`), so the three builds don't race to create it;
-2. **build** on macOS, Windows and Linux and uploads each system's files to that draft (`releaseType: draft`);
+2. **build** on Windows and Linux (with the Linux Tailscale sidecar, checked before anything is uploaded) and uploads
+   each system's files to that draft (`releaseType: draft`);
 3. **verify**: downloads the draft and runs `scripts/release-verify.mjs` on it (every `latest*.yml` against the SHA-512
-   of its files).
+   of its files), says which files still have to come from the Mac (`latest-mac.yml`, the APK) and checks the update
+   signatures.
 
-Then [test and publish](#test-then-publish).
+Then add the Mac files and the APK (above), and [test and publish](#test-then-publish). Publishing starts the *Server*
+workflow ([The server image](#the-server-image-ghcrio)).
+
+## The Android app (APK)
+
+`native/android` (see its README) builds `Aula-<version>-android.apk`. It goes on every release next to the installers:
+`docs/SERVER.md`, `docs/DEVICES.md` and the app's README send Android users there. It's built **only on the
+maintainer's Mac**, by `scripts/release-local.sh` (in the default run, or `--only android`), because it's signed with
+Aula's Android release key, which lives outside the repository and never goes to CI (CI builds a `--debug` APK and a
+release-mode APK signed with a throwaway key, only to catch release-mode bugs; neither is published). Android installs an update over the app only if it's signed with the **same key** and has a higher
+`versionCode` (`MAJOR·10000 + MINOR·100 + PATCH`, from `package.json`).
+
+Once per Mac:
+
+```bash
+native/android/setup.sh                 # the JDK and the Android SDK in .toolchain (shows the SDK licence)
+# the release key: ~/.aula-signing/android/aula-release.keystore + aula-release.pass (0600), restored from its backup.
+# Only for the very first Android release, when no APK signed with it exists yet: native/android/build.sh --new-key
+```
+
+**The key's fingerprint is in the repository**: `native/android/release-cert.sha256` holds the SHA-256 of the release
+key's certificate (the certificate is public: anyone can read it from the APK). The script requires every APK, and the
+keystore in `~/.aula-signing/android/`, to match it. Without it, a lost key replaced by a new one would pass every check
+and ship an APK that can't install over anyone's app. It's written **once**, before the first release with an APK
+(0.2.4): when the file is missing, `scripts/release-local.sh` stops before building and prints the line to run, with the
+fingerprint of the keystore it found. Check that keystore is the real one (the one in the backup), then commit:
+
+```bash
+echo '<the fingerprint the script printed>' > native/android/release-cert.sha256   # or the SHA256: line of --new-key
+git add native/android/release-cert.sha256 && git commit -m "Android: pin the release key's certificate"
+```
+
+(Hex, with or without `:`. `#` starts a comment.) Never change it to make a new key pass: that is the case the file
+exists to stop. Only if the key is really lost, and every Android user will have to uninstall and reinstall, replace
+it on purpose in its own commit and say so in the release notes.
+
+What the script does with it: before building, it checks that the keystore's certificate matches the fingerprint. It
+then runs `native/android/build.sh` (release mode, with that key) and checks the APK before it enters
+`release/<version>/` and again on `--upload`: `apksigner verify` passes for Android 8.0+, it has **one** signer, and that
+signer's certificate matches `native/android/release-cert.sha256` (so not the `--debug` key, and not a new key), the
+package is `com.luumlabs.aula`, `versionName` is this version, and it isn't debuggable. It writes `BUILD_INFO.android`
+like the other systems. `--upload` adds it to the draft with the rest. It can also add the APK alone to a draft that
+already has the other systems: files the draft already has with the same content are skipped (see
+[Upload](#publishing-from-your-computer-no-github-actions)).
+
+**If a published release is missing the APK**, add it like a `.deb` (no `latest*.yml` lists it, so nothing else
+changes): build it from the tag's code and upload **only** the APK.
+
+```bash
+git worktree add /tmp/aula-v0.2.4 v0.2.4 && cd /tmp/aula-v0.2.4
+ln -s <your clone>/.toolchain .toolchain                      # its JDK, Android SDK and Go
+native/android/build.sh                                       # → native/android/build/Aula-0.2.4-android.apk
+export PATH="$(find .toolchain/jdk -maxdepth 3 -type d -name Home | head -1)/bin:$PATH"   # apksigner runs `java`
+"$(ls -d .toolchain/android-sdk/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs \
+  native/android/build/Aula-0.2.4-android.apk                 # the signer: CN=Aula, O=Luum Labs
+gh release upload v0.2.4 native/android/build/Aula-0.2.4-android.apk -R luumlabs/aula   # ONLY the APK
+```
+
+The signer's SHA-256 must be the one in `native/android/release-cert.sha256`, never `CN=Aula debug`'s or another key's.
+
+**Keep the key safe**: back it up with the other keys ([Keeping the keys](#keeping-the-keys)). If it's lost, no later
+APK installs over the app: every Android user has to uninstall it (losing its Tailscale sign-in and link) and install
+the new one.
 
 ## Test, then publish
 
 Nobody sees a draft and installed copies aren't offered it. Check that the draft points at the commit the installers
 were built from (`BUILD_INFO.<system>`): its tag and *Source code* archives are the source the AGPL promises. Download
-the installers from the draft, try them on each system, then press **Publish release** on GitHub: from then on copies find it within 6 hours (or at their next launch).
+the installers from the draft, try them on each system (and the APK on an Android phone, installed over the previous
+version: Android refuses it if the key changed), then press **Publish release** on GitHub: from then on copies find it within 6 hours (or at their next launch).
 Each system has its own `latest*.yml`, so a system is never offered a version whose build isn't there. Pre-releases are
 never offered as updates; use them for testers who download by hand.
+
+Publishing it as a full release also starts the *Server* workflow, which pushes the server image for that version
+([The server image](#the-server-image-ghcrio)); a pre-release doesn't.
 
 **Private repository.** While `luumlabs/aula` is private, only its members can download the files and installed copies
 can't check for updates (they'd quietly report "no published version"). Make the repository public (or publish the
 releases elsewhere) before announcing.
+
+## The server image (ghcr.io)
+
+`.github/workflows/server.yml` (docs/SERVER.md) runs when a release is published **as a full release** (the `released`
+event: never for a pre-release; a pre-release promoted to a full release gets its image at that moment). For amd64 and
+arm64 it builds the image from that version's **published** AppImage (checked against its `latest-linux*.yml`), runs
+`server/smoke.sh` on it and pushes `ghcr.io/luumlabs/aula-server:<version>`. It moves `:latest`, which `server/compose.yaml`
+and docs/SERVER.md tell people to pull, **only if that version is the repository's latest release** (the one installed
+copies are offered): a pre-release, or a rebuild of an older version, never moves it. To rebuild by hand (e.g. after a
+fix to `server/Dockerfile`): *Actions → Server → Run workflow* with `publish` = the version.
+
+**Once: make the package public.** A package that a workflow creates on ghcr.io starts out **private**, even from a
+public repository, and the workflow's `GITHUB_TOKEN` can't change that. Until someone does it by hand, every
+`docker pull` / `docker compose up` fails with *denied*. After the first run that pushes an image (0.2.4):
+
+1. open the package settings: <https://github.com/users/luumlabs/packages/container/aula-server/settings> (from the
+   repository: *Packages → aula-server → Package settings*);
+2. *Danger Zone → Change visibility → Public*, and confirm with the package name.
+
+It stays public for every later version. The workflow's last step checks it the way a user would, pulling without
+logging in: if the package isn't public it leaves a *warning* in the run and its summary with this link, but doesn't
+fail (the release is already out). To check by hand: `docker logout ghcr.io && docker pull ghcr.io/luumlabs/aula-server:<version>`.
 
 ## Testing the published installers on Windows and Linux
 
@@ -321,8 +463,12 @@ packaged build with CDP (`scripts/dev/security-check.mjs`, measurements), build 
 | macOS | Signed with the project's own self-signed certificate **Aula Local Signing** (`scripts/build/mac-sign.cjs`, from the keychain `~/.aula-signing/aula-signing.keychain-db`; ad hoc if it isn't there). Gatekeeper treats it like ad hoc: the first launch needs *Open* / *Open Anyway*. Its designated requirement (`identifier "com.luumlabs.aula" and certificate root = H"2606…"`) is the same for every version, so after one *Always Allow* macOS stops asking for the «Aula Safe Storage» keychain item on each update, and Aula's installer requires every new version to satisfy it. **So every later macOS release must be signed with this certificate**: `release-local.sh` refuses to build or upload macOS without it (`AULA_MAC_ADHOC=1` only for tests). Automatic updates **work** (Aula's own installer, above). | Set `MAC_CERT_P12_BASE64` + `MAC_CERT_PASSWORD` (a *Developer ID Application* certificate) and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` to notarize (repository secrets for Actions, or `CSC_LINK`/`CSC_KEY_PASSWORD` + the Apple variables in your shell for a local build). Then, in `electron-builder.yml`, remove `identity: "-"` and set `hardenedRuntime: true`. From that version on, updates must be signed by the same team (the installer checks it). |
 | Windows | Unsigned: SmartScreen shows *More info → Run anyway* the first time. Updates work. | `CSC_LINK`/`CSC_KEY_PASSWORD` (or Azure Trusted Signing). electron-updater then requires updates signed by the same publisher. |
 | Linux | AppImage and .deb are not signed (normal for Linux). | — |
+| Android | Signed with Aula's own Android release key (`~/.aula-signing/android/aula-release.keystore`, its password in `aula-release.pass`; made once with `native/android/build.sh --new-key`). Android installs an update over the app only if it's signed with the same key, so **every later APK must be signed with it**: its certificate's SHA-256 is committed in `native/android/release-cert.sha256`, and `release-local.sh` refuses to build with a keystore, or upload an APK, that doesn't match it (see [The Android app](#the-android-app-apk)). | Google Play would need an `.aab` and Play App Signing. |
 
 Never commit certificates, `.p12` files or keys: `.gitignore` already blocks the usual names.
+
+**Back up the Android release key** the same way: `~/.aula-signing/android/aula-release.keystore` and
+`aula-release.pass`. If it's lost, every Android user has to uninstall the app and install the next version by hand.
 
 **Back up the macOS certificate** together with the update keys (same offline places): `~/.aula-signing/aula-signing.p12`
 and its password `p12.pass` (or the keychain `aula-signing.keychain-db` and `keychain.pass`); `cert.pem` is public. If
@@ -367,10 +513,13 @@ signature**:
 > they were published from, with no copy anywhere. 0.2.0 carries two new keys and a new certificate, so every 0.1.x
 > copy had to be updated by hand once. The copies below are what keeps that from happening again.
 
-- Keep **two offline copies** of both private keys (and of the macOS certificate, see [Signing](#signing)): a password
-  manager entry (each PEM is 119 bytes of text) and an encrypted USB drive. Never in the repository, a cloud folder
-  synced in clear text, an email or a chat.
-- Check each copy: `node scripts/release-sign.mjs --check-key --key <copy>` → *main* or *backup (n.º 1)*.
+- Keep **two offline copies** of both private keys (and of the macOS certificate and the Android release keystore with
+  its `.pass`, see [Signing](#signing)): a password manager entry (each PEM is 119 bytes of text; the keystore is a
+  small binary file, attach it) and an encrypted USB drive. Never in the repository, a cloud folder synced in clear
+  text, an email or a chat.
+- Check each copy: `node scripts/release-sign.mjs --check-key --key <copy>` → *main* or *backup (n.º 1)*. For the
+  Android keystore, `keytool -list -v -keystore <copy> -storepass:file <its .pass> | grep SHA256:` must show the
+  fingerprint in `native/android/release-cert.sha256`.
 - Then **remove the backup key from this Mac** (`rm -P ~/.aula-signing/update-ed25519-backup.key`): a backup that sits
   next to the main key is lost or stolen with it. Keep `update-ed25519-backup.pub`.
 

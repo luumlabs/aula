@@ -10,7 +10,8 @@
 # native/android/setup.sh lo instala), un JDK 17 o posterior (JAVA_HOME, o <raíz>/.toolchain/jdk) y Go para el componente
 # de Tailscale (native/tsnet/build.sh android). La versión sale de package.json. La clave de firma vive fuera del
 # repositorio: $AULA_ANDROID_KEYSTORE (por defecto ~/.aula-signing/android/aula-release.keystore) y su contraseña en el
-# archivo de al lado (.pass, 0600).
+# archivo de al lado (.pass, 0600). La huella de su certificado (pública) está en release-cert.sha256: con la clave por
+# defecto, el APK solo se firma si coincide, y --new-key se niega si ese archivo existe.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -36,9 +37,17 @@ fi
 [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/javac" ] || { echo "Falta un JDK 17+ (JAVA_HOME o .toolchain/jdk: native/android/setup.sh)" >&2; exit 1; }
 export JAVA_HOME PATH="$JAVA_HOME/bin:$PATH"
 
-KEYSTORE="${AULA_ANDROID_KEYSTORE:-$HOME/.aula-signing/android/aula-release.keystore}"
+DEFAULT_KEYSTORE="$HOME/.aula-signing/android/aula-release.keystore"
+KEYSTORE="${AULA_ANDROID_KEYSTORE:-$DEFAULT_KEYSTORE}"
 PASSFILE="${KEYSTORE%.keystore}.pass"
+# la huella de la clave de Aula para Android (el SHA-256 de su certificado), la misma que exige scripts/release-local.sh
+PIN_FILE="$HERE/release-cert.sha256"
 if [ "$mode" = newkey ]; then
+  if [ -e "$PIN_FILE" ]; then
+    echo "La clave de Aula para Android ya existe (su huella está en $PIN_FILE): una nueva no serviría, Android no" \
+      "instalaría el APK encima de la app. Restaura la buena de su copia de seguridad (docs/PUBLISHING.md → Keeping the keys)." >&2
+    exit 1
+  fi
   [ -e "$KEYSTORE" ] && { echo "Ya existe $KEYSTORE: no se toca (perderla impediría actualizar la app)." >&2; exit 1; }
   mkdir -p "$(dirname "$KEYSTORE")" && chmod 700 "$(dirname "$KEYSTORE")"
   umask 077
@@ -52,10 +61,52 @@ if [ "$mode" = newkey ]; then
 fi
 
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$TC/android-sdk}}"
-BT="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
+BT="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1 || true)"
 JAR="$SDK/platforms/android-$API/android.jar"
 [ -n "$BT" ] && [ -x "$BT/aapt2" ] || { echo "Faltan las build-tools del SDK de Android en $SDK (native/android/setup.sh)" >&2; exit 1; }
 [ -f "$JAR" ] || { echo "Falta la plataforma android-$API en $SDK (native/android/setup.sh)" >&2; exit 1; }
+
+# la huella de PIN_FILE en minúsculas y sin «:», leída como scripts/release-local.sh (sin «SHA256:» ni comentarios «#»)
+pin_sha256() {
+  sed -e 's/#.*//' -e 's/[Ss][Hh][Aa]-\{0,1\}256//g' "$PIN_FILE" | tr -d ' :\t\r\n' | tr 'A-F' 'a-f'
+}
+
+# el SHA-256 del certificado de la clave (el primero que da keytool), en minúsculas y sin «:»; la contraseña va por archivo
+keystore_sha256() {
+  keytool -list -rfc -keystore "$KEYSTORE" -storepass:file "$PASSFILE" 2>/dev/null \
+    | awk '/-----BEGIN CERTIFICATE-----/ && !seen { on = 1 } on { print } /-----END CERTIFICATE-----/ && on { on = 0; seen = 1 }' \
+    | openssl x509 -noout -fingerprint -sha256 2>/dev/null | sed 's/^.*=//' | tr -d ':' | tr 'A-F' 'a-f'
+}
+
+# Antes de compilar: la clave tiene que estar y, si es la de siempre (la ruta por defecto), ser la de la huella del
+# repositorio. Otra clave (AULA_ANDROID_KEYSTORE: una de prueba, la de CI) no se compara: release-local.sh no la publicaría
+if [ "$mode" = release ]; then
+  if [ ! -f "$KEYSTORE" ] || [ ! -f "$PASSFILE" ]; then
+    if [ -e "$PIN_FILE" ]; then
+      echo "Falta la clave de Aula para Android ($KEYSTORE y su .pass): restáurala de su copia de seguridad (docs/PUBLISHING.md → Keeping the keys)." >&2
+    else
+      echo "Falta la clave de Aula para Android ($KEYSTORE y su .pass): restáurala de su copia de seguridad o, solo si ninguna versión publicada lleva aún un APK, native/android/build.sh --new-key" >&2
+    fi
+    exit 1
+  fi
+  if [ -e "$PIN_FILE" ] && [ "$KEYSTORE" = "$DEFAULT_KEYSTORE" ]; then
+    command -v openssl >/dev/null || { echo "Falta openssl para comparar la clave con $PIN_FILE" >&2; exit 1; }
+    PIN="$(pin_sha256)"
+    printf '%s\n' "$PIN" | grep -Ex '[0-9a-f]{64}' >/dev/null \
+      || { echo "$PIN_FILE no es una huella SHA-256 (64 cifras hexadecimales, con o sin «:»)." >&2; exit 1; }
+    GOT="$(keystore_sha256 || true)"
+    [ -n "$GOT" ] || { echo "No se pudo leer el certificado de $KEYSTORE (¿la contraseña de su .pass?)." >&2; exit 1; }
+    if [ "$GOT" != "$PIN" ]; then
+      echo "La clave de $KEYSTORE no es la de Aula para Android: su certificado (SHA-256 $GOT) no es el de $PIN_FILE" \
+        "($PIN). Restaura la buena de su copia de seguridad (docs/PUBLISHING.md → Keeping the keys): firmado con otra," \
+        "Android no instalaría el APK encima de la app." >&2
+      exit 1
+    fi
+    echo "Clave de Aula para Android: la de $PIN_FILE"
+  elif [ -e "$PIN_FILE" ]; then
+    echo "Clave de AULA_ANDROID_KEYSTORE ($KEYSTORE): no se compara con $PIN_FILE (scripts/release-local.sh no publica un APK de otra clave)"
+  fi
+fi
 
 VERSION="$(sed -n 's/^  "version": "\([0-9.]*\)",$/\1/p' "$ROOT/package.json" | head -1)"
 IFS=. read -r MA MI PA <<< "$VERSION"
@@ -88,16 +139,20 @@ done
 "$BT/aapt2" compile --dir "$HERE/res" -o "$T/res.zip"
 "$BT/aapt2" compile --dir "$GEN" -o "$T/gen.zip"
 mkdir -p "$T/java"
-DEBUG_MODE=()
-[ "$mode" = debug ] && DEBUG_MODE=(--debug-mode)   # la de prueba se puede depurar (adb run-as); la publicada, no
-"$BT/aapt2" link -I "$JAR" --manifest "$HERE/AndroidManifest.xml" -o "$T/base.apk" --java "$T/java" "${DEBUG_MODE[@]}" \
-  --min-sdk-version $MIN_SDK --target-sdk-version $API --version-code $CODE --version-name "$VERSION" \
-  --auto-add-overlay "$T/res.zip" "$T/gen.zip"
+# (sin listas vacías: con set -u, el bash 3.2 del Mac da «"${A[@]}"» de una lista vacía por variable sin definir)
+LINK=(-I "$JAR" --manifest "$HERE/AndroidManifest.xml" -o "$T/base.apk" --java "$T/java"
+  --min-sdk-version "$MIN_SDK" --target-sdk-version "$API" --version-code "$CODE" --version-name "$VERSION" --auto-add-overlay)
+if [ "$mode" = debug ]; then LINK+=(--debug-mode); fi   # la de prueba se puede depurar (adb run-as); la publicada, no
+"$BT/aapt2" link "${LINK[@]}" "$T/res.zip" "$T/gen.zip"
 
 # ── 4. el código ──
 mkdir -p "$T/classes" "$T/dex"
 find "$HERE/src" "$T/java" -name '*.java' > "$T/sources.txt"
 javac --release 17 -encoding UTF-8 -Xlint:-options -classpath "$JAR" -d "$T/classes" @"$T/sources.txt"
+# las reglas que no dependen de Android (Tunnel.java), comprobadas en la JVM: si alguna falla, no hay paquete
+mkdir -p "$T/test"
+javac --release 17 -encoding UTF-8 -Xlint:-options -classpath "$T/classes" -d "$T/test" "$HERE/tools/TunnelTest.java"
+java -cp "$T/classes:$T/test" com.luumlabs.aula.TunnelTest
 "$BT/d8" --release --min-api $MIN_SDK --lib "$JAR" --output "$T/dex" $(find "$T/classes" -name '*.class')
 
 # ── 5. el paquete: recursos + código + componente de Tailscale; alineado y firmado ──
@@ -118,9 +173,12 @@ if [ "$mode" = debug ]; then
   APK="$OUT/Aula-$VERSION-android-debug.apk"
   "$BT/apksigner" sign --ks "$DKS" --ks-pass pass:android --key-pass pass:android --out "$APK" "$T/aligned.apk"
 else
-  [ -f "$KEYSTORE" ] && [ -f "$PASSFILE" ] || { echo "Falta la clave de Aula para Android ($KEYSTORE): native/android/build.sh --new-key" >&2; exit 1; }
+  # (la clave y su huella ya se comprobaron antes de compilar)
   APK="$OUT/Aula-$VERSION-android.apk"
-  "$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass "file:$PASSFILE" --key-pass "file:$PASSFILE" --out "$APK" "$T/aligned.apk"
+  # solo --ks-pass: con el mismo archivo en --key-pass, apksigner lee una línea por contraseña y la segunda no existe.
+  # En un almacén PKCS12 (--new-key) la clave lleva la contraseña del almacén, que apksigner prueba primero; sin
+  # entrada, si no valiera, falla en vez de quedarse esperando a que se escriba otra.
+  "$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass "file:$PASSFILE" --out "$APK" "$T/aligned.apk" </dev/null
 fi
 rm -f "$APK.idsig"
 "$BT/apksigner" verify --min-sdk-version $MIN_SDK "$APK"

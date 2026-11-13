@@ -63,6 +63,9 @@
     "pasteKey": "Paste your key (sk-…)",
     "detected": "Detected: {{provider}}",
     "keySafe": "Your key is stored encrypted on this computer and only sent to its provider.",
+    "keySafeBasic": "Your key is stored on this computer unencrypted (there’s no keyring) and only sent to its provider.",
+    "keySafeServer": "Your key is stored encrypted on your Aula server and only sent to its provider.",
+    "keySafeServerBasic": "Your key is stored on your Aula server, unencrypted in its data folder, and only sent to its provider.",
     "save": "Save and use",
     "test": "Test",
     "testing": "Testing…",
@@ -308,6 +311,6 @@
       "course": "When creating a course"
     },
     "bodyServer": "Your preferences, exams and what you find hard, to help you better. Stored only on your Aula server.",
-    "offServer": "Off: turn it on from the server’s console or from an owner device"
+    "offServer": "Off: turn it on from an owner device, in Privacy and data"
   }
 }

@@ -60,7 +60,12 @@ final class AppModel {
 
     private let controller = TailnetController.shared
     private var started = false
-    private var opening = false
+    /// Cada intento de abrir una Aula lleva el número de `attempt` de cuando empezó. Cuando el estudiante cambia de rumbo
+    /// (elige otra, vuelve a la lista, abre la demostración, cierra sesión) el número sube, y lo que acabe un intento viejo
+    /// se descarta: no pisa la pantalla nueva ni vuelve a intentar con la Aula de antes.
+    private var attempt = 0
+    /// El intento que está abriendo ahora (dos a la vez del mismo no tienen sentido).
+    private var openingFor: Int?
     private var retry: Task<Void, Never>?
     private var last = TailnetSnapshot.stopped
 
@@ -132,37 +137,54 @@ final class AppModel {
             stage = .failed(snap.message ?? "Tailscale")
         case .running:
             if case .ready = stage { return }
-            // eligiendo: la lista se pone al día, sin decidir por el estudiante
-            if case .choosing = stage { stage = .choosing(snap.aulas); return }
+            // eligiendo: la lista se pone al día, sin decidir por el estudiante (si se queda vacía, ya no hay qué elegir)
+            if case .choosing = stage {
+                stage = snap.aulas.isEmpty ? .lookingForMac : .choosing(snap.aulas)
+                return
+            }
             await openMac(force: false)
         }
     }
 
     /// Busca la Aula del Mac y, si responde, abre su interfaz por el túnel local.
     private func openMac(force: Bool) async {
-        guard !inDemo, !opening, last.state == .running else { return }
+        guard !inDemo, openingFor != attempt, last.state == .running else { return }
         if !force, case .ready = stage { return }
         guard let mac = target(last) else {
             stage = last.aulas.count > 1 ? .choosing(last.aulas) : .lookingForMac
             return
         }
+        let gen = attempt
         macName = mac
-        opening = true
-        defer { opening = false }
+        openingFor = gen
+        defer { if openingFor == gen { openingFor = nil } }
+        // tras cada espera: si el estudiante cambió de rumbo mientras tanto, esto ya no vale
         do {
             let endpoint = try await controller.connect(host: mac, port: 80)
-            guard await Self.isAula(port: endpoint.port, secret: endpoint.secret) else {
+            guard gen == attempt else { return }
+            let answers = await Self.isAula(port: endpoint.port, secret: endpoint.secret)
+            guard gen == attempt else { return }
+            guard answers else {
                 stage = .macUnreachable
                 scheduleRetry()
                 return
             }
             await Self.setGateCookie(endpoint.secret)
+            guard gen == attempt else { return }
             retry?.cancel()
             stage = .ready(URL(string: "http://127.0.0.1:\(endpoint.port)")!)
         } catch {
+            guard gen == attempt else { return }
             stage = .macUnreachable
             scheduleRetry()
         }
+    }
+
+    /// El estudiante cambió de rumbo: el intento en marcha queda viejo (su resultado se descarta) y se deja de reintentar.
+    private func supersede() {
+        attempt += 1
+        retry?.cancel()
+        retry = nil
     }
 
     /// Mientras el Mac no responda se vuelve a probar cada pocos segundos (se despierta, el estudiante abre Aula…).
@@ -175,8 +197,9 @@ final class AppModel {
         }
     }
 
-    /// El estudiante eligió qué Aula abrir: se recuerda para la próxima vez.
+    /// El estudiante eligió qué Aula abrir: se recuerda para la próxima vez. Se abre esa aunque otra se estuviera abriendo.
     func choose(_ host: String) async {
+        supersede()
         chosen = host
         macName = host
         stage = .starting
@@ -186,7 +209,7 @@ final class AppModel {
     /// «Abrir otra Aula» (desde la interfaz o desde una pantalla de espera): vuelve a la lista.
     func chooseAnother() {
         guard !inDemo, last.state == .running else { return }
-        retry?.cancel()
+        supersede()
         stage = last.aulas.isEmpty ? .lookingForMac : .choosing(last.aulas)
     }
 
@@ -220,7 +243,7 @@ final class AppModel {
 
     /// Cierra la sesión de Tailscale de este dispositivo y borra lo que la interfaz guardó aquí.
     func signOut() async {
-        retry?.cancel()
+        supersede()
         stage = .starting
         await controller.logout()
         let store = WKWebsiteDataStore.default()
@@ -239,7 +262,8 @@ final class AppModel {
             let port = try await server.start()
             demo = server
             inDemo = true
-            retry?.cancel()
+            // lo que se estuviera abriendo de la red ya no pinta nada sobre la demostración
+            supersede()
             // «demo=1»: la interfaz usa sus datos de ejemplo donde el Mac daría los del estudiante
             stage = .ready(URL(string: "http://127.0.0.1:\(port)/?demo=1")!)
         } catch {

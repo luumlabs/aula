@@ -26,7 +26,7 @@ import { startBackground } from './electron/background'
 import { installRecovery } from './electron/recovery'
 import { migrateFileStorage } from './electron/migrate-storage'
 import { isAuditBuild, refusedDebugSwitch } from './electron/debug-guard'
-import { isServerMode } from './services/remote/server-mode'
+import { installServerCrashHandlers, isServerMode } from './services/remote/server-mode'
 
 // la app instalada no abre la depuración remota (CDP): se sale antes de leer datos, sesiones o cookies
 const debugSwitch = refusedDebugSwitch(app.isPackaged, (s) => app.commandLine.hasSwitch(s), isAuditBuild())
@@ -39,6 +39,15 @@ app.setName('Aula')
 // hay pantalla) y sin actualizarse sola (un servidor se actualiza con su imagen o su paquete).
 const serverMode = isServerMode()
 if (serverMode) {
+  // lo antes posible: un error sin capturar se apunta y el proceso termina (Docker o systemd lo vuelven a arrancar) en vez
+  // del diálogo de Electron, que en un servidor nadie ve ni cierra y lo dejaría parado (en el Mac, el diálogo de siempre)
+  installServerCrashHandlers({
+    process,
+    streams: [process.stdout, process.stderr],
+    log: (message, err) => log.error(message, err),
+    stderr: (text) => { process.stderr.write(text) },
+    exit: (code) => app.exit(code)
+  })
   process.env.AULA_NO_UPDATES ||= '1'
   app.disableHardwareAcceleration()
 }

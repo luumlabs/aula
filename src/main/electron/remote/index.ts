@@ -9,7 +9,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RemoteStatus } from '@shared/ipc/remote'
 import { aiLocale, tr } from '@shared/ai/i18n'
-import { DeviceRegistry } from '@main/services/remote/devices'
+import { DeviceRegistry, type RemoteDeviceView } from '@main/services/remote/devices'
 import { UploadStore } from '@main/services/remote/uploads'
 import { isServerMode, serverHostname } from '@main/services/remote/server-mode'
 import { userFiles } from '@main/services/userFiles'
@@ -67,6 +67,8 @@ class RemoteAccess {
   private told = ''
   private knownDevices = new Set<string>()
   private ownerTimer: ReturnType<typeof setInterval> | null = null
+  /** Ya se contó en la consola que no se dan más códigos de propietario solos (demasiados intentos fallidos). */
+  private toldOwnerBlocked = false
 
   /** Al arrancar Aula: si estaba encendido, vuelve a encenderse. Como servidor, siempre. */
   async init(): Promise<void> {
@@ -75,7 +77,8 @@ class RemoteAccess {
       for (const d of this.devices.list()) this.knownDevices.add(d.id)
       await this.setEnabled(true)
       if (!this.tailnet.available) say(tr('Falta el componente de Tailscale (aula-tsnet): los dispositivos no podrán llegar.', 'The Tailscale component (aula-tsnet) is missing: devices will not be able to reach this server.'))
-      // sin propietario todavía: se abre un código de propietario (y otro cuando caduque) hasta que alguien lo use
+      // sin propietario todavía: se abre un código de propietario (y otro cuando caduque) hasta que alguien lo use, salvo
+      // tras demasiados intentos fallidos (remote/devices.ts): entonces se pide en la consola
       this.offerOwnerCode()
       this.ownerTimer = setInterval(() => this.offerOwnerCode(), 30_000)
       this.ownerTimer.unref?.()
@@ -102,10 +105,14 @@ class RemoteAccess {
       await this.server.stop()
     }
     this.enabled = on
-    try {
-      mkdirSync(this.dir, { recursive: true })
-      writeFileAtomic(join(this.dir, 'state.json'), JSON.stringify({ version: 1, enabled: on }))
-    } catch (err) { log.warn('[remoto] no se pudo guardar el estado', err) }
+    // el interruptor es el de la ventana: un servidor va siempre encendido y no lo apunta (la app de escritorio que abra
+    // esta misma carpeta de datos no debe encenderse sola por haber sido antes un servidor)
+    if (!this.headless) {
+      try {
+        mkdirSync(this.dir, { recursive: true })
+        writeFileAtomic(join(this.dir, 'state.json'), JSON.stringify({ version: 1, enabled: on }))
+      } catch (err) { log.warn('[remoto] no se pudo guardar el estado', err) }
+    }
     return this.changed()
   }
 
@@ -123,6 +130,8 @@ class RemoteAccess {
 
   revoke(id: string): RemoteStatus {
     this.devices.revoke(id)
+    // lo que tenía abierto (su flujo de eventos) se corta ya: no le llega ni el aviso de que se retiró
+    this.server.disconnect(id)
     this.knownDevices.delete(id)
     this.uploads.sweep(Date.now(), id)
     return this.changed()
@@ -149,7 +158,8 @@ class RemoteAccess {
       ...(this.enabled && this.server.running ? { localURL: `http://127.0.0.1:${this.server.port}` } : {}),
       tailnet: { state: this.enabled ? t.state : t.state === 'unavailable' ? 'unavailable' : 'off', ...(t.authURL ? { authURL: t.authURL } : {}), ...(t.name ? { name: t.name } : {}), ...(t.user ? { user: t.user } : {}), ...(t.message ? { message: t.message } : {}) },
       ...(this.enabled && t.state === 'running' ? { deviceURL: `http://${t.name ?? this.tailnet.hostname}` } : {}),
-      devices: this.devices.list(),
+      // en el Mac no hay propietarios (su ventana ya lo es): uno que venga de un servidor con esta carpeta de datos es uno más
+      devices: this.headless ? this.devices.list() : this.devices.list().map(withoutOwner),
       ...(this.pairing ? { pairing: this.pairing.owner ? this.pairing : { code: this.pairing.code, expires: this.pairing.expires } } : {}),
       connected: this.server.listeners
     }
@@ -167,6 +177,7 @@ class RemoteAccess {
   /** La consola (`aula-server link`): un código nuevo, de propietario salvo que se pida uno normal. */
   private consoleLink(owner: boolean): { code: string; expires: string; owner: boolean } | null {
     this.startPairing({ owner })
+    if (owner) this.toldOwnerBlocked = false
     const p = this.pairing
     if (!p) return null
     say(p.owner
@@ -175,16 +186,25 @@ class RemoteAccess {
     return p
   }
 
-  /** Sin propietario: abre un código de propietario si no hay ninguno esperando, y lo cuenta. */
+  /** Sin propietario: abre un código de propietario si no hay ninguno esperando, y lo cuenta. Tras demasiados intentos
+   *  fallidos ya no: lo dice una vez y el siguiente se pide en la consola (`aula-server link`). */
   private offerOwnerCode(): void {
     if (!this.enabled || this.devices.hasOwner()) {
       if (this.ownerTimer && this.devices.hasOwner()) { clearInterval(this.ownerTimer); this.ownerTimer = null }
       return
     }
     if (this.pairing && Date.parse(this.pairing.expires) > Date.now()) return
-    this.startPairing({ owner: true })
-    const p = this.pairing
-    if (p) say(tr(
+    const p = this.devices.offerOwnerCode()
+    if (!p) {
+      if (!this.toldOwnerBlocked) say(tr('Demasiados intentos fallidos con el código de propietario: ya no se dan más solos. Pide uno nuevo con «aula-server link».', 'Too many wrong attempts with the owner code: no more are given out automatically. Ask for a new one with “aula-server link”.'))
+      this.toldOwnerBlocked = true
+      this.pairing = undefined
+      return
+    }
+    this.toldOwnerBlocked = false
+    this.pairing = p
+    this.changed()
+    say(tr(
       `Vincula tu primer dispositivo (será el propietario) con el código ${p.code} · vale hasta las ${hhmm(p.expires)}; luego se da otro. En el dispositivo: la app de Aula, con la misma cuenta de Tailscale.`,
       `Link your first device (it will be the owner) with the code ${p.code} · valid until ${hhmm(p.expires)}; a new one follows. On the device: the Aula app, signed in to the same Tailscale account.`))
   }
@@ -223,6 +243,11 @@ class RemoteAccess {
     await this.server.stop().catch(() => undefined)
     if (this.headless) { try { rmSync(join(this.dir, 'admin.json'), { force: true }) } catch { /* nada */ } }
   }
+}
+
+/** El dispositivo sin la marca de propietario. */
+function withoutOwner(d: RemoteDeviceView): RemoteDeviceView {
+  return { id: d.id, name: d.name, platform: d.platform, created: d.created, lastSeen: d.lastSeen }
 }
 
 /** El componente de Tailscale: dentro de la app empaquetada o, en desarrollo, donde lo deja `native/tsnet/build.sh`. */

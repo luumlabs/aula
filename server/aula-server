@@ -1,23 +1,65 @@
 #!/bin/bash
 # Aula como servidor (sin ventana) y su consola. Lo usa el contenedor (server/Dockerfile) y sirve igual en un Linux con Aula
-# instalada (la .deb o la AppImage): docs/SERVER.md.
-#
-#   aula-server run              arranca Aula sin ventana (lo que hace el contenedor al empezar)
-#   aula-server status           en qué está: Tailscale, los dispositivos y el código que espera
-#   aula-server link [--device]  un código para vincular un dispositivo: de propietario (lleva la IA, las plataformas y los
-#                                dispositivos) salvo con --device
-#   aula-server health           sale con 0 si Aula responde (para HEALTHCHECK)
-#
-# Variables: AULA_HOME (la carpeta de datos; /data en el contenedor), AULA_BIN (el ejecutable de Aula), AULA_TAILNET_HOSTNAME
-# (el nombre en la red de Tailscale, «aula-…»; por defecto aula-server), TS_AUTHKEY (una clave de Tailscale para entrar sin
-# abrir la página de inicio de sesión).
+# instalada (la .deb o la AppImage): docs/SERVER.md. Las órdenes y las variables: usage() más abajo («aula-server help»).
+# Las pruebas (server/aula-server.test.sh) cargan este archivo con «source» sin ejecutar ninguna orden.
 set -euo pipefail
 
 AULA_HOME="${AULA_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/Aula}"
 AULA_BIN="${AULA_BIN:-/opt/aula/aula}"
 ADMIN="$AULA_HOME/Remote/admin.json"
+# la raíz del sistema que se mira (/proc, /etc, /usr/share/zoneinfo…): la de verdad; solo las pruebas la cambian (no se lee
+# del entorno)
+ROOTFS=''
+
+# Los mensajes van en español o en inglés según el idioma del sistema (LANG).
+case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in es*) ES=1 ;; *) ES= ;; esac
+t() { if [ -n "$ES" ]; then printf '%s\n' "$1"; else printf '%s\n' "$2"; fi; }
 
 die() { echo "aula-server: $*" >&2; exit 1; }
+
+usage() {
+  if [ -n "$ES" ]; then cat <<'EOF'
+Aula como servidor (sin ventana) y su consola. Guía: docs/SERVER.md
+
+  aula-server run              arranca Aula sin ventana (lo que hace el contenedor al empezar)
+  aula-server status [--json]  en qué está: Tailscale, los dispositivos y el código que espera
+  aula-server link [--device]  un código para vincular un dispositivo: de propietario (lleva la IA, las plataformas y
+                               los dispositivos) salvo con --device
+  aula-server health           sale con 0 si Aula responde (para HEALTHCHECK)
+
+Variables:
+  AULA_HOME              la carpeta de datos (/data en el contenedor)
+  AULA_BIN               el ejecutable de Aula
+  AULA_TAILNET_HOSTNAME  el nombre en tu red de Tailscale, «aula-…» (por defecto aula-server)
+  TS_AUTHKEY             una clave de Tailscale de tu cuenta para entrar sin abrir la página
+  TZ                     tu zona horaria (Europe/Madrid, America/Mexico_City…): la usan los recordatorios, las horas
+                         de silencio, las automatizaciones y el calendario
+  LANG                   es_ES.UTF-8: el servidor habla en español (mientras «Idioma de Aula» sea «El del sistema»)
+  AULA_NO_SANDBOX        1: Chromium siempre sin su aislamiento (--no-sandbox). Sin ella, aula-server lo decide al
+                         arrancar; úsala solo si se equivoca y Aula se para con «No usable sandbox!»
+EOF
+  else cat <<'EOF'
+Aula as a server (no window) and its console. Guide: docs/SERVER.md
+
+  aula-server run              starts Aula without a window (what the container does when it starts)
+  aula-server status [--json]  where it stands: Tailscale, the devices and the code that is waiting
+  aula-server link [--device]  a code to link a device: an owner code (it manages the AI, the platforms and the
+                               devices) unless --device is given
+  aula-server health           exits with 0 if Aula answers (for HEALTHCHECK)
+
+Variables:
+  AULA_HOME              the data folder (/data in the container)
+  AULA_BIN               Aula's executable
+  AULA_TAILNET_HOSTNAME  the name on your Tailscale network, "aula-…" (aula-server by default)
+  TS_AUTHKEY             a Tailscale auth key from your account, to sign in without the page
+  TZ                     your time zone (Europe/Madrid, America/New_York…): reminders, quiet hours, automations and
+                         the calendar use it
+  LANG                   es_ES.UTF-8: the server speaks Spanish (while "Aula's language" is "System language")
+  AULA_NO_SANDBOX        1: Chromium always runs without its sandbox (--no-sandbox). Without it, aula-server decides
+                         at start; use it only if that guess is wrong and Aula stops with "No usable sandbox!"
+EOF
+  fi
+}
 
 # La consola habla con Aula en este mismo equipo (127.0.0.1) con la clave que Aula deja en Remote/admin.json, legible solo
 # por quien la ejecuta. La clave va a curl por su entrada, nunca en la línea de órdenes (la verían otros procesos).
@@ -26,17 +68,13 @@ admin() {
   local port token
   port=$(sed -n 's/.*"port":\([0-9][0-9]*\).*/\1/p' "$ADMIN")
   token=$(sed -n 's/.*"token":"\([A-Za-z0-9_-]*\)".*/\1/p' "$ADMIN")
-  [ -n "$port" ] && [ -n "$token" ] || die "$ADMIN está incompleto."
+  [ -n "$port" ] && [ -n "$token" ] || die "$(t "$ADMIN está incompleto." "$ADMIN is incomplete.")"
   if [ "$1" = GET ]; then
     printf 'header = "Authorization: Bearer %s"\n' "$token" | curl -fsS -K - "http://127.0.0.1:$port$2"
   else
     printf 'header = "Authorization: Bearer %s"\n' "$token" | curl -fsS -K - -X POST -H 'content-type: application/json' --data "$3" "http://127.0.0.1:$port$2"
   fi
 }
-
-# Los mensajes van en español o en inglés según el idioma del sistema (LANG).
-case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in es*) ES=1 ;; *) ES= ;; esac
-t() { if [ -n "$ES" ]; then printf '%s\n' "$1"; else printf '%s\n' "$2"; fi; }
 
 # El estado, legible: con jq (va en la imagen); si no está, con node; si tampoco, el JSON tal cual.
 FORMAT_JQ='.value as $v | ($v.tailnet // {}) as $n
@@ -61,49 +99,167 @@ pretty() {
   else cat; echo; fi
 }
 
+# ── El aislamiento de Chromium ────────────────────────────────────────────────────────────────────────────────────────
+# Chromium aísla sus procesos con espacios de nombres de usuario o, si no puede, con su ayudante setuid (chrome-sandbox). Si
+# no tiene ninguno de los dos no arranca, y hay que darle --no-sandbox: solo entonces (o si lo pide AULA_NO_SANDBOX).
+
+# ¿Deja el sistema a cualquiera crear un espacio de nombres de usuario?
+userns_open() { unshare --user --map-root-user true 2>/dev/null; }
+
+# Ubuntu 24.04+ (kernel.apparmor_restrict_unprivileged_userns=1) solo deja crearlos a los programas cuyo perfil de AppArmor lo
+# permite: la .deb de Aula instala uno para su ejecutable (/etc/apparmor.d/aula: «userns,»). unshare no lo tiene, así que la
+# prueba de arriba falla aunque Aula sí pueda. Vale si eso es lo único que lo cierra y hay un perfil así para este ejecutable,
+# no apagado (aa-disable deja el archivo y pone un enlace en disable/). Que esté cargado no se puede ver sin ser root: si no
+# lo está, Chromium se para al arrancar, y AULA_NO_SANDBOX=1 lo arregla.
+apparmor_allows_userns() {
+  local exe=$1 re f off
+  [ "$(cat "$ROOTFS/proc/sys/kernel/apparmor_restrict_unprivileged_userns" 2>/dev/null)" = 1 ] || return 1
+  # lo que el perfil no abre: los espacios de nombres apagados para todos los usuarios sin privilegios
+  [ "$(cat "$ROOTFS/proc/sys/kernel/unprivileged_userns_clone" 2>/dev/null || echo 1)" = 1 ] || return 1
+  [ "$(cat "$ROOTFS/proc/sys/user/max_user_namespaces" 2>/dev/null || echo 1)" != 0 ] || return 1
+  # el perfil se aplica al ejecutable por su ruta («profile "aula" "/opt/Aula/aula" … {» o «/opt/Aula/aula … {»)
+  re=$(printf '%s' "$exe" | sed 's/[\.*^$+?(){|[]/\\&/g')
+  for f in "$ROOTFS"/etc/apparmor.d/*; do
+    [ -f "$f" ] && [ -r "$f" ] || continue
+    off="$ROOTFS/etc/apparmor.d/disable/${f##*/}"   # apagado: el enlace puede apuntar a la ruta real (roto bajo ROOTFS)
+    if [ -e "$off" ] || [ -L "$off" ]; then continue; fi
+    grep -Eq "^[[:space:]]*(profile[[:space:]]+[^[:space:]]+[[:space:]]+)?\"?$re\"?([[:space:]]|\\{|\$)" "$f" || continue
+    grep -Eq '^[[:space:]]*(audit[[:space:]]+)?(allow[[:space:]]+)?userns([[:space:]]+create)?[[:space:]]*,' "$f" && return 0
+  done
+  return 1
+}
+
+# ¿Es de root, con el bit setuid y en un sistema de archivos que lo respeta?
+setuid_root() {
+  [ -u "$1" ] && [ "$(stat -c %u "$1" 2>/dev/null)" = 0 ] || return 1
+  if command -v findmnt >/dev/null 2>&1; then
+    case ",$(findmnt -n -o OPTIONS --target "$1" 2>/dev/null)," in *,nosuid,*) return 1 ;; esac
+  fi
+}
+
+# El ayudante setuid (chrome-sandbox, junto al ejecutable) solo aísla si al ejecutarse obtiene de verdad los permisos de root:
+# no con no_new_privs ni sin CAP_SYS_ADMIN en el límite de capacidades (lo normal en un contenedor).
+setuid_helper_works() {
+  local status capbnd
+  setuid_root "$(dirname "$1")/chrome-sandbox" || return 1
+  status=$(cat "$ROOTFS/proc/self/status" 2>/dev/null) || return 1
+  if printf '%s\n' "$status" | grep -q '^NoNewPrivs:[[:space:]]*1'; then return 1; fi
+  capbnd=$(printf '%s\n' "$status" | sed -n 's/^CapBnd:[[:space:]]*\([0-9a-fA-F]*\).*/\1/p')
+  [ -n "$capbnd" ] && (( (16#$capbnd >> 21) & 1 ))   # 21: CAP_SYS_ADMIN
+}
+
+# ¿Puede Chromium aislarse aquí (el ejecutable, con los enlaces resueltos)?
+sandbox_works() { userns_open || apparmor_allows_userns "$1" || setuid_helper_works "$1"; }
+
+in_container() { [ -e "$ROOTFS/.dockerenv" ] || [ -e "$ROOTFS/run/.containerenv" ] || [ -n "${container:-}" ]; }
+
+# AULA_NO_SANDBOX=1 (o true, yes): sin aislamiento pase lo que pase, por si lo de arriba se equivoca y Chromium no arranca
+no_sandbox_forced() { case "${AULA_NO_SANDBOX:-}" in 1|[Tt]rue|TRUE|[Yy]es|YES) return 0 ;; *) return 1 ;; esac; }
+
+# Lo que se dice cuando va con --no-sandbox: en un contenedor, que el contenedor sigue aislando a Aula; en un equipo, cómo
+# arreglarlo (ahí no hay nada más que la aísle). Con «forced», que es porque lo pide AULA_NO_SANDBOX.
+no_sandbox_note() {
+  if [ "${1:-}" = forced ]; then
+    if in_container; then
+      t "Aula · aviso: Chromium va sin su aislamiento (--no-sandbox) porque lo pide AULA_NO_SANDBOX; el contenedor sigue aislando a Aula." \
+        "Aula · note: Chromium runs without its sandbox (--no-sandbox) because AULA_NO_SANDBOX asks for it; the container still isolates Aula."
+    else
+      t "Aula · aviso: Chromium va sin su aislamiento (--no-sandbox) porque lo pide AULA_NO_SANDBOX; en este equipo nada más aísla a Aula." \
+        "Aula · warning: Chromium runs without its sandbox (--no-sandbox) because AULA_NO_SANDBOX asks for it; nothing else isolates Aula on this computer."
+    fi
+  elif in_container; then
+    t "Aula · aviso: sin espacios de nombres de usuario, Chromium va sin su aislamiento (--no-sandbox); el contenedor sigue aislando a Aula." \
+      "Aula · note: without user namespaces, Chromium runs without its sandbox (--no-sandbox); the container still isolates Aula."
+  else
+    t "Aula · aviso: Chromium va sin su aislamiento (--no-sandbox): este sistema no deja a Aula crear espacios de nombres de usuario y no hay un chrome-sandbox con setuid. En Ubuntu 24.04 o posterior, instala Aula con la .deb (su perfil de AppArmor se lo permite); en otros, permite los espacios de nombres de usuario sin privilegios." \
+      "Aula · warning: Chromium runs without its sandbox (--no-sandbox): this system does not let Aula create user namespaces and there is no setuid chrome-sandbox. On Ubuntu 24.04 or later, install Aula from the .deb (its AppArmor profile allows them); elsewhere, allow unprivileged user namespaces."
+  fi
+}
+
+# ── La zona horaria ───────────────────────────────────────────────────────────────────────────────────────────────────
+# Aula calcula con la zona del sistema los recordatorios, las horas de silencio, las automatizaciones y el calendario: TZ si
+# está; si no, /etc/localtime; si no, UTC. Un contenedor va en UTC salvo que se le dé TZ: se dice al arrancar.
+zone_note() {
+  local tz=${TZ:-} z=''
+  if [ -n "$tz" ]; then
+    z=${tz#:}
+    case "$z" in /*zoneinfo/*) z=${z##*/zoneinfo/} ;; esac
+    if [ -d "$ROOTFS/usr/share/zoneinfo" ] && [ ! -f "$ROOTFS/usr/share/zoneinfo/$z" ]; then
+      # no se dice que Aula vaya en UTC: su ICU conoce nombres antiguos (America/Buenos_Aires) que este sistema puede no
+      # tener (en Debian 13 y Ubuntu 24.04 van aparte, en tzdata-legacy; la imagen lo trae)
+      t "Aula · aviso: TZ=$tz no es una zona horaria de este sistema (no está en /usr/share/zoneinfo): date y otros programas van en UTC, y Aula también si no la conoce. Usa una que esté ahí, como Europe/Madrid o America/Argentina/Buenos_Aires." \
+        "Aula · warning: TZ=$tz is not a time zone on this system (it is not in /usr/share/zoneinfo): date and other programs use UTC, and so does Aula if it does not know it. Use one that is there, such as Europe/Madrid or America/Argentina/Buenos_Aires."
+      return
+    fi
+  elif [ -L "$ROOTFS/etc/localtime" ]; then
+    z=$(readlink "$ROOTFS/etc/localtime" 2>/dev/null || true)
+    case "$z" in *zoneinfo/*) z=${z##*zoneinfo/}; z=${z#posix/}; z=${z#right/} ;; *) z='' ;; esac
+  elif [ -f "$ROOTFS/etc/localtime" ]; then
+    t "Aula · zona horaria: la del sistema (/etc/localtime)" "Aula · time zone: the system's (/etc/localtime)"
+    return
+  fi
+  case "$z" in
+    ''|UTC|Etc/UTC|UCT|Etc/UCT|Universal|Etc/Universal|Zulu|Etc/Zulu)
+      if [ -z "$tz" ]; then
+        t "Aula · aviso: la zona horaria es UTC. Los recordatorios, las horas de silencio, las automatizaciones y el calendario van por ella: si no es la tuya, pon TZ (por ejemplo TZ=Europe/Madrid)." \
+          "Aula · warning: the time zone is UTC. Reminders, quiet hours, automations and the calendar follow it: if it is not yours, set TZ (for example TZ=America/New_York)."
+        return
+      fi ;;
+  esac
+  t "Aula · zona horaria: $z" "Aula · time zone: $z"
+}
+
 run() {
-  [ -x "$AULA_BIN" ] || die "No encuentro Aula en $AULA_BIN (ponlo en AULA_BIN)."
+  [ -x "$AULA_BIN" ] || die "$(t "No encuentro Aula en $AULA_BIN (ponlo en AULA_BIN)." "Aula not found at $AULA_BIN (set AULA_BIN).")"
   mkdir -p "$AULA_HOME"
   export AULA_HOME
-  local args=(--server --disable-dev-shm-usage --password-store=basic)
-  # el aislamiento de Chromium necesita espacios de nombres de usuario; en Docker suelen estar cerrados: entonces va sin él
-  # (Aula sigue dentro del contenedor, como un usuario sin privilegios) y se avisa
-  if ! unshare --user --map-root-user true 2>/dev/null; then
+  local exe args=(--server --disable-dev-shm-usage --password-store=basic)
+  exe=$(readlink -f "$AULA_BIN" 2>/dev/null || printf '%s' "$AULA_BIN")
+  if no_sandbox_forced; then
     args+=(--no-sandbox)
-    t "Aula · aviso: sin espacios de nombres de usuario, Chromium va sin su aislamiento (--no-sandbox); el contenedor sigue aislando a Aula." "Aula · note: without user namespaces, Chromium runs without its sandbox (--no-sandbox); the container still isolates Aula."
+    no_sandbox_note forced
+  elif ! sandbox_works "$exe"; then
+    args+=(--no-sandbox)
+    no_sandbox_note
   fi
+  zone_note
   # las ventanas escondidas (leer PDF, el navegador de las plataformas) necesitan una pantalla: una virtual, sin red
   if [ -z "${DISPLAY:-}" ]; then
     local n=99
     while [ -e "/tmp/.X11-unix/X$n" ] || [ -e "/tmp/.X$n-lock" ]; do n=$((n + 1)); done
     Xvfb ":$n" -screen 0 1280x800x24 -nolisten tcp >/dev/null 2>&1 &
     for _ in $(seq 1 50); do [ -e "/tmp/.X11-unix/X$n" ] && break; sleep 0.1; done
-    [ -e "/tmp/.X11-unix/X$n" ] || die "No arrancó la pantalla virtual (Xvfb)."
+    [ -e "/tmp/.X11-unix/X$n" ] || die "$(t 'No arrancó la pantalla virtual (Xvfb).' 'The virtual display (Xvfb) did not start.')"
     export DISPLAY=":$n"
   fi
   exec "$AULA_BIN" "${args[@]}"
 }
 
-case "${1:-run}" in
-  run) run ;;
-  status)
-    out=$(admin GET /admin/status)
-    if [ "${2:-}" = "--json" ]; then echo "$out"; exit 0; fi
-    printf '%s' "$out" | pretty
-    exit 0 ;;
-  link)
-    owner=true
-    [ "${2:-}" = "--device" ] && owner=false
-    out=$(admin POST /admin/link "{\"owner\":$owner}")
-    code=$(printf '%s' "$out" | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
-    [ -n "$code" ] || die "$(t 'Aula no dio un código (mira «aula-server status»).' 'Aula did not give a code (see “aula-server status”).')"
-    if [ "$owner" = true ]; then t "Código de propietario: $code" "Owner code: $code"; else t "Código para vincular un dispositivo: $code" "Code to link a device: $code"; fi
-    t "Escríbelo en la app de Aula del dispositivo (con tu misma cuenta de Tailscale). Vale 10 minutos." "Type it in the Aula app on the device (signed in to the same Tailscale account). It is valid for 10 minutes."
-    exit 0 ;;
-  health)
-    [ -r "$ADMIN" ] || exit 1
-    port=$(sed -n 's/.*"port":\([0-9][0-9]*\).*/\1/p' "$ADMIN")
-    curl -fsS -o /dev/null "http://127.0.0.1:$port/health" ;;
-  -h|--help|help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
-  *) die "orden desconocida: $1 (run, status, link, health)" ;;
-esac
+main() {
+  local out code owner port
+  case "${1:-run}" in
+    run) run ;;
+    status)
+      out=$(admin GET /admin/status)
+      if [ "${2:-}" = "--json" ]; then echo "$out"; exit 0; fi
+      printf '%s' "$out" | pretty
+      exit 0 ;;
+    link)
+      owner=true
+      [ "${2:-}" = "--device" ] && owner=false
+      out=$(admin POST /admin/link "{\"owner\":$owner}")
+      code=$(printf '%s' "$out" | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
+      [ -n "$code" ] || die "$(t 'Aula no dio un código (mira «aula-server status»).' 'Aula did not give a code (see “aula-server status”).')"
+      if [ "$owner" = true ]; then t "Código de propietario: $code" "Owner code: $code"; else t "Código para vincular un dispositivo: $code" "Code to link a device: $code"; fi
+      t "Escríbelo en la app de Aula del dispositivo (con tu misma cuenta de Tailscale). Vale 10 minutos." "Type it in the Aula app on the device (signed in to the same Tailscale account). It is valid for 10 minutes."
+      exit 0 ;;
+    health)
+      [ -r "$ADMIN" ] || exit 1
+      port=$(sed -n 's/.*"port":\([0-9][0-9]*\).*/\1/p' "$ADMIN")
+      curl -fsS -o /dev/null "http://127.0.0.1:$port/health" ;;
+    -h|--help|help) usage ;;
+    *) die "$(t "orden desconocida: $1 (run, status, link, health, help)" "unknown command: $1 (run, status, link, health, help)")" ;;
+  esac
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then main "$@"; fi

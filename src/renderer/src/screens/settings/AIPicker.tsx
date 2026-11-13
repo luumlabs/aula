@@ -10,6 +10,8 @@ import { validateAPIKey } from '@shared/ai/apiKey'
 import { aiClient, guessProviderFromKey } from '@renderer/lib/aiClient'
 import { isDemo } from '@renderer/lib/demo'
 import { api } from '@renderer/lib/api'
+import { keySafeNote } from '@renderer/lib/device'
+import { useRpc } from '@renderer/lib/useRpc'
 import i18n from '@renderer/i18n'
 import { CUSTOM_PROVIDER_ID } from '@shared/ai/customProvider'
 import { CustomProvider, LiveModelSelect, ModelSelect, ReasoningSelect, SpendingPanel } from './AIKeyExtras'
@@ -61,6 +63,9 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
   const customSet = !!custom?.baseURL
   // el gasto solo tiene sentido si hay algo de pago por uso listo (las suscripciones y lo local no cuentan)
   const paid = providers.some((p) => p.billing === 'perToken' && p.available && p.configured)
+  // dónde queda una clave pegada aquí (este ordenador o el servidor) y si va cifrada: lo dice cómo se protegen los secretos
+  const { data: info } = useRpc('app.info', undefined, { skip: compact })
+  const keyNote = keySafeNote(api.role, info?.secretProtection)
   const local = useLocalDownload(detection?.recommendedModel?.id ?? null)
   const view = (id: string) => providers.find((p) => p.id === id)
   const reloadViews = () => void reload()
@@ -260,7 +265,7 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
           </AnimatePresence>
         </div>
         <CustomProvider current={custom} onSaved={(el) => use(CUSTOM_PROVIDER_ID, el)} />
-        {/* con qué proveedores funciona y dónde queda la clave (cifrada, nunca sale de este ordenador salvo a su proveedor) */}
+        {/* con qué proveedores funciona y dónde queda la clave (aquí o en el servidor, cifrada o no; solo sale a su proveedor) */}
         {!compact && !keyed.length && !customSet && (
           <div className="mt-1">
             <div className="flex flex-wrap gap-1.5">
@@ -274,10 +279,12 @@ export function AIPicker({ onChosen, compact }: { onChosen?: (providerId: string
                 <span className="t-footnote rounded-full px-2 py-1 text-text3" title={keyProviders.slice(6).map((p) => p.label).join(', ')}>+{keyProviders.length - 6}</span>
               )}
             </div>
-            <p className="t-footnote text-text3 mt-2.5 flex items-start gap-1.5">
-              <Icon name="lock" size={12} className="mt-[3px] shrink-0" />
-              {t('ai.keySafe')}
-            </p>
+            {keyNote && (
+              <p className="t-footnote text-text3 mt-2.5 flex items-start gap-1.5">
+                <Icon name={keyNote === 'keySafe' || keyNote === 'keySafeServer' ? 'lock' : 'unlock'} size={12} className="mt-[3px] shrink-0" />
+                {t(`ai.${keyNote}`)}
+              </p>
+            )}
           </div>
         )}
         {!compact && paid && <SpendingPanel customInUse={activeId === CUSTOM_PROVIDER_ID} providers={providers.filter((p) => p.billing === 'perToken' && p.available && p.configured)} />}

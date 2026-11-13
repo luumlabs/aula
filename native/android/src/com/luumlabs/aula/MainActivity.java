@@ -7,6 +7,7 @@ package com.luumlabs.aula;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -44,12 +45,16 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -87,6 +92,9 @@ public final class MainActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final Tailnet.Listener events = this::onTailnet;
+    /** «No responde»: se vuelve a intentar cada pocos segundos (uno solo a la vez, aunque se pida varias veces). */
+    private final Runnable retry = this::retryNow;
     private Tailnet tailnet;
     private SharedPreferences prefs;
 
@@ -96,11 +104,16 @@ public final class MainActivity extends Activity {
     private final List<String[]> aulas = new ArrayList<>(); // {host, "1" si está en línea}
     private boolean tailnetRunning;
     private String host;
+    /** El túnel de ahora (0: ninguno) y su llave. */
     private int port;
     private String secret;
-    private String shownBase;
+    /** El puerto del túnel cuya interfaz carga la vista web (0: ninguno); lo único que se abre dentro. */
+    private int shownPort;
+    /** Al cargar la interfaz en un túnel nuevo se olvida el historial: «atrás» nunca vuelve a un puerto que ya no es suyo. */
+    private boolean forgetHistory;
     private String restoreURL;
     private boolean opening;
+    private PageBack pageBack; // Android 13 o posterior
 
     private FrameLayout root;
     private WebView web;
@@ -120,7 +133,7 @@ public final class MainActivity extends Activity {
         if (saved != null) restoreURL = saved.getString("url");
         buildViews();
         tailnet = Tailnet.get(this);
-        tailnet.listen(this::onTailnet);
+        tailnet.listen(events);
         tailnet.start();
         render();
     }
@@ -128,7 +141,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        tailnet.listen(this::onTailnet);
+        tailnet.listen(events);
         if (!tailnet.running()) tailnet.start();
         else tailnet.refresh();
         // al volver, si la conexión se cortó mientras la app estaba en segundo plano, se vuelve a abrir
@@ -138,19 +151,23 @@ public final class MainActivity extends Activity {
     @Override
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
-        if (web != null && web.getUrl() != null) out.putString("url", web.getUrl());
+        String url = restoreURL != null ? restoreURL : web != null ? web.getUrl() : null;
+        if (url != null) out.putString("url", url);
     }
 
     @Override
     protected void onDestroy() {
-        tailnet.listen(null);
-        // al cerrar la app de verdad (no al girar ni al cambiar de tema), el proceso de Tailscale se va con ella
-        if (isFinishing()) tailnet.stop();
+        // nada de lo pendiente (el reintento de «no responde», la respuesta de una comprobación) toca ya esta actividad
+        main.removeCallbacksAndMessages(null);
+        // al cerrar la app de verdad (no al girar ni al cambiar de tema), el proceso de Tailscale se va con ella; pero si
+        // otra actividad ya escucha (se abrió la app antes de que esta terminara de cerrarse), sigue para ella
+        if (tailnet.unlisten(events) && isFinishing()) tailnet.stop();
         if (web != null) web.destroy();
         io.shutdownNow();
         super.onDestroy();
     }
 
+    /** Hasta Android 12, «atrás» vuelve por el historial de la interfaz aquí; desde Android 13, por updateBack. */
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
@@ -162,19 +179,77 @@ public final class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int request, int result, Intent data) {
         if (request == PICK_FILES && pendingFiles != null) {
-            pendingFiles.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result, data));
+            pendingFiles.onReceiveValue(pickedFiles(result, data));
             pendingFiles = null;
             return;
         }
         super.onActivityResult(request, result, data);
     }
 
+    /**
+     * Los archivos elegidos. Con varios, el selector los da en ClipData (y getData() viene vacío), y parseResult de la
+     * vista web solo lee getData(): sin esto, elegir más de uno no subía ninguno.
+     */
+    private static Uri[] pickedFiles(int result, Intent data) {
+        ClipData clip = result == RESULT_OK && data != null ? data.getClipData() : null;
+        if (clip != null) {
+            List<Uri> uris = new ArrayList<>();
+            for (int i = 0; i < clip.getItemCount(); i++) {
+                Uri u = clip.getItemAt(i).getUri();
+                if (u != null) uris.add(u);
+            }
+            if (!uris.isEmpty()) return uris.toArray(new Uri[0]);
+        }
+        return WebChromeClient.FileChooserParams.parseResult(result, data);
+    }
+
+    /**
+     * «Atrás» en Android 13 o posterior: llega por el despachador del sistema (en Android 16, con la app hecha para
+     * Android 16, onBackPressed ya no se llama). Solo se registra mientras la interfaz tenga adónde volver; si no, el
+     * gesto es el del sistema (salir, con su animación).
+     */
+    private void updateBack() {
+        if (Build.VERSION.SDK_INT < 33 || web == null) return;
+        boolean want = !isDestroyed() && stage == Stage.READY && web.canGoBack();
+        if (pageBack == null) {
+            if (!want) return;
+            pageBack = new PageBack(web);
+        }
+        pageBack.set(this, want);
+    }
+
+    /** OnBackInvokedCallback solo existe desde Android 13: esta clase solo se carga allí. */
+    private static final class PageBack {
+        private final OnBackInvokedCallback callback;
+        private boolean on;
+
+        PageBack(WebView web) {
+            callback = () -> { if (web.canGoBack()) web.goBack(); };
+        }
+
+        void set(Activity activity, boolean want) {
+            if (want == on) return;
+            on = want;
+            OnBackInvokedDispatcher d = activity.getOnBackInvokedDispatcher();
+            if (want) d.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback);
+            else d.unregisterOnBackInvokedCallback(callback);
+        }
+    }
+
     // MARK: La red privada
 
     private void onTailnet(JSONObject e) {
+        if (isDestroyed()) return;
         switch (e.optString("type")) {
             case "starting":
-                if (stage != Stage.READY) setStage(Stage.STARTING);
+                // un proceso nuevo (el de antes se cayó o se reinició): su túnel, si había uno, ya no existe
+                lostTunnel();
+                setStage(Stage.STARTING);
+                break;
+            case "exited":
+                // el proceso se cayó y Tailnet lo vuelve a arrancar: mientras, «preparando», no la interfaz de un túnel muerto
+                lostTunnel();
+                if (stage != Stage.FAILED) setStage(Stage.STARTING);
                 break;
             case "needs_login": {
                 String url = e.optString("authURL");
@@ -205,7 +280,10 @@ public final class MainActivity extends Activity {
                 onForwarding(e.optString("host"), e.optInt("port"), e.optString("secret"));
                 break;
             case "error":
+                // un túnel que no se pudo abrir ya no llega: se deja de esperarlo
+                opening = false;
                 if (stage == Stage.STARTING) { failure = e.optString("message"); setStage(Stage.FAILED); }
+                else if (stage == Stage.UNREACHABLE) retrySoon();
                 break;
             default:
                 break;
@@ -219,23 +297,42 @@ public final class MainActivity extends Activity {
         return aulas.size() == 1 ? aulas.get(0)[0] : null;
     }
 
-    /** Busca la Aula y le pide al proceso de Tailscale un túnel hasta ella. */
-    private void openAula(boolean force) {
-        if (!tailnetRunning || opening) return;
-        if (!force && stage == Stage.READY) return;
+    /**
+     * Busca la Aula y le pide al proceso de Tailscale un túnel hasta ella; sin `force`, sigue con el que ya tenga abierto
+     * (la actividad se recreó). Devuelve si hay un túnel en camino.
+     */
+    private boolean openAula(boolean force) {
+        if (!tailnetRunning) return false;
+        if (opening) return true;
+        if (!force && stage == Stage.READY) return false;
         String t = target();
         if (t == null) {
             setStage(aulas.size() > 1 ? Stage.CHOOSING : Stage.LOOKING);
-            return;
+            return false;
         }
         host = t;
-        opening = true;
-        tailnet.connect(t);
+        JSONObject open = force ? null : tailnet.forwardingTo(t);
+        if (open != null) {
+            onForwarding(t, open.optInt("port"), open.optString("secret"));
+            return true;
+        }
+        // el proceso cierra el túnel de antes al abrir el nuevo: la página deja de llamar a ese puerto
+        leaveTunnel();
+        port = 0;
+        secret = null;
+        opening = tailnet.connect(t);
+        return opening;
     }
 
     private void onForwarding(String h, int p, String s) {
         opening = false;
-        if (h == null || !h.equals(host) || p <= 0 || TextUtils.isEmpty(s)) return;
+        if (h == null || p <= 0 || TextUtils.isEmpty(s)) return;
+        if (!h.equals(target())) {
+            // llegó el túnel pedido antes de elegir otra Aula: se pide el de la elegida
+            if (stage != Stage.READY) openAula(true);
+            return;
+        }
+        host = h;
         port = p;
         secret = s;
         checkTunnel();
@@ -243,66 +340,133 @@ public final class MainActivity extends Activity {
 
     /** ¿Al otro lado del túnel responde Aula? Si sí, se abre su interfaz (con la llave del túnel en una cookie). */
     private void checkTunnel() {
+        if (isDestroyed() || io.isShutdown() || port <= 0) return;
         final int p = port;
         final String s = secret;
         io.execute(() -> {
-            boolean ok = isAula(p, s);
+            Tunnel.Probe answer = probe(p, s);
             main.post(() -> {
-                if (p != port) return;
-                if (ok) showAula();
-                else {
-                    setStage(Stage.UNREACHABLE);
-                    main.postDelayed(() -> { if (stage == Stage.UNREACHABLE) checkTunnel(); }, 6000);
+                // la actividad ya se cerró, o entretanto llegó otro túnel
+                if (isDestroyed() || p != port) return;
+                if (answer == Tunnel.Probe.AULA) {
+                    showAula();
+                    return;
                 }
+                if (answer == Tunnel.Probe.NEW_TUNNEL) {
+                    // ese puerto ya no es nuestro: la página deja de llamarlo y el reintento pide un túnel nuevo
+                    leaveTunnel();
+                    port = 0;
+                    secret = null;
+                }
+                setStage(Stage.UNREACHABLE);
+                retrySoon();
             });
         });
     }
 
-    private static boolean isAula(int port, String secret) {
+    /** Otra vez: por el mismo túnel si sigue siendo nuestro (el Mac despierta); si no, uno nuevo. */
+    private void retryNow() {
+        main.removeCallbacks(retry);
+        if (isDestroyed() || stage != Stage.UNREACHABLE) return;
+        if (port > 0) checkTunnel();
+        else if (!openAula(true)) retrySoon();
+    }
+
+    private void retrySoon() {
+        main.removeCallbacks(retry);
+        main.postDelayed(retry, 6000);
+    }
+
+    private static Tunnel.Probe probe(int port, String secret) {
         HttpURLConnection c = null;
         try {
             c = (HttpURLConnection) new URL("http://127.0.0.1:" + port + "/health").openConnection();
             c.setConnectTimeout(5000);
             c.setReadTimeout(12000);
             c.setUseCaches(false);
+            c.setInstanceFollowRedirects(false);
             c.setRequestProperty(GATE_HEADER, secret);
-            if (c.getResponseCode() != 200) return false;
-            try (InputStream in = c.getInputStream()) {
-                byte[] buf = new byte[4096];
-                int n = in.read(buf);
-                String json = n > 0 ? new String(buf, 0, n, StandardCharsets.UTF_8) : "";
-                return "aula".equals(new JSONObject(json).optString("app"));
+            int status = c.getResponseCode();
+            String app = null;
+            if (status == 200) {
+                try (InputStream in = c.getInputStream()) {
+                    app = new JSONObject(readSome(in, 16 * 1024)).optString("app");
+                } catch (org.json.JSONException e) {
+                    app = null;
+                }
             }
-        } catch (IOException | org.json.JSONException e) {
-            return false;
+            return Tunnel.probe(false, status, app);
+        } catch (ConnectException e) {
+            return Tunnel.probe(true, -1, null);
+        } catch (IOException e) {
+            return Tunnel.probe(false, -1, null);
         } finally {
             if (c != null) c.disconnect();
         }
+    }
+
+    private static String readSome(InputStream in, int max) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int n;
+        while (out.size() < max && (n = in.read(buf, 0, Math.min(buf.length, max - out.size()))) > 0) out.write(buf, 0, n);
+        return new String(out.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private void showAula() {
         String base = "http://127.0.0.1:" + port;
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
-        cookies.setCookie(base, GATE_COOKIE + "=" + secret + "; Path=/; SameSite=Strict");
+        cookies.setCookie(base, GATE_COOKIE + "=" + secret + "; Path=/; HttpOnly; SameSite=Strict");
         cookies.flush();
-        if (!base.equals(shownBase)) {
+        if (port != shownPort) {
             // en el túnel nuevo, en la misma pantalla en la que estaba (la interfaz la apunta en el fragmento «#…»)
             String fragment = "";
             String from = restoreURL != null ? restoreURL : web.getUrl();
             if (from != null && from.contains("#")) fragment = from.substring(from.indexOf('#'));
             restoreURL = null;
-            shownBase = base;
+            shownPort = port;
+            forgetHistory = true;
             web.loadUrl(base + "/" + fragment);
         }
         setStage(Stage.READY);
     }
 
-    /** La interfaz no cargó (la Aula se apagó, se cerró): se vuelve a buscar. */
+    /** ¿Es `u` la interfaz del túnel que se enseña? */
+    private boolean isShown(Uri u) {
+        return Tunnel.isTunnel(u.getScheme(), u.getHost(), u.getPort(), shownPort);
+    }
+
+    /**
+     * La página deja el túnel que se cierra: apunta en qué pantalla estaba (para volver a ella en el nuevo) y deja de
+     * llamar a su puerto, que ya no es nuestro: otra app podría ocuparlo y recibiría las cookies de 127.0.0.1.
+     */
+    private void leaveTunnel() {
+        if (shownPort == 0) return;
+        String url = web.getUrl();
+        if (restoreURL == null && url != null && isShown(Uri.parse(url))) restoreURL = url;
+        shownPort = 0;
+        web.stopLoading();
+        web.loadUrl("about:blank");
+    }
+
+    /** El proceso de Tailscale se cayó o es otro: su túnel ya no existe, ni la orden que se le mandó. */
+    private void lostTunnel() {
+        tailnetRunning = false;
+        opening = false;
+        port = 0;
+        secret = null;
+        main.removeCallbacks(retry);
+        leaveTunnel();
+    }
+
+    /** La interfaz no cargó (su túnel se cerró): se pide otro. */
     private void webFailed() {
-        shownBase = null;
         setStage(Stage.UNREACHABLE);
-        openAula(true);
+        leaveTunnel();
+        port = 0;
+        secret = null;
+        if (!openAula(true)) retrySoon();
     }
 
     /** «Abrir otra Aula» (desde Ajustes de la interfaz o desde una pantalla de espera). */
@@ -313,7 +477,6 @@ public final class MainActivity extends Activity {
 
     private void choose(String h) {
         prefs.edit().putString(CHOSEN, h).apply();
-        shownBase = null;
         setStage(Stage.STARTING);
         openAula(true);
     }
@@ -325,8 +488,8 @@ public final class MainActivity extends Activity {
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.sign_out, (d, w) -> {
                 tailnet.logout();
-                tailnetRunning = false;
-                shownBase = null;
+                lostTunnel();
+                restoreURL = null;
                 CookieManager.getInstance().removeAllCookies(null);
                 web.clearCache(true);
                 web.loadUrl("about:blank");
@@ -340,6 +503,7 @@ public final class MainActivity extends Activity {
     private void setStage(Stage next) {
         stage = next;
         render();
+        updateBack();
     }
 
     private void buildViews() {
@@ -367,20 +531,33 @@ public final class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
-                if ("127.0.0.1".equals(u.getHost()) || "about".equals(u.getScheme())) return false;
-                // los enlaces de fuera (una fuente, la página de una clave de IA) en el navegador
-                if ("http".equals(u.getScheme()) || "https".equals(u.getScheme()) || "mailto".equals(u.getScheme())) openOutside(u);
+                Tunnel.Open where = Tunnel.open(u.getScheme(), u.getHost(), u.getPort(), request.isForMainFrame(), shownPort);
+                if (where == Tunnel.Open.INSIDE) return false;
+                // los enlaces de fuera (una fuente, la página de una clave de IA) en el navegador; otro puerto de
+                // 127.0.0.1 también, donde no van las cookies de la app
+                if (where == Tunnel.Open.OUTSIDE) openOutside(u);
                 return true;
+            }
+
+            @Override
+            public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+                // ya está la interfaz del túnel nuevo: lo de antes (otro puerto, about:blank) sale del historial
+                if (forgetHistory && url != null && isShown(Uri.parse(url))) {
+                    forgetHistory = false;
+                    view.clearHistory();
+                }
+                updateBack();
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 view.evaluateJavascript(SOLID, null);
+                updateBack();
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame() && stage == Stage.READY) webFailed();
+                if (request.isForMainFrame() && stage == Stage.READY && isShown(request.getUrl())) webFailed();
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
@@ -521,7 +698,7 @@ public final class MainActivity extends Activity {
                 step = 2;
                 title.setText(R.string.unreachable_title);
                 body.setText(getString(R.string.unreachable_body, host == null ? "aula-mac" : host));
-                actions.addView(primary(R.string.retry, v -> openAula(true)));
+                actions.addView(primary(R.string.retry, v -> retryNow()));
                 if (aulas.size() > 1) actions.addView(quiet(R.string.choose_another, v -> chooseAnother()));
                 break;
             case FAILED:
@@ -645,7 +822,7 @@ public final class MainActivity extends Activity {
     private final class AppBridge {
         @JavascriptInterface
         public void switchAula() {
-            main.post(MainActivity.this::chooseAnother);
+            main.post(() -> { if (!isDestroyed()) chooseAnother(); });
         }
     }
 }

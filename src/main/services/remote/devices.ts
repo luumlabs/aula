@@ -6,6 +6,8 @@
 //    dispositivos, así que el dispositivo de quien la instaló hace de ventana. Solo se es propietario con un código pedido
 //    así: el primero que enseña el servidor al arrancar sin propietario, el de su consola (`aula-server link`) o el que da
 //    otro propietario. En el Mac no hay propietarios: su ventana ya lo es.
+//    Los códigos de propietario que el servidor abre solo (sin propietario todavía) comparten un tope de intentos fallidos:
+//    adivinar uno no puede seguir sin límite a base de esperar al siguiente. Pasado el tope hay que pedirlo a mano.
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -29,7 +31,8 @@ export type RemoteDeviceView = Omit<RemoteDevice, 'tokenHash'>
 
 export const PAIRING_MINUTES = 10
 export const TOKEN_DAYS = 90
-/** Intentos fallidos seguidos antes de anular el código (hay que pedir otro). */
+/** Intentos fallidos seguidos antes de anular el código (hay que pedir otro). También el tope de intentos fallidos con
+ *  códigos de propietario, sumando todos, desde que alguien pidió uno a mano (`ownerCodesBlocked`). */
 export const MAX_ATTEMPTS = 5
 const MAX_DEVICES = 12
 
@@ -46,6 +49,9 @@ export class PairingError extends Error {
 export class DeviceRegistry {
   private devices: RemoteDevice[] = []
   private pairing: { hash: string; expires: number; attempts: number; owner: boolean } | null = null
+  /** Intentos fallidos con códigos de propietario, sumando todos (no vuelve a cero con cada código nuevo). Se guarda: un
+   *  reinicio no da más intentos. Vuelve a cero cuando alguien pide un código de propietario a mano o se vincula uno. */
+  private ownerMisses = 0
 
   constructor(private readonly file: string, private readonly now: () => number = Date.now) {
     this.load()
@@ -54,7 +60,8 @@ export class DeviceRegistry {
   private load(): void {
     try {
       if (!existsSync(this.file)) return
-      const raw = JSON.parse(readFileSync(this.file, 'utf8')) as { devices?: unknown }
+      const raw = JSON.parse(readFileSync(this.file, 'utf8')) as { devices?: unknown; ownerMisses?: unknown }
+      if (typeof raw.ownerMisses === 'number' && Number.isFinite(raw.ownerMisses)) this.ownerMisses = Math.max(0, Math.floor(raw.ownerMisses))
       if (!Array.isArray(raw.devices)) return
       this.devices = raw.devices.flatMap((d): RemoteDevice[] => {
         const o = d as Partial<RemoteDevice>
@@ -67,17 +74,41 @@ export class DeviceRegistry {
 
   private save(): void {
     mkdirSync(dirname(this.file), { recursive: true })
-    writeFileAtomic(this.file, JSON.stringify({ version: 1, devices: this.devices }, null, 2))
+    writeFileAtomic(this.file, JSON.stringify({ version: 1, devices: this.devices, ...(this.ownerMisses > 0 ? { ownerMisses: this.ownerMisses } : {}) }, null, 2))
   }
 
-  /** Empieza un emparejamiento: devuelve el código que se enseña en el Mac (el anterior deja de valer). Con `owner`, quien lo
-   *  use será propietario (solo Aula como servidor los pide). */
+  /** Empieza un emparejamiento que pide una persona (la ventana del Mac, un propietario, la consola del servidor): devuelve
+   *  el código que se enseña (el anterior deja de valer). Con `owner`, quien lo use será propietario (solo Aula como servidor
+   *  los pide), y vuelve a haber intentos para los códigos de propietario. */
   startPairing(opts: { owner?: boolean } = {}): { code: string; expires: string; owner: boolean } {
+    const owner = opts.owner === true
+    if (owner) this.setOwnerMisses(0)
+    return this.open(owner)
+  }
+
+  /** El código de propietario que abre el servidor solo mientras no hay propietario; null si ya se fallaron demasiados
+   *  intentos con códigos de propietario (entonces hay que pedirlo a mano, con `startPairing`). */
+  offerOwnerCode(): { code: string; expires: string; owner: boolean } | null {
+    return this.ownerCodesBlocked() ? null : this.open(true)
+  }
+
+  /** ¿Se acabaron los intentos para los códigos de propietario que el servidor abre solo? */
+  ownerCodesBlocked(): boolean {
+    return this.ownerMisses >= MAX_ATTEMPTS
+  }
+
+  private open(owner: boolean): { code: string; expires: string; owner: boolean } {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0')
     const expires = this.now() + PAIRING_MINUTES * 60_000
-    const owner = opts.owner === true
     this.pairing = { hash: sha(code), expires, attempts: 0, owner }
     return { code, expires: new Date(expires).toISOString(), owner }
+  }
+
+  private setOwnerMisses(n: number): void {
+    if (this.ownerMisses === n) return
+    this.ownerMisses = n
+    // si no se puede guardar, vale lo de memoria mientras Aula siga en marcha
+    try { this.save() } catch { /* sin disco */ }
   }
 
   /** ¿Hay algún propietario vinculado? */
@@ -98,7 +129,10 @@ export class DeviceRegistry {
     if (!p) throw new PairingError('noCode')
     if (p.expires <= this.now()) { this.pairing = null; throw new PairingError('expired') }
     if (!same(sha(code.replace(/\D/g, '')), p.hash)) {
-      if (++p.attempts >= MAX_ATTEMPTS) { this.pairing = null; throw new PairingError('tooMany') }
+      const spent = ++p.attempts >= MAX_ATTEMPTS
+      // de propietario: también cuenta para el tope de todos los códigos de propietario, y al llegar a él se anula este
+      if (p.owner) this.setOwnerMisses(this.ownerMisses + 1)
+      if (spent || (p.owner && this.ownerCodesBlocked())) { this.pairing = null; throw new PairingError('tooMany') }
       throw new PairingError('wrong')
     }
     this.pairing = null
@@ -112,6 +146,8 @@ export class DeviceRegistry {
       ...(p.owner ? { owner: true } : {})
     }
     this.devices.push(device)
+    // quien tenía el código de propietario lo vio en la consola (o se lo dio otro propietario): vuelve a haber intentos
+    if (p.owner) this.ownerMisses = 0
     this.save()
     return { token, device: view(device) }
   }
@@ -122,11 +158,18 @@ export class DeviceRegistry {
     const hash = sha(token)
     const device = this.devices.find((d) => same(d.tokenHash, hash))
     if (!device) return undefined
-    const now = this.now()
-    if (now - Date.parse(device.lastSeen) > TOKEN_DAYS * 86_400_000) { this.revoke(device.id); return undefined }
+    if (this.expired(device)) { this.revoke(device.id); return undefined }
     // se guarda como mucho una vez por hora: cada petición no escribe en disco
+    const now = this.now()
     if (now - Date.parse(device.lastSeen) > 3_600_000) { device.lastSeen = new Date(now).toISOString(); this.save() }
     return view(device)
+  }
+
+  /** El dispositivo con ese identificador si sigue vinculado y su ficha no caducó (sin apuntar que se usó): para lo que
+   *  sigue abierto desde antes, como su flujo de eventos. */
+  active(id: string): RemoteDeviceView | undefined {
+    const device = this.devices.find((d) => d.id === id)
+    return device && !this.expired(device) ? view(device) : undefined
   }
 
   list(): RemoteDeviceView[] {
@@ -139,6 +182,10 @@ export class DeviceRegistry {
     if (this.devices.length === before) return false
     this.save()
     return true
+  }
+
+  private expired(d: RemoteDevice): boolean {
+    return this.now() - Date.parse(d.lastSeen) > TOKEN_DAYS * 86_400_000
   }
 
   private pruneExpired(): void {
