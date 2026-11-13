@@ -5,7 +5,7 @@
 import { BrowserWindow, type NativeImage, type WebContents } from 'electron'
 import { join } from 'node:path'
 import type { PlatformAccount } from '@shared/settings/platforms'
-import { classifyAuthPage, guardRequest, navigationPolicy, normalizeBrowserURL, type PageElement, type PageHeading, type PageInfo, type PageLink, type PageWall } from '@engine/platforms'
+import { classifyAuthPage, guardRequest, isPostLoginStep, navigationPolicy, normalizeBrowserURL, type PageElement, type PageHeading, type PageInfo, type PageLink, type PageWall } from '@engine/platforms'
 import { AulaError } from '@main/services/errors'
 import { tr } from '@shared/ai/i18n'
 import { AULA_WORLD, domClickScript, hasTextScript, locateRefScript, pageStateScript, readabilityParseScript, readabilityScript, scrollScript, snapshotScript } from './scripts'
@@ -238,7 +238,9 @@ export class ReaderTab {
     let wall: PageWall | undefined = state?.wall === 'captcha' ? 'captcha' : state?.wall === 'challenge' ? 'challenge' : undefined
     if (!wall && this.httpStatus != null && BLOCKING_STATUSES.has(this.httpStatus)) wall = 'http'
     const auth = account ? classifyAuthPage({ url, account, hasPasswordField: state?.hasPassword, html: state?.htmlHead }) : null
-    const needsLogin = auth === 'login' || auth === 'sso' || (!account && !!state?.hasPassword) || (!!account && this.httpStatus === 401)
+    // un paso de Moodle tras el acceso (política, perfil) lo termina el estudiante en la ventana de acceso: como «iniciar sesión»
+    const step = !!account && isPostLoginStep(account, url)
+    const needsLogin = auth === 'login' || auth === 'sso' || step || (!account && !!state?.hasPassword) || (!!account && this.httpStatus === 401)
     return {
       url,
       title: state?.title ?? this.wc.getTitle(),

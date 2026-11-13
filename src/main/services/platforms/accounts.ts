@@ -106,6 +106,19 @@ export function updateAccount(id: string, patch: Partial<Omit<PlatformAccount, '
   return updated
 }
 
+/**
+ * Cambia la dirección de una cuenta (p. ej. el Moodle vive en otro host del mismo sitio). Se valida como al darla de alta y
+ * no puede chocar con otra cuenta del mismo origen. Lo demás (id, partición, secretos, nombre) se queda igual.
+ */
+export function changeAccountBaseURL(id: string, url: string): PlatformAccount {
+  const baseURL = normalizePlatformURL(url ?? '')
+  if (!baseURL) throw invalidArgs(tr('La dirección no es válida.', 'That address isn’t valid.'))
+  const origin = originOf(baseURL)
+  const clash = listAccounts().find((a) => a.id !== id && originOf(a.baseURL) === origin)
+  if (clash) throw new AulaError('conflict', tr('Ya tienes otra plataforma con esa dirección.', 'You already have another platform with that address.'))
+  return updateAccount(id, { baseURL })
+}
+
 /** Quita la cuenta y sus secretos (cookies guardadas, calendario, token). El almacenamiento del navegador lo borra el llamador. */
 export function removeAccount(id: string): void {
   const a = getAccount(id)

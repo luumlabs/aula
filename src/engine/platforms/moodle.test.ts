@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  extractMoodleConfig, extractMoodleExportURL, extractMoodleSesskey, isMoodleSessionError, isValidMoodleExportURL, moodleAjaxRequest,
-  moodleExportFormBody, moodleExportURLFromToken, parseMoodleAjaxResponse, parseMoodleCoursePage
+  extractMoodleConfig, extractMoodleExportURL, extractMoodleSesskey, htmlBodyClasses, isMoodleSessionError, isValidMoodleExportURL,
+  moodleAjaxRequest, moodleBodyNotLoggedIn, moodleExportFormBody, moodleExportURLFromToken, moodleUserProof, parseMoodleAjaxResponse,
+  parseMoodleCoursePage
 } from './moodle'
 
 describe('sesskey de Moodle', () => {
@@ -26,6 +27,39 @@ describe('sesskey de Moodle', () => {
     const cfg = extractMoodleConfig('<div data-userid="42"></div><a href="https://c.edu/login/logout.php?sesskey=abcdef1234">x</a>')
     expect(cfg).toMatchObject({ userId: 42, signedIn: true, sesskey: 'abcdef1234' })
     expect(extractMoodleConfig('<body class="notloggedin">').signedIn).toBe(false)
+  })
+
+  it('«notloggedin» en CSS o JavaScript en línea no quita la sesión; en el body, sí', () => {
+    const proof = '<a href="https://c.edu/login/logout.php?sesskey=abcdef1234">Salir</a>'
+    const css = `<head><style>body.notloggedin .x { color: red }</style><script>var c = "notloggedin";</script></head><body id="page-my-index" class="path-my loggedin">${proof}</body>`
+    expect(extractMoodleConfig(css).signedIn).toBe(true)
+    expect(extractMoodleConfig(`<body class="path-site notloggedin">${proof}</body>`).signedIn).toBe(false)
+  })
+})
+
+describe('marcas de sesión de Moodle', () => {
+  it('clases del body: comillas dobles, simples, sin comillas o sin clase', () => {
+    expect(htmlBodyClasses('<html><body  id="page-my-index" class="path-my  notloggedin lang-es">')).toEqual(['path-my', 'notloggedin', 'lang-es'])
+    expect(htmlBodyClasses("<BODY class='a b'>")).toEqual(['a', 'b'])
+    expect(htmlBodyClasses('<body class=solo>')).toEqual(['solo'])
+    expect(htmlBodyClasses('<body id="x">')).toEqual([])
+    expect(htmlBodyClasses('<bodyguard class="notloggedin">')).toEqual([])
+    expect(htmlBodyClasses('sin etiqueta')).toEqual([])
+  })
+
+  it('notloggedin solo en la clase del body', () => {
+    expect(moodleBodyNotLoggedIn('<body id="page-login-index" class="pagelayout-login notloggedin">')).toBe(true)
+    expect(moodleBodyNotLoggedIn('<body class="loggedin">')).toBe(false)
+    expect(moodleBodyNotLoggedIn('<style>.notloggedin{}</style><body class="path-my">')).toBe(false)
+    expect(moodleBodyNotLoggedIn('<body class="path-my" data-x="notloggedin">')).toBe(false)
+    expect(moodleBodyNotLoggedIn('<body class="notloggedin-banner">')).toBe(false)
+  })
+
+  it('prueba de un usuario de verdad: el enlace de salida con sesskey', () => {
+    expect(moodleUserProof('<a href="https://c.edu/login/logout.php?sesskey=abc">Salir</a>')).toBe(true)
+    // invitado: «Acceder», sin salida
+    expect(moodleUserProof('<span class="login">Está usando el acceso de invitado (<a href="https://c.edu/login/index.php">Acceder</a>)</span>')).toBe(false)
+    expect(moodleUserProof('<a href="/login/logout.php">Salir</a>')).toBe(false)
   })
 })
 

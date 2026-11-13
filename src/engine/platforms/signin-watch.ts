@@ -2,10 +2,15 @@
 // iniciada. Señales: las direcciones por las que pasa (también las redirecciones y las ventanas emergentes del SSO), el
 // estado de cada página (campo de contraseña, marcas de acceso o de sesión en el DOM ya pintado por JavaScript), las cookies
 // de sesión de la plataforma que cambian y, como prueba, la comprobación de solo lectura con la sesión (API o página
-// interna). Puro (sin Electron ni DOM): lo usa src/main/electron/browser/signin.ts y se prueba aquí.
+// interna). También: los pasos de Moodle tras el acceso (la ventana espera a que el estudiante los termine), el Moodle de
+// la cuenta en otro host del mismo sitio (alias) y los bucles de redirecciones. Puro (sin Electron ni DOM): lo usa
+// src/main/electron/browser/signin.ts y se prueba aquí.
 import type { PlatformAccount, PlatformKind } from '@shared/settings/platforms'
+import { isIdentityHost } from './identity'
 import { accountContains, hostMatches, hostOf, platformInfo } from './model'
-import { classifyAuthPage, htmlShowsSignedIn, isAccountLoginURL, isIdentityHost, type PageAuthKind } from './login'
+import { classifyAuthPage, htmlShowsSignedIn, isAccountLoginURL, isPostLoginStep, type PageAuthKind } from './login'
+import { extractMoodleConfig, moodleBodyNotLoggedIn, moodleUserProof } from './moodle'
+import { moodleAliasRoot } from './site'
 
 export type VerifyState = 'signedIn' | 'signedOut' | 'unknown'
 
@@ -77,7 +82,8 @@ const SIGNED_IN_SELECTORS: Partial<Record<PlatformKind, string[]>> = {
 
 const SIGNED_OUT_SELECTORS: Partial<Record<PlatformKind, string[]>> = {
   canvas: ['#login_form', '.ic-Login', 'body.ic-Login-Body'],
-  moodle: ['body#page-login-index', 'body.notloggedin', 'form#login'],
+  // sin «body#page-login-index»: también lo lleva la página «Ya has iniciado sesión» (que SÍ tiene sesión)
+  moodle: ['body.notloggedin', 'form#login'],
   blackboard: ['#loginForm', 'form[name="login"]', '#entry-login'],
   brightspace: ['d2l-login', 'form[action*="/d2l/lp/auth/login"]'],
   sakai: ['#loginLink1', 'form#loginForm'],
@@ -108,15 +114,44 @@ export interface PageVerdict {
   kind: PageAuthKind
   /** Prueba en la propia página (DOM o HTML) de que hay sesión, además de estar en la plataforma. */
   strong: boolean
+  /** Paso de Moodle tras el acceso (política, perfil): hay sesión, pero el estudiante aún tiene que terminarlo aquí. */
+  step?: boolean
 }
 
 /** ¿Qué es esta página para el inicio de sesión? Junta la dirección, el campo de contraseña, el HTML y el DOM ya pintado. */
 export function classifySignInPage(account: Account, p: SignInPageState): PageVerdict {
+  // un paso tras el acceso cuenta como acceso: la ventana sigue esperando (y nada la da por iniciada)
+  if (isPostLoginStep(account, p.url)) return { kind: 'login', strong: false, step: true }
+  if (showsMoodleAlreadySignedIn(account, p)) return { kind: 'authenticated', strong: true }
   const base = classifyAuthPage({ url: p.url, account, hasPasswordField: p.hasPassword, html: p.html })
   if (base === 'sso' || base === 'login' || base === 'unknown') return { kind: base, strong: false }
   if (p.signedOutHint && !p.signedInHint) return { kind: 'login', strong: false }
   const strong = !!p.signedInHint || (!!p.html && htmlShowsSignedIn(account.kind, p.html))
   return { kind: 'authenticated', strong }
+}
+
+/** Formulario de acceso de Moodle (`form#login`) y campos de contraseña en el HTML. */
+const MOODLE_LOGIN_FORM = /<form\b[^>]*\bid\s*=\s*["']?login["'\s>]/i
+const PASSWORD_INPUT = /<input[^>]+type\s*=\s*["']?password/i
+
+function isMoodleLoginIndex(url: string): boolean {
+  try {
+    return /\/login\/(index\.php)?$/.test(new URL(url).pathname.toLowerCase())
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Página «Ya has iniciado sesión» de Moodle (`/login/index.php` con la sesión viva; su botón principal CIERRA la sesión):
+ * trae la prueba de salida y ninguna marca de acceso (ni `notloggedin`, ni `form#login`, ni contraseña).
+ */
+function showsMoodleAlreadySignedIn(account: Account, p: SignInPageState): boolean {
+  if (account.kind !== 'moodle' || !accountContains(account, p.url) || !isMoodleLoginIndex(p.url)) return false
+  const html = p.html ?? ''
+  const proof = !!p.signedInHint || moodleUserProof(html)
+  const loginMarks = !!p.signedOutHint || !!p.hasPassword || moodleBodyNotLoggedIn(html) || MOODLE_LOGIN_FORM.test(html) || PASSWORD_INPUT.test(html)
+  return proof && !loginMarks
 }
 
 /** ¿Es un paso del inicio de sesión (SSO o página de acceso)? En el host de la plataforma solo cuentan sus rutas de acceso. */
@@ -140,6 +175,28 @@ export interface SignInWatchOptions {
 /** Por qué se da la sesión por iniciada (registro y pruebas). */
 export type AcceptReason = 'verified' | 'page-proof' | 'confirmed-by-student'
 
+/** Clave de la ventana principal: la única cuyas direcciones cuentan para los bucles (las emergentes del SSO no). */
+export const MAIN_SIGNIN_WINDOW = 'main'
+/**
+ * Un bucle: se entra por el mismo paso de acceso o de identidad más de `LOOP_MAX_VISITS` veces en `LOOP_WINDOW_MS`. Solo
+ * cuenta la ENTRADA en una zona (identidad o acceso de la plataforma): una pasada normal de auth_oidc (/login/index.php →
+ * /auth/oidc/ → Microsoft → /auth/oidc/ → /login/index.php) entra una vez en cada una aunque pase dos veces por la misma ruta.
+ */
+const LOOP_WINDOW_MS = 60_000
+const LOOP_MAX_VISITS = 3
+const MAX_HOPS = 200
+
+/** Host y ruta (sin consulta ni fragmento) de una dirección web; null si no lo es. */
+function hopKey(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null
+    return (u.host + u.pathname).toLowerCase()
+  } catch {
+    return null
+  }
+}
+
 export class SignInWatch {
   private sawLogin = false
   private readonly pages = new Map<string, PageVerdict & { url: string }>()
@@ -149,6 +206,14 @@ export class SignInWatch {
   private lastURL = ''
   private readonly now: () => number
   private readonly reliable: boolean
+  /** Moodle de la cuenta en otro host del mismo sitio (la dirección guardada era un alias o un portal). */
+  private alias: Account | null = null
+  /** El propio host de la cuenta ya se vio como un Moodle de verdad: no se adopta otro. */
+  private ownHostIsMoodle = false
+  /** Saltos de la ventana principal (host y ruta) con su hora; `entry`: entró ahí en una zona del acceso (cuenta para bucles). */
+  private hops: { key: string; at: number; entry: boolean }[] = []
+  private lastMainHop = ''
+  private lastZone: 'identity' | 'login' | null = null
 
   constructor(private readonly account: Account, private readonly opts: SignInWatchOptions = {}) {
     this.now = opts.now ?? Date.now
@@ -160,30 +225,121 @@ export class SignInWatch {
     return this.sawLogin
   }
 
-  /** Una dirección por la que pasa cualquier ventana (navegación, redirección o emergente). */
-  noteURL(url: string): void {
-    if (!url || url === this.lastURL) return
+  /** ¿Alguna ventana abierta muestra un paso de Moodle tras el acceso (política, perfil)? Entonces no se cierra. */
+  get pendingStep(): boolean {
+    for (const p of this.pages.values()) if (p.step) return true
+    return false
+  }
+
+  /** Raíz (`https://host[/carpeta]`, sin barra final) del Moodle adoptado en otro host del mismo sitio; null si no hay. */
+  get adoptedRoot(): string | null {
+    return this.alias ? this.alias.baseURL.replace(/\/+$/, '') : null
+  }
+
+  /** ¿La ventana principal parece en un bucle? (se entra por el mismo paso de acceso o de identidad más de 3 veces en 60 s). */
+  get loopSuspected(): boolean {
+    const now = this.now()
+    const seen = new Map<string, number>()
+    for (const h of this.hops) {
+      if (!h.entry || now - h.at >= LOOP_WINDOW_MS) continue
+      const n = (seen.get(h.key) ?? 0) + 1
+      if (n > LOOP_MAX_VISITS) return true
+      seen.set(h.key, n)
+    }
+    return false
+  }
+
+  /** Los saltos recientes de la ventana principal (host y ruta, sin consultas), para el registro. */
+  recentHops(): string[] {
+    const now = this.now()
+    return this.hops.filter((h) => now - h.at < LOOP_WINDOW_MS).map((h) => h.key)
+  }
+
+  /** ¿La dirección es de la plataforma (la cuenta o el alias adoptado)? */
+  isPlatformURL(url: string): boolean {
+    return accountContains(this.account, url) || (!!this.alias && accountContains(this.alias, url))
+  }
+
+  /** `isSignInStep` sabiendo del alias adoptado. */
+  isSignInStepURL(url: string): boolean {
+    return isSignInStep(this.accountFor(url), url)
+  }
+
+  /** La cuenta con la que se mira una dirección: la del alias si es de su host. */
+  private accountFor(url: string): Account {
+    if (this.alias && accountContains(this.alias, url) && !accountContains(this.account, url)) return this.alias
+    return this.account
+  }
+
+  /**
+   * Una dirección por la que pasa cualquier ventana (navegación, redirección o emergente). `windowKey`:
+   * `MAIN_SIGNIN_WINDOW` para la principal (solo esas cuentan para los bucles).
+   */
+  noteURL(url: string, windowKey?: string): void {
+    if (!url) return
+    if (windowKey === MAIN_SIGNIN_WINDOW) this.noteMainHop(url)
+    if (url === this.lastURL) return
     this.lastURL = url
     this.changes++
-    if (isSignInStep(this.account, url)) this.sawLogin = true
+    if (this.isSignInStepURL(url)) this.sawLogin = true
+  }
+
+  /** Un salto de la principal: solo cuando cambian el host o la ruta (las navegaciones dentro de la página no cuentan). */
+  private noteMainHop(url: string): void {
+    const key = hopKey(url)
+    if (!key || key === this.lastMainHop) return
+    this.lastMainHop = key
+    const zone = this.zoneOf(url)
+    const entry = zone !== null && zone !== this.lastZone
+    this.lastZone = zone
+    const at = this.now()
+    this.hops = this.hops.filter((h) => at - h.at < LOOP_WINDOW_MS).slice(-MAX_HOPS + 1)
+    this.hops.push({ key, at, entry })
+  }
+
+  /** Zona del acceso de una dirección: el proveedor de identidad, las páginas de acceso de la plataforma, o ninguna. */
+  private zoneOf(url: string): 'identity' | 'login' | null {
+    if (!this.isSignInStepURL(url)) return null
+    return !this.isPlatformURL(url) && isIdentityHost(hostOf(url) ?? '') ? 'identity' : 'login'
   }
 
   /** Cambió una cookie: true si es de sesión de la plataforma (y entonces conviene comprobar ya). */
   noteCookie(cookie: { name: string; domain?: string | null }): boolean {
-    if (!isPlatformSessionCookie(this.account, cookie)) return false
+    const mine = isPlatformSessionCookie(this.account, cookie) || (!!this.alias && isPlatformSessionCookie(this.alias, cookie))
+    if (!mine) return false
     this.changes++
     return true
   }
 
   /** Estado de la página de una ventana (`windowKey`: la principal o una emergente). */
   notePage(windowKey: string, state: SignInPageState): PageVerdict {
-    this.noteURL(state.url)
-    const v = classifySignInPage(this.account, state)
+    this.maybeAdoptAlias(state)
+    this.noteURL(state.url, windowKey)
+    const v = classifySignInPage(this.accountFor(state.url), state)
     if (v.kind === 'login' || v.kind === 'sso' || state.hasPassword) this.sawLogin = true
     const prev = this.pages.get(windowKey)
-    if (!prev || prev.kind !== v.kind || prev.strong !== v.strong || prev.url !== state.url) this.changes++
+    if (!prev || prev.kind !== v.kind || prev.strong !== v.strong || prev.url !== state.url || !!prev.step !== !!v.step) this.changes++
     this.pages.set(windowKey, { ...v, url: state.url })
     return v
+  }
+
+  /**
+   * Moodle: una página de OTRO host del mismo sitio (no de identidad) cuyo `wwwroot` es su propio host es el Moodle de la
+   * cuenta (la dirección guardada era un alias o un portal). Se adopta una sola vez, y nunca si el host de la cuenta ya
+   * resultó ser un Moodle de verdad.
+   */
+  private maybeAdoptAlias(state: SignInPageState): void {
+    if (this.account.kind !== 'moodle' || this.alias || !state.html) return
+    if (accountContains(this.account, state.url)) {
+      const www = extractMoodleConfig(state.html).wwwroot
+      if (www && hostOf(www) === hostOf(state.url)) this.ownHostIsMoodle = true
+      return
+    }
+    if (this.ownHostIsMoodle) return
+    const root = moodleAliasRoot(this.account, state.url, state.html)
+    if (!root) return
+    this.alias = { kind: this.account.kind, baseURL: root + '/' }
+    this.changes++
   }
 
   /** La ventana se cerró: su página ya no cuenta. */
@@ -220,6 +376,8 @@ export class SignInWatch {
   /** Con el resultado de la comprobación: ¿sesión iniciada? (null = aún no). */
   accept(state: VerifyState, force = false): AcceptReason | null {
     if (state === 'signedOut') return null
+    // con un paso tras el acceso a la vista, nunca (tampoco con «Ya he iniciado sesión» ni con la comprobación fiable)
+    if (this.pendingStep) return null
     const page = this.best()
     const onPlatform = page?.kind === 'authenticated'
     const strong = !!page?.strong

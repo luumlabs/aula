@@ -4,31 +4,43 @@
 // falta y ofrece `fetchWithSession` con guardas. Sin Electron: el navegador real llega por `PlatformBrowserAdapter`.
 import { EventEmitter } from 'node:events'
 import type { PlatformAccount, PlatformKind } from '@shared/settings/platforms'
-import type { PlatformAccountView, PlatformCourse, PlatformProbeResult, PlatformStatus } from '@shared/platforms/types'
+import type { PlatformAccountView, PlatformCourse, PlatformStatus } from '@shared/platforms/types'
 import {
-  confidenceAtLeast, detectPlatform, hostOf, isAccountLoginURL, isAccountSite, isIdentityHost, normalizeBrowserURL, normalizePlatformURL, originOf,
-  platformInfo, platformRoot, snapshotDue, type KeepAliveOptions
+  confidenceAtLeast, detectPlatform, downgradesToHttp, hostOf, isAccountLoginURL, isAccountSite, isIdentityHost, moodleRootFromWwwroot,
+  normalizeBrowserURL, normalizePlatformURL, originOf, parsePlatformKind, platformInfo, platformRoot, sameRegistrableSite, snapshotDue,
+  type KeepAliveOptions
 } from '@engine/platforms'
 import { onSettingsChange } from '../settings'
 import { AulaError, invalidArgs } from '../errors'
 import { log } from '../log'
 import { pick, tr } from '@shared/ai/i18n'
 import { CanvasClient, CanvasError, canvasClientFor, connectCanvasCalendar } from '../canvas'
-import { addAccount, canvasToken, getAccount, listAccounts, platformSettings, removeAccount, requireAccount, setCanvasToken, updateAccount } from './accounts'
+import {
+  addAccount, canvasToken, changeAccountBaseURL, getAccount, listAccounts, platformSettings, removeAccount, requireAccount, setCanvasToken, updateAccount
+} from './accounts'
 import { ApprovalBroker } from './approvals'
 import { platformCalendarURL, savePlatformCalendarURL } from './calendar'
 import { clearCookieSnapshot } from './cookie-store'
 import { canvasCoursesToPlatform, moodleCoursesToPlatform, sortPlatformCourses } from './courses'
 import { createNodeHttpFetch, type HttpFetch, type HttpRequestInit, type HttpResponse } from './http'
 import { KeepAliveScheduler, type CheckVerdict } from './keepalive'
-import { MoodleClient } from './moodle'
-import { probePlatform } from './probe'
+import { MoodleClient, moodleStepPendingText } from './moodle'
+import { probePlatform, type PlatformProbeOutcome } from './probe'
 import { checkSession, rememberMoodleSesskey, type SessionCheckResult } from './session-check'
 import { accountView, effectiveStatus, platformStatus, statusDetail } from './status'
 
+/** Cómo terminó la ventana de inicio de sesión (lo produce la ventana; contrato con src/main/electron/browser/signin.ts). */
+export interface SignInResult {
+  signedIn: boolean
+  /** Se cerró con un paso de Moodle a la vista (política, perfil) sin terminar. */
+  pendingStep?: boolean
+  /** Raíz del Moodle en otro host del mismo sitio que la ventana adoptó (`https://host[/carpeta]`, sin barra final). */
+  adoptedRoot?: string
+}
+
 /** Una ventana de inicio de sesión abierta. */
 export interface SignInSession {
-  promise: Promise<{ signedIn: boolean }>
+  promise: Promise<SignInResult>
   focus(): void
   cancel(): void
   /** Vuelve a mirar ya (con `force`, el estudiante dice que ya entró: se comprueba con la sesión). true = sesión iniciada. */
@@ -49,6 +61,8 @@ export interface PlatformBrowserAdapter {
    * proveedor aún viva). Nunca escribe ni pulsa nada. true si acabó en una página interna.
    */
   silentSignIn?(account: PlatformAccount): Promise<boolean>
+  /** Corta la vuelta sola por el SSO en marcha (al abrir la ventana de acceso: no comparten la sesión a la vez). */
+  cancelSilentSignIn?(accountId: string): void
   /** Cierra las pestañas de lectura de la cuenta (al cerrar sesión o quitarla). */
   closeAccountTabs?(accountId: string): void
 }
@@ -56,7 +70,7 @@ export interface PlatformBrowserAdapter {
 export interface PlatformControllerOptions {
   now?: () => number
   broker?: ApprovalBroker
-  probe?: (url: string) => Promise<PlatformProbeResult>
+  probe?: (url: string) => Promise<PlatformProbeOutcome>
   /** `fetch` sin cookies (modo token de Canvas). */
   nodeFetch?: HttpFetch
   /** Cada cuánto se mira si toca guardar las cookies (ms; por defecto 60 s). */
@@ -94,6 +108,12 @@ export class PlatformController {
   private readonly lastConfirm = new Map<string, number>()
   /** Cuentas cuya sesión cerró el estudiante: no se vuelve a entrar sola hasta que inicie sesión otra vez. */
   private readonly signedOutByUser = new Set<string>()
+  /** Comprobación en marcha de cada cuenta (se corta al abrir la ventana de acceso). */
+  private readonly checkAborts = new Map<string, AbortController>()
+  /** Cuentas de Moodle con un paso pendiente tras el acceso (política, perfil). Solo en memoria. */
+  private readonly pendingSteps = new Set<string>()
+  /** Última comprobación de página por una lectura AJAX que funcionó con un paso pendiente (una por minuto como mucho). */
+  private readonly lastStepCheck = new Map<string, number>()
   private snapshotTimer: unknown = null
   private unsubscribeSettings: (() => void) | null = null
   private started = false
@@ -184,13 +204,14 @@ export class PlatformController {
     return requireAccount(accountId)
   }
 
-  probe(url: string): Promise<PlatformProbeResult> {
+  probe(url: string): Promise<PlatformProbeOutcome> {
     return (this.opts.probe ?? ((u: string) => probePlatform(u)))(url)
   }
 
   /**
    * Alta de una cuenta por su dirección. Sin tipo, se mira la dirección y, si no es segura, se sondea la página sin sesión (sin
-   * cookies). Si la página redirige a la plataforma real (p. ej. «uni.edu» → «uni.instructure.com»), se usa esa.
+   * cookies). Si la página redirige a la plataforma real (p. ej. «uni.edu» → «uni.instructure.com»), se usa esa. Moodle se
+   * guarda por su raíz (la de `wwwroot` si el sondeo la trae; https si el sondeo acabó ahí), nunca por la página de acceso.
    */
   async add(input: { url: string; kind?: PlatformKind; label?: string }): Promise<PlatformAccountView> {
     const url = normalizePlatformURL(input?.url ?? '')
@@ -203,11 +224,15 @@ export class PlatformController {
     if (typed && !input.kind && !input.label?.trim()) return accountView(typed)
     let kind = input.kind
     let baseURL = url
+    let probe: PlatformProbeOutcome | null = null
+    let probed = false
     if (!kind) {
       const byURL = detectPlatform({ url })
       if (byURL?.confidence === 'high') kind = byURL.kind
       else {
         const p = await this.probe(url).catch(() => null)
+        probe = p
+        probed = true
         // el sondeo (HTML de la página pública) manda si es al menos probable o si la dirección no decía nada
         kind = p?.kind && (confidenceAtLeast(p.confidence, 'medium') || !byURL) ? p.kind : byURL?.kind ?? p?.kind ?? undefined
         const finalHost = p?.finalURL ? hostOf(p.finalURL) : null
@@ -217,15 +242,38 @@ export class PlatformController {
         }
       }
     }
+    if (kind === 'moodle') {
+      // sin sondeo previo (la dirección ya decía Moodle): se sondea para saber su raíz y si va por https
+      if (!probed) probe = await this.probe(url).catch(() => null)
+      baseURL = moodleAccountURL(baseURL, probe)
+    }
     const k = kind ?? 'other'
     const host = (hostOf(baseURL) ?? '').replace(/^www\./, '')
     const label = input.label?.trim() || (k === 'other' ? host : `${platformInfo(k).displayName} · ${host}`)
-    // una cuenta que ya existe conserva su nombre (salvo que se pida otro)
-    const account = sameSite(baseURL)
-      ? addAccount({ url: baseURL, ...(input.kind ? { kind: input.kind } : {}), ...(input.label?.trim() ? { label: input.label.trim() } : {}) })
-      : addAccount({ url: baseURL, kind: k, label })
+    // la cuenta que ya existe (la de la dirección pegada o la de su raíz) se actualiza, nunca se duplica
+    const existing = typed ?? sameSite(baseURL)
+    const account = existing ? this.updateExisting(existing, baseURL, input) : addAccount({ url: baseURL, kind: k, label })
     this.emitStatus(account.id)
     return accountView(account)
+  }
+
+  /**
+   * Alta de una cuenta que ya existe: conserva su nombre (salvo que se pida otro) y su id; si su origen cambió (https, el
+   * `wwwroot` de Moodle, la plataforma real tras una redirección), se mueve allí. Nunca de https a http.
+   */
+  private updateExisting(existing: PlatformAccount, baseURL: string, input: { kind?: PlatformKind; label?: string }): PlatformAccount {
+    const patch: Partial<PlatformAccount> = {}
+    if (input.kind) patch.kind = parsePlatformKind(input.kind)
+    if (input.label?.trim()) patch.label = input.label.trim().slice(0, 120)
+    let a = Object.keys(patch).length ? updateAccount(existing.id, patch) : existing
+    if (originOf(baseURL) === originOf(a.baseURL) || downgradesToHttp(a.baseURL, baseURL)) return a
+    try {
+      a = changeAccountBaseURL(a.id, baseURL)
+      log.info(`[platforms] ${a.id}: la cuenta pasa de ${originOf(existing.baseURL) ?? '?'} a ${originOf(baseURL) ?? '?'} (se volvió a añadir)`)
+    } catch (err) {
+      log.warn(`[platforms] ${a.id}: no se pudo cambiar la dirección:`, err instanceof Error ? err.message : String(err))
+    }
+    return a
   }
 
   update(accountId: string, patch: { label?: string; notes?: string }): PlatformAccountView {
@@ -283,6 +331,59 @@ export class PlatformController {
     this.scheduler.markChecked(accountId, 'needsSignIn')
   }
 
+  // MARK: Paso pendiente (Moodle: política del sitio, perfil por completar)
+
+  /** ¿Moodle pide a esta cuenta un paso tras el acceso que aún no se ha hecho? */
+  hasPendingStep(accountId: string): boolean {
+    return this.pendingSteps.has(accountId)
+  }
+
+  /**
+   * Moodle pide un paso tras el acceso: se apunta y, sin ventana abierta, se muestra como «hay que iniciar sesión» con su texto
+   * (el botón abre la ventana, y el estudiante lo termina allí). No se comprueba sola hasta entonces.
+   */
+  notePendingStep(accountId: string): void {
+    const a = getAccount(accountId)
+    if (!a || a.kind !== 'moodle') return
+    this.flagPendingStep(a.id)
+    this.showPendingStep(a)
+  }
+
+  private flagPendingStep(accountId: string): void {
+    if (this.pendingSteps.has(accountId)) return
+    this.pendingSteps.add(accountId)
+    log.info(`[platforms] ${accountId}: Moodle pide un paso tras el acceso (política o perfil)`)
+  }
+
+  private showPendingStep(a: PlatformAccount): void {
+    if (!this.pendingSteps.has(a.id) || this.signIns.has(a.id)) return
+    this.setStatus(a, 'needsSignIn', moodleStepPendingText())
+    this.scheduler.markChecked(a.id, 'needsSignIn')
+  }
+
+  /** Lo quita una comprobación de página sin paso (iniciada) o una lectura AJAX que funcione. */
+  private clearPendingStep(accountId: string): void {
+    if (this.pendingSteps.delete(accountId)) log.info(`[platforms] ${accountId}: el paso de Moodle ya está hecho`)
+  }
+
+  /**
+   * Una lectura AJAX funcionó con un paso pendiente. No basta para quitarlo: por AJAX Moodle solo mira el perfil a medias
+   * por encima (las páginas piden los campos obligatorios). Lo decide una comprobación de página (como mucho una por minuto),
+   * que solo quita la marca si la página no lleva al paso.
+   */
+  private ajaxWorked(accountId: string): void {
+    if (!this.pendingSteps.has(accountId) || this.signIns.has(accountId)) return
+    const now = this.now()
+    if (now - (this.lastStepCheck.get(accountId) ?? -Infinity) < 60_000) return
+    this.lastStepCheck.set(accountId, now)
+    const a = getAccount(accountId)
+    if (!a) return
+    void this.runCheck(a).then(
+      (v) => this.scheduler.markChecked(a.id, v === 'signedIn' ? 'signedIn' : v === 'signedOut' ? 'needsSignIn' : effectiveStatus(getAccount(a.id) ?? a).status),
+      () => undefined
+    )
+  }
+
   /** Una respuesta sugiere que la sesión se cerró (401, redirección al acceso): se confirma en unos segundos con la comprobación. */
   suspectSignedOut(accountId: string): void {
     if (this.confirmTimers.has(accountId) || this.signIns.has(accountId)) return
@@ -310,7 +411,7 @@ export class PlatformController {
     return p
   }
 
-  private async verify(account: PlatformAccount): Promise<SessionCheckResult> {
+  private async verify(account: PlatformAccount, signal?: AbortSignal): Promise<SessionCheckResult> {
     const token = account.kind === 'canvas' ? canvasToken(account) : null
     if (token) {
       try {
@@ -321,27 +422,71 @@ export class PlatformController {
         return { state: 'unknown', reason: err instanceof AulaError ? err.code : 'error' }
       }
     }
-    return checkSession(account, this.adapter.sessionFetch(account.id))
+    // con un paso pendiente, el toque AJAX diría «iniciada» igual: se mira la página
+    const skipTouch = this.pendingSteps.has(account.id)
+    const r = await checkSession(account, this.adapter.sessionFetch(account.id), { signal, skipTouch })
+    if (r.pendingStep) this.flagPendingStep(account.id)
+    else if (skipTouch && r.state === 'signedIn') this.clearPendingStep(account.id)
+    if (r.state === 'signedIn') this.upgradeMoodleToHttps(account.id, r.checkedURL)
+    return r
+  }
+
+  /**
+   * Una cuenta de Moodle guardada con http:// cuya página de comprobación acabó en https en el mismo host pasa a https (una
+   * vez): así el toque AJAX y los clientes van directos por https y la sesskey no viaja sin cifrar.
+   */
+  private upgradeMoodleToHttps(accountId: string, checkedURL: string | undefined): void {
+    const a = getAccount(accountId)
+    if (!a || a.kind !== 'moodle' || !checkedURL) return
+    const root = platformRoot('moodle', a.baseURL)
+    if (!upgradesToHttps(root, checkedURL)) return
+    const next = normalizePlatformURL(httpsRoot(root, checkedURL) + '/')
+    if (!next) return
+    try {
+      changeAccountBaseURL(a.id, next)
+      log.info(`[platforms] ${a.id}: Moodle responde por https: la cuenta pasa de ${originOf(a.baseURL) ?? '?'} a ${originOf(next) ?? '?'}`)
+    } catch (err) {
+      log.warn(`[platforms] ${a.id}: no se pudo pasar a https:`, err instanceof Error ? err.message : String(err))
+    }
   }
 
   private async doCheck(account: PlatformAccount): Promise<CheckVerdict> {
     if (this.signIns.has(account.id)) return 'unknown'
-    let result = await this.verify(account)
+    const abort = new AbortController()
+    this.checkAborts.set(account.id, abort)
+    try {
+      return await this.checkAndApply(account, abort.signal)
+    } finally {
+      if (this.checkAborts.get(account.id) === abort) this.checkAborts.delete(account.id)
+    }
+  }
+
+  /** Comprueba y aplica el veredicto. Si entretanto se abrió la ventana de acceso, no toca nada (ni vuelve sola por el SSO). */
+  private async checkAndApply(account: PlatformAccount, signal: AbortSignal): Promise<CheckVerdict> {
+    let result = await this.verify(account, signal)
+    if (this.signIns.has(account.id)) return this.leaveToWindow(account)
     if (result.state === 'signedOut' && this.adapter.silentSignIn && !canvasToken(account) && !this.signedOutByUser.has(account.id)) {
       const now = this.now()
       if (now - (this.lastSilent.get(account.id) ?? -Infinity) >= (this.opts.silentRetryMs ?? 60 * 60_000)) {
         this.lastSilent.set(account.id, now)
         const ok = await this.adapter.silentSignIn(account).catch(() => false)
+        if (this.signIns.has(account.id)) return this.leaveToWindow(account)
         if (ok) {
-          const again = await this.verify(account)
-          if (again.state === 'signedIn') {
-            log.info(`[platforms] ${account.id}: sesión recuperada sola por el SSO`)
+          const again = await this.verify(account, signal)
+          // también si Moodle, tras entrar, pide un paso (política, perfil): se explica eso, no «inicia sesión»
+          if (again.state === 'signedIn' || again.pendingStep) {
+            if (again.state === 'signedIn') log.info(`[platforms] ${account.id}: sesión recuperada sola por el SSO`)
             result = again
           }
         }
       }
     }
+    if (this.signIns.has(account.id)) return this.leaveToWindow(account)
     const fresh = getAccount(account.id) ?? account
+    if (result.pendingStep) {
+      this.notePendingStep(fresh.id)
+      return 'unknown'
+    }
     if (result.state === 'signedIn') {
       this.setStatus(fresh, 'signedIn')
       if (snapshotDue(this.lastSnapshot.get(account.id) ?? null, this.now(), this.dirty.has(account.id))) await this.snapshot(fresh)
@@ -352,13 +497,25 @@ export class PlatformController {
       this.setStatus(fresh, 'needsSignIn', canvasToken(fresh) ? tr('Canvas rechazó el token de acceso.', 'Canvas rejected the access token.') : statusDetail('needsSignIn'))
       return 'signedOut'
     }
-    // sin respuesta clara (red, 5xx…): nunca se marca «cerrada»; si se estaba mostrando «comprobando», vuelve al último conocido
-    const rt = effectiveStatus(fresh)
-    if (rt.status === 'checking') {
-      platformStatus.set(fresh.id, { status: fresh.lastState === 'signedIn' ? 'signedIn' : fresh.lastState === 'needsSignIn' ? 'needsSignIn' : 'unknown', detail: undefined })
-      this.emitStatus(fresh.id)
-    }
+    // sin respuesta clara (red, 5xx…): nunca se marca «cerrada»
+    this.settleChecking(fresh)
     return 'unknown'
+  }
+
+  /** La ventana de acceso manda: sin cambiar el estado (solo se quita el «Comprobando…» que puso esta comprobación). */
+  private leaveToWindow(account: PlatformAccount): CheckVerdict {
+    this.settleChecking(getAccount(account.id) ?? account)
+    return 'unknown'
+  }
+
+  /** Si se estaba mostrando «comprobando», vuelve al último estado conocido (con el texto del paso pendiente, si lo hay). */
+  private settleChecking(account: PlatformAccount): void {
+    const rt = effectiveStatus(account)
+    if (rt.status !== 'checking') return
+    const status = account.lastState === 'signedIn' ? 'signedIn' : account.lastState === 'needsSignIn' ? 'needsSignIn' : 'unknown'
+    const detail = status === 'needsSignIn' && this.pendingSteps.has(account.id) ? moodleStepPendingText() : undefined
+    platformStatus.set(account.id, { status, detail })
+    this.emitStatus(account.id)
   }
 
   /** Comprobación pedida por la interfaz o por una herramienta. */
@@ -391,6 +548,9 @@ export class PlatformController {
       open.session.focus()
       return open.promise
     }
+    // una comprobación de fondo o una vuelta sola por el SSO en marcha no deben pisar la ventana (misma sesión)
+    this.abortCheck(account.id)
+    this.adapter.cancelSilentSignIn?.(account.id)
     platformStatus.set(account.id, { ...effectiveStatus(account), signingIn: true })
     this.emitStatus(account.id)
     const session = this.adapter.openSignIn(account, {
@@ -404,11 +564,10 @@ export class PlatformController {
       }
     })
     const promise = session.promise.then(
-      async ({ signedIn }) => {
+      async (result) => {
         this.signIns.delete(account.id)
         platformStatus.set(account.id, { ...effectiveStatus(getAccount(account.id) ?? account), signingIn: false })
-        if (signedIn) await this.markSignedIn(account.id)
-        else this.emitStatus(account.id)
+        const signedIn = await this.afterSignInWindow(account.id, result)
         return { signedIn, account: this.view(account.id) }
       },
       (err: unknown) => {
@@ -420,6 +579,60 @@ export class PlatformController {
     )
     this.signIns.set(account.id, { session, promise })
     return promise
+  }
+
+  /** Corta la comprobación de fondo en marcha de la cuenta (si la hay). */
+  private abortCheck(accountId: string): void {
+    const abort = this.checkAborts.get(accountId)
+    if (!abort) return
+    this.checkAborts.delete(accountId)
+    abort.abort()
+  }
+
+  /** La ventana se cerró: dirección adoptada, paso pendiente o sesión iniciada. true = iniciada y sin paso pendiente. */
+  private async afterSignInWindow(accountId: string, result: SignInResult): Promise<boolean> {
+    if (result.adoptedRoot) this.adoptMoodleRoot(accountId, result.adoptedRoot)
+    if (result.pendingStep) this.flagPendingStep(accountId)
+    // la ventana la dio por iniciada por la página, pero la marca sigue: su última comprobación vio el paso (o no lo quitó).
+    // Se mira la página una vez más: solo una sin paso la quita
+    if (result.signedIn && !result.pendingStep && this.pendingSteps.has(accountId)) {
+      const a = getAccount(accountId)
+      if (a) await this.verify(a).catch(() => undefined)
+    }
+    if (result.signedIn && !result.pendingStep && !this.pendingSteps.has(accountId)) {
+      await this.markSignedIn(accountId)
+      return true
+    }
+    const a = getAccount(accountId)
+    if (a && this.pendingSteps.has(a.id)) this.showPendingStep(a)
+    else this.emitStatus(accountId)
+    return false
+  }
+
+  /**
+   * La ventana encontró el Moodle de la cuenta en otro host del mismo sitio (la dirección guardada era un alias o un portal):
+   * desde ahora la cuenta usa esa raíz. Solo Moodle, solo el mismo sitio registrable y nunca un host de identidad.
+   */
+  private adoptMoodleRoot(accountId: string, root: string): void {
+    const a = getAccount(accountId)
+    const next = normalizePlatformURL(root.replace(/\/+$/, '') + '/')
+    if (!a || a.kind !== 'moodle' || !next || next === a.baseURL) return
+    const from = hostOf(a.baseURL)
+    const to = hostOf(next)
+    if (!from || !to || (from !== to && !sameRegistrableSite(from, to))) {
+      log.warn(`[platforms] ${a.id}: no se adopta ${originOf(next) ?? '?'} (no es del mismo sitio que ${originOf(a.baseURL) ?? '?'})`)
+      return
+    }
+    if (downgradesToHttp(a.baseURL, next)) {
+      log.warn(`[platforms] ${a.id}: no se adopta ${originOf(next) ?? '?'} (bajaría de https a http)`)
+      return
+    }
+    try {
+      changeAccountBaseURL(a.id, next)
+      log.info(`[platforms] ${a.id}: el Moodle está en ${originOf(next) ?? '?'} (antes ${originOf(a.baseURL) ?? '?'}): se usa esa dirección`)
+    } catch (err) {
+      log.warn(`[platforms] ${a.id}: no se pudo cambiar la dirección:`, err instanceof Error ? err.message : String(err))
+    }
   }
 
   /**
@@ -498,6 +711,8 @@ export class PlatformController {
   private async forgetSession(a: PlatformAccount): Promise<void> {
     this.signIns.get(a.id)?.session.cancel()
     this.signIns.delete(a.id)
+    this.abortCheck(a.id)
+    this.pendingSteps.delete(a.id)
     this.approvals.cancelAll(a.id)
     this.adapter.closeAccountTabs?.(a.id)
     try {
@@ -579,12 +794,16 @@ export class PlatformController {
     return this.clientFetch(a.id)(n.url, { ...init, method: method as 'GET' | 'HEAD', body: undefined })
   }
 
-  /** Ejecuta una lectura de un cliente y, si dice que la sesión se cerró, lo apunta. */
+  /**
+   * Ejecuta una lectura de un cliente. Si dice que la sesión se cerró, se confirma con una comprobación de verdad (un 3xx
+   * suelto no basta para pedir el acceso otra vez); si Moodle pide un paso tras el acceso, se apunta.
+   */
   private async guarded<T>(account: PlatformAccount, fn: () => Promise<T>): Promise<T> {
     try {
       return await fn()
     } catch (err) {
-      if (err instanceof AulaError && err.code === 'needs_sign_in') this.markNeedsSignIn(account.id)
+      if (err instanceof AulaError && err.code === 'needs_sign_in') this.suspectSignedOut(account.id)
+      if (err instanceof AulaError && err.code === 'platform_step_pending') this.notePendingStep(account.id)
       throw err
     }
   }
@@ -599,7 +818,7 @@ export class PlatformController {
   moodle(accountId: string): MoodleClient {
     const a = requireAccount(accountId)
     if (a.kind !== 'moodle') throw invalidArgs(tr('Esa plataforma no es un Moodle.', 'That platform isn’t Moodle.'))
-    return new MoodleClient({ baseURL: a.baseURL, fetch: this.clientFetch(a.id), accountId: a.id })
+    return new MoodleClient({ baseURL: a.baseURL, fetch: this.clientFetch(a.id), accountId: a.id, onAjaxOk: () => this.ajaxWorked(a.id) })
   }
 
   /** Cursos de Canvas o Moodle. */
@@ -648,4 +867,37 @@ export class PlatformController {
   keepAliveState(): ReturnType<KeepAliveScheduler['snapshot']> {
     return this.scheduler.snapshot()
   }
+}
+
+/**
+ * Dirección de una cuenta de Moodle: su raíz (sin /login/index.php ni otras rutas). Si el sondeo trae `wwwroot` del mismo
+ * host que su página final (y ese host es el de la dirección, del mismo sitio o un Moodle reconocido), esa raíz; si no, y
+ * el sondeo acabó en https en el mismo host, https.
+ */
+export function moodleAccountURL(url: string, probe: Pick<PlatformProbeOutcome, 'finalURL' | 'wwwroot' | 'kind'> | null): string {
+  let root = platformRoot('moodle', url)
+  const final = probe?.finalURL ?? null
+  const fromWww = probe?.wwwroot && final ? moodleRootFromWwwroot(probe.wwwroot, final) : null
+  if (fromWww && trustedMoodleMove(root, fromWww, probe?.kind === 'moodle')) root = fromWww
+  else if (final && upgradesToHttps(root, final)) root = httpsRoot(root, final)
+  return normalizePlatformURL(root + '/') ?? url
+}
+
+/** ¿Se puede pasar la cuenta de `from` a `to`? Mismo host o mismo sitio; otro sitio solo si el sondeo vio un Moodle allí. */
+function trustedMoodleMove(from: string, to: string, probeSaidMoodle: boolean): boolean {
+  const a = hostOf(from)
+  const b = hostOf(to)
+  if (!a || !b) return false
+  if (a === b) return true
+  if (isIdentityHost(b)) return false
+  return sameRegistrableSite(a, b) || probeSaidMoodle
+}
+
+function upgradesToHttps(root: string, finalURL: string): boolean {
+  return root.startsWith('http:') && finalURL.startsWith('https:') && hostOf(root) === hostOf(finalURL)
+}
+
+/** La raíz `root` (http) en el origen https de `finalURL` (su puerto, no el de http), con su carpeta y sin barra final. */
+function httpsRoot(root: string, finalURL: string): string {
+  return new URL(finalURL).origin + new URL(root).pathname.replace(/\/+$/, '')
 }

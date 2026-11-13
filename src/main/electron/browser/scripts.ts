@@ -131,10 +131,33 @@ export function pageStateScript(): string {
 })()`
 }
 
+/** Lo que la ventana de acceso lee de una página además de su estado: marca de las llaves de acceso, avisos cerrados y error de Entra. */
+const SIGNIN_EXTRAS = String.raw`
+  function extras(withText){
+    var d = document.documentElement, pk = "", closed = "", code = "";
+    try { if (d) { pk = String(d.getAttribute("data-aula-passkey") || ""); closed = String(d.getAttribute("data-aula-hints-closed") || ""); } } catch (e) {}
+    if (withText) { try { var t = document.body ? String(document.body.innerText || "").slice(0, 300000) : ""; var m = /AADSTS\d{4,7}/i.exec(t); if (m) code = m[0].toUpperCase(); } catch (e) {} }
+    return { passkey: pk.slice(0, 20), closed: closed.slice(0, 2000), aadsts: code };
+  }
+`
+
+/**
+ * Página de un proveedor de identidad (Microsoft…) en la ventana de inicio de sesión: solo la marca de las llaves de acceso
+ * (la pone la guarda de WebAuthn del preload), los avisos de Aula que el estudiante cerró y el primer código `AADSTS…` del
+ * texto visible. Nada más (ni campos ni valores).
+ */
+export function identityStateScript(): string {
+  return String.raw`(function(){
+  ${SIGNIN_EXTRAS}
+  return extras(true);
+})()`
+}
+
 /**
  * Estado de una página de la ventana de inicio de sesión: dirección, ¿hay campo de contraseña visible?, principio del HTML
  * y si el DOM YA PINTADO (también dentro de shadow DOM) tiene controles que solo existen con la sesión (menú del usuario,
- * «Cerrar sesión») o un formulario de acceso. Nunca lee el valor de ningún campo.
+ * «Cerrar sesión») o un formulario de acceso; además, lo de `identityStateScript` (el código de Entra, solo al llegar a la
+ * página). Nunca lee el valor de ningún campo.
  */
 export function signInStateScript(sel: { signedIn: string[]; signedOut: string[] }, withHTML = true): string {
   return String.raw`(function(IN, OUT, HTML){
@@ -148,9 +171,11 @@ export function signInStateScript(sel: { signedIn: string[]; signedOut: string[]
     return null;
   }
   function any(list){ for (var i = 0; i < list.length; i++) { if (deep(document, list[i], 0)) return true; } return false; }
+  ${SIGNIN_EXTRAS}
   var pw = deep(document, 'input[type="password"]', 0);
+  var x = extras(HTML);
   return { url: String(location.href), hasPassword: !!(pw && vis(pw)), signedInHint: any(IN), signedOutHint: any(OUT),
-           ready: String(document.readyState),
+           ready: String(document.readyState), passkey: x.passkey, closed: x.closed, aadsts: x.aadsts,
            htmlHead: HTML && document.documentElement ? document.documentElement.outerHTML.slice(0, 120000) : "" };
 })(${lit(sel.signedIn)}, ${lit(sel.signedOut)}, ${lit(withHTML)})`
 }
@@ -320,21 +345,80 @@ export function successBannerScript(title: string, detail = ''): string {
   return String.raw`(function(T, D){
   try {
     var d = document.createElement("div");
-    d.setAttribute("style", "position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(43,37,34,.38);font:500 15px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:#201e1a;opacity:0;transition:opacity .18s ease-out");
+    d.style.cssText = "position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(43,37,34,.38);font:500 15px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:#201e1a;opacity:0;transition:opacity .18s ease-out";
     var c = document.createElement("div");
-    c.setAttribute("style", "padding:22px 28px;border-radius:20px;background:#fcfaf5;box-shadow:0 18px 50px rgba(43,37,34,.28);display:flex;gap:14px;align-items:center;max-width:440px;transform:translateY(6px) scale(.98);transition:transform .22s cubic-bezier(.2,.8,.2,1)");
+    c.style.cssText = "padding:22px 28px;border-radius:20px;background:#fcfaf5;box-shadow:0 18px 50px rgba(43,37,34,.28);display:flex;gap:14px;align-items:center;max-width:440px;transform:translateY(6px) scale(.98);transition:transform .22s cubic-bezier(.2,.8,.2,1)";
     var k = document.createElement("div");
-    k.setAttribute("style", "flex:none;width:36px;height:36px;border-radius:12px;background:#b4502f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700");
+    k.style.cssText = "flex:none;width:36px;height:36px;border-radius:12px;background:#b4502f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700";
     k.textContent = "✓";
     var t = document.createElement("div");
-    var h = document.createElement("div"); h.setAttribute("style", "font:600 19px/1.3 Georgia,'Times New Roman',serif"); h.textContent = T;
+    var h = document.createElement("div"); h.style.cssText = "font:600 19px/1.3 Georgia,'Times New Roman',serif"; h.textContent = T;
     t.appendChild(h);
-    if (D) { var p = document.createElement("div"); p.setAttribute("style", "margin-top:3px;color:#585550"); p.textContent = D; t.appendChild(p); }
+    if (D) { var p = document.createElement("div"); p.style.cssText = "margin-top:3px;color:#585550"; p.textContent = D; t.appendChild(p); }
     c.appendChild(k); c.appendChild(t); d.appendChild(c); (document.body || document.documentElement).appendChild(d);
-    requestAnimationFrame(function(){ d.style.opacity = "1"; c.style.transform = "none"; });
+    var on = false; function show(){ if (on) return; on = true; d.style.opacity = "1"; c.style.transform = "none"; }
+    requestAnimationFrame(show); setTimeout(show, 250);
     return true;
   } catch (e) { return false; }
 })(${lit(title)}, ${lit(detail)})`
+}
+
+/**
+ * Aviso de Aula en la ventana de inicio de sesión: una tira arriba (no tapa la página ni bloquea nada), papel cálido y
+ * ladrillo, que se puede cerrar. Uno por tipo (`kind`): si ya está, no se repite; si el estudiante lo cerró en esta página,
+ * no vuelve (lo dice el atributo `data-aula-hints-closed`). Estilos por CSSOM y en un shadow root: ni la CSP ni el CSS de la
+ * página lo cambian. Devuelve 'shown', 'present', 'dismissed' o 'failed'.
+ */
+export function hintBannerScript(hint: { kind: string; title: string; detail?: string }, closeLabel: string): string {
+  return String.raw`(function(KIND, T, D, CLOSE){
+  try {
+    var root = document.documentElement;
+    if (!root) return "failed";
+    var closed = String(root.getAttribute("data-aula-hints-closed") || "").split(" ");
+    if (closed.indexOf(KIND) >= 0) return "dismissed";
+    var stack = document.getElementById("aula-hint-stack");
+    if (stack) { for (var i = 0; i < stack.children.length; i++) { if (stack.children[i].getAttribute("data-aula-hint") === KIND) return "present"; } }
+    else {
+      stack = document.createElement("div");
+      stack.id = "aula-hint-stack";
+      stack.style.cssText = "all:initial;position:fixed;top:10px;left:0;right:0;margin:0 auto;z-index:2147483647;display:flex;flex-direction:column;gap:8px;width:min(680px,calc(100vw - 24px));pointer-events:none";
+      (document.body || root).appendChild(stack);
+    }
+    var still = false; try { still = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
+    var host = document.createElement("div");
+    host.setAttribute("data-aula-hint", KIND);
+    host.style.cssText = "all:initial;display:block;pointer-events:auto";
+    var box = host.attachShadow ? host.attachShadow({ mode: "open" }) : host;
+    var card = document.createElement("div");
+    card.setAttribute("role", "status");
+    card.setAttribute("aria-live", "polite");
+    card.style.cssText = "display:flex;gap:12px;align-items:flex-start;box-sizing:border-box;padding:11px 8px 11px 12px;border-radius:16px;background:#fcfaf5;color:#201e1a;" +
+      "box-shadow:0 10px 30px rgba(43,37,34,.22),0 0 0 1px rgba(43,37,34,.08);font:500 14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;text-align:left" +
+      (still ? "" : ";opacity:0;transform:translateY(-6px);transition:opacity .18s ease-out,transform .22s cubic-bezier(.2,.8,.2,1)");
+    var k = document.createElement("div");
+    k.setAttribute("aria-hidden", "true");
+    k.style.cssText = "flex:none;width:28px;height:28px;border-radius:9px;background:#b4502f;color:#fff;display:flex;align-items:center;justify-content:center;font:700 16px/1 Georgia,'Times New Roman',serif";
+    k.textContent = "!";
+    var t = document.createElement("div");
+    t.style.cssText = "flex:1;min-width:0;padding-top:3px";
+    var h = document.createElement("div"); h.style.cssText = "font:600 15px/1.4 Georgia,'Times New Roman',serif"; h.textContent = T; t.appendChild(h);
+    if (D) { var p = document.createElement("div"); p.style.cssText = "margin-top:3px;color:#585550;font-size:13px"; p.textContent = D; t.appendChild(p); }
+    var b = document.createElement("button");
+    b.type = "button"; b.title = CLOSE; b.setAttribute("aria-label", CLOSE); b.textContent = "×";
+    b.style.cssText = "flex:none;margin:0;padding:0;width:28px;height:28px;border:0;border-radius:9px;background:transparent;color:#585550;font:400 20px/28px -apple-system,system-ui,sans-serif;cursor:pointer;outline:none";
+    b.addEventListener("mouseenter", function(){ b.style.background = "rgba(43,37,34,.07)"; });
+    b.addEventListener("mouseleave", function(){ b.style.background = "transparent"; });
+    b.addEventListener("focus", function(){ b.style.boxShadow = "0 0 0 2px #b4502f"; });
+    b.addEventListener("blur", function(){ b.style.boxShadow = "none"; });
+    b.addEventListener("click", function(){
+      try { var cur = String(root.getAttribute("data-aula-hints-closed") || ""); root.setAttribute("data-aula-hints-closed", (cur + " " + KIND).trim()); } catch (e) {}
+      try { host.remove(); } catch (e) {}
+    });
+    card.appendChild(k); card.appendChild(t); card.appendChild(b); box.appendChild(card); stack.appendChild(host);
+    if (!still) { var on = false; var show = function(){ if (on) return; on = true; card.style.opacity = "1"; card.style.transform = "none"; }; requestAnimationFrame(show); setTimeout(show, 250); }
+    return "shown";
+  } catch (e) { return "failed"; }
+})(${lit(hint.kind)}, ${lit(hint.title)}, ${lit(hint.detail ?? '')}, ${lit(closeLabel)})`
 }
 
 let readabilitySource: string | null | undefined

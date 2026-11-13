@@ -41,7 +41,7 @@ export interface MoodlePageConfig {
   sesskey: string | null
   /** Id del usuario si la página lo deja ver (enlace a su perfil o `data-userid`). */
   userId: number | null
-  /** ¿La página es de alguien con la sesión iniciada? (enlace de salida con sesskey). */
+  /** ¿La página es de alguien con la sesión iniciada? (enlace de salida con sesskey y sin `notloggedin` en el body). */
   signedIn: boolean
 }
 
@@ -52,8 +52,32 @@ export function extractMoodleConfig(html: string): MoodlePageConfig {
     wwwroot: www ? unescapeJSONString(www).replace(/\/+$/, '') : null,
     sesskey: extractMoodleSesskey(html),
     userId: user ? Number(user) : null,
-    signedIn: /logout\.php\?sesskey=/.test(html) && !/\bnotloggedin\b/.test(html)
+    signedIn: moodleUserProof(html) && !moodleBodyNotLoggedIn(html)
   }
+}
+
+// MARK: ¿Hay un usuario de verdad?
+
+/** Clases de la etiqueta `<body>` (la primera); vacío si no se ve la etiqueta. */
+export function htmlBodyClasses(html: string): string[] {
+  const tag = /<body(?=[\s>/])[^>]*>/i.exec(html ?? '')?.[0]
+  if (!tag) return []
+  const m = /\sclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i.exec(tag)
+  const value = m ? (m[1] ?? m[2] ?? m[3] ?? '') : ''
+  return value.split(/\s+/).filter(Boolean)
+}
+
+/** Moodle marca `notloggedin` en el `<body>` de quien no ha iniciado sesión (solo ahí: no en CSS ni en JavaScript). */
+export function moodleBodyNotLoggedIn(html: string): boolean {
+  return htmlBodyClasses(html).includes('notloggedin')
+}
+
+/**
+ * Prueba de un usuario de verdad: el enlace de salida con sesskey (menú del usuario o pie). Un invitado no lo tiene
+ * (su sesión también cuenta como «iniciada» para Moodle, pero no sirve a Aula).
+ */
+export function moodleUserProof(html: string): boolean {
+  return /logout\.php\?sesskey=/.test(html ?? '')
 }
 
 // MARK: AJAX (/lib/ajax/service.php)

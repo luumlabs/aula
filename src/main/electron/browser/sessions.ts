@@ -1,12 +1,15 @@
 // Una sesión de Chromium persistente por cuenta de plataforma: `persist:platform-<id>` (cookies, localStorage e IndexedDB en
 // disco, dentro de «Browser Data»). Agente de usuario de Chrome normal (sin «Electron/x» ni «Aula/x», para que Google o
 // Microsoft no bloqueen el inicio de sesión), sin corrector, sin cámara ni micrófono ni ningún otro permiso, descargas
-// desviadas al gestor de Aula y un contador de peticiones por pestaña (para esperar a que la red quede quieta).
-import { app, session as electronSession, type Session, type DownloadItem, type WebContents } from 'electron'
-import { acceptLanguages, chromeUserAgent } from '@engine/platforms'
+// desviadas al gestor de Aula y un contador de peticiones por pestaña (para esperar a que la red quede quieta). También apunta,
+// por pestaña o ventana, lo que la guarda de destinos corta y las otras apps que una página quiso abrir (la ventana de
+// inicio de sesión lo explica al estudiante): solo el host o el esquema, nunca direcciones completas ni valores.
+import { app, powerMonitor, session as electronSession, type Session, type DownloadItem, type WebContents } from 'electron'
+import { acceptLanguages, chromeUserAgent, hostOf } from '@engine/platforms'
 import { log } from '@main/services/log'
 import { accountIsOnLocalNetwork, createDestinationGuard, privateAllowedFor, type DestinationGuard } from '@main/services/platforms/destinations'
 import { tr } from '@shared/ai/i18n'
+import { blockedAddressKind, externalSchemeOf, type BlockedAddressKind } from './signin-hints'
 
 /** Partición de una cuenta; null = navegación sin cuenta (sesión en memoria, sin cookies de ninguna plataforma). */
 export function partitionFor(accountId: string | null): string {
@@ -29,7 +32,25 @@ let downloadRouter: DownloadRouter | null = null
 /** Dirección base de una cuenta (para saber si su plataforma está en la red local). */
 let accountBase: (accountId: string) => string | null = () => null
 const guardsBySession = new Map<string, DestinationGuard>()
-const localAccounts = new Map<string, Promise<boolean>>()
+/** ¿La plataforma de la cuenta está en la red local? Caduca (la red cambia: VPN, otra wifi) y se olvida al despertar. */
+const localAccounts = new Map<string, { answer: Promise<boolean>; at: number }>()
+const LOCAL_ACCOUNT_TTL_MS = 5 * 60_000
+let resumeHooked = false
+
+/** Una petición cortada por la guarda de destinos (solo el host: nunca la dirección ni su consulta). */
+export interface BlockedDestination {
+  host: string
+  /** Por qué (texto de la guarda, que solo nombra el host). */
+  reason: string
+  /** Era la página entera (la ventana se queda en blanco) y no un recurso suyo. */
+  mainFrame: boolean
+  /** Motivo probable según las direcciones a las que resuelve. */
+  kind: BlockedAddressKind
+  at: number
+}
+const blockedByWc = new Map<number, BlockedDestination[]>()
+const externalByWc = new Map<number, string[]>()
+const MAX_NOTES_PER_WC = 30
 
 /** Quién dice la dirección de cada cuenta (el navegador de plataformas). */
 export function setAccountBaseResolver(fn: (accountId: string) => string | null): void {
@@ -49,12 +70,58 @@ function mayReachLocalNetwork(ses: Session, accountId: string | null, url: strin
   if (!base) return Promise.resolve(false)
   if (!privateAllowedFor(base, url)) return Promise.resolve(false)
   const key = `${accountId}\u0000${base}`
-  let p = localAccounts.get(key)
-  if (!p) {
-    p = accountIsOnLocalNetwork(base, resolverFor(ses)).catch(() => false)
-    localAccounts.set(key, p)
+  const hit = localAccounts.get(key)
+  if (hit && Date.now() - hit.at < LOCAL_ACCOUNT_TTL_MS) return hit.answer
+  const answer = accountIsOnLocalNetwork(base, resolverFor(ses)).catch(() => false)
+  localAccounts.set(key, { answer, at: Date.now() })
+  return answer
+}
+
+/** Al despertar el equipo la red puede ser otra: se vuelve a mirar si cada plataforma está en la red local. */
+function hookResume(): void {
+  if (resumeHooked) return
+  resumeHooked = true
+  try {
+    powerMonitor.on('resume', () => localAccounts.clear())
+  } catch {
+    // sin powerMonitor (pruebas): basta la caducidad
   }
-  return p
+}
+
+/** Apunta un corte de la guarda para la pestaña o ventana que lo pidió (con el motivo probable, sin la dirección). */
+function noteBlocked(ses: Session, wcId: number | undefined, url: string, reason: string, mainFrame: boolean): void {
+  const host = hostOf(url)
+  if (wcId == null || !host) return
+  const known = blockedByWc.get(wcId)
+  if (known?.some((b) => b.host === host && b.mainFrame === mainFrame)) return
+  void resolverFor(ses)(host)
+    .then((addresses) => blockedAddressKind(host, addresses), () => blockedAddressKind(host, []))
+    .then((kind) => {
+      let list = blockedByWc.get(wcId)
+      if (!list) blockedByWc.set(wcId, (list = []))
+      if (list.some((b) => b.host === host && b.mainFrame === mainFrame)) return
+      if (list.length >= MAX_NOTES_PER_WC) list.shift()
+      list.push({ host, reason, mainFrame, kind, at: Date.now() })
+    })
+}
+
+/** Lo que la guarda cortó en una pestaña o ventana (la ventana de acceso lo explica). */
+export function blockedDestinations(webContentsId: number): BlockedDestination[] {
+  return [...(blockedByWc.get(webContentsId) ?? [])]
+}
+
+/** Una página quiso abrir otra aplicación (msauth:, ms-outlook:…): se apunta solo el esquema. */
+export function noteExternalScheme(webContentsId: number, url: string | undefined): void {
+  const scheme = externalSchemeOf(url ?? '')
+  if (!scheme) return
+  let list = externalByWc.get(webContentsId)
+  if (!list) externalByWc.set(webContentsId, (list = []))
+  if (!list.includes(scheme) && list.length < MAX_NOTES_PER_WC) list.push(scheme)
+}
+
+/** Los esquemas de otras apps que pidió una pestaña o ventana (en el orden en que aparecieron). */
+export function externalSchemes(webContentsId: number): string[] {
+  return [...(externalByWc.get(webContentsId) ?? [])]
 }
 
 /**
@@ -88,6 +155,8 @@ export function forgetWebContents(webContentsId: number): void {
   inflight.delete(webContentsId)
   lastActivity.delete(webContentsId)
   guards.delete(webContentsId)
+  blockedByWc.delete(webContentsId)
+  externalByWc.delete(webContentsId)
 }
 
 function track(wcId: number | undefined, reqId: number, start: boolean): void {
@@ -107,10 +176,15 @@ export function platformSession(accountId: string | null): Session {
   const ses = electronSession.fromPartition(partition, { cache: accountId != null })
   if (configured.has(partition)) return ses
   configured.add(partition)
+  hookResume()
 
   ses.setUserAgent(chromeUserAgent(ses.getUserAgent(), [app.getName(), 'Aula']), acceptLanguages(app.getLocale()))
   ses.setSpellCheckerEnabled(false)
-  ses.setPermissionRequestHandler((_wc, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)))
+  ses.setPermissionRequestHandler((wc, permission, callback, details) => {
+    // abrir otra app (msauth:, ms-outlook:…): nunca; se apunta el esquema para explicarlo en la ventana de acceso
+    if (permission === 'openExternal' && wc && 'externalURL' in details) noteExternalScheme(wc.id, details.externalURL)
+    callback(ALLOWED_PERMISSIONS.has(permission))
+  })
   ses.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission))
   ses.setDevicePermissionHandler(() => false)
   ses.setDisplayMediaRequestHandler((_req, callback) => callback(null))
@@ -130,6 +204,7 @@ export function platformSession(accountId: string | null): Session {
     }
     // solo http(s) (y los internos de Chromium); nada de file: ni esquemas de otras apps
     if (!/^(https?|wss?|data|blob|chrome-extension|devtools):/i.test(details.url)) {
+      if (wcId != null) noteExternalScheme(wcId, details.url)
       callback({ cancel: true })
       return
     }
@@ -139,6 +214,7 @@ export function platformSession(accountId: string | null): Session {
       .then((why) => {
         if (why) {
           log.info(`[platforms] dirección local o privada bloqueada (${safeOrigin(details.url)}): ${why}`)
+          noteBlocked(ses, wcId, details.url, why, details.resourceType === 'mainFrame')
           callback({ cancel: true })
           return
         }

@@ -90,6 +90,9 @@ export interface DownloadRequest {
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
+/** Pestaña oculta de «volver a entrar sola» (una por cuenta). */
+const SILENT_TAB = '__silent'
+
 function blocked(d: Exclude<ClickDecision, { decision: 'allow' }>): AulaError {
   return new AulaError('blocked', tr(`Aula no hace eso: ${d.reason}`, `Aula won’t do that: ${d.reason}`), { category: d.category, aiReason: d.aiReason })
 }
@@ -128,6 +131,8 @@ export class PlatformBrowser {
         return openSignInWindow({ account: a, verify: hooks.verify, onSuccess: hooks.onSuccess })
       },
       silentSignIn: (a) => this.silentSignIn(a),
+      // al abrir la ventana de acceso: la pestaña oculta no debe seguir con el SSO en la misma sesión
+      cancelSilentSignIn: (id) => this.pool.close({ accountId: id, tab: SILENT_TAB }),
       closeAccountTabs: (id) => this.pool.closeAccount(id)
     }
     this.controller = new PlatformController(adapter)
@@ -481,10 +486,11 @@ export class PlatformBrowser {
   /**
    * Abre la plataforma en una pestaña oculta y deja que el SSO (SAML/OIDC) vuelva solo si la sesión del proveedor sigue viva.
    * Nunca escribe ni pulsa: si la página se queda pidiendo contraseña o una elección, se rinde (lo hará el estudiante).
+   * También se rinde en cuanto el estudiante abre la ventana de acceso de la cuenta (no pisa su inicio de sesión).
    */
   private async silentSignIn(account: PlatformAccount): Promise<boolean> {
-    if (this.quitting) return false
-    const ref = { accountId: account.id, tab: '__silent' }
+    if (this.quitting || this.controller.isSigningIn(account.id)) return false
+    const ref = { accountId: account.id, tab: SILENT_TAB }
     const tab = this.pool.get(ref)
     try {
       return await tab.run(async () => {
@@ -497,6 +503,7 @@ export class PlatformBrowser {
         let last = ''
         let stableSince = Date.now()
         while (Date.now() - start < 25_000 && !tab.closed) {
+          if (this.controller.isSigningIn(account.id)) return false
           const info = await tab.info()
           if (info.url !== last) {
             last = info.url
@@ -514,7 +521,8 @@ export class PlatformBrowser {
       log.debug(`[platforms] reentrada sin ventana (${account.id}):`, err instanceof Error ? err.message : String(err))
       return false
     } finally {
-      this.pool.close(ref)
+      // solo la suya: si la cancelaron, otra reentrada pudo abrir ya una nueva con el mismo nombre
+      if (this.pool.peek(ref) === tab) this.pool.close(ref)
     }
   }
 }
