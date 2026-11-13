@@ -77,21 +77,11 @@ for pair in ArchDawn:arch_dawn ArchNoon:arch_noon ArchDusk:arch_dusk ArchNight:a
   cp "$A/${pair%%:*}.imageset/dark.png" "$GEN/drawable-night-nodpi/${pair##*:}.png"
 done
 # icono adaptable: el arco entero dentro de la zona que ninguna forma recorta (76 de 108 dp), sobre el mismo papel
-# (sips en la Mac; ImageMagick en Linux)
 for pair in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
   size=${pair##*:}
-  inner=$(( size * 76 / 108 ))
-  out="$GEN/mipmap-${pair%%:*}/ic_launcher_foreground.png"
-  mkdir -p "$(dirname "$out")"
-  if command -v sips >/dev/null 2>&1; then
-    sips -z "$inner" "$inner" "$A/AppIcon.appiconset/icon-1024.png" --out "$T/icon.png" >/dev/null 2>&1
-    sips --padToHeightWidth "$size" "$size" --padColor F2EADC "$T/icon.png" --out "$out" >/dev/null 2>&1
-  elif command -v magick >/dev/null 2>&1 || command -v convert >/dev/null 2>&1; then
-    im=$(command -v magick || command -v convert)
-    "$im" "$A/AppIcon.appiconset/icon-1024.png" -resize "${inner}x${inner}" -background '#F2EADC' -gravity center -extent "${size}x${size}" "$out"
-  else
-    echo "Hace falta sips (macOS) o ImageMagick para el icono" >&2; exit 1
-  fi
+  mkdir -p "$GEN/mipmap-${pair%%:*}"
+  java -Djava.awt.headless=true "$HERE/tools/Icon.java" "$A/AppIcon.appiconset/icon-1024.png" \
+    "$GEN/mipmap-${pair%%:*}/ic_launcher_foreground.png" "$size" $(( size * 76 / 108 )) F2EADC
 done
 
 # ── 3. recursos y manifiesto ──
