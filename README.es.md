@@ -17,6 +17,7 @@
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-AGPL--3.0-B9553A?style=flat-square" alt="Licencia: AGPL-3.0"></a>
   <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-6b6b6b?style=flat-square" alt="macOS, Windows y Linux">
   <img src="https://img.shields.io/badge/estado-acceso%20anticipado-D9822B?style=flat-square" alt="Estado: acceso anticipado">
+  <a href="https://www.reddit.com/user/astrolafi"><img src="https://img.shields.io/badge/Reddit-u%2Fastrolafi-FF4500?style=flat-square&logo=reddit&logoColor=white" alt="Sigue a u/astrolafi en Reddit"></a>
 </p>
 
 <p align="center">
@@ -347,6 +348,11 @@ solo `src/main/electron` habla con Electron. La interfaz y el proceso principal 
 tipos, con `contextIsolation`, sandbox y una CSP estricta. Hay más notas técnicas en [`CLAUDE.md`](CLAUDE.md) (en inglés).
 
 Las *pull requests* son bienvenidas. Lee antes [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Comunidad
+
+Aula crece en público. Si quieres seguir el proyecto, ver cómo va o preguntar algo que no sea un fallo, estoy en
+Reddit como [u/astrolafi](https://www.reddit.com/user/astrolafi).
 
 ## Apoya a Aula
 

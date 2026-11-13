@@ -17,6 +17,7 @@
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-AGPL--3.0-B9553A?style=flat-square" alt="License: AGPL-3.0"></a>
   <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-6b6b6b?style=flat-square" alt="macOS, Windows and Linux">
   <img src="https://img.shields.io/badge/status-early%20access-D9822B?style=flat-square" alt="Status: early access">
+  <a href="https://www.reddit.com/user/astrolafi"><img src="https://img.shields.io/badge/Reddit-u%2Fastrolafi-FF4500?style=flat-square&logo=reddit&logoColor=white" alt="Follow u/astrolafi on Reddit"></a>
 </p>
 
 <p align="center">
@@ -347,6 +348,11 @@ over one typed IPC channel, with `contextIsolation`, a sandbox and a strict CSP.
 [`CLAUDE.md`](CLAUDE.md).
 
 Pull requests are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first.
+
+## Community
+
+Aula grows in public. If you want to follow along, see how it's going or ask something that isn't a bug, I'm on
+Reddit as [u/astrolafi](https://www.reddit.com/user/astrolafi).
 
 ## Support Aula
 
