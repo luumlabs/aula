@@ -20,9 +20,9 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/20fd0765-a471-4f6f-87be-39ccd13d7d93" poster="docs/media/demo/aula-demo-poster.jpg" width="1000" controls muted playsinline></video>
+  <video src="https://github.com/user-attachments/assets/20fd0765-a471-4f6f-87be-39ccd13d7d93" controls muted playsinline></video>
   <br><sub><b>90 seconds, no voice.</b> A whole course end to end: the lesson, an exercise checked as you answer, the
-mistakes notebook, flashcards and the mock exam</sub>
+mistakes notebook, flashcards and the mock exam. If the player doesn't start, <a href="docs/media/demo/aula-demo-90s.mp4">watch the file</a></sub>
 </p>
 
 <p align="center">
