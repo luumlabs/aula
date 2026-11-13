@@ -1,11 +1,13 @@
-# Aula on your iPad and iPhone
+# Aula on your iPad, iPhone and Android
 
-Aula can be used from the student's own iPad and iPhone while everything (courses, the AI, the data) stays on their
-Mac. The devices are only a window: they reach the Mac over the student's private Tailscale network.
+Aula can be used from the student's own iPad, iPhone and Android phone or tablet while everything (courses, the AI, the
+data) stays on their Mac — or on their own server, with no Mac at all ([SERVER.md](SERVER.md)). The devices are only a
+window: they reach Aula over the student's private Tailscale network (their own account).
 
 - **iPad**: the whole app, as on the Mac (courses, lessons, practice, chat, calendar, documents).
 - **iPhone**: the same interface in a narrow layout built around Aula as an assistant: four tabs at the bottom
   (*Inbox*: what Aula did and what is pending, with the always-on switch first; *Aula*: the chat; *Calendar*; *Today*).
+- **Android**: the same, phone or tablet layout by width (`native/android`, [its README](../native/android/README.md)).
 
 It is off by default. Nothing here runs unless the student turns it on in **Settings → Aula on your devices**.
 
@@ -96,8 +98,12 @@ On the Mac: **Settings → Aula on your devices** → turn it on → **Sign in**
 
 On the device, either:
 
-1. **The Aula app** (`native/ios`, see below): it embeds its own Tailscale node, so the Tailscale app is not needed.
-   Sign in to Tailscale with the same account, the app finds `aula-mac` by itself, type the code.
+1. **The Aula app** (`native/ios`, see below, or `native/android`): it embeds its own Tailscale node, so the Tailscale
+   app is not needed. Sign in to Tailscale with the same account, the app finds your Aula by itself, type the code.
+   It looks for every machine on the tailnet whose name starts with `aula-` and is not a device (`aula-ipad`,
+   `aula-iphone`, `aula-android`): `aula-mac`, `aula-server`… If there are several (a Mac and a server), it asks which one
+   to open and remembers it; *Settings → Open another Aula* changes it. Each Aula sets its own link cookie
+   (`aula_device_<installation>`), so a device stays linked to both.
 2. **Safari**, with the Tailscale app installed and connected on the device: open `http://aula-mac`, type the code,
    then *Share → Add to Home Screen* to get a full-screen icon. This needs no Xcode and works today.
 

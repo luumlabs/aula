@@ -46,8 +46,8 @@ de API) o con un modelo gratis que corre en tu propio equipo. No hay cuentas ni 
   abierto, y crea o cambia un curso con solo pedirlo. [Hablar con Aula](#hablar-con-aula)
 - **Siempre activa, si quieres.** Revisa tu plataforma y tu calendario, te recuerda las entregas y te deja un repaso
   corto antes de un examen. Solo lee: nunca entrega nada por ti. [Todo lo demás](#todo-lo-demás)
-- **En tu iPad y tu iPhone.** Tus cursos se quedan en tu Mac y estudias desde tus dispositivos.
-  [Dispositivos](docs/DEVICES.md)
+- **En tu iPad, tu iPhone y Android.** Tus cursos se quedan en tu Mac, o en un servidor tuyo sin Mac ninguno, y estudias
+  desde tus dispositivos. [Dispositivos](docs/DEVICES.md) · [Servidor](docs/SERVER.md)
 - **Privada y tuya.** Sin cuenta, sin rastreo, tus datos en tu ordenador y la IA que tú elijas, también una gratuita
   que funciona sin conexión. [Privacidad](#privacidad)
 
@@ -233,7 +233,10 @@ Cada ejercicio tiene además un tutor al lado. Ve el ejercicio y tu respuesta, y
   estando fuera de casa, o hacer tú una tarea y pasársela a Aula para que la revise antes de enviarla. Un dispositivo
   vinculado también abre Ajustes con la parte de uso diario (qué IA usar entre las que están listas en el Mac,
   apariencia, idioma, *Aula siempre activa*, memoria); las claves, las plataformas y tus datos se gestionan en el Mac.
-  Más en [docs/DEVICES.md](docs/DEVICES.md).
+  Más en [docs/DEVICES.md](docs/DEVICES.md). La app de Android funciona igual ([native/android](native/android/README.md)).
+- **Aula como servidor** (opcional): Aula sin ventana en un equipo siempre encendido (un servidor en casa, un NAS, un
+  contenedor Linux: `ghcr.io/luumlabs/aula-server`), y la usas solo desde tus dispositivos. El primero que vinculas es
+  su propietario y lleva desde ahí la IA, las plataformas y los dispositivos. Más en [docs/SERVER.md](docs/SERVER.md).
 - **Memoria**: Aula recuerda lo que le ayuda a enseñarte, por ejemplo cómo prefieres que te expliquen o qué te cuesta. Puedes
   verlo, corregirlo, pausarlo o exportarlo todo en *Ajustes → Lo que Aula recuerda*.
 - **Buscar**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> encuentra pantallas, cursos y herramientas, y cualquier cosa

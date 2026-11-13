@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos en inglés (por defecto). Los mismos que la app del iPhone y el iPad (native/ios/Aula/Texts.swift). -->
+<resources>
+    <string name="app_name">Aula</string>
+    <string name="starting">Setting up your private network…</string>
+    <string name="sign_in_title">Connect to your Aula</string>
+    <string name="sign_in_body">Aula lives on your Mac or your server. To reach it from here, sign in to Tailscale with the same account you used there. You only do this once.</string>
+    <string name="sign_in_action">Sign in to Tailscale</string>
+    <string name="sign_in_after">When you’re done, come back to Aula: it carries on by itself.</string>
+    <string name="approval_title">This device needs approval</string>
+    <string name="approval_body">Your Tailscale network asks for new devices to be approved. Whoever manages it can do so in the admin panel; Aula carries on by itself once they do.</string>
+    <string name="looking_title">I can’t find your Aula</string>
+    <string name="looking_body">On your Mac, open Aula → Settings → “Aula on your devices”, turn it on and sign in to Tailscale with this same account. If your Aula is a server, check that it is running and on Tailscale with this account.</string>
+    <string name="unreachable_title">Your Aula isn’t answering</string>
+    <string name="unreachable_body">I found “%1$s” on your network, but Aula isn’t answering. Check that the computer is on (a Mac, awake and with Aula open). I’ll keep trying every few seconds.</string>
+    <string name="choose_title">Which Aula do you want to open?</string>
+    <string name="choose_body">There is more than one Aula on your network. Choose one: next time it opens by itself. To change, Settings → Open another Aula.</string>
+    <string name="choose_offline">offline</string>
+    <string name="choose_another">Open another Aula</string>
+    <string name="failed_title">The private network won’t start</string>
+    <string name="retry">Try again</string>
+    <string name="sign_out">Sign out of Tailscale</string>
+    <string name="sign_out_confirm">This device will leave your private network. Your courses stay where your Aula is.</string>
+    <string name="cancel">Cancel</string>
+    <string name="get_aula">Don’t have Aula yet?</string>
+    <string name="step_1">Sign in</string>
+    <string name="step_2">Find your Aula</string>
+    <string name="step_3">Type the code</string>
+    <string name="step_label">Step %1$d of 3: %2$s</string>
+    <string name="no_browser">There is no browser on this device to open the page.</string>
+</resources>

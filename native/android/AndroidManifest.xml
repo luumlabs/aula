@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aula para Android: la ventana a la Aula del estudiante (en su Mac o en su servidor) por su red privada de Tailscale.
+     native/android/README.md. La versión la pone build.sh (versionCode, versionName) desde package.json. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.luumlabs.aula">
+
+    <!-- solo la red: ni cámara, ni micrófono, ni ubicación, ni contactos -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- extractNativeLibs: el componente de Tailscale (lib/<abi>/libaulatsnet.so) se instala como archivo ejecutable;
+         cleartext solo hacia 127.0.0.1 (el túnel local, xml/network_security_config.xml): fuera, la red privada ya cifra -->
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/Aula"
+        android:allowBackup="false"
+        android:extractNativeLibs="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

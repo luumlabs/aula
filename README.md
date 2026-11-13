@@ -49,8 +49,8 @@ API key) or with a free model that runs on your own machine. There's no account 
   make or change a course just by asking. [Talking to Aula](#talking-to-aula)
 - **Always on, if you want.** It checks your school platform and your calendar, reminds you of deadlines and leaves a
   short review ready before an exam. It only reads: it never submits anything for you. [Everything else](#everything-else)
-- **On your iPad and iPhone.** Your courses stay on your Mac and you study from your own devices.
-  [Devices](docs/DEVICES.md)
+- **On your iPad, iPhone and Android.** Your courses stay on your Mac, or on a server of your own with no Mac at all,
+  and you study from your own devices. [Devices](docs/DEVICES.md) · [Server](docs/SERVER.md)
 - **Private and yours.** No account, no tracking, your data on your computer, and the AI you choose, including a free
   one that runs offline. [Privacy](#privacy)
 
@@ -232,7 +232,11 @@ answer away.
   with a code. From there you can also open Aula's browser live: sign in to your platform away from home, or do an
   assignment yourself and hand it to Aula to review before you submit it. A linked device can also open Settings for
   the daily-use part (which AI to use among those ready on the Mac, appearance, language, *Aula always on*, memory);
-  keys, platforms and your data are managed on the Mac. See [docs/DEVICES.md](docs/DEVICES.md).
+  keys, platforms and your data are managed on the Mac. See [docs/DEVICES.md](docs/DEVICES.md). The Android app works
+  the same way ([native/android](native/android/README.md)).
+- **Aula as a server** (optional): run Aula without a window on a computer that is always on (a home server, a NAS, a
+  Linux container: `ghcr.io/luumlabs/aula-server`) and use it only from your devices. The first device you link is its
+  owner and manages the AI, platforms and devices from there. See [docs/SERVER.md](docs/SERVER.md).
 - **Memory**: Aula remembers what helps it teach you, like how you prefer explanations or what you find hard. You can
   see, edit, pause or export all of it in *Settings → What Aula remembers*.
 - **Search**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> finds screens, courses and tools, and anything inside your

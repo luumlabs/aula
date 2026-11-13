@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El mismo papel y la misma luz, de noche. -->
+<resources>
+    <color name="paper">#171614</color>
+    <color name="ink">#EFE6DC</color>
+    <color name="soft">#B3ACA3</color>
+    <color name="brick">#EE9F72</color>
+    <color name="on_brick">#2B160B</color>
+    <color name="field">#1FEFE6DC</color>
+    <style name="Aula" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:colorAccent">@color/brick</item>
+        <item name="android:colorPrimary">@color/paper</item>
+        <item name="android:colorPrimaryDark">@color/paper</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

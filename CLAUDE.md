@@ -21,7 +21,9 @@ src/main/services/<domain>/    Node services WITHOUT `electron`: store, settings
 src/main/electron/             The ONLY code that imports 'electron': app, windows, rpc, the aula-asset:// protocol, secrets
                  (safeStorage), the study-platform browser (persistent session), notifications, tray, updates.
 src/main/mcp/aula-mcp.ts       stdio MCP bridge for CLI agents (claude, codex, opencode)
-native/          tsnet/ (Go sidecar: the Mac's embedded Tailscale node), ios/ (the iPhone/iPad app, SwiftUI). See docs/DEVICES.md
+native/          tsnet/ (Go sidecar: the embedded Tailscale node of the Mac and Linux apps; client/ is the Android app's),
+                 ios/ (the iPhone/iPad app, SwiftUI), android/ (the Android app, Java, built without Gradle). docs/DEVICES.md
+server/          Aula as a server without a window (--server): Dockerfile, the aula-server console, smoke test. docs/SERVER.md
 src/preload/     contextBridge → `window.aula`
 src/renderer/src/              React interface (design/, app/, screens/, blocks/, exercises/, tools/, lib/)
 tests/e2e/       Playwright with the real Electron app (simulated AI)
