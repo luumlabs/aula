@@ -480,6 +480,10 @@ test('Aula · política nueva: los cursos lo explican, la comprobación no lo ta
 // MARK: Llaves de acceso
 
 test('Aula · llave de acceso (passkey) en Microsoft: no se queda colgada, se puede volver a intentar y Aula lo explica', async () => {
+  // En Windows las llaves de acceso van a la ventana del propio sistema (Windows Hello, webauthn.dll), que Aula deja tal
+  // cual: en un equipo de CI nadie la cierra y se queda abierta encima de la prueba. Allí lo cubren las pruebas unitarias
+  // de la guarda (src/preload/webauthn-guard.test.ts); esta, en macOS y Linux, donde Electron no tiene esa ventana.
+  test.skip(process.platform === 'win32', 'Windows usa su propia ventana de llaves de acceso')
   test.setTimeout(180_000)
   await withAula({ ...FORCED, passkey: true, passkeyTimeoutMs: 8000 }, async ({ fake, app, page, home }) => {
     const acc = await invoke<View>(page, 'platforms.add', { url: fake.moodleURL, kind: 'moodle' })
