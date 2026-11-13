@@ -31,18 +31,20 @@ for _ in $(seq 1 90); do
   sleep 2
 done
 inside aula-server status --json >/dev/null 2>&1 || fail "la consola no responde"
-docker logs "$NAME" 2>&1 | grep -q "como servidor, sin ventana\|running as a server, without a window" || fail "Aula no dijo que arrancó como servidor"
+# lo que Aula cuenta en su salida puede llegar al registro un momento después de que la consola responda
+logged() { for _ in $(seq 1 15); do docker logs "$NAME" 2>&1 | grep -q "$1" && return 0; sleep 1; done; return 1; }
+logged "como servidor, sin ventana\|running as a server, without a window" || fail "Aula no dijo que arrancó como servidor"
 ok "Aula arranca sin ventana y su consola responde"
 
 # 2. Tailscale llega hasta pedir que se inicie sesión (sin cuenta, no puede ir más allá)
 for _ in $(seq 1 60); do inside aula-server status --json | grep -q '"state":"needsLogin","authURL":"https://login.tailscale.com/' && break; sleep 2; done
 inside aula-server status --json | grep -q '"state":"needsLogin","authURL":"https://login.tailscale.com/' || fail "Tailscale no llegó a pedir el inicio de sesión: $(inside aula-server status --json | head -c 400)"
-inside aula-server status | grep -q "Inicia sesión con TU cuenta de Tailscale\|Sign in with YOUR Tailscale account" || fail "la consola no dice cómo iniciar sesión"
-docker logs "$NAME" 2>&1 | grep -q "inicia sesión en Tailscale con TU cuenta\|sign in to Tailscale with YOUR account" || fail "el registro no dice cómo iniciar sesión"
+inside aula-server status | grep -q "Inicia sesión con TU cuenta de Tailscale\|Sign in with YOUR Tailscale account" || fail "la consola no dice cómo iniciar sesión: $(inside aula-server status 2>&1 | head -c 600)"
+logged "inicia sesión en Tailscale con TU cuenta\|sign in to Tailscale with YOUR account" || fail "el registro no dice cómo iniciar sesión"
 ok "el componente de Tailscale arranca y pide iniciar sesión"
 
 # 3. sin propietario, el registro ya da un código; la consola da otro
-docker logs "$NAME" 2>&1 | grep -q "Vincula tu primer dispositivo (será el propietario) con el código [0-9]\{6\}\|Link your first device (it will be the owner) with the code [0-9]\{6\}" || fail "no se ofreció el código del primer propietario"
+logged "Vincula tu primer dispositivo (será el propietario) con el código [0-9]\{6\}\|Link your first device (it will be the owner) with the code [0-9]\{6\}" || fail "no se ofreció el código del primer propietario"
 code=$(inside aula-server link | sed -n 's/^\(Código de propietario\|Owner code\): \([0-9]\{6\}\)$/\2/p')
 [ -n "$code" ] || fail "aula-server link no dio un código"
 ok "código de propietario: por el registro y por la consola"

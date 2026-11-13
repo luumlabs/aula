@@ -62,7 +62,7 @@ LABEL org.opencontainers.image.title="Aula server" \
 # lo que Chromium (Electron) necesita sin escritorio: GTK, NSS, sonido, una pantalla virtual (Xvfb) y fuentes; tini como
 # proceso 1 (pasa las señales a Aula y recoge a sus hijos)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl tini xvfb xauth util-linux \
+      ca-certificates curl jq tini xvfb xauth util-linux \
       libgtk-3-0t64 libnss3 libgbm1 libasound2t64 libxss1 libxtst6 libatk-bridge2.0-0t64 libatspi2.0-0t64 libcups2t64 \
       libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libcairo2 libnotify4 libsecret-1-0 \
       libxshmfence1 libuuid1 \
