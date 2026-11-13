@@ -75,10 +75,11 @@ Download the file for your system from the [latest release](https://github.com/l
 
 | System | File | First launch |
 | --- | --- | --- |
-| macOS 13 or later (Apple Silicon and Intel) | `Aula-0.2.3-mac.dmg` | Open the .dmg and drag Aula to *Applications*. Aula isn't notarized by Apple yet, so macOS asks you to confirm the first time. On macOS 15 or later, try to open it, then go to *System Settings → Privacy & Security* and click *Open Anyway*. On macOS 13 and 14, right-click Aula and choose *Open*. |
-| Windows 10 and 11 (x64 and ARM, one installer) | `Aula-Setup-0.2.3.exe` | Run the installer (it doesn't need admin rights). If SmartScreen shows up, click *More info → Run anyway*. Aula isn't code-signed yet. |
-| Linux x64 | `Aula-0.2.3-linux-x86_64.AppImage` or `Aula-0.2.3-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.2.3-linux-amd64.deb`. |
-| Linux ARM64 | `Aula-0.2.3-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
+| macOS 13 or later (Apple Silicon and Intel) | `Aula-0.2.4-mac.dmg` | Open the .dmg and drag Aula to *Applications*. Aula isn't notarized by Apple yet, so macOS asks you to confirm the first time. On macOS 15 or later, try to open it, then go to *System Settings → Privacy & Security* and click *Open Anyway*. On macOS 13 and 14, right-click Aula and choose *Open*. |
+| Windows 10 and 11 (x64 and ARM, one installer) | `Aula-Setup-0.2.4.exe` | Run the installer (it doesn't need admin rights). If SmartScreen shows up, click *More info → Run anyway*. Aula isn't code-signed yet. |
+| Linux x64 | `Aula-0.2.4-linux-x86_64.AppImage` or `Aula-0.2.4-linux-amd64.deb` | AppImage: make it executable (`chmod +x Aula-*.AppImage`) and open it. Debian or Ubuntu: `sudo apt install ./Aula-0.2.4-linux-amd64.deb`. |
+| Linux ARM64 | `Aula-0.2.4-linux-arm64.AppImage` | Make it executable (`chmod +x`) and open it. |
+| Android 8 or later (phones and tablets) | `Aula-0.2.4-android.apk` | Open it on your phone and allow installing from that app when Android asks. It is a window to Aula on your Mac or on [a server of your own](docs/SERVER.md): see [Devices](docs/DEVICES.md). |
 
 > **Updating from 0.1.x:** install the current version by hand this one time (download it here and install it over
 > your copy; your courses and settings stay). Aula 0.1.x will say the new version's signature isn't valid: since 0.2.0
