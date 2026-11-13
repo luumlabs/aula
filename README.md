@@ -20,6 +20,12 @@
 </p>
 
 <p align="center">
+  <video src="docs/media/demo/aula-demo-90s.mp4" poster="docs/media/demo/aula-demo-poster.jpg" width="1000" controls muted playsinline></video>
+  <br><sub><b>90 seconds, no voice.</b> A whole course end to end: the lesson, an exercise checked as you answer, the
+mistakes notebook, flashcards and the mock exam</sub>
+</p>
+
+<p align="center">
   <a href="https://github.com/luumlabs/aula/releases/download/v0.1.0/Aula-film-web.mp4">
     <img src="docs/media/film-poster.png" width="1000" alt="Watch the short film about Aula (1:50): at night, a student with a red scarf walks through flying pages towards a great lit arch">
   </a>
