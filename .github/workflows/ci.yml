@@ -56,3 +56,27 @@ jobs:
           name: e2e-results-${{ matrix.os }}
           path: test-results/
           retention-days: 7
+
+  native:
+    # the Tailscale sidecar (Mac/Linux and the Android client) with its tests, and the Android app (debug key) built
+    # with the runner's Android SDK; the APK is kept for a week to try it in an emulator or on a phone
+    name: native (tsnet, android)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Go tests and the Linux sidecar
+        run: native/tsnet/build.sh test linux
+      - name: Android SDK pieces (build-tools 37, android-36)
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKM" ] || SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | tail -1)"
+          yes | "$SDKM" --licenses >/dev/null || true
+          "$SDKM" --install "build-tools;37.0.0" "platforms;android-36" >/dev/null
+      - name: Build the Android app (debug key)
+        run: native/android/build.sh --debug
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: aula-android-debug
+          path: native/android/build/Aula-*-android-debug.apk
+          retention-days: 7
