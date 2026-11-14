@@ -5,6 +5,9 @@ import type { Answer, Block, CalloutKind, FormulaGroup, TableBlock } from '@shar
 import type { DocumentItem, DocumentPlan, DocumentQuestion } from '@shared/documents'
 import { blanks, choiceLetter, printablePrompt, stableShuffle } from './planner'
 import { longDate, pointsText, words, type DocLang } from './words'
+import { compareCells, diagramFormMarkdown } from './shapes-markdown'
+import { structureMarkdown } from './structureText'
+import { mapCountriesText } from './mapText'
 
 /** Lee una imagen del curso por su id (`assets/<id>`): nombre de archivo y bytes. */
 export type AssetReader = (asset: string) => { name: string; data: Uint8Array } | undefined
@@ -20,6 +23,8 @@ interface Ctx {
   folder: string
   lang: DocLang
   asset: AssetReader
+  /** Bloques del enunciado de una pregunta: no deben dar la respuesta (la fórmula de una molécula…). */
+  inPrompt?: boolean
 }
 
 type Out = [string, { name: string; data: Uint8Array }[]]
@@ -143,7 +148,7 @@ function itemMarkdown(item: DocumentItem, ctx: Ctx): Out {
 }
 
 function question(q: DocumentQuestion, ctx: Ctx): Out {
-  const prompt = printablePrompt(q.exercise).map((b) => block(b, ctx))
+  const prompt = printablePrompt(q.exercise).map((b) => block(b, { ...ctx, inPrompt: true }))
   const text = prompt.map((p) => p[0]).filter(Boolean).join('\n\n')
   const parts = [`**${q.number}.** ${text} *(${pointsText(q.points, ctx.lang)})*`, answerArea(q.exercise.answer, q.optionOrder, q.exercise.id, ctx.lang)]
   return [parts.filter(Boolean).join('\n\n'), prompt.flatMap((p) => p[1])]
@@ -229,7 +234,7 @@ export function block(b: Block, ctx: Ctx): Out {
     }
     case 'table': return [table(b), []]
     case 'steps': return [(b.title ? `**${b.title}**\n\n` : '') + b.steps.map((s, i) => `${i + 1}. ` + (s.title ? `**${s.title}**: ` : '') + s.md).join('\n'), []]
-    case 'compare': return [(b.title ? `**${b.title}**\n\n` : '') + table({ headers: ['', b.leftTitle, b.rightTitle], rows: b.rows.map((r) => [r.label ?? '', r.left, r.right]) }), []]
+    case 'compare': return [(b.title ? `**${b.title}**\n\n` : '') + table({ headers: ['', b.leftTitle, b.rightTitle], rows: b.rows.map(compareCells) }), []]
     case 'formulas': return [(b.title ? `**${b.title}**\n\n` : '') + formulas({ title: '', items: b.items }), []]
     case 'recap': return [(b.title ? `**${b.title}**\n\n` : '') + b.points.map((p) => `- ${p}`).join('\n'), []]
     case 'code': return ['```' + (b.language ?? '') + '\n' + b.code + '\n```' + (b.caption ? `\n\n*${b.caption}*` : ''), []]
@@ -257,21 +262,26 @@ export function block(b: Block, ctx: Ctx): Out {
     case 'chart': {
       // los datos de la gráfica como tabla (se pueden leer y copiar)
       const labels = b.series[0]?.points.map((p) => p.label ?? (p.x !== undefined ? String(p.x) : '')) ?? []
-      const t = { headers: [b.xLabel ?? '', ...b.series.map((s) => s.name)], rows: labels.map((l, i) => [l, ...b.series.map((s) => (s.points[i] ? numberText(s.points[i].y) : ''))]) }
+      const t = { headers: [b.xLabel ?? '', ...b.series.map((s) => s.name)], rows: labels.map((l, i) => [l, ...b.series.map((s) => (s.points[i] ? (s.points[i].highlight ? `**${numberText(s.points[i].y)}**` : numberText(s.points[i].y)) : ''))]) }
       return [visual(w.plot, b.title) + '\n\n' + table(t) + (b.caption ? `\n\n*${b.caption}*` : ''), []]
     }
     case 'diagram': {
       let s = visual(w.diagram, b.title)
+      const form = diagramFormMarkdown(b, ctx.lang)
+      if (form !== undefined) return [s + '\n\n' + form, []]
       const names = new Map(b.nodes.map((n) => [n.id, n.label]))
       s += '\n\n' + (b.edges.length
         ? b.edges.map((e) => `- ${names.get(e.from) ?? e.from} → ${names.get(e.to) ?? e.to}` + (e.label ? ` (${e.label})` : '')).join('\n')
         : b.nodes.map((n) => `- ${n.label}`).join('\n'))
       return [s, []]
     }
-    case 'drawing': return [visual(w.drawing, b.title ?? b.caption), []]
+    case 'drawing': return [visual(w.drawing, b.title ?? b.caption) + (b.steps?.length ? '\n\n' + b.steps.map((s, i) => `${i + 1}. ` + (s.title ? `**${s.title}**: ` : '') + s.md).join('\n') : ''), []]
     case 'numberline': return [visual(w.numberLine, b.caption), []]
+    case 'structure': return [visual(w.structure, ctx.inPrompt ? undefined : b.title) + '\n\n' + structureMarkdown(b, { inPrompt: ctx.inPrompt }), []]
     case 'tryit':
     case 'unknown': return ['', []]
+    // el mapa: sus marcadores y regiones, y los países con su grupo o su valor, antes del pie
+    case 'map': return [interactive({ ...b, caption: undefined }, ctx.lang) + mapCountriesText(b, ctx.lang) + (b.caption ? `\n\n*${b.caption}*` : ''), []]
     default: return [interactive(b, ctx.lang), []]
   }
 }
@@ -297,6 +307,9 @@ export function interactive(b: Block, lang: DocLang): string {
     }
   }
   if (labels.length) s += '\n\n' + labels.slice(0, 40).map((l) => `- ${l}`).join('\n')
+  // el recorrido guiado de una figura rotulada, numerado
+  const tour = b.type === 'labeled' ? (b.steps ?? []) : []
+  if (tour.length) s += '\n\n' + tour.map((st, i) => `${i + 1}. ${st.title ? `**${st.title}** — ` : ''}${st.md}`).join('\n')
   const prompts = Array.isArray(v.prompts) ? v.prompts.filter((x): x is string => typeof x === 'string').slice(0, 6) : []
   for (const p of prompts) s += `\n- ${p}`
   if (str('caption')) s += `\n\n*${str('caption')}*`

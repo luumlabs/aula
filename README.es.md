@@ -371,6 +371,10 @@ Aula se apoya en mucho trabajo de código abierto, sobre todo [Electron](https:/
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), y cada copia instalada lleva el texto de la licencia de cada
 paquete que incluye (`THIRD_PARTY_LICENSES.txt`, junto a los recursos de la app).
 
+Muchas de las figuras de Aula (formas de diagrama como pirámides, diagramas de Venn y mapas mentales, moléculas dibujadas
+desde SMILES, dibujos que se mueven, «marcar y preguntar al tutor», países en los mapas) están adaptadas de
+[Sketchy](https://github.com/ddkbs/sketchy), de ddkbs, con licencia MIT. ¡Gracias!
+
 ## Licencia
 
 Aula es libre y de código abierto, con la [licencia GNU Affero General Public License v3.0, solo esa versión](LICENSE.md)

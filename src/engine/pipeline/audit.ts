@@ -6,6 +6,7 @@ import { CourseLanguages } from '@engine/base/language'
 import type { Block, BlockOf, BlueprintSection, ContentIssue, ExamBlueprint, Pack, Skill } from '@shared/schema'
 import { blockTypeName } from '@shared/schema'
 import { DEPTHS, type GenerationDepth } from './model'
+import { organicStructureProblems } from './structure-guide'
 
 /** Un hallazgo de la auditoría: texto para la IA (inglés, con instrucciones) y para la persona (idioma de la interfaz). */
 export interface AuditProblem { forAI: string; forUser: string }
@@ -65,7 +66,7 @@ export function auditSkill(skill: Skill | undefined, depth: GenerationDepth, val
 }
 
 /** Bloques que enseñan con una figura (no cuentan las tablas ni las fórmulas: son texto ordenado). */
-export const VISUAL_BLOCK_TYPES: readonly string[] = ['plot', 'explore', 'chart', 'diagram', 'drawing', 'image', 'labeled', 'model3d', 'simulation', 'map', 'timeline', 'numberline']
+export const VISUAL_BLOCK_TYPES: readonly string[] = ['plot', 'explore', 'chart', 'diagram', 'drawing', 'image', 'labeled', 'model3d', 'simulation', 'map', 'timeline', 'numberline', 'structure']
 /** Bloques que piden algo al estudiante o le enseñan a hacerlo paso a paso: antes tiene que venir la explicación. */
 const PRACTICE_BLOCK_TYPES: readonly string[] = ['example', 'tryit', 'predict', 'spot']
 /** Texto seguido que una lección aguanta sin nada que mirar o hacer. */
@@ -86,7 +87,7 @@ export function teachingProblems(lesson: readonly Block[], minVisuals: number, l
   const visuals = types.filter((t) => VISUAL_BLOCK_TYPES.includes(t)).length
   if (visuals < minVisuals) {
     out.push({
-      forAI: `lesson: only ${visuals} visual block${visuals === 1 ? '' : 's'}; it needs at least ${minVisuals}. A lesson that is only text does not teach. Add the figure that makes THIS idea visible, right where the text explains it: \`plot\`/\`explore\` (a relationship between quantities; \`explore\` lets the student move a parameter), \`model3d\` (a solid, a molecule, a surface z = f(x, y), vectors or a curve in space), \`diagram\` with \`steps\` (a process or a method), \`chart\` (data), \`numberline\`, \`drawing\` (a geometric figure), \`timeline\`, \`map\`, \`simulation\`, or — for anything that exists in the world — a real picture: \`find_image\` then \`add_image\`, placed as an \`image\` or \`labeled\` block. Say in the text or the caption what to look at. Tables and formulas do not count as visuals.`,
+      forAI: `lesson: only ${visuals} visual block${visuals === 1 ? '' : 's'}; it needs at least ${minVisuals}. A lesson that is only text does not teach. Add the figure that makes THIS idea visible, right where the text explains it: \`plot\`/\`explore\` (a relationship between quantities; \`explore\` lets the student move a parameter), \`model3d\` (a solid, a molecule, a surface z = f(x, y), vectors or a curve in space), \`structure\` (a molecule's structural formula from SMILES), \`diagram\` with \`steps\` (a process or a method), \`chart\` (data), \`numberline\`, \`drawing\` (a geometric figure), \`timeline\`, \`map\`, \`simulation\`, or — for anything that exists in the world — a real picture: \`find_image\` then \`add_image\`, placed as an \`image\` or \`labeled\` block. Say in the text or the caption what to look at. Tables and formulas do not count as visuals.`,
       forUser: L(lang, `A la lección le faltan figuras (tiene ${visuals}; se piden al menos ${minVisuals}).`, `The lesson needs more figures (it has ${visuals}; at least ${minVisuals} are required).`)
     })
   }
@@ -288,6 +289,7 @@ export function showItProblems(lesson: readonly Block[], options: { realPictures
       })
     }
   }
+  out.push(...organicStructureProblems(lesson, lang))
   if (options.realPictures) {
     const real = lesson.some((b) => (b.type === 'image' && !!b.asset) || (b.type === 'labeled' && !!b.asset))
     if (!real) {

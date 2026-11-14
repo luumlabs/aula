@@ -5,6 +5,7 @@ import { analyzeGraph, clip, foldPlain, graphNumber, graphResultJSON, plotBlockF
 import { IDs } from '@engine/base/ids'
 import type { JSONValue } from '@engine/base/json'
 import { ContentNormalizer } from '@engine/content/normalizer'
+import { BLOCK_REFERENCE, BLOCK_REFERENCE_TYPES, blockReferenceKey } from '@engine/pipeline/guide'
 import type { ContentValidator } from '@engine/content/validator'
 import { NumberFormat, UnitTable, unitQuantityName } from '@engine/math'
 import { tr } from '@shared/ai/i18n'
@@ -208,17 +209,28 @@ export function convertUnitsTool(): AgentTool {
     })
 }
 
-/** El detalle de un tipo de bloque (lo que dice el catálogo de él), bajo demanda. */
+/** Lo que dicen de un tipo de bloque el catálogo del chat y la guía de las lecciones (la referencia completa de los visuales). */
+export function blockReferenceFor(raw: string): { type: string; schema: string[]; reference?: string } | undefined {
+  const type = raw.trim().toLowerCase()
+  if (!type) return undefined
+  const lines = BLOCK_CATALOG.split('\n').filter((l) => l.includes(`"type":"${type}"`))
+  const brief = VISUAL_BLOCKS_BRIEF.split('\n').filter((l) => l.includes(`\`${type}\``))
+  // la de la guía, con sus alias (venn, pirámide, embudo y mapa mental son formas de `process`; «diagram» también lleva ahí)
+  const reference = BLOCK_REFERENCE[type] ?? BLOCK_REFERENCE[blockReferenceKey(type)]
+  if (!lines.length && !brief.length && !reference) return undefined
+  return { type, schema: [...lines, ...brief].map((l) => clip(l, 3000)), ...(reference ? { reference: clip(reference, 12_000) } : {}) }
+}
+
+/** El detalle de un tipo de bloque (lo que dicen de él el catálogo y la guía de las lecciones), bajo demanda. */
 export function blockReferenceTool(): AgentTool {
   return tool('block_reference',
-    'The exact JSON shape of one Aula block type (as in the lessons): its schema line from the catalog and the rules. Call it before writing a block you are not sure about (labeled, model3d, simulation, map, timeline, diagram with steps…).',
-    Schema.object([['type', Schema.string('block type, e.g. plot, table, diagram, timeline, labeled, model3d, simulation, map')]], ['type']),
+    'The exact JSON shape of one Aula block type (as in the lessons): its schema line from the catalog and, for the visual blocks, the full reference with rules and examples. Call it before writing a block you are not sure about: labeled, model3d, structure, simulation, map (countries, values per country, journeys), timeline, process (animated diagram steps and the ready-made diagram shapes: pyramid, funnel, venn, mindmap), drawing (pictures that move or build up step by step)…',
+    Schema.object([['type', Schema.string('block type, e.g. plot, table, diagram, process, venn, timeline, labeled, model3d, simulation, map, drawing, structure')]], ['type']),
     (a) => {
       const type = (a.string('type') ?? '').trim()
       if (!type) return outError("Missing 'type'.")
-      const lines = BLOCK_CATALOG.split('\n').filter((l) => l.includes(`"type":"${type}"`))
-      const brief = VISUAL_BLOCKS_BRIEF.split('\n').filter((l) => l.includes(`\`${type}\``))
-      if (!lines.length && !brief.length) return outError(`Unknown block type «${type}».`, 'Use one of the types in the block catalog of the instructions.')
-      return outJSON({ ok: true, type, schema: [...lines, ...brief].map((l) => clip(l, 3000)), rules: 'ONE JSON block per ```aula-block``` fence; double every backslash inside JSON strings; keep labels short.' })
+      const ref = blockReferenceFor(type)
+      if (!ref) return outError(`Unknown block type «${type}».`, `Use one of the types in the block catalog of the instructions, or: ${BLOCK_REFERENCE_TYPES.join(', ')}.`)
+      return outJSON({ ok: true, ...ref, rules: 'ONE JSON block per ```aula-block``` fence; double every backslash inside JSON strings; keep labels short.' })
     })
 }

@@ -5,7 +5,7 @@ import { SafeBlockView } from '@renderer/blocks/BlockView'
 import type { BlockContext } from '@renderer/blocks/types'
 import { cx } from '@renderer/design'
 
-const WIDE = new Set(['plot', 'explore', 'chart', 'timeline', 'diagram', 'drawing', 'labeled', 'model3d', 'simulation', 'map', 'image', 'table', 'compare', 'formulas'])
+const WIDE = new Set(['plot', 'explore', 'chart', 'timeline', 'diagram', 'drawing', 'labeled', 'model3d', 'simulation', 'map', 'structure', 'image', 'table', 'compare', 'formulas'])
 
 export function StaticBlocks({ blocks, ctx, className }: { blocks: Block[]; ctx: BlockContext; className?: string }) {
   const compact = ctx.mode === 'chat'

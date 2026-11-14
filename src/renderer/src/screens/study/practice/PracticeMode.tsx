@@ -178,8 +178,11 @@ function PracticeExercise({ data, exercise, index, total, label, streak, flameRe
   options: SessionOptions
 }) {
   const { t } = useTranslation('study')
-  const ctx = useBlockCtx(data.pack, exercise.skill)
+  // si pregunta por una figura del enunciado, el tutor ve también lo que lleva respondido (la ejecución, por referencia)
+  const runRef = useRef<RunState | null>(null)
+  const ctx = useBlockCtx(data.pack, exercise.skill, {}, { exercise: (id) => (id === exercise.id && runRef.current ? exerciseContext(data.pack.id, exercise, runRef.current, 'practice') : undefined) })
   const c = useExercise(exercise, { mode: options.attemptMode === 'review' ? 'review' : 'practice', onFirstResult, onContinue, exactText: ctx.exactText, gradeOpen: (e, text) => gradeOpenWithAI(data.pack.id, e, text) })
+  runRef.current = c.run
   const skill = data.skills.find((s) => s.id === exercise.skill)
   const alternate = useMemo(() => alternateFor(data, exercise), [data, exercise])
   const last = index + 1 >= total

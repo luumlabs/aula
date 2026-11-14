@@ -2,26 +2,36 @@
 // explicación), capas que se encienden y apagan, zoom y desplazamiento, y dos prácticas con corrección exacta: «Señala» (Aula
 // nombra una parte y hay que pulsarla; zonas con polígonos, rectángulos o círculos como FigureGeometry) y «Arrastra» (cada
 // nombre a su hueco). Port de StudyUI/Blocks/Figure/LabeledFigureView.swift y FigureCanvas.swift.
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+// Con `steps`, un recorrido guiado: cada paso rodea sus partes a pluma y vela el resto (la idea es de Sketchy,
+// https://github.com/ddkbs/sketchy, MIT © 2026 ddkbs: viewer/src/steps.ts). Sus partes llevan `data-ask-part` para
+// «Marcar y preguntar al tutor» (blocks/ask), y las líneas de los nombres, un halo de papel sobre las fotos (también de
+// Sketchy: viewer/src/render.ts, drawLabel).
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, PixelCheck, ProgressBar, SegmentedTabs, cx, pixelBurst, spring, useTheme } from '@renderer/design'
 import type { BlockOf } from '@shared/schema/blocks'
-import { effectiveAspect, type FigurePart } from '@shared/schema/visual'
+import { effectiveAspect, FigureGeometry, type FigurePart } from '@shared/schema/visual'
 import { RichText } from '@renderer/lib/RichText'
 import type { BlockProps } from '../types'
+import { useAskTrigger } from '../ask/AskLayer'
+import { PenGlyph } from '../ask/glyphs'
 import {
   activeParts, dragChips, dragScore, gutterFits, gutterWidth, labelsAsNumbers, locateCorrect, nameMatches, partAt, placeGutterLabels, regionPath, shuffle
 } from './lib/figure'
 import { canvasSize } from './lib/drawing'
+import { tourFocus, tourLayers } from './lib/figureTour'
 import { fittedSize, scaledSize, toView, type ViewTransform } from './lib/viewTransform'
 import { DrawingCanvas } from './shared/DrawingCanvas'
+import { PrintedTour, TourLayer, TourPanel } from './shared/FigureTour'
 import { INK, vizColor, wash } from './shared/colors'
 import { usePanZoom } from './shared/usePanZoom'
 import { BlockHeader, Caption, Credit, GlassBar, GlassButton, ZoomControls, useInView, useInk, useSize } from './shared/ui'
 
 type Mode = 'explore' | 'locate' | 'drag'
 type Mark = 'idle' | 'correct' | 'wrong'
+/** Cada cuánto avanza el recorrido guiado al reproducirse (como los procesos de los diagramas). */
+const STEP_MS = 2800
 interface LocateFeedback { x: number; y: number; ok: boolean; hitName?: string; target: string }
 
 export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled'>>) {
@@ -60,6 +70,17 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
   const seen = useInView(box, true, '-40px')
   const canPractice = b.practice && !printing && parts.length >= 2 && base !== 'missing'
 
+  // recorrido guiado: solo al explorar (en las prácticas no se chiva nada)
+  const steps = useMemo(() => (b.steps ?? []).slice(0, 40), [b.steps])
+  const [step, setStep] = useState<number | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const touring = mode === 'explore' && step !== null && !printing && step < steps.length
+  const focus = touring ? tourFocus(steps[step], parts) : []
+  const focusIds = focus.length ? new Set(focus.map((p) => p.id)) : null
+  // «Marcar y preguntar al tutor»: el botón va en la barra de la figura, solo al explorar
+  const ask = useAskTrigger(mode === 'explore' && base !== 'missing' && !printing)
+  const asking = ask?.open ?? false
+
   // «Señala»
   const [quiz, setQuiz] = useState<string[]>([])
   const [quizIndex, setQuizIndex] = useState(0)
@@ -79,6 +100,8 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
     setSelected(null)
     setHovered(null)
     setFeedback(null)
+    setStep(null)
+    setPlaying(false)
     if (m === 'locate') {
       setQuiz(shuffle(parts.map((p) => p.id)))
       setQuizIndex(0)
@@ -91,6 +114,64 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
     }
     if (m !== 'explore') ctx.onInteract?.(block.id, `labeled-${m}`)
   }, [parts, ctx, block.id])
+
+  // MARK: recorrido guiado
+
+  const go = useCallback((k: number) => {
+    if (!steps.length) return
+    setStep(Math.max(0, Math.min(steps.length - 1, k)))
+    setSelected(null)
+    ctx.onInteract?.(block.id, 'labeled-tour')
+  }, [steps.length, ctx, block.id])
+  const togglePlay = (): void => {
+    if (playing) return setPlaying(false)
+    if (step === null || step >= steps.length - 1) go(0)
+    setPlaying(true)
+  }
+  const showAll = (): void => {
+    setPlaying(false)
+    setStep(null)
+  }
+
+  // reproducir: un paso cada 2,8 s hasta el último
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => {
+      setStep((k) => {
+        const next = (k ?? -1) + 1
+        if (next >= steps.length - 1) setPlaying(false)
+        return Math.min(next, steps.length - 1)
+      })
+    }, STEP_MS)
+    return () => clearInterval(id)
+  }, [playing, steps.length])
+
+  // las partes de un paso que están en capas apagadas: se enciende su capa
+  useEffect(() => {
+    if (step === null) return
+    const need = tourLayers(steps[step], b.parts, b.layers, visible)
+    if (need.length) setVisible((v) => new Set([...v, ...need]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, steps])
+
+  // ← → de paso en paso y Esc para ver toda la figura, solo dentro de este bloque
+  const onTourKey = (e: RKeyboardEvent<HTMLElement>): void => {
+    if (!touring || e.defaultPrevented || !(e.target instanceof HTMLElement)) return
+    if (e.target.closest('input, textarea, [contenteditable="true"], [role="slider"]')) return
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault()
+      setPlaying(false)
+      go((step ?? 0) + (e.key === 'ArrowRight' ? 1 : -1))
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      showAll()
+    }
+  }
+
+  // marcando, la figura no reacciona al puntero (la capa de marcas está encima): fuera lo que estaba señalado
+  useEffect(() => {
+    if (asking) setHovered(null)
+  }, [asking])
 
   const tint = (p: FigurePart): string => {
     if (p.color) return vizColor(p.color)
@@ -219,7 +300,7 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
   }
 
   return (
-    <section className="flex flex-col gap-3" style={ink} aria-label={b.title ?? b.alt}>
+    <section className="flex flex-col gap-3" style={ink} aria-label={b.title ?? b.alt} onKeyDown={steps.length ? onTourKey : undefined}>
       <BlockHeader
         icon="hand"
         eyebrow={t('labeled.eyebrow')}
@@ -273,6 +354,7 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
       <div ref={box} className="relative isolate w-full" style={{ height: viewport.height }}>
         <div
           ref={viewRef}
+          data-ask-canvas=""
           className={cx('absolute top-0 overflow-hidden rounded-[16px] border-[0.5px] border-line bg-sunken select-none', pz.pannable && mode === 'explore' && 'viz-grab', mode === 'locate' && 'cursor-crosshair')}
           style={{ left: g, width: vpW, height: viewport.height, touchAction: pz.pannable ? 'none' : undefined }}
           onPointerDown={pz.bind.onPointerDown}
@@ -286,8 +368,12 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
         >
           {size.width > 0 && (
             <>
-              <FigureBase block={b} base={base} tf={tf} smooth={pz.smooth && !pz.dragging} visible={visible} assetUrl={ctx.assetUrl} animate={!printing && !reducedMotion} play={seen} onImage={(a) => setImgAspect(a)} onImageError={() => setImgFailed(true)} />
+              <FigureBase block={b} base={base} tf={tf} smooth={pz.smooth && !pz.dragging} visible={visible} assetUrl={ctx.assetUrl} animate={!printing && !reducedMotion} play={seen} onImage={(a) => setImgAspect(a)} onImageError={() => setImgFailed(true)}>
+                <AnimatePresence>{touring && focus.length > 0 && <TourLayer key="tour" focus={focus} fitted={fitted} step={step ?? 0} seed={block.id} reduced={reducedMotion} />}</AnimatePresence>
+              </FigureBase>
               <svg className="absolute inset-0 pointer-events-none" width={vpW} height={viewport.height} aria-hidden>
+                {/* las zonas de las partes, para «Marcar y preguntar» (qué parte hay bajo cada marca) */}
+                {asking && parts.filter((p) => FigureGeometry.hasRegion(p)).map((p) => <path key={`ask-${p.id}`} data-ask-part={p.id} data-ask-label={p.name} d={regionPath(p, tf)} fill="none" stroke="none" />)}
                 <AnimatePresence>
                   {regionFill.map(({ p, color, alpha }) => (
                     <motion.path key={p.id} d={regionPath(p, tf)} fill={wash(color, alpha)} stroke={color} strokeWidth={2} strokeLinejoin="round" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} />
@@ -306,7 +392,8 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
                       y={pt.y}
                       tint={tint(p)}
                       number={numbers ? i + 1 : undefined}
-                      active={hovered === p.id || selected === p.id}
+                      active={hovered === p.id || selected === p.id || (focusIds?.has(p.id) ?? false)}
+                      dim={focusIds !== null && !focusIds.has(p.id)}
                       pill={showNames && !numbers && !showGutter}
                       flip={pt.x > vpW * 0.68}
                       dy={pt.y < 13 ? 13 - pt.y : pt.y > viewport.height - 13 ? viewport.height - 13 - pt.y : 0}
@@ -330,7 +417,18 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
                 </div>
               )}
               {!printing && base !== 'missing' && (
-                <div className="absolute right-2 top-2 flex gap-1.5" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+                // por encima de la capa de «Marcar» (la última del lienzo): su botón, pulsado, también sirve para dejar de marcar
+                <div className="absolute right-2 top-2 z-[1] flex gap-1.5" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+                  {ask && (
+                    <GlassBar>
+                      <GlassButton label={t('ask.start')} onClick={ask.open ? ask.stop : ask.start} active={ask.open}>
+                        <span className="inline-flex items-center gap-1 px-1">
+                          <PenGlyph size={13} />
+                          {t('ask.startShort')}
+                        </span>
+                      </GlassButton>
+                    </GlassBar>
+                  )}
                   {mode === 'explore' && !numbers && (
                     <GlassBar>
                       <GlassButton label={showNames ? t('labeled.hideNames') : t('labeled.showNames')} onClick={() => setShowNames((v) => !v)} active={!showNames}>
@@ -345,11 +443,18 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
           )}
         </div>
         {showGutter && size.width > 0 && (
-          <GutterLabels parts={parts} tf={tf} gutter={g} width={W} hovered={hovered} selected={selected} tint={tint} onSelect={(id) => setSelected((s) => (s === id ? null : id))} onHover={setHovered} animate={!printing && !reducedMotion} play={seen} />
+          <GutterLabels parts={parts} tf={tf} gutter={g} width={W} hovered={hovered} selected={selected} focus={focusIds} photo={base === 'image'} tint={tint} onSelect={(id) => setSelected((s) => (s === id ? null : id))} onHover={setHovered} animate={!printing && !reducedMotion} play={seen} />
         )}
       </div>
 
-      {mode === 'explore' && base !== 'missing' && (
+      {mode === 'explore' && base !== 'missing' && steps.length > 0 && (
+        printing ? (
+          <PrintedTour steps={steps} parts={b.parts} />
+        ) : (
+          <TourPanel steps={steps} step={touring ? step : null} playing={playing} parts={b.parts} reduced={reducedMotion} onGo={(k) => { setPlaying(false); go(k) }} onToggle={togglePlay} onAll={showAll} />
+        )
+      )}
+      {mode === 'explore' && base !== 'missing' && (!touring || hovered !== null || selected !== null) && (
         <ExploreInfo
           parts={parts}
           all={b.parts}
@@ -418,7 +523,7 @@ export default function LabeledBlock({ block, ctx }: BlockProps<BlockOf<'labeled
 
 // MARK: Base y capas
 
-function FigureBase({ block, base, tf, smooth, visible, assetUrl, animate, play, onImage, onImageError }: {
+function FigureBase({ block, base, tf, smooth, visible, assetUrl, animate, play, onImage, onImageError, children }: {
   block: BlockOf<'labeled'>
   base: 'image' | 'drawing' | 'missing'
   tf: ViewTransform
@@ -429,6 +534,8 @@ function FigureBase({ block, base, tf, smooth, visible, assetUrl, animate, play,
   play: boolean
   onImage: (aspect: number) => void
   onImageError: () => void
+  /** Lo que se dibuja encima de la figura y se amplía con ella (el recorrido guiado). */
+  children?: ReactNode
 }) {
   const s = scaledSize(tf)
   const d = block.drawing ? canvasSize(block.drawing.width, block.drawing.height) : undefined
@@ -438,6 +545,8 @@ function FigureBase({ block, base, tf, smooth, visible, assetUrl, animate, play,
   return (
     <div
       className="absolute left-0 top-0"
+      // lo que se amplía: las marcas de «Marcar y preguntar» se guardan en fracciones de esta caja y la siguen
+      data-ask-surface=""
       style={{ width: s.width, height: s.height, transform: `translate(${tf.x}px, ${tf.y}px)`, transition: smooth ? 'transform 260ms cubic-bezier(.2,.7,.2,1), width 260ms cubic-bezier(.2,.7,.2,1), height 260ms cubic-bezier(.2,.7,.2,1)' : undefined }}
     >
       {base === 'image' && block.asset && (
@@ -469,6 +578,7 @@ function FigureBase({ block, base, tf, smooth, visible, assetUrl, animate, play,
             </motion.div>
           ))}
       </AnimatePresence>
+      {children}
     </div>
   )
 }
@@ -502,8 +612,8 @@ function Pill({ text, active, tint, mark = 'idle' }: { text: string; active?: bo
   )
 }
 
-function ExploreMarker({ part, x, y, tint, number, active, pill, flip, dy, index, animate, play, onSelect, onHover }: {
-  part: FigurePart; x: number; y: number; tint: string; number?: number; active: boolean; pill: boolean; flip: boolean; dy: number; index: number; animate: boolean; play: boolean
+function ExploreMarker({ part, x, y, tint, number, active, dim, pill, flip, dy, index, animate, play, onSelect, onHover }: {
+  part: FigurePart; x: number; y: number; tint: string; number?: number; active: boolean; dim: boolean; pill: boolean; flip: boolean; dy: number; index: number; animate: boolean; play: boolean
   onSelect: () => void; onHover: (h: boolean) => void
 }) {
   return (
@@ -511,6 +621,8 @@ function ExploreMarker({ part, x, y, tint, number, active, pill, flip, dy, index
       type="button"
       aria-label={part.name}
       title={part.name}
+      data-ask-part={part.id}
+      data-ask-label={part.name}
       className="absolute -translate-x-1/2 -translate-y-1/2 outline-none"
       style={{ left: x, top: y }}
       onPointerDown={(e) => e.stopPropagation()}
@@ -522,18 +634,25 @@ function ExploreMarker({ part, x, y, tint, number, active, pill, flip, dy, index
       animate={play ? { scale: 1, opacity: 1 } : undefined}
       transition={{ ...spring.bouncy, delay: animate ? 0.2 + Math.min(index, 20) * 0.045 : 0 }}
     >
-      <Dot tint={tint} number={number} active={active} />
-      {pill && (
-        <span className="absolute top-1/2 pointer-events-none whitespace-nowrap" style={flip ? { right: '100%', marginRight: 7, transform: `translateY(calc(-50% + ${dy}px))` } : { left: '100%', marginLeft: 7, transform: `translateY(calc(-50% + ${dy}px))` }}>
-          <Pill text={part.name} active={active} tint={tint} />
-        </span>
-      )}
+      {/* en el recorrido guiado, lo que no cuenta el paso se apaga */}
+      <span className="block" style={{ opacity: dim ? 0.3 : 1, transition: 'opacity 300ms' }}>
+        <Dot tint={tint} number={number} active={active} />
+        {pill && (
+          <span data-ask-part={part.id} data-ask-label={part.name} className="absolute top-1/2 pointer-events-none whitespace-nowrap" style={flip ? { right: '100%', marginRight: 7, transform: `translateY(calc(-50% + ${dy}px))` } : { left: '100%', marginLeft: 7, transform: `translateY(calc(-50% + ${dy}px))` }}>
+            <Pill text={part.name} active={active} tint={tint} />
+          </span>
+        )}
+      </span>
     </motion.button>
   )
 }
 
-function GutterLabels({ parts, tf, gutter, width, hovered, selected, tint, onSelect, onHover, animate, play }: {
+export function GutterLabels({ parts, tf, gutter, width, hovered, selected, focus = null, photo = false, tint, onSelect, onHover, animate, play }: {
   parts: FigurePart[]; tf: ViewTransform; gutter: number; width: number; hovered: string | null; selected: string | null; tint: (p: FigurePart) => string
+  /** Las partes del paso del recorrido (las demás se apagan). */
+  focus?: ReadonlySet<string> | null
+  /** Sobre una foto: cada línea lleva debajo un halo de papel para leerse sobre el fondo revuelto. */
+  photo?: boolean
   onSelect: (id: string) => void; onHover: (id: string | null) => void; animate: boolean; play: boolean
 }) {
   const placed = placeGutterLabels(parts, tf, gutter)
@@ -542,33 +661,37 @@ function GutterLabels({ parts, tf, gutter, width, hovered, selected, tint, onSel
     <div className="absolute inset-0 pointer-events-none">
       <svg className="absolute inset-0" width={width} height={tf.viewport.height} aria-hidden>
         {placed.map((p, i) => {
-          const on = hovered === p.part.id || selected === p.part.id
+          const on = hovered === p.part.id || selected === p.part.id || (focus?.has(p.part.id) ?? false)
+          const off = focus !== null && !focus.has(p.part.id)
           const sx = p.left ? gutter - 4 : gutter + vw + 4
           const ex = p.left ? gutter + 6 : gutter + vw - 6
+          const d = `M${sx} ${p.y}L${ex} ${p.y}L${p.anchor.x} ${p.anchor.y}`
+          const draw = { initial: animate ? { pathLength: 0 } : false, animate: play ? { pathLength: 1 } : undefined, transition: { duration: 0.5, delay: animate ? 0.3 + Math.min(i, 20) * 0.04 : 0 } } as const
           return (
-            <motion.path
-              key={p.part.id}
-              d={`M${sx} ${p.y}L${ex} ${p.y}L${p.anchor.x} ${p.anchor.y}`}
-              fill="none"
-              stroke={on ? tint(p.part) : 'var(--text2)'}
-              strokeOpacity={on ? 0.95 : 0.5}
-              strokeWidth={on ? 1.5 : 1}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={animate ? { pathLength: 0 } : false}
-              animate={play ? { pathLength: 1 } : undefined}
-              transition={{ duration: 0.5, delay: animate ? 0.3 + Math.min(i, 20) * 0.04 : 0 }}
-            />
+            <g key={p.part.id} style={{ opacity: off ? 0.3 : 1, transition: 'opacity 300ms' }}>
+              {photo && <motion.path d={d} fill="none" stroke="var(--surface)" strokeOpacity={0.75} strokeWidth={on ? 4.5 : 3.5} strokeLinecap="round" strokeLinejoin="round" {...draw} />}
+              <motion.path
+                d={d}
+                fill="none"
+                stroke={on ? tint(p.part) : 'var(--text2)'}
+                strokeOpacity={on ? 0.95 : photo ? 0.75 : 0.5}
+                strokeWidth={on ? 1.5 : 1}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                {...draw}
+              />
+            </g>
           )
         })}
       </svg>
       {placed.map((p, i) => {
-        const on = hovered === p.part.id || selected === p.part.id
+        const on = hovered === p.part.id || selected === p.part.id || (focus?.has(p.part.id) ?? false)
+        const off = focus !== null && !focus.has(p.part.id)
         return (
           <motion.button
             key={p.part.id}
             type="button"
-            className={cx('absolute pointer-events-auto flex outline-none', p.left ? 'justify-end' : 'justify-start')}
+            className={cx('absolute pointer-events-auto flex outline-none transition-[filter] duration-300', p.left ? 'justify-end' : 'justify-start', off && '[filter:opacity(0.35)]')}
             style={{ left: p.left ? 0 : gutter + vw + 6, width: gutter - 10, top: p.y, translateY: '-50%' }}
             onClick={() => onSelect(p.part.id)}
             onPointerEnter={() => onHover(p.part.id)}

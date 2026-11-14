@@ -1,7 +1,13 @@
 // Tablas (cifras alineadas a la derecha en tabular, fórmulas en las celdas, filas destacadas) y comparaciones en columnas.
+// La comparación marca la diferencia decisiva (`tone: "key"`) y apaga lo común (`"same"`), y en modo analogía une cada parte
+// del concepto con su pareja cotidiana. Patrones «comparación» y «metáfora» adaptados de Sketchy
+// (https://github.com/ddkbs/sketchy), MIT © 2026 ddkbs: src/patterns.ts.
 import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { cx, useTheme } from '@renderer/design'
+import { Ink } from '@renderer/design/paint/Ink'
+import { dashLineInk } from '@renderer/design/paint/penInk'
 import { inkColor } from './colors'
 import type { BlockOf } from '@shared/schema/blocks'
 import type { BlockProps } from './types'
@@ -90,51 +96,127 @@ export function TableBlockView({ block, ctx }: BlockProps<BlockOf<'table'>>) {
 
 // MARK: Comparar
 
+/** ¿Dicen lo mismo las dos celdas? (entonces la fila «igual» se escribe una vez para las dos columnas) */
+const sameText = (a: string, b: string): boolean => a.trim().replace(/\s+/g, ' ').toLowerCase() === b.trim().replace(/\s+/g, ' ').toLowerCase()
+
+/** Rótulo corto para «marca y pregunta al tutor». */
+const askLabel = (s: string): string => (s.length > 90 ? s.slice(0, 88) + '…' : s)
+
 export function CompareBlockView({ block, ctx }: BlockProps<BlockOf<'compare'>>) {
+  const { t } = useTranslation('visual')
   const animate = useAnimate(ctx)
+  const { dark } = useTheme()
+  const ink = inkColor(ctx.hue, dark)
   const chat = ctx.mode === 'chat'
+  const printing = ctx.mode === 'print'
+  const analogy = block.mode === 'analogy'
   const rows = block.rows.slice(0, 200)
   const labels = rows.some((r) => r.label?.trim())
-  const grid = labels ? (chat ? 'grid-cols-[minmax(72px,auto)_1fr_1fr]' : 'grid-cols-[minmax(96px,160px)_1fr_1fr]') : 'grid-cols-2'
+  // en una analogía, una columna estrecha en medio para el «es como» de cada pareja
+  const mid = analogy ? (chat ? '44px' : '64px') : undefined
+  const cols = [labels ? (chat ? 'minmax(72px,auto)' : 'minmax(96px,160px)') : undefined, '1fr', mid, '1fr'].filter(Boolean).join(' ')
+  const colA = labels ? 2 : 1
+  const colB = colA + (analogy ? 2 : 1)
   const panel = 'bg-surface border-[0.5px] border-line'
+  const keyChip = (
+    <span className="inline-flex items-center whitespace-nowrap rounded-full bg-accent-wash px-1.5 py-[1px] t-caption font-semibold text-accent-text">{t('compare.key')}</span>
+  )
   return (
-    <section>
+    <section aria-label={block.title?.trim() ? block.title : undefined}>
+      {analogy && <div className="mb-1 t-caption font-semibold uppercase tracking-[0.06em] text-text3">{t('compare.analogy')}</div>}
       <BlockTitle text={block.title} ctx={ctx} className="mb-3" />
-      <div className={cx('relative grid gap-x-3', grid)}>
+      <div className={cx('relative grid', analogy ? 'gap-x-0' : 'gap-x-3')} style={{ gridTemplateColumns: cols }}>
         {/* fondos de las dos columnas (burbujas detrás de las celdas) */}
-        <div aria-hidden className={cx('pointer-events-none row-span-full', labels ? 'col-start-2' : 'col-start-1', panel, chat ? 'rounded-[12px]' : 'rounded-[18px]')} style={{ gridRow: `1 / span ${rows.length + 1}`, boxShadow: chat ? undefined : 'var(--e1)' }} />
-        <div aria-hidden className={cx('pointer-events-none row-span-full', labels ? 'col-start-3' : 'col-start-2', panel, chat ? 'rounded-[12px]' : 'rounded-[18px]')} style={{ gridRow: `1 / span ${rows.length + 1}`, boxShadow: chat ? undefined : 'var(--e1)' }} />
+        {[colA, colB].map((col) => (
+          <div key={col} aria-hidden className={cx('pointer-events-none row-span-full', panel, chat ? 'rounded-[12px]' : 'rounded-[18px]')} style={{ gridRow: `1 / span ${rows.length + 1}`, gridColumn: col, boxShadow: chat ? undefined : 'var(--e1)' }} />
+        ))}
+        {/* la diferencia clave: una banda de la tinta del curso por toda la fila */}
+        {rows.map((r, i) =>
+          r.tone === 'key' ? (
+            <div key={`k-${i}`} aria-hidden className="pointer-events-none relative z-[1] rounded-[10px]" style={{ gridRow: i + 2, gridColumn: '1 / -1', background: `color-mix(in oklab, ${ink} ${dark ? 18 : 10}%, transparent)`, margin: '2px -4px' }} />
+          ) : r.tone === 'same' && !analogy && sameText(r.left, r.right) ? (
+            // lo común, escrito una vez: un puente neutro entre las dos columnas
+            <div key={`s-${i}`} aria-hidden className="pointer-events-none relative z-[1] rounded-[10px] bg-fill1" style={{ gridRow: i + 2, gridColumn: `${colA} / ${colB + 1}`, margin: '3px 6px' }} />
+          ) : null
+        )}
         {labels && <div style={{ gridRow: 1, gridColumn: 1 }} />}
         {[block.leftTitle, block.rightTitle].map((title, k) => (
-          <div key={k} className={cx('relative z-[1] flex items-center gap-2', chat ? 'px-3 pt-3 pb-2' : 'px-5 pt-4 pb-3')} style={{ gridRow: 1, gridColumn: (labels ? 2 : 1) + k }}>
-            <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-[6px] t-caption font-bold', k === 0 ? 'bg-accent-wash text-accent-text' : 'bg-fill2 text-text2')}>{k === 0 ? 'A' : 'B'}</span>
-            <span className={cx('font-serif font-medium text-text', chat ? 'text-[15px]' : 'text-[18px] leading-[24px]')}><Inline text={title} /></span>
+          <div key={k} className={cx('relative z-[2] flex items-center gap-2', chat ? 'px-3 pt-3 pb-2' : 'px-5 pt-4 pb-3')} style={{ gridRow: 1, gridColumn: k === 0 ? colA : colB }}>
+            {analogy ? (
+              <span className="flex min-w-0 flex-col">
+                <span className="t-caption text-text3">{t(k === 0 ? 'compare.real' : 'compare.everyday')}</span>
+                <span className={cx('font-serif font-medium text-text', chat ? 'text-[15px]' : 'text-[18px] leading-[24px]')}><Inline text={title} /></span>
+              </span>
+            ) : (
+              <>
+                <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-[6px] t-caption font-bold', k === 0 ? 'bg-accent-wash text-accent-text' : 'bg-fill2 text-text2')}>{k === 0 ? 'A' : 'B'}</span>
+                <span className={cx('font-serif font-medium text-text', chat ? 'text-[15px]' : 'text-[18px] leading-[24px]')}><Inline text={title} /></span>
+              </>
+            )}
           </div>
         ))}
         {rows.map((r, i) => {
           const last = i === rows.length - 1
           const pad = chat ? 'px-3 py-2' : 'px-5 py-3'
-          const line = 'border-t-[0.5px] border-line-soft'
+          const line = r.tone === 'key' || rows[i - 1]?.tone === 'key' ? '' : 'border-t-[0.5px] border-line-soft'
+          const same = r.tone === 'same'
+          const merged = same && !analogy && sameText(r.left, r.right)
+          const muted = same ? 'text-text2' : undefined
+          const enter = (k: number) => ({
+            initial: animate ? { opacity: 0, y: 6 } : false,
+            whileInView: animate ? { opacity: 1, y: 0 } : undefined,
+            viewport: { once: true, margin: '-20px' },
+            transition: { duration: 0.35, delay: i * 0.05 + k * 0.04 }
+          })
           return (
             <Fragment key={i}>
               {labels && (
-                <motion.div className={cx('relative z-[1] t-ui font-semibold text-text2', chat ? 'py-2 pr-1' : 'py-3 pr-2', 'pt-[14px]')} style={{ gridRow: i + 2, gridColumn: 1 }} initial={animate ? { opacity: 0 } : false} whileInView={animate ? { opacity: 1 } : undefined} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
+                <motion.div
+                  className={cx('relative z-[2] t-ui font-semibold', same ? 'text-text3' : 'text-text2', chat ? 'py-2 pr-1' : 'py-3 pr-2', 'pt-[14px]', r.tone === 'key' && 'pl-2')}
+                  style={{ gridRow: i + 2, gridColumn: 1 }}
+                  initial={animate ? { opacity: 0 } : false}
+                  whileInView={animate ? { opacity: 1 } : undefined}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 }}
+                  data-ask-part={`row-${i}`}
+                  data-ask-label={askLabel(r.label ?? '')}
+                >
                   <Inline text={r.label ?? ''} />
+                  {r.tone === 'key' && <div className="mt-1">{keyChip}</div>}
                 </motion.div>
               )}
-              {[r.left, r.right].map((text, k) => (
+              {merged ? (
                 <motion.div
-                  key={k}
-                  className={cx('relative z-[1] min-w-0', pad, line, last && (chat ? 'pb-3' : 'pb-4'))}
-                  style={{ gridRow: i + 2, gridColumn: (labels ? 2 : 1) + k }}
-                  initial={animate ? { opacity: 0, y: 6 } : false}
-                  whileInView={animate ? { opacity: 1, y: 0 } : undefined}
-                  viewport={{ once: true, margin: '-20px' }}
-                  transition={{ duration: 0.35, delay: i * 0.05 + k * 0.04 }}
+                  className={cx('relative z-[2] min-w-0 text-center', pad, 'border-t-[0.5px] border-line-soft', last && (chat ? 'pb-3' : 'pb-4'))}
+                  style={{ gridRow: i + 2, gridColumn: `${colA} / ${colB + 1}` }}
+                  {...enter(0)}
+                  data-ask-part={`row-${i}`}
+                  data-ask-label={askLabel(r.label ? `${r.label}: ${r.left}` : r.left)}
                 >
-                  <Prose text={displayFractions(text)} ctx={ctx} size="small" />
+                  <Prose text={displayFractions(r.left)} ctx={ctx} size="small" className="text-text2" />
+                  <span className="mt-1 inline-block rounded-full bg-fill2 px-1.5 py-[1px] t-caption text-text3">{t('compare.same')}</span>
                 </motion.div>
-              ))}
+              ) : (
+                [r.left, r.right].map((text, k) => (
+                  <motion.div
+                    key={k}
+                    className={cx('relative z-[2] min-w-0', pad, line, last && (chat ? 'pb-3' : 'pb-4'))}
+                    style={{ gridRow: i + 2, gridColumn: k === 0 ? colA : colB }}
+                    {...enter(k)}
+                    data-ask-part={`row-${i}-${k === 0 ? 'a' : 'b'}`}
+                    data-ask-label={askLabel(`${k === 0 ? block.leftTitle : block.rightTitle}: ${text}`)}
+                  >
+                    {!labels && k === 0 && r.tone === 'key' && <div className="mb-1">{keyChip}</div>}
+                    <Prose text={displayFractions(text)} ctx={ctx} size="small" className={cx(muted, r.tone === 'key' && 'font-medium')} />
+                  </motion.div>
+                ))
+              )}
+              {analogy && (
+                <div aria-hidden className="relative z-[2] flex flex-col items-center justify-center gap-0.5" style={{ gridRow: i + 2, gridColumn: colA + 1 }}>
+                  <span className="font-serif italic text-[11.5px] leading-[14px] text-text3 whitespace-nowrap">{t('compare.isLike')}</span>
+                  <Ink drawing={dashLineInk(chat ? 40 : 56, 10, `cmp:${block.id}:${i}`)} color="var(--text3)" draw={!printing} drawKey={`cmp:${block.id}:${i}`} delay={animate ? 300 + i * 120 : 0} style={{ width: chat ? 40 : 56, height: 10 }} />
+                </div>
+              )}
             </Fragment>
           )
         })}

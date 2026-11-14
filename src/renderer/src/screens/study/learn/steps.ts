@@ -20,7 +20,7 @@ function weight(b: Block): number {
     case 'text': return Math.max(120, b.md.length)
     case 'callout': return Math.max(150, b.md.length)
     case 'math': return 150
-    case 'table': case 'compare': case 'formulas': case 'steps': case 'diagram': case 'drawing': case 'chart': case 'plot': case 'timeline': case 'image': case 'numberline': return 420
+    case 'table': case 'compare': case 'formulas': case 'steps': case 'diagram': case 'drawing': case 'chart': case 'plot': case 'timeline': case 'image': case 'numberline': case 'structure': return 420
     default: return 200
   }
 }
@@ -90,6 +90,7 @@ export function pageMinutes(blocks: Block[]): number {
       case 'example': extra += 0.4 * b.steps.length; break
       case 'explore': extra += 1.5; break
       case 'plot': case 'chart': case 'diagram': case 'drawing': case 'table': case 'image': extra += 0.5; break
+      case 'structure': extra += 0.5 + 0.4 * b.steps.length; break
       default: break
     }
   }

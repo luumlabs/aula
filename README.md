@@ -371,6 +371,10 @@ Aula is built on a lot of open source work, mainly [Electron](https://www.electr
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), and every installed copy carries the license text of each package
 inside it (`THIRD_PARTY_LICENSES.txt`, next to the app's resources).
 
+Many of Aula's figures (diagram shapes such as pyramids, Venn diagrams and mind maps, molecules drawn from SMILES,
+drawings that move, «mark and ask the tutor», countries on maps) are adapted from
+[Sketchy](https://github.com/ddkbs/sketchy) by ddkbs, under the MIT license. Thank you!
+
 ## License
 
 Aula is free and open source under the [GNU Affero General Public License v3.0 only](LICENSE.md) (AGPL-3.0-only).

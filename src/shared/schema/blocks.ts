@@ -13,12 +13,14 @@ import {
   decodeDrawing, decodeFormulaItem, decodeSourceRef, encodeDrawing, encodeFormulaItem, encodeSourceRef,
   type DrawingBlock, type FormulaItem, type SourceRef
 } from './common'
+import { parseCompareMode, parseCompareTone, parseDiagramForm, FORM_BASE, type CompareMode, type CompareTone, type DiagramForm } from './diagramForms'
 import { decodeExercise, encodeExercise, type Exercise } from './exercises'
 import { decodeExploreParam, decodePlotSpec, encodeExploreParam, encodePlotSpec, makePlotSpec, type ExploreParam, type PlotSpec } from './plot'
 import {
   decodeLabeled, decodeMap, decodeModel3D, decodeSimulation, encodeLabeled, encodeMap, encodeModel3D, encodeSimulation,
   type LabeledBlock, type MapBlock, type Model3DBlock, type SimulationBlock
 } from './visual'
+import { decodeStructure, encodeStructure, routeStructureType, type StructureBlock } from './structure'
 
 // MARK: Tipos de bloque
 
@@ -54,7 +56,8 @@ export interface TableBlock {
 
 export const CHART_KINDS = ['bar', 'line', 'area', 'pie', 'scatter', 'histogram'] as const
 export type ChartKind = (typeof CHART_KINDS)[number]
-export interface ChartPoint { label?: string; x?: number; y: number }
+/** `highlight`: el dato del que habla la lección (se destaca). */
+export interface ChartPoint { label?: string; x?: number; y: number; highlight?: boolean }
 export interface ChartSeries { name: string; color?: string; points: ChartPoint[] }
 export interface ChartBlock {
   kind: ChartKind
@@ -66,6 +69,8 @@ export interface ChartBlock {
   unit?: string
   caption?: string
   showValues: boolean
+  /** Barras horizontales (nombres largos, clasificaciones); sin escribir, la app decide según lo largos que sean los nombres. */
+  horizontal?: boolean
 }
 
 export interface NumberLinePoint { value: string; label?: string; open: boolean; color: string }
@@ -104,7 +109,12 @@ export interface DiagramStep {
   edges: string[][]
 }
 export interface DiagramBlock {
+  /** Con `form`, el tipo de base de la forma (lo que dibuja una versión que no la conoce). */
   kind: DiagramKind
+  /** Forma ya hecha (pirámide, embudo, Venn, mapa mental); opcional. */
+  form?: DiagramForm
+  /** Los pasos van construyendo la figura (cada paso añade lo que nombra). */
+  build?: boolean
   title?: string
   /** "lr" (izquierda→derecha) | "tb" (arriba→abajo) */
   direction: string
@@ -153,8 +163,9 @@ export interface ImageBlock {
 export interface StepItem { title?: string; md: string }
 export interface StepsBlock { title?: string; steps: StepItem[] }
 
-export interface CompareRow { label?: string; left: string; right: string }
-export interface CompareBlock { title?: string; leftTitle: string; rightTitle: string; rows: CompareRow[] }
+export interface CompareRow { label?: string; left: string; right: string; /** «key» destaca la fila; «same», lo común. */ tone?: CompareTone }
+export interface CompareBlock { title?: string; leftTitle: string; rightTitle: string; rows: CompareRow[]; /** «analogy»: concepto real ↔ algo cotidiano. */ mode?: CompareMode }
+export { DIAGRAM_FORMS, FORM_BASE, COMPARE_TONES, COMPARE_MODES, parseDiagramForm, parseCompareTone, parseCompareMode, type DiagramForm, type CompareTone, type CompareMode } from './diagramForms'
 
 export interface FormulasBlock { title?: string; items: FormulaItem[] }
 
@@ -210,6 +221,7 @@ export type BlockBody =
   | ({ type: 'model3d' } & Model3DBlock)
   | ({ type: 'simulation' } & SimulationBlock)
   | ({ type: 'map' } & MapBlock)
+  | ({ type: 'structure' } & StructureBlock)
   | ({ type: 'unknown' } & UnknownBlock)
 
 export type BlockType = BlockBody['type']
@@ -219,7 +231,7 @@ export type BlockOf<T extends BlockType> = Extract<Block, { type: T }>
 /** Nombres canónicos de tipo (los que usa el JSON y los que ve la IA). */
 export const BLOCK_TYPES = ['text', 'math', 'callout', 'example', 'plot', 'explore', 'table', 'chart', 'numberline', 'diagram', 'drawing',
   'timeline', 'image', 'steps', 'compare', 'formulas', 'predict', 'spot', 'tryit', 'recap', 'code', 'quote',
-  'labeled', 'model3d', 'simulation', 'map'] as const
+  'labeled', 'model3d', 'simulation', 'map', 'structure'] as const
 
 /** Nombre del tipo como se guarda (el original en los desconocidos). */
 export const blockTypeName = (b: Block): string => (b.type === 'unknown' ? b.rawType : b.type)
@@ -236,6 +248,7 @@ export function canonicalBlockType(raw: string): string {
     case 'interactive': case 'slider': case 'sliders': case 'interactiveplot': return 'explore'
     case 'numberline': case 'line': case 'numline': return 'numberline'
     case 'flow': case 'flowchart': case 'conceptmap': case 'mindmap': case 'graphdiagram': case 'tree': case 'cycle': return 'diagram'
+    case 'venn': case 'venndiagram': case 'pyramid': case 'piramide': case 'pirámide': case 'funnel': case 'embudo': case 'mapamental': return 'diagram'
     case 'svg': case 'figure': case 'canvas': case 'sketch': case 'illustration': return 'drawing'
     case 'try': case 'tryit': case 'practice': case 'exercise': case 'exercises': case 'checkpoint': return 'tryit'
     case 'summary': case 'keypoints': case 'recap': case 'takeaways': return 'recap'
@@ -245,6 +258,7 @@ export function canonicalBlockType(raw: string): string {
     case 'predict': case 'prediction': case 'think': case 'quickquestion': case 'mcq': return 'predict'
     case 'steps': case 'procedure': case 'process': case 'stepbystep': return 'steps'
     case 'compare': case 'comparison': case 'versus': case 'vs': case 'twocolumns': return 'compare'
+    case 'analogy': case 'analogia': case 'analogía': case 'metaphor': case 'metafora': case 'metáfora': return 'compare'
     case 'code': case 'codeblock': case 'snippet': return 'code'
     case 'quote': case 'excerpt': case 'source': case 'citation': return 'quote'
     case 'image': case 'picture': case 'photo': case 'img': return 'image'
@@ -263,6 +277,8 @@ export function canonicalBlockType(raw: string): string {
     case 'solid': case 'solid3d': case 'geometry3d': return 'model3d'
     case 'simulation': case 'sim': case 'simulate': case 'simulator': case 'manipulable': case 'physicssim': return 'simulation'
     case 'map': case 'geomap': case 'worldmap': case 'mapa': return 'map'
+    case 'structure': case 'structural': case 'structuralformula': case 'skeletal': case 'skeletalformula': case 'lineangle': case 'smiles':
+    case 'chemstructure': case 'chemicalstructure': case 'molecule2d': case 'estructura': case 'formulaestructural': return 'structure'
     default: return t
   }
 }
@@ -286,12 +302,15 @@ function decodeExampleStep(raw: unknown): ExampleStep | undefined {
 
 function decodeChartPoint(raw: unknown): ChartPoint | undefined {
   if (!isObj(raw)) return undefined
-  return prune({ label: flexStr(raw, 'label'), x: num(raw, 'x'), y: num(raw, 'y') ?? 0 })
+  const highlight = bool(raw, 'highlight') ?? (str(raw, 'tone') === 'accent' ? true : undefined)
+  return prune({ label: flexStr(raw, 'label'), x: num(raw, 'x'), y: num(raw, 'y') ?? 0, highlight: highlight ? true : undefined })
 }
 function decodeChartSeries(raw: unknown, d: number): ChartSeries | undefined {
   if (!isObj(raw)) return undefined
   return prune({ name: flexStr(raw, 'name') ?? '', color: str(raw, 'color'), points: list(raw, 'points', decodeChartPoint, d) })
 }
+/** «hbar» y compañía: barras horizontales (kind bar + horizontal). */
+const HORIZONTAL_KINDS = ['hbar', 'barh', 'horizontalbar', 'horizontal-bar', 'horizontal_bar', 'bar-horizontal']
 function chartKind(c: Obj): ChartKind {
   const s = str(c, 'kind')?.toLowerCase()
   if (s === undefined) return 'bar'
@@ -363,8 +382,11 @@ function decodeStepItem(raw: unknown): StepItem | undefined {
 
 function decodeCompareRow(raw: unknown): CompareRow | undefined {
   if (!isObj(raw)) return undefined
-  return prune({ label: str(raw, 'label'), left: flexStr(raw, 'left') ?? '', right: flexStr(raw, 'right') ?? '' })
+  return prune({ label: str(raw, 'label'), left: flexStr(raw, 'left') ?? '', right: flexStr(raw, 'right') ?? '', tone: parseCompareTone(str(raw, 'tone')) })
 }
+
+/** La forma del diagrama: `form`, o un `kind` o un tipo de bloque que la nombre («pyramid», «mapamental»…). */
+const diagramForm = (c: Obj, rawType: string): DiagramForm | undefined => parseDiagramForm(str(c, 'form')) ?? parseDiagramForm(str(c, 'kind')) ?? parseDiagramForm(rawType)
 
 function decodePredictOption(raw: unknown): PredictOption | undefined {
   if (!isObj(raw)) return undefined
@@ -405,19 +427,22 @@ function decodeBody(type: string, rawType: string, c: Obj, d: number): BlockBody
     case 'chart':
       return prune({
         type, kind: chartKind(c), title: str(c, 'title'), xLabel: str(c, 'xLabel'), yLabel: str(c, 'yLabel'), series: list(c, 'series', decodeChartSeries, d),
-        stacked: bool(c, 'stacked') ?? false, unit: str(c, 'unit'), caption: str(c, 'caption'), showValues: bool(c, 'showValues') ?? true
+        stacked: bool(c, 'stacked') ?? false, unit: str(c, 'unit'), caption: str(c, 'caption'), showValues: bool(c, 'showValues') ?? true,
+        horizontal: bool(c, 'horizontal') ?? (HORIZONTAL_KINDS.includes(str(c, 'kind')?.toLowerCase() ?? '') ? true : undefined)
       })
     case 'numberline':
       return prune({
         type, min: num(c, 'min') ?? -5, max: num(c, 'max') ?? 5, step: num(c, 'step'), pi: bool(c, 'pi') ?? false,
         points: list(c, 'points', decodeNumberLinePoint, d), intervals: list(c, 'intervals', decodeNumberLineInterval, d), caption: str(c, 'caption')
       })
-    case 'diagram':
+    case 'diagram': {
+      const form = diagramForm(c, rawType)
       return prune({
-        type, kind: lowerEnum(c, 'kind', DIAGRAM_KINDS, 'flow'), title: str(c, 'title'), direction: str(c, 'direction') ?? 'tb',
+        type, kind: form ? FORM_BASE[form] : lowerEnum(c, 'kind', DIAGRAM_KINDS, 'flow'), form, build: bool(c, 'build') === true ? true : undefined, title: str(c, 'title'), direction: str(c, 'direction') ?? 'tb',
         nodes: list(c, 'nodes', decodeDiagramNode, d), edges: list(c, 'edges', decodeDiagramEdge, d), caption: str(c, 'caption'),
         steps: list(c, 'steps', decodeDiagramStep, d).slice(0, 60)
       })
+    }
     case 'drawing': return { type, ...decodeDrawing(c, d)! }
     case 'timeline':
       return prune({
@@ -431,7 +456,7 @@ function decodeBody(type: string, rawType: string, c: Obj, d: number): BlockBody
       })
     case 'steps': return prune({ type, title: str(c, 'title'), steps: list(c, 'steps', decodeStepItem, d) })
     case 'compare':
-      return prune({ type, title: str(c, 'title'), leftTitle: flexStr(c, 'leftTitle') ?? 'A', rightTitle: flexStr(c, 'rightTitle') ?? 'B', rows: list(c, 'rows', decodeCompareRow, d) })
+      return prune({ type, title: str(c, 'title'), leftTitle: flexStr(c, 'leftTitle') ?? 'A', rightTitle: flexStr(c, 'rightTitle') ?? 'B', rows: list(c, 'rows', decodeCompareRow, d), mode: parseCompareMode(str(c, 'mode')) ?? parseCompareMode(rawType) })
     case 'formulas': return prune({ type, title: str(c, 'title'), items: list(c, 'items', decodeFormulaItem, d) })
     case 'predict': return prune({ type, question: flexStr(c, 'question') ?? '', options: list(c, 'options', decodePredictOption, d), explanation: str(c, 'explanation') })
     case 'spot':
@@ -444,6 +469,7 @@ function decodeBody(type: string, rawType: string, c: Obj, d: number): BlockBody
     case 'model3d': return { type, ...decodeModel3D(c, d)! }
     case 'simulation': return { type, ...decodeSimulation(c, d)! }
     case 'map': return { type, ...decodeMap(c, d)! }
+    case 'structure': return { type, ...decodeStructure(c, d)! }
     default: return undefined
   }
 }
@@ -459,7 +485,7 @@ export function decodeBlock(raw: unknown, d = 0, index?: number): Block | undefi
   // anidamiento absurdo (tryit → ejercicio → tryit → …): se corta aquí en vez de desbordar la pila
   if (tooDeep(d)) return { id, type: 'unknown', rawType: TOO_DEEP_TYPE, raw: null }
   const rawType = vStr(raw.type) ?? 'text'
-  const type = canonicalBlockType(rawType)
+  const type = routeStructureType(canonicalBlockType(rawType), rawType, raw)
   const body = decodeBody(type, rawType, raw, d)
   if (body) return { id, ...body } as Block
   // tipo desconocido: conservar el JSON tal cual (con la profundidad acotada) para no perder datos
@@ -532,10 +558,10 @@ function encodeBody(b: BlockBody): JSONObject {
     }
     case 'table': return pickKeys(b, ['headers', 'rows', 'align', 'caption', 'highlightRows', 'firstColumnIsHeader'])
     case 'chart': {
-      const out = pickKeys(b, ['kind', 'title', 'xLabel', 'yLabel', 'stacked', 'unit', 'caption', 'showValues'])
+      const out = pickKeys(b, ['kind', 'title', 'xLabel', 'yLabel', 'stacked', 'unit', 'caption', 'showValues', 'horizontal'])
       out.series = b.series.map((s) => {
         const o = pickKeys(s, ['name', 'color'])
-        o.points = s.points.map((p) => pickKeys(p, ['label', 'x', 'y']))
+        o.points = s.points.map((p) => pickKeys(p, ['label', 'x', 'y', 'highlight']))
         return o
       })
       return out
@@ -547,7 +573,8 @@ function encodeBody(b: BlockBody): JSONObject {
       return out
     }
     case 'diagram': {
-      const out = pickKeys(b, ['kind', 'title', 'direction'])
+      const out = pickKeys(b, ['kind', 'form', 'title', 'direction'])
+      if (b.build) out.build = true
       out.nodes = b.nodes.map((n) => pickKeys(n, ['id', 'label', 'shape', 'color', 'detail']))
       out.edges = b.edges.map((e) => pickKeys(e, ['from', 'to', 'label', 'dashed', 'arrow']))
       put(out, 'caption', b.caption)
@@ -575,8 +602,8 @@ function encodeBody(b: BlockBody): JSONObject {
       return out
     }
     case 'compare': {
-      const out = pickKeys(b, ['title', 'leftTitle', 'rightTitle'])
-      out.rows = b.rows.map((r) => pickKeys(r, ['label', 'left', 'right']))
+      const out = pickKeys(b, ['title', 'leftTitle', 'rightTitle', 'mode'])
+      out.rows = b.rows.map((r) => pickKeys(r, ['label', 'left', 'right', 'tone']))
       return out
     }
     case 'formulas': {
@@ -606,6 +633,7 @@ function encodeBody(b: BlockBody): JSONObject {
     case 'model3d': return encodeModel3D(b)
     case 'simulation': return encodeSimulation(b)
     case 'map': return encodeMap(b)
+    case 'structure': return encodeStructure(b)
     case 'unknown': return b.raw ? { ...b.raw } : {}
   }
 }

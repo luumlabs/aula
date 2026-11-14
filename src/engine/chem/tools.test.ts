@@ -322,3 +322,38 @@ describe('Herramienta única «chemistry»', () => {
     expect(runChemistryTool({ action: 'configuration', input: 'Fe' }).isError).toBe(false)
   })
 })
+
+describe('Acción «structure» (SMILES)', () => {
+  it('etanol: fórmula, masa y átomos numerados desde 1', () => {
+    const out = runChemistryTool({ action: 'structure', input: 'CCO' })
+    expect(out.isError).toBe(false)
+    expect(out.json.value as number).toBeCloseTo(46.07, 1)
+    const text = String(out.json.result)
+    expect(text).toContain('C2H6O')
+    expect(text).toContain('1 CH3 · 2 CH2 · 3 OH')
+    expect(out.json.latex).toBe('\\ce{C2H6O}')
+  })
+  it('cafeína aromática: la fórmula y el aviso de Kekulé', () => {
+    const text = String(runChemistryTool({ action: 'smiles', input: 'Cn1cnc2c1c(=O)n(C)c(=O)n2C' }).json.result)
+    expect(text).toContain('C8H10N4O2')
+    expect(text).toContain('Kekulé')
+  })
+  it('una fórmula condensada no es una SMILES', () => {
+    const out = runChemistryTool({ action: 'structure', input: 'CH3CH2OH' })
+    expect(out.isError).toBe(true)
+    expect(String(out.json.result)).toContain('CCO')
+  })
+  it('la numeración de la aspirina sigue el orden de sus átomos y nombra sus grupos', () => {
+    const text = String(runChemistryTool({ action: 'structure', input: 'CC(=O)Oc1ccccc1C(=O)O' }).json.result)
+    expect(text).toContain('1 CH3 · 2 C · 3 O · 4 O · 5 c · 6 cH')
+    expect(text).toContain('éster (2–4)')
+    expect(text).toContain('ácido carboxílico (11–13)')
+  })
+  it('reacciones: especies y si está ajustada', () => {
+    const text = String(runChemistryTool({ action: 'structure', input: 'CC(=O)O.OCC>>CC(=O)OCC.O' }).json.result)
+    expect(text).toContain('Ajustada 1:1')
+    const h2 = String(runChemistryTool({ action: 'structure', input: 'C=C.[H][H]>>CC' }).json.result)
+    expect(h2).toContain('Ajustada 1:1')
+    expect(String(runChemistryTool({ action: 'structure', input: 'CC>>CC=O' }).json.result)).toContain('No está ajustada')
+  })
+})

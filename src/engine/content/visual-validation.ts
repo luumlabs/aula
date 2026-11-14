@@ -14,6 +14,8 @@ import { assetCredit, assetNeedsCredit, captionHasCredit } from './asset-meta'
 import { buildMolecule, ELEMENT_SYMBOLS } from './molecules'
 import { SimulationEngine } from './simulation'
 import { latexIssues, texProblems } from './tex'
+import { checkLabeledSteps } from './labeled-steps'
+import { checkMapCountries, mapQuizNames } from './map-validation'
 
 const issue = (severity: IssueSeverity, path: string, message: string): ContentIssue => ({ severity, path, message })
 /** Números en mensajes (sin notación rara), como `%g`. */
@@ -131,6 +133,7 @@ export function checkLabeled(v: ContentValidator, l: LabeledBlock, path: string)
   })
   if (l.layers.length && l.parts.every((p) => p.layer === undefined)) out.push(issue('info', path + '.layers', 'Hay capas pero ninguna parte dice a qué capa pertenece (`layer`).'))
   out.push(...checkParts(l.parts, l.layers, effectiveAspect(l), path + '.parts', l.practice, pixel))
+  out.push(...checkLabeledSteps(l, path))
   if (l.caption !== undefined) out.push(...latexIssues(l.caption, path + '.caption'))
   return out
 }
@@ -286,7 +289,7 @@ export function checkSimulation(_v: ContentValidator, s: SimulationBlock, path: 
 
 export function checkMap(m: MapBlock, path: string): ContentIssue[] {
   const out: ContentIssue[] = []
-  if (!m.markers.length && !m.regions.length && !m.routes.length) out.push(issue('error', path, 'El mapa está vacío: añade markers, regions o routes.'))
+  if (!m.markers.length && !m.regions.length && !m.routes.length && !m.countries.length) out.push(issue('error', path, 'El mapa está vacío: añade markers, countries, regions o routes.'))
   const ok = (lat: number, lon: number): boolean => Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
   m.markers.forEach((mk, i) => {
     if (!ok(mk.lat, mk.lon)) out.push(issue('error', `${path}.markers[${i}]`, 'Coordenadas fuera de rango (lat −90…90, lon −180…180); ¿están al revés?'))
@@ -299,15 +302,17 @@ export function checkMap(m: MapBlock, path: string): ContentIssue[] {
     if (!r.name) out.push(issue('warning', `${path}.regions[${i}]`, 'La región no tiene nombre.'))
   })
   m.routes.forEach((r, i) => {
-    if (r.points.length < 2 || r.points.some((p) => p.length < 2 || !ok(p[0], p[1]))) out.push(issue('error', `${path}.routes[${i}]`, 'Una ruta necesita al menos 2 puntos [lat, lon] válidos.'))
+    if (r.points.length < 2 || r.points.some((p) => p.length < 2 || !ok(p[0], p[1]))) out.push(issue('error', `${path}.routes[${i}]`, 'Una ruta necesita al menos 2 puntos [lat, lon] válidos (o `from`/`to` con el título de un marcador).'))
   })
   if (m.span !== undefined && !(m.span > 0 && m.span <= 180)) out.push(issue('warning', path + '.span', 'span son los grados de latitud visibles (0–180).'))
   if (m.lat !== undefined && m.lon !== undefined && !ok(m.lat, m.lon)) out.push(issue('error', path, 'Centro fuera de rango.'))
   if (!['standard', 'muted', 'satellite', 'hybrid'].includes(m.style)) out.push(issue('warning', path + '.style', 'style debe ser standard, muted, satellite o hybrid.'))
   if (m.practice) {
-    if (m.markers.length < 3) out.push(issue('warning', path + '.practice', 'La práctica «¿dónde está…?» necesita al menos 3 marcadores.'))
-    if (new Set(m.markers.map((x) => x.title.toLowerCase())).size !== m.markers.length) out.push(issue('error', path + '.markers', 'Hay marcadores con el mismo título: en la práctica no se distinguirían.'))
+    const names = mapQuizNames(m)
+    if (names.length < 3) out.push(issue('warning', path + '.practice', 'La práctica «¿dónde está…?» necesita al menos 3 marcadores o países.'))
+    if (new Set(names).size !== names.length) out.push(issue('error', path + '.markers', 'Hay marcadores (o países) con el mismo título: en la práctica no se distinguirían.'))
   }
+  out.push(...checkMapCountries(m, path))
   return out
 }
 
@@ -324,6 +329,7 @@ export function checkDiagramSteps(d: DiagramBlock, path: string): ContentIssue[]
     for (const x of s.nodes) if (!ids.has(x)) out.push(issue('error', p, `El paso resalta el nodo «${x}», que no existe.`))
     for (const e of s.edges) if (e.length === 2 && !edges.has(`${e[0]}>${e[1]}`) && d.kind !== 'cycle') out.push(issue('warning', p, `El paso resalta la flecha ${e[0]}→${e[1]}, que no está en \`edges\`.`))
     if (!s.nodes.length && !s.edges.length) out.push(issue('info', p, 'El paso no resalta ningún nodo (`nodes`).'))
+    if (s.nodes.length > 4) out.push(issue('info', p, `El paso rodea ${s.nodes.length} nodos: se pierde el foco; rodea 1–3 (lo que cambia) y deja el resto para otro paso.`))
     out.push(...latexIssues(s.md, p))
   })
   if (d.steps.length < 2) out.push(issue('warning', path + '.steps', 'Un proceso animado necesita al menos 2 pasos.'))

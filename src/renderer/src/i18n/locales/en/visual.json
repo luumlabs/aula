@@ -8,6 +8,11 @@
   "reset": "Reset",
   "resetHint": "Back to the starting values",
   "drawing": "Drawing",
+  "draw": {
+    "controls": "Drawing controls",
+    "stepByStep": "Step by step",
+    "watch": "Watch it step by step"
+  },
   "diagram": {
     "label": "Diagram",
     "process": "Step-by-step process",
@@ -18,6 +23,19 @@
       "cycle": "Cycle",
       "layers": "Layers"
     },
+    "form": {
+      "pyramid": "Pyramid",
+      "funnel": "Funnel",
+      "venn": "Venn diagram",
+      "mindmap": "Mind map"
+    },
+    "outside": "In none of the sets",
+    "venn": {
+      "only": "Only {{a}}",
+      "two": "{{a}} and {{b}}",
+      "three": "{{a}}, {{b}} and {{c}}"
+    },
+    "keysHint": "← → to change step · Esc to see it all",
     "prev": "Previous step",
     "next": "Next step",
     "watch": "Watch the process",
@@ -29,6 +47,14 @@
     "ofSteps_other": "of {{count}}",
     "scrubber": "Process step",
     "panHint": "Drag to move · {{mod}} + scroll to zoom"
+  },
+  "compare": {
+    "key": "Key difference",
+    "same": "Same in both",
+    "isLike": "is like",
+    "analogy": "Analogy",
+    "real": "Concept",
+    "everyday": "Everyday"
   },
   "labeled": {
     "eyebrow": "Interactive figure",
@@ -54,7 +80,74 @@
     "placedCount_one": "{{count}} of {{total}} placed",
     "placedCount_other": "{{count}} of {{total}} placed",
     "check": "Check",
-    "fixMistakes": "Fix the mistakes"
+    "fixMistakes": "Fix the mistakes",
+    "tour": "Guided tour",
+    "tourStart": "Tour the figure",
+    "tourSteps_one": "{{count}} step",
+    "tourSteps_other": "{{count}} steps",
+    "tourStep": "Step {{k}} of {{n}}",
+    "tourPrev": "Previous step",
+    "tourNext": "Next step",
+    "tourAll": "See the whole figure",
+    "tourDot": "Step {{k}}: {{title}}",
+    "tourKeys": "← → to move between steps · Esc to see the whole figure"
+  },
+  "ask": {
+    "start": "Mark and ask the tutor",
+    "startShort": "Mark",
+    "startPen": "Circle or underline what you want to ask about",
+    "startMarker": "Highlight what you want to ask about",
+    "startNote": "Click where you want to leave a note",
+    "title": "Mark the figure",
+    "pen": "Pen",
+    "marker": "Highlighter",
+    "note": "Note",
+    "undo": "Undo",
+    "clear": "Clear the marks",
+    "close": "Close",
+    "surface": "Area for marking the figure",
+    "surfaceRole": "marking canvas",
+    "notePlaceholder": "Write a note…",
+    "askPlaceholder": "What would you like to know about what you marked?",
+    "ask": "Ask the tutor",
+    "recognized": "You marked:",
+    "hint": "With the keyboard: ← → picks a part, Enter circles it, N adds a note and {{mod}}+Z undoes. Esc closes.",
+    "partOf": "{{name}}, {{k}} of {{n}}",
+    "markedOne": "Marked: {{name}}",
+    "noParts": "This figure has no named parts: mark anywhere with the mouse or your finger.",
+    "defaultQuestion": "Look at what I marked and explain it to me.",
+    "what": {
+      "diagram": "the diagram",
+      "drawing": "the drawing",
+      "labeled": "the figure",
+      "map": "the map",
+      "structure": "the structure",
+      "other": "the figure"
+    },
+    "titled": "{{what}} “{{title}}”",
+    "quoted": "“{{name}}”",
+    "msgMarked": "I marked on {{what}}: {{parts}}.",
+    "msgOnlyWhere": "I marked an area {{where}} of {{what}}, with no named part under it.",
+    "msgOnly": "I marked an area of {{what}} with no named part under it.",
+    "msgNoMarks": "My question is about {{what}}.",
+    "msgNotesOn": "I left notes on {{what}}.",
+    "msgNote": "Note next to {{near}}: “{{text}}”.",
+    "msgNoteWhere": "Note {{where}}: “{{text}}”.",
+    "msgNoteAlone": "Note: “{{text}}”.",
+    "msgLoose": "There is also a mark {{where}} that touches no part.",
+    "msgWhere": "The marks are mostly {{where}}.",
+    "msgCaption": "Figure caption: {{caption}}",
+    "where": {
+      "topLeft": "at the top left",
+      "top": "at the top",
+      "topRight": "at the top right",
+      "left": "on the left",
+      "center": "in the middle",
+      "right": "on the right",
+      "bottomLeft": "at the bottom left",
+      "bottom": "at the bottom",
+      "bottomRight": "at the bottom right"
+    }
   },
   "sim": {
     "eyebrow": "Simulation",
@@ -71,9 +164,12 @@
     "whereIs": "Where is…?",
     "close": "Close",
     "attribution": "Map: Natural Earth (public domain)",
-    "hint": "Click a marker or a region to read about it.",
+    "hint": "Click a marker, a country or a region to read about it.",
     "notThere": "Not there.",
-    "finish": "Done"
+    "finish": "Done",
+    "thatIs": "Not there — that’s {{name}}.",
+    "route": "Route {{n}}",
+    "scale": "Map scale"
   },
   "model": {
     "eyebrow": "3D model",
@@ -110,6 +206,62 @@
       "bccLattice": "body-centered cubic",
       "fccLattice": "face-centered cubic",
       "diamondLattice": "diamond lattice"
+    }
+  },
+  "structure": {
+    "eyebrow": "Structural formula",
+    "reactionEyebrow": "Reaction",
+    "style": "Kind of formula",
+    "styles": {
+      "skeletal": "Skeletal",
+      "condensed": "Condensed",
+      "expanded": "Expanded"
+    },
+    "groups": "Groups",
+    "groupsHint": "Tap a group to see it in the molecule.",
+    "molarMass": "{{mass}} g/mol",
+    "broken": "This molecule couldn't be drawn",
+    "brokenFormula": "Its molecular formula",
+    "atom": "atom {{n}}",
+    "hydrogens_one": "{{count}} hydrogen",
+    "hydrogens_other": "{{count}} hydrogens",
+    "charge": "charge {{charge}}",
+    "isotope": "isotope of mass {{mass}}",
+    "rGroup": "R group (the rest of the molecule)",
+    "atomAsk": "{{name}} (atom {{n}})",
+    "canvas": "Molecule: use ← → to go through its atoms",
+    "keysHint": "Hover an atom to see what it is",
+    "steps": {
+      "start": "Walk through",
+      "prev": "Previous step",
+      "next": "Next step",
+      "all": "See the whole molecule",
+      "stepOf": "Step {{k}} of {{n}}",
+      "count_one": "{{count}} step",
+      "count_other": "{{count}} steps"
+    },
+    "groupKinds": {
+      "carboxylicAcid": "Carboxylic acid",
+      "carboxylate": "Carboxylate",
+      "anhydride": "Anhydride",
+      "ester": "Ester",
+      "acylHalide": "Acyl halide",
+      "amide": "Amide",
+      "aldehyde": "Aldehyde",
+      "ketone": "Ketone",
+      "nitrile": "Nitrile",
+      "nitro": "Nitro",
+      "alcohol": "Alcohol",
+      "phenol": "Phenol",
+      "ether": "Ether",
+      "amine1": "Primary amine",
+      "amine2": "Secondary amine",
+      "amine3": "Tertiary amine",
+      "thiol": "Thiol",
+      "halide": "Organic halide",
+      "alkene": "Alkene",
+      "alkyne": "Alkyne",
+      "arene": "Aromatic ring"
     }
   },
   "slides": {

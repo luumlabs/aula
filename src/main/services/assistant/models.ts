@@ -125,7 +125,7 @@ export function decodeContext(raw: unknown): TutorContext | undefined {
 }
 
 export function contextIsEmpty(c: TutorContext | undefined): boolean {
-  return !c || (c.skillID === undefined && c.exerciseID === undefined && c.screen === undefined && c.selection === undefined && c.lessonBlock === undefined)
+  return !c || (c.skillID === undefined && c.exerciseID === undefined && c.blockID === undefined && c.screen === undefined && c.selection === undefined && c.lessonBlock === undefined)
 }
 
 function decodeOrigin(raw: unknown): AssistantMessage['origin'] {

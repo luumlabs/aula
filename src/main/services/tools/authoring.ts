@@ -29,7 +29,7 @@ const issue = (severity: ContentIssue['severity'], path: string, message: string
 export const SPLIT_HINT = 'If your call was long, it was probably cut off by your output limit: send smaller batches (at most 4–5 blocks/exercises/cards per call; write_lesson with mode "append" for the rest).'
 const RENAMED_HINT = 'Some ids were changed so nothing gets overwritten (see renamed_from): use the new ids from now on, e.g. in tryit exerciseIDs.'
 
-const BLOCK_SCHEMA = Schema.freeObject('A block object: {"type": "text|math|callout|example|plot|explore|table|chart|numberline|diagram|drawing|timeline|image|steps|compare|formulas|predict|spot|tryit|recap|code|quote|labeled|model3d|simulation|map", ...fields}. See the authoring guide; call block_reference for the exact schema and examples of a type.')
+const BLOCK_SCHEMA = Schema.freeObject('A block object: {"type": "text|math|callout|example|plot|explore|table|chart|numberline|diagram|drawing|timeline|image|steps|compare|formulas|predict|spot|tryit|recap|code|quote|labeled|model3d|simulation|map|structure", ...fields}. See the authoring guide; call block_reference for the exact schema and examples of a type.')
 
 /**
  * El arreglo no llegó o no se pudo leer: le dice al modelo exactamente qué pasó y guarda lo recibido para depurar

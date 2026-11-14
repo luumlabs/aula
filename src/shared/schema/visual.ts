@@ -92,6 +92,31 @@ export function encodeFigureLayer(v: FigureLayer): JSONObject {
   return out
 }
 
+/** Un paso del recorrido guiado de una figura: rodea sus partes a pluma y apaga el resto. */
+export interface LabeledStep {
+  title?: string
+  md: string
+  /** Ids de las partes que se rodean en este paso (ninguna: la figura entera). */
+  parts: string[]
+}
+
+/** Un paso: texto suelto o {title, md, parts} (también `part` o `nodes`, como en los diagramas). */
+export function decodeLabeledStep(raw: unknown): LabeledStep | undefined {
+  if (typeof raw === 'string') return raw.trim() ? { md: raw, parts: [] } : undefined
+  if (!isObj(raw)) return undefined
+  const c: Obj = raw
+  const parts = c.parts !== undefined ? strings(c, 'parts') : strings(c, 'nodes')
+  const one = flexStr(c, 'part')
+  if (one !== undefined && !parts.includes(one)) parts.unshift(one)
+  return prune({ title: str(c, 'title'), md: flexStr(c, 'md') ?? flexStr(c, 'text') ?? '', parts })
+}
+
+export function encodeLabeledStep(v: LabeledStep): JSONObject {
+  const out = pickKeys(v, ['title', 'md'])
+  if (v.parts.length) out.parts = [...v.parts]
+  return out
+}
+
 /** Diagrama etiquetado interactivo: imagen o dibujo con partes marcadas, capas y modos de práctica. */
 export interface LabeledBlock {
   title?: string
@@ -111,6 +136,8 @@ export interface LabeledBlock {
   practice: boolean
   /** "auto" | "names" | "numbers" | "hidden" */
   labels: string
+  /** Recorrido guiado opcional (en orden de enseñanza). Sin pasos no se escribe: los cursos de antes quedan igual. */
+  steps?: LabeledStep[]
 }
 
 export function decodeLabeled(raw: unknown, d = 0): LabeledBlock | undefined {
@@ -122,9 +149,12 @@ export function decodeLabeled(raw: unknown, d = 0): LabeledBlock | undefined {
     layers: list(c, 'layers', decodeFigureLayer, d),
     // ids de parte repetidos: la interfaz y la corrección las identifican por id
     parts: uniquifyIDs(list(c, 'parts', decodeFigurePart, d)),
-    practice: bool(c, 'practice') ?? true, labels: str(c, 'labels')?.toLowerCase() ?? 'auto'
+    practice: bool(c, 'practice') ?? true, labels: str(c, 'labels')?.toLowerCase() ?? 'auto',
+    steps: optionalSteps(list(c, 'steps', decodeLabeledStep, d).slice(0, 40))
   })
 }
+
+const optionalSteps = (steps: LabeledStep[]): LabeledStep[] | undefined => (steps.length ? steps : undefined)
 
 export function encodeLabeled(v: LabeledBlock): JSONObject {
   const out = pickKeys(v, ['title', 'asset'])
@@ -135,6 +165,7 @@ export function encodeLabeled(v: LabeledBlock): JSONObject {
   out.parts = v.parts.map(encodeFigurePart)
   out.practice = v.practice
   out.labels = v.labels
+  if (v.steps?.length) out.steps = v.steps.map(encodeLabeledStep)
   return out
 }
 
@@ -685,8 +716,10 @@ export const simulationSymbolNames = (s: SimulationBlock): string[] =>
 export interface MapMarker { lat: number; lon: number; title: string; md?: string; color?: string }
 /** Región (país, imperio, cuenca…): contorno [[lat, lon], …]. */
 export interface MapRegion { name: string; points: number[][]; color?: string; md?: string }
-/** Ruta o frontera: línea [[lat, lon], …]. */
-export interface MapRoute { points: number[][]; label?: string; color?: string; dashed: boolean }
+/** Ruta o frontera: línea [[lat, lon], …]. `arrow`: un viaje con sentido (flecha al final; con 2 puntos, un arco suave). */
+export interface MapRoute { points: number[][]; label?: string; color?: string; dashed: boolean; arrow: boolean }
+/** País de hoy por su nombre (español, inglés o ISO «FR»): se dibuja su frontera exacta. `value`: dato del mapa de coropletas. */
+export interface MapCountry { name: string; color?: string; label?: string; md?: string; value?: number }
 
 /** Mapa con marcadores, regiones y rutas. */
 export interface MapBlock {
@@ -701,6 +734,16 @@ export interface MapBlock {
   markers: MapMarker[]
   regions: MapRegion[]
   routes: MapRoute[]
+  /**
+   * Países coloreados por su nombre (o con un valor cada uno: mapa de coropletas). Aula 0.2.4 y anteriores no leen
+   * `countries`, `region` ni `unit`: ven el título, el pie y el mapa sin países. No hay copia para ellas: cualquier clave que
+   * leen (marcadores, regiones, lat/lon/span, pie) la pintaría también esta versión.
+   */
+  countries: MapCountry[]
+  /** Encuadre con nombre («europe», «africa»…), un país o «oeste,sur,este,norte». */
+  region?: string
+  /** Unidad de los valores de los países («M hab.», «%»). */
+  unit?: string
   /** Práctica «¿dónde está…?». */
   practice: boolean
 }
@@ -725,13 +768,26 @@ export const encodeMapRegion = (v: MapRegion): JSONObject => pickKeys(v, ['name'
 export function decodeMapRoute(raw: unknown): MapRoute | undefined {
   if (!isObj(raw)) return undefined
   const c: Obj = raw
-  return prune({ points: points(c, 'points') ?? [], label: str(c, 'label') ?? str(c, 'name'), color: str(c, 'color'), dashed: bool(c, 'dashed') ?? false })
+  return prune({ points: points(c, 'points') ?? [], label: str(c, 'label') ?? str(c, 'name'), color: str(c, 'color'), dashed: bool(c, 'dashed') ?? false, arrow: bool(c, 'arrow') ?? false })
 }
 export function encodeMapRoute(v: MapRoute): JSONObject {
   const out = pickKeys(v, ['points', 'label', 'color'])
   if (v.dashed) out.dashed = true
+  if (v.arrow) out.arrow = true
   return out
 }
+
+/** País: «Francia» o {name|country|iso, color, label, md, value}. */
+export function decodeMapCountry(raw: unknown): MapCountry | undefined {
+  if (typeof raw === 'string') return raw.trim() ? { name: raw.trim() } : undefined
+  if (!isObj(raw)) return undefined
+  const c: Obj = raw
+  const name = (flexStr(c, 'name') ?? flexStr(c, 'country') ?? flexStr(c, 'iso') ?? flexStr(c, 'title') ?? '').trim()
+  if (!name) return undefined
+  const value = flexNum(c, 'value')
+  return prune({ name, color: str(c, 'color'), label: str(c, 'label'), md: str(c, 'md') ?? str(c, 'detail'), value: value !== undefined && Number.isFinite(value) ? value : undefined })
+}
+export const encodeMapCountry = (v: MapCountry): JSONObject => pickKeys(v, ['name', 'color', 'label', 'md', 'value'])
 
 export function decodeMap(raw: unknown, d = 0): MapBlock | undefined {
   if (!isObj(raw)) return undefined
@@ -745,7 +801,8 @@ export function decodeMap(raw: unknown, d = 0): MapBlock | undefined {
   return prune({
     title: str(c, 'title'), caption: str(c, 'caption'), lat, lon, span: flexNum(c, 'span'), style: str(c, 'style')?.toLowerCase() ?? 'muted',
     markers: list(c, 'markers', decodeMapMarker, d).slice(0, 300), regions: list(c, 'regions', decodeMapRegion, d).slice(0, 60),
-    routes: list(c, 'routes', decodeMapRoute, d).slice(0, 60), practice: bool(c, 'practice') ?? false
+    routes: list(c, 'routes', decodeMapRoute, d).slice(0, 60), countries: list(c, 'countries', decodeMapCountry, d).slice(0, 120),
+    region: str(c, 'region'), unit: str(c, 'unit'), practice: bool(c, 'practice') ?? false
   })
 }
 
@@ -754,6 +811,8 @@ export function encodeMap(v: MapBlock): JSONObject {
   if (v.markers.length) out.markers = v.markers.map(encodeMapMarker)
   if (v.regions.length) out.regions = v.regions.map(encodeMapRegion)
   if (v.routes.length) out.routes = v.routes.map(encodeMapRoute)
+  if (v.countries.length) out.countries = v.countries.map(encodeMapCountry)
+  Object.assign(out, pickKeys(v, ['region', 'unit']))
   if (v.practice) out.practice = true
   return out
 }

@@ -5,6 +5,9 @@ import {
   bool, enumOf, flexStr, int, isObj, list, num, pickKeys, prune, str, strictPoints, vInt, vStr, type ItemID, type Obj
 } from './coding'
 import { parseTimecode, timecode } from '../ingest/types'
+import {
+  decodeDrawingMore, decodeDrawItemMore, encodeDrawingMore, encodeDrawItemMore, settleDrawItem, withOldVersionFallbacks, type DrawingMore, type DrawItemMore
+} from './drawing'
 
 /** Referencia a un pasaje de las fuentes del usuario («el libro, p. 83»). */
 export interface SourceRef {
@@ -78,11 +81,11 @@ export const contentIssueID = (v: ContentIssue): string => `${v.severity}|${v.pa
 
 // MARK: Dibujo vectorial
 
-export const DRAW_KINDS = ['line', 'arrow', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'arc', 'text', 'dot', 'angle', 'rightAngle', 'curve', 'tick'] as const
+export const DRAW_KINDS = ['line', 'arrow', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'arc', 'text', 'dot', 'angle', 'rightAngle', 'curve', 'tick', 'measure', 'brace', 'axes', 'grid', 'object'] as const
 export type DrawKind = (typeof DRAW_KINDS)[number]
 
 /** Elemento de un dibujo vectorial libre. Coordenadas en el lienzo (0,0 = esquina superior izquierda). */
-export interface DrawItem {
+export interface DrawItem extends DrawItemMore {
   kind: DrawKind
   x1?: number; y1?: number; x2?: number; y2?: number
   x?: number; y?: number; w?: number; h?: number
@@ -115,13 +118,16 @@ export function decodeDrawItem(raw: unknown): DrawItem | undefined {
   const text = flexStr(c, 'text'); if (text !== undefined) out.text = text
   for (const k of ['anchor', 'stroke', 'fill', 'label'] as const) { const v = str(c, k); if (v !== undefined) out[k] = v }
   const dashed = bool(c, 'dashed'); if (dashed !== undefined) out.dashed = dashed
+  decodeDrawItemMore(c, out)
+  settleDrawItem(c, out)
   return out
 }
 
+/** Escribe un elemento; lo nuevo va además de una forma que una versión antigua sabe pintar (ver `withOldVersionFallbacks`). */
 export const encodeDrawItem = (v: DrawItem): JSONObject =>
-  pickKeys(v, ['kind', ...DRAW_NUMBERS, 'points', 'text', 'anchor', 'stroke', 'fill', 'dashed', 'label'])
+  withOldVersionFallbacks(v, { ...pickKeys(v, ['kind', ...DRAW_NUMBERS, 'points', 'text', 'anchor', 'stroke', 'fill', 'dashed', 'label']), ...encodeDrawItemMore(v) })
 
-export interface DrawingBlock {
+export interface DrawingBlock extends DrawingMore {
   width: number
   height: number
   items: DrawItem[]
@@ -131,13 +137,13 @@ export interface DrawingBlock {
 
 export function decodeDrawing(raw: unknown, d = 0): DrawingBlock | undefined {
   if (!isObj(raw)) return undefined
-  return prune({ width: num(raw, 'width') ?? 400, height: num(raw, 'height') ?? 300, items: list(raw, 'items', decodeDrawItem, d), caption: str(raw, 'caption'), title: str(raw, 'title') })
+  return prune({ width: num(raw, 'width') ?? 400, height: num(raw, 'height') ?? 300, items: list(raw, 'items', decodeDrawItem, d), caption: str(raw, 'caption'), title: str(raw, 'title'), ...decodeDrawingMore(raw, d) })
 }
 
 export function encodeDrawing(v: DrawingBlock): JSONObject {
   const out = pickKeys(v, ['width', 'height', 'caption', 'title'])
   out.items = v.items.map(encodeDrawItem)
-  return out
+  return Object.assign(out, encodeDrawingMore(v))
 }
 
 // MARK: Fórmulas

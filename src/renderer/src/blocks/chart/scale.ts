@@ -207,11 +207,147 @@ export function smoothPath(pts: Array<{ x: number; y: number }>): string {
 }
 
 /** Junta los sectores pequeños en «Otros» para no pasar de `max` colores (la novena serie nunca es un color nuevo). */
-export function foldSlices(items: Array<{ label: string; value: number }>, max: number, otherLabel: string): Array<{ label: string; value: number; other?: boolean }> {
+export function foldSlices(items: Array<{ label: string; value: number; highlight?: boolean }>, max: number, otherLabel: string): Array<{ label: string; value: number; other?: boolean; highlight?: boolean }> {
   const positive = items.filter((x) => Number.isFinite(x.value) && x.value > 0)
   if (positive.length <= max) return positive
   const sorted = [...positive].sort((a, b) => b.value - a.value)
   const keep = new Set(sorted.slice(0, max - 1))
   const rest = sorted.slice(max - 1).reduce((a, b) => a + b.value, 0)
   return [...positive.filter((x) => keep.has(x)), { label: otherLabel, value: rest, other: true }]
+}
+
+// MARK: Nombres largos de las categorías
+
+/** Ancho de un texto en px (con la letra de la gráfica). */
+export type TextWidth = (text: string) => number
+
+/**
+ * Adaptado de Sketchy (https://github.com/ddkbs/sketchy), MIT © 2026 ddkbs: src/figures/chart.ts (splitLabel).
+ * Un nombre en una o dos líneas: si no cabe en `width`, el corte entre palabras más equilibrado. Una sola palabra se queda
+ * como está (quien dibuja la recorta con «…»).
+ */
+export function splitLabel(label: string, width: number, measure: TextWidth): string[] {
+  const words = label.trim().split(/\s+/)
+  if (measure(label) <= width || words.length < 2) return [label]
+  let best: [string, string] = [label, '']
+  let bestW = Infinity
+  for (let i = 1; i < words.length; i++) {
+    const a = words.slice(0, i).join(' ')
+    const b = words.slice(i).join(' ')
+    const w = Math.max(measure(a), measure(b))
+    if (w < bestW) {
+      bestW = w
+      best = [a, b]
+    }
+  }
+  return best
+}
+
+/** El texto recortado con «…» para que quepa en `width`. */
+export function clipText(text: string, width: number, measure: TextWidth): string {
+  if (measure(text) <= width) return text
+  const chars = Array.from(text)
+  let lo = 0
+  let hi = chars.length
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    if (measure(chars.slice(0, mid).join('').trimEnd() + '…') <= width) lo = mid
+    else hi = mid - 1
+  }
+  return lo > 0 ? chars.slice(0, lo).join('').trimEnd() + '…' : '…'
+}
+
+/** Las líneas de un nombre (como mucho dos) que caben en `width`, recortando lo que no quepa. */
+export function labelLines(label: string, width: number, measure: TextWidth): string[] {
+  return splitLabel(label, width, measure).map((l) => clipText(l, width, measure))
+}
+
+/** ¿Cabe el nombre entero en dos líneas de `width`? */
+export const fitsTwoLines = (label: string, width: number, measure: TextWidth): boolean =>
+  splitLabel(label, width, measure).every((l) => measure(l) <= width)
+
+/**
+ * ¿Barras horizontales? Sí cuando hay al menos 3 categorías de texto y alguna no cabe en dos líneas bajo su barra (los
+ * nombres largos se leen mejor en filas). Con más de 40 categorías, no (serían demasiadas filas). Tampoco con números ni con
+ * tiempo (meses, días de la semana, trimestres): el tiempo va de izquierda a derecha (un climograma, unas ventas por mes).
+ */
+export function preferHorizontal(labels: string[], slotPx: number, measure: TextWidth, lang = 'es'): boolean {
+  if (labels.length < 3 || labels.length > 40) return false
+  if (isTimeAxis(labels, lang)) return false
+  return labels.some((l) => !fitsTwoLines(l, Math.max(10, slotPx - 6), measure))
+}
+
+/** ¿Es un número (o una fecha) y no un nombre? («2024», «3,5», «12:30», «1/4»). */
+export const isNumericLabel = (s: string): boolean => /^[\s\d.,:/+\-−–%]+$/.test(s)
+
+// MARK: Categorías de tiempo
+
+/** Meses y días de la semana en español e inglés, enteros y abreviados (en minúscula y sin acentos). */
+const TIME_WORDS = [
+  'enero febrero marzo abril mayo junio julio agosto septiembre setiembre octubre noviembre diciembre',
+  'ene feb mar abr may jun jul ago sep sept set oct nov dic',
+  'january february march april june july august september october november december jan apr aug dec',
+  'lunes martes miercoles jueves viernes sabado domingo lun mie jue vie sab dom',
+  'monday tuesday wednesday thursday friday saturday sunday mon tue tues wed thu thur thurs fri sat sun'
+].join(' ').split(' ')
+
+const plainWord = (w: string): string => w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+const timeWordCache = new Map<string, Set<string>>()
+
+/** Los nombres de los meses y los días en español, en inglés y en la lengua del curso (Intl). */
+function timeWords(lang: string): Set<string> {
+  const key = lang.toLowerCase()
+  let set = timeWordCache.get(key)
+  if (set) return set
+  set = new Set(TIME_WORDS)
+  try {
+    for (const month of ['long', 'short'] as const) {
+      const f = new Intl.DateTimeFormat(lang, { month, timeZone: 'UTC' })
+      for (let m = 0; m < 12; m++) set.add(plainWord(f.format(Date.UTC(2024, m, 1)).replace(/\.$/, '')))
+    }
+    for (const weekday of ['long', 'short'] as const) {
+      const f = new Intl.DateTimeFormat(lang, { weekday, timeZone: 'UTC' })
+      // 1 de enero de 2024 fue lunes
+      for (let d = 0; d < 7; d++) set.add(plainWord(f.format(Date.UTC(2024, 0, 1 + d)).replace(/\.$/, '')))
+    }
+  } catch {
+    // una lengua que el motor no conoce: solo español e inglés
+  }
+  timeWordCache.set(key, set)
+  return set
+}
+
+/** Palabras de un nombre (sin cifras ni «de»/«of»): «1 de enero» → [«enero»]. */
+const labelWords = (s: string): string[] => (s.match(/\p{L}+/gu) ?? []).filter((w) => !['de', 'del', 'of'].includes(plainWord(w)))
+
+/** ¿Un trimestre? («T1», «Q3 2024», «1T»). */
+const isQuarter = (s: string): boolean => /^\s*(?:[qt][1-4]|[1-4][qt])(?:\s*[-/']?\s*\d{2,4})?\s*$/i.test(s)
+
+/** ¿Un mes, un día de la semana o un trimestre? («Enero», «ene.», «Mar 2024», «1 de enero», «Lunes», «T1»). */
+export function isTimeLabel(label: string, lang = 'es'): boolean {
+  if (isQuarter(label)) return true
+  const words = labelWords(label)
+  return words.length === 1 && timeWords(lang).has(plainWord(words[0]))
+}
+
+/** ¿Las categorías son tiempo (meses, días, trimestres; mezclados quizá con años)? */
+export const isTimeAxis = (labels: string[], lang = 'es'): boolean =>
+  labels.some((l) => isTimeLabel(l, lang)) && labels.every((l) => isNumericLabel(l) || isTimeLabel(l, lang))
+
+/**
+ * Meses y días abreviados a tres letras («Septiembre» → «Sep», «Miércoles 3» → «Mié 3») para que quepan todos bajo el eje.
+ * undefined si no son tiempo o si dos se abreviarían igual (en francés, «juin» y «juillet»).
+ */
+export function shortTimeLabels(labels: string[], lang = 'es'): string[] | undefined {
+  if (!isTimeAxis(labels, lang)) return undefined
+  const short = labels.map((l) => (isQuarter(l) ? l : l.replace(/\p{L}+/gu, (w) => (Array.from(w).length > 3 && timeWords(lang).has(plainWord(w)) ? Array.from(w).slice(0, 3).join('') : w))))
+  const seen = new Map<string, string>()
+  for (let i = 0; i < labels.length; i++) {
+    const k = plainWord(short[i])
+    const before = seen.get(k)
+    if (before !== undefined && plainWord(before) !== plainWord(labels[i])) return undefined
+    seen.set(k, labels[i])
+  }
+  return short
 }
