@@ -48,7 +48,8 @@ describe('bloques: lectura y escritura', () => {
       '{"type":"labeled","asset":"h.png","alt":"corazón","parts":[{"id":"ao","name":"Aorta","x":0.5,"y":0.2,"r":0.05}]}',
       '{"type":"model3d","formula":"H2O","lonePairs":true,"alt":"agua"}',
       '{"type":"simulation","params":[{"name":"k","min":1,"max":5,"value":2}],"plot":{"curves":[{"expr":"k*x"}]}}',
-      '{"type":"map","markers":[{"lat":40.4,"lon":-3.7,"title":"Madrid"}]}'
+      '{"type":"map","markers":[{"lat":40.4,"lon":-3.7,"title":"Madrid"}]}',
+      '{"type":"structure","smiles":"CCO","formula":"C2H6O","alt":"etanol","groups":[{"atoms":[3],"label":"hidroxilo"}]}'
     ]
     const blocks = json.map(decode)
     for (const b of blocks) expect(roundTrip(b), b.type).toEqual(b)

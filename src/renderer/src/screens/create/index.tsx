@@ -1,5 +1,6 @@
-// Nuevo curso: una sola página, sin asistente de pasos. Qué quieres estudiar (y cuándo), tus materiales (arrastrar,
-// pegar o traerlos de tu plataforma) y, si quieres, más detalles. Un botón y el equipo de Aula se pone a trabajar.
+// Nuevo curso: una sola página, sin asistente de pasos. Qué quieres estudiar (y cuándo, a qué nivel y en qué idioma), tus
+// materiales (arrastrar, pegar o traerlos de tu plataforma) y, si quieres, más detalles. Un botón y el equipo de Aula se pone
+// a trabajar. El idioma elegido se recuerda para los próximos cursos (Ajustes → `general.courseLanguage`).
 // Lo escrito es un borrador (draftStore): no se pierde al ir a otra pantalla ni al cerrar Aula (A3-P1-3).
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,13 +8,14 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Button, Card, Chip, Companion, ConfirmDialog, Icon, Select, Spinner, Switch, TextArea, TextField, cx, spring, toast, pixelBurst } from '@renderer/design'
 import type { CreateRequest, GenerationDepth, MaterialView } from '@shared/generation/types'
 import { CourseLanguages } from '@engine/base/language'
+import { resolveCourseLanguage } from '@shared/settings/courseLanguage'
 import { useRoute, navigate } from '@renderer/app/router'
 import { useScreenTitle } from '@renderer/app/title'
 import { api } from '@renderer/lib/api'
 import { useRpc } from '@renderer/lib/useRpc'
 import { useSettings } from '@renderer/lib/settings'
 import { isDemo } from '@renderer/lib/demo'
-import { formFromPrefill, hasDraftContent, useCreateDraft, type LessonMode, type PendingMaterial } from './draftStore'
+import { formAfterStart, formFromPrefill, hasDraftContent, useCreateDraft, type LessonMode, type PendingMaterial } from './draftStore'
 
 const LEVELS = ['school', 'highschool', 'university', 'official', 'language', 'hobby'] as const
 type DraftResult = { draftId: string; materials: MaterialView[] }
@@ -41,9 +43,16 @@ export default function CreateScreen() {
   const setWeb = (v: boolean) => set({ web: v })
   const setVerify = (v: boolean) => set({ verify: v })
   const setLessonMode = (v: LessonMode) => set({ lessonMode: v })
-  // el idioma del curso sigue al de la interfaz hasta que la persona elige otro
-  const setPickedLanguage = (v: string | null) => set({ pickedLanguage: v })
-  const language = pickedLanguage ?? CourseLanguages.find(i18n.language)?.id ?? 'es'
+  // el idioma del curso: el que recuerdan los ajustes (con «auto», el del sistema o el de la interfaz) hasta que se elige otro,
+  // que queda recordado para los próximos cursos
+  const { data: systemLanguages } = useRpc('settings.systemLanguages', undefined)
+  const remembered = resolveCourseLanguage(settings?.general.courseLanguage, systemLanguages ?? [], settings?.general.language, i18n.language)
+  const language = pickedLanguage ?? remembered
+  const chooseLanguage = (v: string) => {
+    set({ pickedLanguage: v })
+    // si no se puede guardar (un dispositivo que no cambia ajustes), la elección sigue en el borrador
+    void useSettings.getState().update({ general: { courseLanguage: v } }).catch(() => undefined)
+  }
   const setMaterials = (list: MaterialView[]) => set({ materials: list })
   const official = useMemo(() => new Set(draft.official), [draft.official])
   const setGather = (v: string | null) => set({ gather: v })
@@ -146,8 +155,8 @@ export default function CreateScreen() {
     try {
       const r = await api.invoke('create.start', { draftId: staged.draftId || undefined, request })
       pixelBurst(el)
-      // el borrador ya es un curso: la próxima vez, el formulario vacío
-      useCreateDraft.getState().reset(emptyAfterStart(prefillKey))
+      // el borrador ya es un curso: la próxima vez, el formulario vacío (con el mismo idioma)
+      useCreateDraft.getState().reset(formAfterStart(prefillKey, pickedLanguage, remembered))
       navigate({ name: 'run', id: r.runId })
     } catch (e) {
       toast.error((e as Error).message)
@@ -188,6 +197,14 @@ export default function CreateScreen() {
                     </Chip>
                   ))}
                 </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5" data-testid="create-course-language">
+                <label className="flex items-center gap-2 t-ui text-text2">
+                  <Icon name="globe" size={15} />
+                  {t('courseLanguage')}
+                  <Select value={language} onChange={chooseLanguage} options={COURSE_LANGUAGES} className="w-[210px] ml-1" />
+                </label>
+                <span className="t-ui text-text3 min-w-0">{t('courseLanguageHint')}</span>
               </div>
             </div>
           </div>
@@ -246,7 +263,6 @@ export default function CreateScreen() {
                     <TextArea label={t('topics')} rows={3} autoGrow value={topics} onChange={(e) => setTopics(e.target.value)} placeholder={t('topicsPlaceholder')} />
                     <TextArea label={t('examNotes')} rows={2} autoGrow value={examNotes} onChange={(e) => setExamNotes(e.target.value)} placeholder={t('examNotesPlaceholder')} />
                     <LessonModePicker value={lessonMode} onChange={setLessonMode} />
-                    <Select label={t('courseLanguage')} value={language} onChange={setPickedLanguage} options={COURSE_LANGUAGES} />
                   </div>
                 </motion.div>
               )}
@@ -425,9 +441,4 @@ function Materials({ materials, official, onToggleOfficial, onFiles, pending, on
       </div>
     </Card>
   )
-}
-
-/** Tras empezar a crear el curso: el formulario vacío (la propuesta de la ruta ya está usada: volver atrás no la repite). */
-function emptyAfterStart(prefillKey: string | undefined) {
-  return { ...formFromPrefill({}, prefillKey ?? ''), prefillKey }
 }

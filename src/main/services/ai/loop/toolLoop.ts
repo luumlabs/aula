@@ -7,7 +7,9 @@
 //  - Contexto: estima tokens (≈ caracteres/3,5) y por encima del 75 % de la ventana recorta resultados antiguos, argumentos largos
 //    y, si hace falta, pasos enteros; ante «context length exceeded» recorta más y reintenta una vez.
 //  - Si el proveedor rechaza `tools` (o el modelo no las admite) pasa al modo de texto (TextToolProtocol).
-//  - Tras un 429 espera `retryAfter` (máx. 60 s) y reintenta el paso hasta 3 veces, avisando.
+//  - Tras un 429 con una espera corta (≤ 60 s y que acaba antes del plazo de la tarea) espera y reintenta el paso hasta 3 veces,
+//    avisando. Una espera más larga no se hace aquí: el error sale enseguida y decide quien llama (el chat y la corrección lo
+//    dicen ya; la tubería se para y queda para reanudar).
 //  - Una llamada cortada por el límite de longitud no se ejecuta: se pide al modelo que la reenvíe en partes.
 //  - `usage` lleva siempre el ACUMULADO: tras cada llamada al modelo (si cambió), antes de un error y antes de `finished`.
 import type { JSONObject } from '@shared/ai/json'
@@ -78,6 +80,9 @@ export function sharedContextBlock(shared: string | undefined, prompt: string | 
   if (s.endsWith('\n\n')) return s
   return s + (s.endsWith('\n') ? '\n' : '\n\n')
 }
+
+/** La espera más larga (s) que hace el bucle tras un 429; con una mayor, reintentar antes fallaría seguro. */
+export const MAX_RATE_LIMIT_WAIT_SEC = 60
 
 const TIMEOUT = Symbol('timeout')
 
@@ -226,6 +231,16 @@ export async function runToolLoop(opts: ToolLoopOptions): Promise<AgentResult> {
 
   // MARK: una llamada al modelo (con esperas por 429, recorte por contexto y paso al modo de texto)
 
+  /** Espera (s) antes del reintento `n` tras un 429, o `undefined` si no merece la pena esperar aquí. */
+  const rateLimitWait = (retryAfter: number | undefined, n: number): number | undefined => {
+    // sin espera indicada: 5, 20, 45 s
+    const wait = retryAfter ?? 5 * n * n
+    // una espera larga (un límite diario, por hora…) o que no acabaría antes del plazo no se hace: el error sale ya
+    if (wait > MAX_RATE_LIMIT_WAIT_SEC) return undefined
+    if (deadline !== undefined && Date.now() + wait * 1000 >= deadline) return undefined
+    return wait
+  }
+
   const callModel = async (allowTools: boolean): Promise<ModelTurn> => {
     let rateLimitRetries = 0
     let contextRetried = false
@@ -286,12 +301,12 @@ export async function runToolLoop(opts: ToolLoopOptions): Promise<AgentResult> {
         if (!(err instanceof AIError)) throw err
         if (err.kind === 'cancelled') throw err
         if (hasOutput) throw err // ya se mostró contenido: no se puede repetir sin duplicarlo
-        if (err.kind === 'rateLimited' && rateLimitRetries < (opts.maxRateLimitRetries ?? 3)) {
+        const maxRetries = opts.maxRateLimitRetries ?? 3
+        const wait = err.kind === 'rateLimited' && rateLimitRetries < maxRetries ? rateLimitWait(err.retryAfter, rateLimitRetries + 1) : undefined
+        if (wait !== undefined) {
           rateLimitRetries++
-          const wait = Math.min(err.retryAfter ?? 5 * rateLimitRetries * rateLimitRetries, 60)
-          const max = opts.maxRateLimitRetries ?? 3
-          emit({ type: 'notice', text: tr(`Límite de uso de ${model.providerName}: espero ${waitText(wait)} y reintento (${rateLimitRetries}/${max}).`,
-            `Rate limit for ${model.providerName}: waiting ${waitText(wait)} and retrying (${rateLimitRetries}/${max}).`) })
+          emit({ type: 'notice', text: tr(`Límite de uso de ${model.providerName}: espero ${waitText(wait)} y reintento (${rateLimitRetries}/${maxRetries}).`,
+            `Rate limit for ${model.providerName}: waiting ${waitText(wait)} and retrying (${rateLimitRetries}/${maxRetries}).`) })
           try {
             await sleep(wait, loop.signal)
           } catch (e) {

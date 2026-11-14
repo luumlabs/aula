@@ -13,9 +13,12 @@ import { renderCloze } from '@engine/study/cloze'
 import type { AssetMeta } from './asset-meta'
 import { latexIssues, texProblems } from './tex'
 import { approximateDataIssues, blocksPlainText, hintRevealsBlankIssues } from './answer-hygiene'
+import { checkCompare, checkDiagramForm } from './diagram-checks'
 import {
   checkCardFigure, checkCredit, checkDiagramSteps, checkLabelAnswer, checkLabeled, checkMap, checkModel3D, checkSimulation, checkSlide, checkTimeline
 } from './visual-validation'
+import { checkStructure, checkStructureFormulaKey } from './structure-validation'
+import { checkDrawing } from './drawing-validation'
 
 const issue = (severity: IssueSeverity, path: string, message: string): ContentIssue => ({ severity, path, message })
 
@@ -161,6 +164,7 @@ export class ContentValidator {
         if (!b.series.length || b.series.every((s) => !s.points.length)) add(issue('error', path + '.series', 'El gráfico no tiene datos.'))
         b.series.forEach((s, i) => s.points.forEach((p, j) => { if (!Number.isFinite(p.y)) add(issue('error', `${path}.series[${i}].points[${j}]`, 'Valor no numérico.')) }))
         if (b.kind === 'pie' && (b.series[0]?.points.length ?? 0) < 2) add(issue('warning', path, 'Un gráfico de sectores necesita al menos 2 partes.'))
+        if (b.series.reduce((k, s) => k + s.points.filter((p) => p.highlight).length, 0) > 3) add(issue('warning', path, 'Destaca (`highlight`) 1 o 2 datos, los de la lección: si se destacan muchos, no se destaca ninguno.'))
         break
       case 'numberline':
         if (!(b.min < b.max)) add(issue('error', path, 'min debe ser menor que max.'))
@@ -172,37 +176,15 @@ export class ContentValidator {
         const ids = b.nodes.map((n) => n.id)
         if (new Set(ids).size !== ids.length) add(issue('error', path + '.nodes', 'Ids de nodo repetidos.'))
         b.edges.forEach((e, i) => { if (!ids.includes(e.from) || !ids.includes(e.to)) add(issue('error', `${path}.edges[${i}]`, `La flecha ${e.from}→${e.to} usa un nodo que no existe.`)) })
-        if (b.nodes.length > 14) add(issue('warning', path, 'Más de 14 nodos: se verá apretado; divide el diagrama.'))
+        if (b.nodes.length > 14 && b.form !== 'mindmap') add(issue('warning', path, 'Más de 14 nodos: se verá apretado; divide el diagrama.'))
         b.nodes.forEach((n, i) => add(...latexIssues(n.label, `${path}.nodes[${i}].label`)))
         add(...checkDiagramSteps(b, path))
+        add(...checkDiagramForm(b, path))
         break
       }
       case 'drawing':
-        if (!b.items.length) add(issue('error', path + '.items', 'El dibujo está vacío.'))
-        if (b.width < 50 || b.height < 50 || b.width > 1200 || b.height > 900) add(issue('warning', path, 'Tamaño de lienzo raro (usa por ejemplo 400×300).'))
-        b.items.forEach((it, i) => {
-          const p = `${path}.items[${i}]`
-          const has = (...v: Array<number | undefined>): boolean => v.every((x) => x !== undefined)
-          switch (it.kind) {
-            case 'line': case 'arrow': case 'tick': if (!has(it.x1, it.y1, it.x2, it.y2)) add(issue('error', p, `«${it.kind}» necesita x1,y1,x2,y2.`)); break
-            case 'polyline': case 'polygon': if ((it.points?.length ?? 0) < 2 || (it.points ?? []).some((q) => q.length < 2)) add(issue('error', p, `«${it.kind}» necesita points: [[x,y],…] con al menos 2 puntos.`)); break
-            case 'rect': if (!has(it.x, it.y)) add(issue('error', p, 'rect necesita x, y, w, h.')); break
-            case 'circle': case 'dot': case 'arc': case 'angle': if ((it.cx ?? it.x) === undefined || (it.cy ?? it.y) === undefined) add(issue('error', p, `«${it.kind}» necesita cx, cy (y r).`)); break
-            case 'ellipse': if ((it.cx ?? it.x) === undefined || (it.cy ?? it.y) === undefined) add(issue('error', p, 'ellipse necesita cx, cy, rx, ry.')); break
-            case 'text': {
-              const t = it.text ?? it.label ?? ''
-              if (!t || !has(it.x, it.y)) add(issue('error', p, 'text necesita x, y y text.'))
-              else add(...latexIssues(t, p))
-              break
-            }
-            case 'curve': if ((it.points?.length ?? 0) < 3) add(issue('error', p, 'curve necesita 3 puntos (inicio, control, fin).')); break
-            case 'rightAngle': if ((it.cx ?? it.x) === undefined || (it.cy ?? it.y) === undefined) add(issue('error', p, 'rightAngle necesita cx, cy.')); break
-          }
-          const limit = Math.max(b.width, b.height) + 50
-          for (const v of [it.x1, it.y1, it.x2, it.y2, it.x, it.y, it.cx, it.cy]) {
-            if (v !== undefined && (v < -50 || v > limit)) { add(issue('warning', p, `Coordenada fuera del lienzo (${v}).`)); break }
-          }
-        })
+        // dentro de una figura etiquetada o un ejercicio llega sin id: allí el dibujo es fijo
+        add(...checkDrawing(b, path, b.id === ''))
         break
       case 'timeline':
         if (b.events.length < 2) add(issue('warning', path, 'Una línea de tiempo necesita al menos 2 eventos.'))
@@ -223,6 +205,7 @@ export class ContentValidator {
       case 'compare':
         if (!b.rows.length) add(issue('error', path + '.rows', 'La comparación no tiene filas.'))
         b.rows.forEach((r, i) => add(...latexIssues(r.left, `${path}.rows[${i}].left`), ...latexIssues(r.right, `${path}.rows[${i}].right`)))
+        add(...checkCompare(b, path))
         break
       case 'formulas':
         if (!b.items.length) add(issue('error', path + '.items', 'La lista de fórmulas está vacía.'))
@@ -261,6 +244,7 @@ export class ContentValidator {
       case 'model3d': add(...checkModel3D(this, b, path)); break
       case 'simulation': add(...checkSimulation(this, b, path)); break
       case 'map': add(...checkMap(b, path)); break
+      case 'structure': add(...checkStructure(this, b, path)); break
       case 'unknown':
         if (b.rawType === TOO_DEEP_TYPE) add(issue('error', path, 'Contenido anidado a demasiada profundidad (se recortó): aplánalo (no pongas ejercicios dentro de ejercicios).'))
         else add(issue('error', path, `Tipo de bloque desconocido «${blockTypeName(b)}». Tipos válidos: ${BLOCK_TYPES.join(', ')}.`))
@@ -409,6 +393,7 @@ export class ContentValidator {
           const why = self.feedback[0]?.markdown ?? 'no se reconoce'
           out.push(issue('error', path + '.expected', `La clave «${Array.from(key).slice(0, 60).join('')}» no es válida para \`mode: ${a.mode}\`: ${why} (compruébala con la herramienta \`chemistry\`).`))
         }
+        if (a.mode === 'formula') out.push(...checkStructureFormulaKey(key, prompt, path))
         break
       }
       case 'label': out.push(...checkLabelAnswer(this, a, path)); break

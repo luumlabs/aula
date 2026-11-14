@@ -25,6 +25,22 @@ export interface BlockContext {
   onOpenSource?: (ref: SourceRef) => void
   /** Curso de idiomas: los ejercicios de texto se corrigen exactos (tildes y ortografía cuentan; ver `courseGradeOptions`). */
   exactText?: boolean
+  /**
+   * Pregunta al tutor del curso por lo marcado en una figura («Marcar»). Sin él (simulacro, chat, papel) no se ofrece. `from`:
+   * la figura está en el enunciado de un ejercicio (cuál y si aún está sin resolver: el tutor ayuda con pistas, sin resolverlo).
+   */
+  onAskTutor?: (blockId: string, message: string, from?: AskFrom) => void
+  /** El bloque está en el enunciado de un ejercicio sin resolver: no debe enseñar lo que se pregunta (fórmula, nombre…). */
+  inPrompt?: boolean
+  /** Id del ejercicio cuyo enunciado contiene el bloque (para que el tutor lo lea). */
+  exerciseId?: string
+}
+
+/** De dónde sale una pregunta de «Marcar»: el ejercicio en cuyo enunciado está la figura. */
+export interface AskFrom {
+  exerciseId: string
+  /** Aún sin resolver (sin la solución a la vista). */
+  unsolved: boolean
 }
 
 export interface BlockProps<B extends Block = Block> {

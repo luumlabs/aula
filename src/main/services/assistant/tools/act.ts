@@ -4,7 +4,7 @@
 import { clip, foldPlain, isDateOnly, isoLocal, parseDate, parseRef } from '@engine/assistant'
 import { parseRuleText, type AssistantCalendarEvent, type AssistantEventDraft } from '@engine/calendar'
 import { AppLanguage } from '@engine/base/language'
-import { settingsPath } from '@shared/settings/sections'
+import { SETTINGS_SECTION_NAMES, settingsPath, type SettingsSection } from '@shared/settings/sections'
 import { IDs } from '@engine/base/ids'
 import { tr } from '@shared/ai/i18n'
 import type { JSONObject } from '@shared/ai/json'
@@ -94,18 +94,39 @@ export function appTool(raw: string): string {
   return TOOL_ALIASES[k] ?? k
 }
 
+/** Las secciones de Ajustes a las que se puede bajar (las mismas anclas que la pantalla de Ajustes). */
+export const SETTINGS_PANES = Object.keys(SETTINGS_SECTION_NAMES) as SettingsSection[]
+/** Lo que hay en cada una, para que el modelo sepa adónde llevar (p. ej. el cursor está en «Apariencia»). */
+const SETTINGS_PANES_HINT = 'for settings, the section to scroll to: ai (AI provider, keys, models), platforms (Canvas, Moodle… sign-ins), appearance (theme, text size, animations, cursor: sun or system arrow), persistent (Aula always on, proactive work), devices (iPhone/iPad/Android), memory (what Aula remembers), general (name, language, reminders), data (privacy, export, delete), about (version, updates)'
+const PANE_ALIASES: Record<string, SettingsSection> = {
+  cursor: 'appearance', mouse: 'appearance', pointer: 'appearance', theme: 'appearance', dark_mode: 'appearance', animations: 'appearance', motion: 'appearance', text_size: 'appearance', apariencia: 'appearance',
+  keys: 'ai', api_keys: 'ai', model: 'ai', provider: 'ai', platform: 'platforms', canvas: 'platforms', moodle: 'platforms', plataformas: 'platforms',
+  always_on: 'persistent', proactive: 'persistent', automations: 'persistent', device: 'devices', phone: 'devices', memoria: 'memory',
+  language: 'general', reminders: 'general', idioma: 'general', privacy: 'data', export: 'data', datos: 'data', updates: 'about', version: 'about'
+}
+/** La sección de Ajustes que entiende la interfaz (acepta mayúsculas, acentos y los nombres parecidos que use el modelo). */
+export function settingsPane(raw: string): SettingsSection | undefined {
+  const k = foldPlain(raw).trim().replace(/[\s-]+/g, '_')
+  if ((SETTINGS_PANES as readonly string[]).includes(k)) return k as SettingsSection
+  return Object.hasOwn(PANE_ALIASES, k) ? PANE_ALIASES[k] : undefined
+}
+
 export function openScreenTool(env: ToolEnv): AgentTool {
   return tool('open_screen',
-    "Open a screen of the app for the student (this takes them out of the chat): home, today (what's due), stats, calendar, settings, create_course (the course wizard), a course (overview), a lesson (optionally at a `step`), practice (a lesson or their weakest), cards (flashcard review), exam (mock exam), mistakes, materials, reference (glossary/formulas), exercise (practise one exercise), tool (one of the app's tools: calculator, grapher, periodic table, chemistry, molecules, units, timer, stats, matrix, geometry, physics, formulas) or run (progress of a course being created). Only when they ask to go somewhere or to start studying; otherwise prefer show_items.",
+    "Open a screen of the app for the student (this takes them out of the chat): home, today (what's due), stats, calendar, settings (optionally scrolled to one section with `settings_pane`, e.g. appearance for the theme or the cursor), create_course (the course wizard), a course (overview), a lesson (optionally at a `step`), practice (a lesson or their weakest), cards (flashcard review), exam (mock exam), mistakes, materials, reference (glossary/formulas), exercise (practise one exercise), tool (one of the app's tools: calculator, grapher, periodic table, chemistry, molecules, units, timer, stats, matrix, geometry, physics, formulas) or run (progress of a course being created). Only when they ask to go somewhere or to start studying; otherwise prefer show_items.",
     Schema.object([
       ['screen', Schema.string(undefined, ASSISTANT_SCREENS)], ['course_id', Schema.string()], ['skill_id', Schema.string()], ['exercise_id', Schema.string()],
-      ['tool', Schema.string(undefined, [...APP_TOOLS])], ['settings_pane', Schema.string('for settings: general, ai, platforms, memory, data')],
+      ['tool', Schema.string(undefined, [...APP_TOOLS])], ['settings_pane', Schema.string(SETTINGS_PANES_HINT, SETTINGS_PANES)],
       ['step', Schema.integer('lesson: open it at this step (1 = first; the steps of the lesson reader)', 1)]
     ], ['screen']),
     async (a) => {
       const raw = (a.string('screen') ?? '').toLowerCase()
       if (!(ASSISTANT_SCREENS as readonly string[]).includes(raw)) return outError(`Unknown screen. Use one of: ${ASSISTANT_SCREENS.join(', ')}.`)
       const screen = raw as AssistantScreen
+      // la sección solo cuenta en Ajustes (en otra pantalla se ignora, como antes)
+      const paneRaw = screen === 'settings' ? a.string('settings_pane', ['section', 'pane']) : undefined
+      const pane = paneRaw ? settingsPane(paneRaw) : undefined
+      if (paneRaw && !pane) return outError(`Unknown settings_pane. Use one of: ${SETTINGS_PANES.join(', ')}.`)
       let courseID = courseArg(env, a)
       if (courseID) {
         const c = findCourse(env, courseID)
@@ -116,7 +137,7 @@ export function openScreenTool(env: ToolEnv): AgentTool {
       if (needsCourse.includes(screen) && !courseID) return outError('This screen needs course_id.')
       const target = { screen, ...(courseID ? { courseID } : {}), ...(a.string('skill_id') ? { skillID: a.string('skill_id')! } : {}),
         ...(a.string('exercise_id') ? { exerciseID: a.string('exercise_id')! } : {}), ...(a.string('tool') ? { tool: appTool(a.string('tool')!) } : {}),
-        ...(a.string('settings_pane') ? { settingsPane: a.string('settings_pane')! } : {}), ...(a.int('step') !== undefined ? { step: Math.max(0, a.int('step')! - 1) } : {}) }
+        ...(pane ? { settingsPane: pane } : {}), ...(a.int('step') !== undefined ? { step: Math.max(0, a.int('step')! - 1) } : {}) }
       if (env.control?.open) {
         const note = await env.control.open(target)
         if (note) return outError(note)

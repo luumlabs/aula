@@ -9,13 +9,14 @@ import { LearnBridge } from './bridge'
 import { Recorder } from './recorder'
 import { StudyStatsCalc } from './stats'
 import { hasAttempts, toHomePlanItem } from './overview'
+import { readyTopicCount, topicIsReady, writtenTopicCount } from './topics'
 import { dayKey, skillMap, toDate } from './util'
 
 /** Un curso para el resumen: el curso, sus habilidades y si aún se está creando. */
 export interface HomeCourseInput {
   pack: Pack
   skills: SkillsInput
-  /** Aún se está creando: ni plan de hoy ni nota. */
+  /** Aún se está creando: el plan de hoy solo con los temas ya listos (ninguno: sin plan) y sin nota. */
   generating?: boolean
 }
 
@@ -66,6 +67,14 @@ function upcoming(date: Date | null, now: Date): number {
   return date.getTime()
 }
 
+/** El plan de hoy de un curso. Mientras se crea, solo propone los temas ya listos (no los que se están escribiendo): estudiar
+ * lo escrito no tiene que esperar a que termine la creación, aunque se haya parado por un límite. Los demás temas siguen
+ * contando para los pesos: las razones («Vale 10 puntos…») son las mismas que con el curso terminado. */
+function coursePlan(pack: Pack, skills: SkillsInput, progress: StudyProgress, goal: number, now: Date, generating: boolean, lang?: StudyLang): HomePlanItem[] {
+  if (generating && readyTopicCount(pack.skills) === 0) return []
+  return LearnBridge.dailyPlan(pack, skills, progress, goal, now, lang, generating ? topicIsReady : undefined).filter((i) => i.kind !== 'rest').map((i) => toHomePlanItem(pack, i))
+}
+
 function digest(input: HomeCourseInput, progress: StudyProgress, goal: number, now: Date, lang?: StudyLang): CourseDigest {
   const { pack } = input
   const skills = skillMap(input.skills)
@@ -78,13 +87,14 @@ function digest(input: HomeCourseInput, progress: StudyProgress, goal: number, n
     // sin los errores sin habilidad ni los de ejercicios que ya no existen: no se pueden repasar
     dueMistakes: Recorder.dueMistakes(progress, now, skills).length,
     readiness: seen ? r.expectedScore : 0, low: seen ? r.low : 0, high: seen ? r.high : 0, coverage: r.coverage, started: seen,
-    plan: generating ? [] : LearnBridge.dailyPlan(pack, skills, progress, goal, now, lang).filter((i) => i.kind !== 'rest').map((i) => toHomePlanItem(pack, i))
+    plan: coursePlan(pack, skills, progress, goal, now, generating, lang)
   }
 }
 
 /** Plan combinado: por curso, un bloque con lo vencido (tarjetas y errores juntos) y luego sus pasos, alternando cursos. */
 export function combinedPlan(courses: readonly CourseDigest[], goal: number, limit: number, now: Date, lang?: StudyLang): HomePlanItem[] {
-  const ordered = [...courses].filter((c) => !c.generating).sort((a, b) => {
+  // un curso que se está creando entra con lo que ya tiene listo (su plan solo lleva esos temas)
+  const ordered = [...courses].filter((c) => !c.generating || c.plan.length > 0).sort((a, b) => {
     const da = upcoming(toDate(a.pack.exam?.date), now), db = upcoming(toDate(b.pack.exam?.date), now)
     return da !== db ? da - db : (b.dueCards + b.dueMistakes) - (a.dueCards + a.dueMistakes)
   })
@@ -147,7 +157,8 @@ export function buildHomeSummary(inputs: readonly HomeCourseInput[], progressByP
   const homeCourses: HomeCourse[] = courses.map((c) => {
     const h: HomeCourse = {
       id: c.pack.id, title: c.pack.title, subject: c.pack.subject, icon: c.pack.icon, hue: c.pack.hue, readiness: c.readiness, coverage: c.coverage,
-      examDate: c.pack.exam?.date ?? null, dueCards: c.dueCards, mistakes: c.dueMistakes, skillCount: c.pack.skills.length, started: c.started
+      examDate: c.pack.exam?.date ?? null, dueCards: c.dueCards, mistakes: c.dueMistakes, skillCount: c.pack.skills.length,
+      readyCount: readyTopicCount(c.pack.skills), writtenCount: writtenTopicCount(c.pack.skills), started: c.started
     }
     if (c.generating) h.generating = true
     return h

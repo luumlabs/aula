@@ -174,7 +174,7 @@
     "cursor": "Cursor",
     "cursorSun": "Sol",
     "cursorSystem": "Del sistema",
-    "cursorHint": "El sol deja una cola de cometa corta al moverse (no con animaciones reducidas)."
+    "cursorHint": "El sol deja una estela corta al moverse y una onda al pulsar (sin ellas con animaciones reducidas). «Del sistema» vuelve a la flecha de siempre."
   },
   "devices": {
     "title": "Aula en tus dispositivos",
@@ -237,6 +237,8 @@
     "title": "Idioma y avisos",
     "language": "Idioma de Aula",
     "languageSystem": "El del sistema",
+    "courseLanguage": "Idioma de los cursos nuevos",
+    "courseLanguageAuto": "Automático ({{name}})",
     "reminders": "Recordatorio diario para estudiar",
     "reminderTime": "Hora",
     "name": "Tu nombre",

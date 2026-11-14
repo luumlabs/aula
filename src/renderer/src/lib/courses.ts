@@ -12,6 +12,10 @@ export interface CourseListItem {
   updated: string
   examDate?: string | null
   skillCount: number
+  /** Temas listos (auditados); sin dato, como antes: los del plan. */
+  readyCount?: number
+  /** Temas con algo escrito, auditados o no; sin dato, los listos. */
+  writtenCount?: number
   exerciseCount: number
   cardCount: number
 }

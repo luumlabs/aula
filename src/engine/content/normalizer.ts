@@ -2,7 +2,11 @@
 // StudyEngine/Content/Normalizer.swift). Es conservador: solo corrige patrones reconocibles; lo demás lo informa el validador.
 import { IDs } from '@engine/base/ids'
 import { asBool, asDouble, asInt, asText, isJSONObject, type JSONObject, type JSONValue } from '@engine/base/json'
-import { canonicalBlockType, ownValue, setOwn } from '@shared/schema'
+import { canonicalBlockType, ownValue, routeStructureType, setOwn } from '@shared/schema'
+import { normalizeCompare, normalizeDiagramForm } from './diagram-forms-normalize'
+import { normalizeStructureFields } from './structure-normalize'
+import { normalizeDrawingJSON } from '@engine/drawing/normalize'
+import { normalizeMapExtras } from './map-normalize'
 
 /** Anidamiento máximo que se normaliza (tryit → ejercicio → tryit…). */
 const MAX_DEPTH = 24
@@ -79,7 +83,7 @@ function blockAt(v: JSONValue, depth: number): JSONValue {
   if (!src) return { type: 'text', md: '' }
   const o: O = { ...src }
   const rawType = strOf(o.type) ?? strOf(o.kind) ?? strOf(o.block) ?? 'text'
-  const type = canonicalBlockType(rawType)
+  const type = routeStructureType(canonicalBlockType(rawType), rawType, o)
   switch (type) {
     case 'text': move(o, ['content', 'markdown', 'body', 'value', 'text', 'paragraph'], 'md'); break
     case 'math': move(o, ['latex', 'formula', 'expression', 'equation', 'value'], 'tex'); break
@@ -170,10 +174,18 @@ function blockAt(v: JSONValue, depth: number): JSONValue {
       break
     }
     case 'diagram': {
+      normalizeDiagramForm(o, rawType)
       const nodes = arr(o.nodes)
       if (nodes) o.nodes = nodes.map((nd) => (isStr(nd) ? { id: IDs.slug(nd, 24), label: nd } : nd))
       const edges = arr(o.edges)
       if (edges) o.edges = edges.map((e) => { const a = arr(e); return a && a.length >= 2 ? { from: a[0], to: a[1] } : e })
+      break
+    }
+    case 'compare': normalizeCompare(o, rawType); break
+    case 'drawing': {
+      const d = normalizeDrawingJSON(o)
+      for (const k of Object.keys(o)) delete o[k]
+      Object.assign(o, d)
       break
     }
     case 'image': move(o, ['src', 'file', 'path'], 'asset'); move(o, ['description', 'alt_text', 'caption'], 'alt'); break
@@ -181,7 +193,9 @@ function blockAt(v: JSONValue, depth: number): JSONValue {
       if (o.parts === undefined && arr(o.labels)) { o.parts = o.labels; delete o.labels }
       move(o, ['hotspots', 'structures', 'regions', 'points', 'markers', 'spots'], 'parts')
       move(o, ['image', 'src', 'file', 'path'], 'asset'); move(o, ['description', 'alt_text'], 'alt'); move(o, ['attribution', 'license'], 'credit')
+      move(o, ['tour', 'walkthrough', 'guidedTour'], 'steps')
       if (o.drawing === undefined && arr(o.items)) { o.drawing = { width: o.width ?? 400, height: o.height ?? 300, items: o.items as JSONValue[] }; delete o.items }
+      if (obj(o.drawing)) o.drawing = normalizeDrawingJSON(obj(o.drawing)!)
       const ps = arr(o.parts)
       if (ps) o.parts = ps.map(figurePart)
       break
@@ -232,8 +246,10 @@ function blockAt(v: JSONValue, depth: number): JSONValue {
         const c = arr(first(mo, ['coords', 'coordinates', 'position', 'latlng', 'latLng']))
         return mo.lat === undefined && c && c.length >= 2 ? { ...mo, lat: c[0], lon: c[1] } : mo
       })
+      normalizeMapExtras(o)
       break
     }
+    case 'structure': normalizeStructureFields(o); break
     default: break
   }
   o.type = type
@@ -345,6 +361,7 @@ function exerciseAt(v: JSONValue, skill: string, defaultID: string, depth: numbe
     }
     // el valor numérico puede venir como `answer: {value: 3}` o `{expected: …}`
     if ((strOf(ao.kind) ?? '').toLowerCase().startsWith('num') && ao.value === undefined) { const e = first(ao, ['expected', 'answer']); if (e !== undefined) ao.value = e }
+    if (obj(ao.drawing)) ao.drawing = normalizeDrawingJSON(obj(ao.drawing)!)
     answer = ao
   }
   if (answer !== undefined) o.answer = answer

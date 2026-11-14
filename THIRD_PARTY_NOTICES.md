@@ -43,6 +43,7 @@ dependencies) next to the app.
 | [Periodic-Table-JSON](https://github.com/Bowserinator/Periodic-Table-JSON) by Bowserinator (values from Wikipedia/IUPAC), adapted in `src/engine/chem/element-physical.ts` | Periodic table and chemistry tools | The project is CC BY-SA 3.0; Aula takes only numeric facts from it (densities, melting and boiling points), which aren't copyrightable, and credits it as a courtesy |
 | Luna (by the same author): interface icons (`src/renderer/src/design/icons`), the 44 pixel-art companions (`src/renderer/src/design/pixel/companions.ts`) and parts of the memory and file-saving code | Icons, agent companions, memory and saving files | AGPL-3.0-only, like the rest of Aula |
 | The [FSRS-4.5](https://github.com/open-spaced-repetition) algorithm (Free Spaced Repetition Scheduler), implemented in `src/engine/learn/fsrs.ts`; its tests compare it with outputs of [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) 2.5.1 | Flashcard scheduling | Aula's own implementation (AGPL-3.0-only); py-fsrs is MIT, credited with thanks |
+| [Sketchy](https://github.com/ddkbs/sketchy) by ddkbs: code copied and adapted into Aula's own files (listed [below](#sketchy-mit); each one says so in its header) | Diagram shapes (pyramid, funnel, Venn, mind map) and their arrows and pen rings, structural formulas from SMILES, drawings with ready-made objects, geometry marks and motion, «mark and ask the tutor», countries and journeys on maps, chart labels | MIT (notice [below](#sketchy-mit)) |
 | Linux AppImage (x64): the [AppImage](https://github.com/AppImage/AppImageKit) runtime and the libraries electron-builder copies into its `usr/lib` — `libappindicator`, `libindicator`, `libnotify`, `libgconf-2`, `libXss`, `libXtst` | Starting Aula on Linux (tray, notifications) | Runtime: MIT. Libraries, as packaged by Ubuntu: LGPL-2.1/LGPL-3.0 (libappindicator), GPL-3.0 (libindicator), LGPL-2.1+ (libnotify), LGPL-2.0+ (GConf), MIT/X11 (libXss, libXtst); their source is in the Ubuntu source packages of the same names (<https://packages.ubuntu.com>) |
 
 ## AI provider logos
@@ -102,3 +103,47 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ```
 
 The license covers the drawings as files; it grants no rights to OpenAI's trademarks.
+
+## Sketchy (MIT)
+
+Several of Aula's figures are adapted from [Sketchy](https://github.com/ddkbs/sketchy), by ddkbs: its code was copied,
+translated to Aula's types and style, and extended. Thank you! These files contain code adapted from it (each names the
+Sketchy file it comes from in its header):
+
+- Diagram shapes, pen rings and ink arrows: `src/shared/schema/diagramForms.ts`, `src/engine/content/diagram-forms.ts`,
+  `src/engine/content/diagram-checks.ts`, `src/renderer/src/blocks/visual/lib/diagramForms.ts`,
+  `src/renderer/src/blocks/visual/lib/diagramLayout.ts`, `src/renderer/src/blocks/visual/DiagramBlock.tsx`,
+  `src/renderer/src/blocks/TableBlocks.tsx`, `src/renderer/src/design/paint/penInk.ts`
+- Structural formulas from SMILES: `src/engine/chem/smiles.ts`, `src/engine/chem/structure-layout.ts`,
+  `src/engine/chem/structure-depict.ts`, `src/engine/pipeline/structure-guide.ts`
+- Drawings (objects, geometry marks, labels, motion, steps, checks): `src/engine/drawing/geometry.ts`, `marks.ts`,
+  `objects.ts`, `labels.ts`, `motion.ts`, `steps.ts` and `issues.ts`, `src/engine/pipeline/drawingReference.ts`,
+  `src/renderer/src/blocks/visual/lib/loopInk.ts`
+- Mark and ask the tutor, guided tours of labeled figures: `src/renderer/src/blocks/ask/AskLayer.tsx`,
+  `src/renderer/src/blocks/ask/marks.ts`, `src/renderer/src/blocks/visual/LabeledBlock.tsx`,
+  `src/renderer/src/blocks/visual/shared/FigureTour.tsx`, `src/renderer/src/blocks/visual/lib/tourInk.ts`
+- Maps and charts: `src/engine/geo/names.ts`, `src/engine/geo/countries.ts`,
+  `src/renderer/src/blocks/visual/MapBlock.tsx`, `src/renderer/src/blocks/visual/lib/mapGeo.ts`, `mapRoutes.ts`,
+  `mapLabels.ts` and `mapCountries.ts`, `src/renderer/src/blocks/chart/ChartBlock.tsx`, `HBarChart.tsx`,
+  `pointLabels.ts` and `scale.ts`
+
+Sketchy is published under this license:
+
+```
+MIT License
+
+Copyright (c) 2026 ddkbs
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```

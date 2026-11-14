@@ -26,13 +26,16 @@ export function SidebarCourses({ collapsed }: { collapsed: boolean }) {
         const sample = showsAsSample(c.id)
         const n = c.examDate && !sample ? daysUntil(c.examDate) : null
         const soon = n != null && n >= 0 && n <= 3
+        // temas listos y escritos (los del plan si el dato no llega)
+        const ready = c.readyCount ?? c.skillCount
+        const counts = { ready, written: c.writtenCount ?? ready }
         // la creación falló o se detuvo sin ningún tema: se marca para que no pase desapercibido
-        const issue = courseRunIssue(runs[c.id], c.skillCount)
+        const issue = courseRunIssue(runs[c.id], counts)
         // o se cortó a medias, con temas ya escritos: «Creación en pausa» (J2-2)
-        const partial = coursePartial(runs[c.id], c.skillCount)
+        const partial = coursePartial(runs[c.id], counts)
         const problem = issue === 'failed' || issue === 'stopped' || issue === 'limit' || !!partial
         // o sigue creándose con temas ya escritos: se puede abrir, pero no está terminado (como dice Hoy)
-        const building = !issue && !partial && courseBuilding(runs[c.id], c.skillCount)
+        const building = !issue && !partial && courseBuilding(runs[c.id], counts)
         const marker = issue ? t(`course:failure.marker.${issue}`) : building ? t('course:failure.marker.buildingReady') : null
         const row = (
           <motion.button

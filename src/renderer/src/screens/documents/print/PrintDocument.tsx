@@ -122,7 +122,7 @@ function Section({ section: s, first, plan, ctx }: { section: DocumentSection; f
 }
 
 /** Bloques que no se deben partir entre dos páginas (los textos largos sí pueden). */
-const AVOID = new Set(['math', 'callout', 'formulas', 'table', 'compare', 'image', 'plot', 'chart', 'diagram', 'drawing', 'numberline', 'example', 'recap', 'steps', 'predict', 'spot', 'labeled', 'map', 'model3d', 'simulation', 'explore', 'timeline', 'code', 'quote'])
+const AVOID = new Set(['math', 'callout', 'formulas', 'table', 'compare', 'image', 'plot', 'chart', 'diagram', 'drawing', 'numberline', 'example', 'recap', 'steps', 'predict', 'spot', 'labeled', 'map', 'model3d', 'structure', 'simulation', 'explore', 'timeline', 'code', 'quote'])
 
 function BlockItem({ block, ctx }: { block: Block; ctx: BlockContext }) {
   return (
@@ -211,12 +211,14 @@ function CompactFormulas({ group }: { group: { title: string; items: { name: str
 // MARK: - Examen
 
 function Question({ q, plan, ctx }: { q: DocumentQuestion; plan: DocumentPlan; ctx: BlockContext }) {
+  // el enunciado no debe dar la respuesta (una molécula sin su fórmula ni sus grupos)
+  const promptCtx: BlockContext = { ...ctx, inPrompt: true, exerciseId: q.exercise.id }
   return (
     <div className="pd-q">
       <span className="pd-qn">{q.number}.</span>
       <div className="pd-qbody">
-        {printablePrompt(q.exercise).map((b, i) => <BlockItem key={i} block={b} ctx={ctx} />)}
-        <AnswerArea answer={q.exercise.answer} order={q.optionOrder} seedKey={q.exercise.id} plan={plan} ctx={ctx} />
+        {printablePrompt(q.exercise).map((b, i) => <BlockItem key={i} block={b} ctx={promptCtx} />)}
+        <AnswerArea answer={q.exercise.answer} order={q.optionOrder} seedKey={q.exercise.id} plan={plan} ctx={promptCtx} />
       </div>
       <span className="pd-qpts">{fmtPoints(q.points)} {q.points === 1 ? plan.words.point : plan.words.points}</span>
     </div>

@@ -141,8 +141,9 @@ export function CanvasHint({ children }: { children: ReactNode }) {
   return <div className="pointer-events-none absolute left-2.5 bottom-2 t-caption text-text3 bg-raised/70 backdrop-blur-sm rounded-full px-2 py-0.5">{children}</div>
 }
 
-/** Recuadro del lienzo (pozo de papel con esquinas de burbuja). */
-export const canvasWell = 'relative isolate overflow-hidden rounded-[18px] bg-sunken border-[0.5px] border-line'
+/** Recuadro del lienzo (pozo de papel con esquinas de burbuja). Sin selección de texto: se arrastra y se amplía dentro
+ *  (la lección alrededor sí se selecciona). */
+export const canvasWell = 'relative isolate overflow-hidden select-none rounded-[18px] bg-sunken border-[0.5px] border-line'
 
 /** La tinta del curso (`ctx.hue`) para los colores de datos «accent» de la figura; sin curso, el ladrillo de Aula. */
 export function useInk(hue: number | undefined): CSSProperties | undefined {

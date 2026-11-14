@@ -153,6 +153,8 @@ describe('mensajes', () => {
     expect(explainError(new AIError('network', 'x')).transient).toBe(true)
     expect(explainError(new AIError('missingKey', 'x'), 'OpenAI').message).toContain('OpenAI')
     expect(explainError(new AIError('rateLimited', 'x', { retryAfter: 120 })).message).toContain('2 min')
+    // un límite diario (Gemini gratis) se dice en horas, no «unos 840 min»
+    expect(explainError(new AIError('rateLimited', 'x', { retryAfter: 14 * 3600 })).message).toContain('unos 14 h')
   })
 })
 

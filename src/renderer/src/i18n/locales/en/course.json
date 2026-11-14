@@ -177,7 +177,8 @@
       "failed": "The course couldn’t be created",
       "stopped": "The course has no topics yet",
       "limit": "Stopped at a usage limit",
-      "building": "No topics yet"
+      "building": "No topics yet",
+      "quota": "The AI ran out of credit"
     },
     "reason": {
       "auth": "The AI that Aula uses isn’t signed in, so it couldn’t start writing. Sign in (Settings → Your AI shows you how) and try again.",
@@ -187,7 +188,8 @@
       "limit": "An AI usage limit was reached before the course was finished. Nothing is lost: try again when it renews.",
       "noMaterial": "There was nothing to build the content from: add materials, write the topics or allow web search.",
       "other": "Something went wrong while Aula was preparing the course, and no topic got written. You can try again with the same request.",
-      "stopped": "Creation was paused (you stopped it, or Aula was closed). Nothing is lost: Aula can pick up where it left off."
+      "stopped": "Creation was paused (you stopped it, or Aula was closed). Nothing is lost: Aula can pick up where it left off.",
+      "quota": "The AI ran out of credit or quota before writing any topic. Nothing is lost: top up or switch provider and try again."
     },
     "buildingBody": "Topics will show up here as soon as they’re written. You can follow the team’s work in the monitor.",
     "building": {
@@ -222,12 +224,24 @@
       "title": {
         "paused": "Creation paused at {{pct}}",
         "failed": "Creation stopped by an error at {{pct}}",
-        "limit": "Creation paused at a usage limit ({{pct}})"
+        "limit": "Creation paused at a usage limit ({{pct}})",
+        "quota": "Creation paused: the AI ran out of credit ({{pct}})"
       },
       "body": "This course isn’t finished: some topics, the glossary, the formula sheet or the mock exam may be missing.",
       "resume": "Resume",
       "keep": "Keep what’s there",
-      "kept": "Done: the course stays as it is"
+      "kept": "Done: the course stays as it is",
+      "quotaBody": "Top up or switch provider, then press Resume. Meanwhile, you can study what’s ready."
+    },
+    "studyReady": "Start with what’s ready ({{n}})",
+    "readyCount_one": "{{ready}} of {{count}} topic ready",
+    "readyCount_other": "{{ready}} of {{count}} topics ready",
+    "limit": {
+      "renewsAt": "The limit renews around {{time}}.",
+      "renewsOn": "The limit renews on {{day}} around {{time}}.",
+      "renewed": "The limit should have renewed by now: you can resume.",
+      "switchProvider": "Switch provider",
+      "aiSettings": "AI settings"
     }
   },
   "research": {
@@ -239,5 +253,10 @@
   "examWasAgo_other": "It was {{count}} days ago",
   "examPastBody": "How did it go? A short review now and then keeps what you learned from fading; Aula keeps planning without a deadline.",
   "keepReviewing": "Keep reviewing",
-  "addNextExam": "Add the next exam"
+  "addNextExam": "Add the next exam",
+  "learn": {
+    "writing": "Being written…",
+    "queued": "Queued",
+    "unwritten": "Not written"
+  }
 }

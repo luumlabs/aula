@@ -7,6 +7,7 @@ import { exportAllData, scheduleDataWipe } from '@main/services/settings/data'
 import { getSettings, updateSettings, onSettingsChange } from '@main/services/settings'
 import { invalidArgs } from '@main/services/errors'
 import { uiLanguage } from '@main/services/settings/uiLanguage'
+import { setSystemLanguagesSource, systemLanguages } from '@main/services/settings/courseLanguage'
 import { tr } from '@shared/ai/i18n'
 import { sanitizeSettingsPatch, SettingsPatchError } from '@shared/settings/patch'
 
@@ -23,6 +24,10 @@ export function register(): void {
     return updateSettings(clean)
   })
   onSettingsChange((s) => emit('settings.changed', s))
+  // «Idioma de los cursos nuevos» en «auto»: los idiomas preferidos del sistema (no los de Chromium), para el formulario,
+  // el chat y el servidor
+  setSystemLanguagesSource(() => app.getPreferredSystemLanguages())
+  handle('settings.systemLanguages', () => systemLanguages())
 
   handle('data.exportAll', async (_args, ctx) => {
     const day = new Date().toISOString().slice(0, 10)

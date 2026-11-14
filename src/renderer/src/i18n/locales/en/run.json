@@ -47,7 +47,7 @@
   "start": "Start studying",
   "failed": "Couldn’t finish",
   "limit": "Stopped by a usage limit",
-  "limitBody": "Nothing is lost. Resume when the limit renews, or keep what’s there.",
+  "limitBody": "Nothing is lost, and what’s ready can already be studied. Resume when the limit renews, switch provider, or keep what’s there.",
   "cancelled": "Creation stopped",
   "elapsed": "{{min}} min",
   "notFound": "Can’t find this run",
@@ -89,5 +89,8 @@
     "body": "What’s already written stays. You can resume it later from here or from the course.",
     "confirm": "Stop",
     "keep": "Keep going"
-  }
+  },
+  "openTopic": "Study the topic {{topic}}",
+  "quota": "The AI ran out of credit or quota",
+  "quotaBody": "Nothing is lost. Top up or switch provider, then press Resume. Meanwhile, you can study what’s ready."
 }

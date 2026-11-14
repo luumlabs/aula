@@ -3,6 +3,7 @@
 import { tr } from '@shared/ai/i18n'
 import { settingsPath } from '@shared/settings/sections'
 import { AIError, isContextLengthError } from '../ai/errors'
+import { waitText } from '../ai/http/providerErrors'
 import { BudgetError } from '../costs'
 
 export interface ExplainedError {
@@ -44,7 +45,8 @@ export function explainError(error: unknown, provider?: string): ExplainedError 
   switch (error.kind) {
     case 'rateLimited': {
       const ra = error.retryAfter
-      const wait = ra === undefined ? tr('un momento', 'a moment') : ra >= 90 ? tr(`unos ${Math.round(ra / 60)} min`, `about ${Math.round(ra / 60)} min`) : tr('unos segundos', 'a few seconds')
+      // «unos 5 min»; un límite diario, en horas («unos 14 h»)
+      const wait = ra === undefined ? tr('un momento', 'a moment') : ra >= 90 ? tr(`unos ${waitText(ra)}`, `about ${waitText(ra)}`) : tr('unos segundos', 'a few seconds')
       return {
         message: tr(`Llegaste al límite de uso de ${who}. Espera ${wait} y pulsa Reintentar, o elige otro proveedor en ${settingsPath('ai', 'es')}.`,
           `You reached the usage limit of ${who}. Wait ${wait} and press Retry, or pick another provider in ${settingsPath('ai', 'en')}.`),

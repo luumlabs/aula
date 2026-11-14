@@ -8,13 +8,14 @@ import { navigate } from '@renderer/app/router'
 import { prepareMore } from '../ai'
 import { loadCourse } from '../data'
 
-type Phase = 'idle' | 'starting' | 'running' | 'done' | 'failed' | 'noAI'
+type Phase = 'idle' | 'starting' | 'running' | 'done' | 'failed' | 'noAI' | 'busy'
 
 export function PrepareMore({ packId, skillId, conceptId, focus, onPrepared, onContinueUnchecked }: { packId: string; skillId: string; conceptId?: string; focus: string; onPrepared: () => void; onContinueUnchecked?: () => void }) {
   const { t } = useTranslation('study')
   const [phase, setPhase] = useState<Phase>('idle')
   const [runId, setRunId] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
+  const [busy, setBusy] = useState('')
 
   useEffect(() => {
     if (!runId) return
@@ -32,6 +33,10 @@ export function PrepareMore({ packId, skillId, conceptId, focus, onPrepared, onC
     setPhase('starting')
     const r = await prepareMore(packId, skillId, conceptId, focus)
     if (!r) return setPhase('noAI')
+    if ('busy' in r) {
+      setBusy(r.busy)
+      return setPhase('busy')
+    }
     setRunId(r.runId)
     setPhase('running')
   }
@@ -62,6 +67,7 @@ export function PrepareMore({ packId, skillId, conceptId, focus, onPrepared, onC
       ) : (
         <>
           {phase === 'failed' && <div className="t-callout text-warning">{t('learn.prepareFailed')}</div>}
+          {phase === 'busy' && <div className="t-callout text-warning">{busy}</div>}
           {phase === 'done' && <div className="t-callout text-success">{t('learn.prepared')}</div>}
           <div className="flex flex-wrap gap-2">
             <Button size="lg" variant="primary" icon={<Icon name="refine" size={15} />} onClick={() => void start()}>{t('learn.prepareMore')}</Button>

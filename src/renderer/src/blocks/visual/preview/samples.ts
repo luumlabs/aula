@@ -68,6 +68,81 @@ const raw: Record<string, unknown[]> = {
         { title: 'Telofase', md: 'Se forman dos núcleos nuevos.', nodes: ['t'] },
         { title: 'Citocinesis', md: 'El citoplasma se divide: dos células hijas.', nodes: ['c'] }
       ]
+    },
+    {
+      id: 'd-kelsen', type: 'diagram', kind: 'pirámide', title: 'Jerarquía normativa (Kelsen)',
+      nodes: [
+        { id: 'ce', label: 'Constitución', detail: 'Norma suprema: todo lo demás se ajusta a ella', color: 'accent' },
+        { id: 'lo', label: 'Leyes orgánicas', detail: 'Derechos fundamentales, Estatutos' },
+        { id: 'ld', label: 'Leyes ordinarias y decretos-ley' },
+        { id: 'rd', label: 'Reglamentos', detail: 'Los dicta el Gobierno' },
+        { id: 'om', label: 'Órdenes ministeriales' }
+      ],
+      steps: [
+        { md: 'Arriba, la **Constitución**: ninguna norma puede contradecirla.', nodes: ['ce'] },
+        { md: 'Las leyes la desarrollan; las orgánicas exigen mayoría absoluta.', nodes: ['lo', 'ld'] },
+        { md: 'Abajo, las normas del Gobierno: no pueden ir contra una ley.', nodes: ['rd', 'om'] }
+      ],
+      build: true,
+      caption: 'Cuanto más abajo, más normas y menos rango.'
+    },
+    {
+      id: 'd-prisma', type: 'diagram', form: 'funnel', title: 'Cribado de una revisión sistemática (PRISMA)',
+      nodes: [
+        { id: 'id', label: 'Registros identificados', detail: 'n = 1240' },
+        { id: 'cr', label: 'Cribados por título y resumen', detail: 'n = 860' },
+        { id: 'tc', label: 'Leídos a texto completo', detail: 'n = 112' },
+        { id: 'in', label: 'Incluidos', detail: 'n = 24', color: 'accent' }
+      ]
+    },
+    {
+      id: 'd-venn', type: 'diagram', form: 'venn', title: 'Mitosis y meiosis',
+      nodes: [
+        { id: 'mi', label: 'Mitosis', shape: 'circle' }, { id: 'me', label: 'Meiosis', shape: 'circle' },
+        { id: 'a', label: '2 células hijas' }, { id: 'b', label: 'Hijas idénticas' }, { id: 'c', label: 'Replica el ADN' },
+        { id: 'd', label: 'Huso acromático' }, { id: 'e', label: '4 células hijas' }, { id: 'f', label: 'Sobrecruzamiento' }, { id: 'g', label: 'Fisión binaria' }
+      ],
+      edges: [
+        { from: 'a', to: 'mi' }, { from: 'b', to: 'mi' }, { from: 'c', to: 'mi' }, { from: 'c', to: 'me' }, { from: 'd', to: 'mi' }, { from: 'd', to: 'me' },
+        { from: 'e', to: 'me' }, { from: 'f', to: 'me' }
+      ],
+      steps: [
+        { md: 'Las dos divisiones **copian el ADN** y usan el huso.', nodes: ['c', 'd'] },
+        { md: 'Solo la meiosis mezcla los cromosomas: **sobrecruzamiento**.', nodes: ['f'] },
+        { md: 'Las bacterias no hacen ninguna de las dos.', nodes: ['g'] }
+      ]
+    },
+    {
+      id: 'd-venn3', type: 'diagram', form: 'venn', title: 'Células de plantas, animales y hongos',
+      nodes: [
+        { id: 'pl', label: 'Plantas', shape: 'circle' }, { id: 'an', label: 'Animales', shape: 'circle' }, { id: 'ho', label: 'Hongos', shape: 'circle' },
+        { id: 'x1', label: 'Pared de celulosa' }, { id: 'x2', label: 'Centriolos' }, { id: 'x3', label: 'Pared de quitina' }, { id: 'x4', label: 'Glucógeno' },
+        { id: 'x5', label: 'Vacuola grande' }, { id: 'x6', label: 'Núcleo' }, { id: 'x7', label: 'Cloroplastos' }, { id: 'x8', label: 'Heterótrofas' }
+      ],
+      edges: [
+        { from: 'x1', to: 'pl' }, { from: 'x2', to: 'an' }, { from: 'x3', to: 'ho' }, { from: 'x4', to: 'an' }, { from: 'x4', to: 'ho' }, { from: 'x5', to: 'pl' }, { from: 'x5', to: 'ho' },
+        { from: 'x6', to: 'pl' }, { from: 'x6', to: 'an' }, { from: 'x6', to: 'ho' }, { from: 'x7', to: 'pl' }, { from: 'x8', to: 'an' }, { from: 'x8', to: 'ho' }
+      ]
+    },
+    {
+      id: 'd-mind', type: 'mindmap', title: 'La célula de un vistazo',
+      nodes: [
+        { id: 'cel', label: 'La célula' }, { id: 'mem', label: 'Membrana', detail: 'Bicapa lipídica' }, { id: 'nuc', label: 'Núcleo', color: 'blue' }, { id: 'adn', label: 'ADN' },
+        { id: 'nuo', label: 'Nucléolo' }, { id: 'org', label: 'Orgánulos', color: 'green' }, { id: 'mit', label: 'Mitocondria', detail: 'Respiración celular' }, { id: 'rib', label: 'Ribosomas' },
+        { id: 'ret', label: 'Retículo endoplasmático' }, { id: 'tip', label: 'Tipos', color: 'teal' }, { id: 'pro', label: 'Procariota' }, { id: 'euc', label: 'Eucariota' }
+      ],
+      edges: [
+        { from: 'cel', to: 'mem' }, { from: 'cel', to: 'nuc' }, { from: 'nuc', to: 'adn' }, { from: 'nuc', to: 'nuo' }, { from: 'cel', to: 'org' }, { from: 'org', to: 'mit' },
+        { from: 'org', to: 'rib' }, { from: 'org', to: 'ret' }, { from: 'cel', to: 'tip' }, { from: 'tip', to: 'pro' }, { from: 'tip', to: 'euc' }
+      ],
+      steps: [
+        { md: 'En el centro, el tema: **la célula**.', nodes: ['cel'] },
+        { md: 'Todo está envuelto por la membrana.', nodes: ['mem'] },
+        { md: 'El núcleo guarda el ADN.', nodes: ['nuc', 'adn', 'nuo'] },
+        { md: 'Los orgánulos hacen el trabajo.', nodes: ['org', 'mit', 'rib', 'ret'] },
+        { md: 'Y hay dos grandes tipos.', nodes: ['tip', 'pro', 'euc'] }
+      ],
+      build: true
     }
   ],
   labeled: [
@@ -108,6 +183,13 @@ const raw: Record<string, unknown[]> = {
         { id: 'lis', name: 'Lisosoma', layer: 'org', x: 0.3, y: 0.73, r: 0.03, detail: 'Digiere lo que la célula ya no necesita.' },
         { id: 'ret', name: 'Retículo endoplasmático', x: 0.4, y: 0.79, polygon: [[0.3, 0.6], [0.36, 0.85], [0.5, 0.84], [0.48, 0.76], [0.36, 0.74]], detail: 'Red de membranas donde se fabrican proteínas y lípidos.' },
         { id: 'cit', name: 'Citoplasma', x: 0.66, y: 0.66, detail: 'El medio acuoso donde flotan los orgánulos.' }
+      ],
+      // recorrido guiado: cada paso rodea sus partes a pluma y vela el resto
+      steps: [
+        { title: 'El límite', md: 'La **membrana plasmática** envuelve la célula y decide qué entra y qué sale.', parts: ['mem'] },
+        { title: 'El centro de mando', md: 'El **núcleo** guarda el ADN; dentro, el nucléolo fabrica los ribosomas.', parts: ['nuc', 'nuo'] },
+        { title: 'La energía', md: 'Las **mitocondrias** convierten la glucosa en ATP.', parts: ['mit'] },
+        { title: 'La fábrica y el reparto', md: 'El retículo fabrica proteínas y el **aparato de Golgi** las empaqueta y las envía.', parts: ['ret', 'gol'] }
       ],
       caption: 'Pasa el ratón por cada parte; luego prueba «Señala» y «Arrastra».'
     },
@@ -156,6 +238,46 @@ const raw: Record<string, unknown[]> = {
         { title: 'Guanahaní', lat: 24.05, lon: -74.5, md: 'Llegada el **12 de octubre de 1492**.' }
       ],
       routes: [{ label: 'Ida', color: 'blue', points: [[37.23, -6.89], [28.1, -15.4], [26, -35], [25, -55], [24.05, -74.5]] }, { color: 'gray', dashed: true, label: 'Vuelta', points: [[19.7, -72.2], [35, -50], [38.7, -27.2], [37.23, -6.89]] }]
+    },
+    {
+      id: 'm-eu', type: 'map', title: 'Los seis fundadores de la CEE (1957)', region: 'europa', practice: true,
+      countries: [
+        { name: 'Francia', label: 'Fundadores', md: 'Propuso la CECA (declaración Schuman, 1950).' },
+        { name: 'Alemania', label: 'Fundadores', md: 'Entonces la República Federal (Alemania Occidental).' },
+        { name: 'Italia', label: 'Fundadores' },
+        { name: 'Bélgica', label: 'Fundadores' },
+        { name: 'Países Bajos', label: 'Fundadores' },
+        { name: 'Luxemburgo', label: 'Fundadores' },
+        { name: 'Reino Unido', color: 'gray', label: 'Entra en 1973' }
+      ],
+      markers: [{ title: 'Roma', lat: 41.9, lon: 12.5, md: 'Aquí se firmaron los Tratados de Roma.' }],
+      caption: 'Los seis fundadores en la tinta del curso; el Reino Unido entró después.'
+    },
+    {
+      id: 'm-choro', type: 'map', title: 'Población de la UE: Alemania y Francia suman un tercio', unit: 'M hab.',
+      countries: [
+        { name: 'Alemania', value: 84.4 }, { name: 'Francia', value: 68.2 }, { name: 'Italia', value: 59 }, { name: 'España', value: 48.1 },
+        { name: 'Polonia', value: 36.8 }, { name: 'Rumanía', value: 19.1 }, { name: 'Países Bajos', value: 17.9 }, { name: 'Bélgica', value: 11.8 },
+        { name: 'Suecia', value: 10.5 }, { name: 'Chequia', value: 10.9 }, { name: 'Grecia', value: 10.4 }, { name: 'Portugal', value: 10.6 },
+        { name: 'Hungría', value: 9.6 }, { name: 'Austria', value: 9.1 }, { name: 'Bulgaria', value: 6.4 }, { name: 'Dinamarca', value: 5.9 },
+        { name: 'Finlandia', value: 5.6 }, { name: 'Eslovaquia', value: 5.4 }, { name: 'Irlanda', value: 5.3 }, { name: 'Croacia', value: 3.9 },
+        { name: 'Lituania', value: 2.9 }, { name: 'Eslovenia', value: 2.1 }, { name: 'Letonia', value: 1.9 }, { name: 'Estonia', value: 1.4 },
+        { name: 'Chipre', value: 0.9 }, { name: 'Luxemburgo', value: 0.7 }, { name: 'Malta', value: 0.5 }
+      ],
+      caption: 'Población en 2024 (Eurostat), en millones de habitantes.'
+    },
+    {
+      id: 'm-journey', type: 'map', title: 'Los viajes de Pablo de Tarso (simplificado)',
+      markers: [
+        { title: 'Antioquía', lat: 36.2, lon: 36.16 }, { title: 'Éfeso', lat: 37.94, lon: 27.34 }, { title: 'Corinto', lat: 37.91, lon: 22.88 },
+        { title: 'Atenas', lat: 37.98, lon: 23.73 }, { title: 'Jerusalén', lat: 31.78, lon: 35.22 }, { title: 'Roma', lat: 41.9, lon: 12.5 }
+      ],
+      routes: [
+        { points: [[36.2, 36.16], [37.94, 27.34]], arrow: true, label: '2.º viaje', color: 'blue' },
+        { points: [[37.94, 27.34], [37.91, 22.88]], arrow: true, color: 'blue' },
+        { points: [[31.78, 35.22], [35.3, 25.5], [38.2, 15.6], [41.9, 12.5]], arrow: true, dashed: true, label: 'A Roma, preso', color: 'terracotta' }
+      ],
+      practice: true
     }
   ],
   model3d: [
@@ -182,6 +304,22 @@ const raw: Record<string, unknown[]> = {
     { id: 'x-missing', type: 'model3d', title: 'Corazón (modelo del curso)', asset: 'corazon.usda' },
     { id: 'x-obj', type: 'model3d', title: 'Modelo del curso (OBJ)', asset: 'demo-ring.obj', caption: 'Un anillo cargado desde un archivo OBJ del curso.' }
   ],
+  structure: [
+    { id: 'st-eth', type: 'structure', title: 'Etanol', smiles: 'CCO', formula: 'C2H6O', alt: 'Fórmula esquelética del etanol', groups: [{ atoms: [3], label: 'Grupo hidroxilo', md: 'El **–OH** hace del etanol un alcohol: forma puentes de hidrógeno y se mezcla con el agua.' }] },
+    { id: 'st-asp', type: 'structure', title: 'Aspirina (ácido acetilsalicílico)', smiles: 'CC(=O)Oc1ccccc1C(=O)O', formula: 'C9H8O4', alt: 'Fórmula esquelética de la aspirina',
+      groups: [{ atoms: [2, 3, 4], label: 'Éster', md: 'Une el grupo acetilo al anillo: es lo que la diferencia del ácido salicílico.' }, { atoms: [11, 12, 13], label: 'Ácido carboxílico', md: 'Le da su carácter ácido.' }, { atoms: [5, 6, 7, 8, 9, 10], label: 'Anillo de benceno' }],
+      steps: [{ md: 'Empieza por el **anillo aromático**: el esqueleto de la molécula.', group: 'Anillo de benceno' }, { md: 'El **éster** se forma al acetilar el –OH del ácido salicílico.', group: 'Éster' }, { md: 'El **ácido carboxílico** la hace ácida (pKa ≈ 3,5).', group: 'Ácido carboxílico' }],
+      caption: 'Pasa por cada átomo para ver qué es.' },
+    { id: 'st-caf', type: 'structure', title: 'Cafeína', smiles: 'Cn1cnc2c1c(=O)n(C)c(=O)n2C', formula: 'C8H10N4O2', alt: 'Fórmula esquelética de la cafeína', autoGroups: true },
+    { id: 'st-glu', type: 'structure', title: 'β-D-glucopiranosa', smiles: 'OC[C@H]1O[C@@H](O)[C@H](O)[C@@H](O)[C@@H]1O', formula: 'C6H12O6', alt: 'La glucosa en forma de anillo', autoGroups: true, notes: [{ atom: 5, text: 'C1' }] },
+    { id: 'st-nap', type: 'structure', title: 'Naftaleno y tolueno', smiles: 'c1ccc2ccccc2c1.Cc1ccccc1', alt: 'Dos hidrocarburos aromáticos' },
+    { id: 'st-ion', type: 'structure', title: 'Cloruro de amonio y acetato', smiles: '[NH4+].[Cl-].CC(=O)[O-]', alt: 'Iones' },
+    { id: 'st-ester', type: 'structure', title: 'Esterificación de Fischer', smiles: 'CC(=O)O.OCC>>CC(=O)OCC.O', conditions: 'H₂SO₄, calor', reversible: true, alt: 'Ácido acético y etanol dan acetato de etilo y agua' },
+    { id: 'st-cond', type: 'structure', title: 'Isobutano (semidesarrollada)', smiles: 'CC(C)C', style: 'semidesarrollada', alt: 'Isobutano' },
+    { id: 'st-exp', type: 'structure', title: 'Etanol (desarrollada)', smiles: 'CCO', style: 'desarrollada', alt: 'Etanol con todos sus enlaces' },
+    { id: 'st-cis', type: 'structure', title: 'cis-but-2-eno y trans-but-2-eno', smiles: 'C/C=C\\C.C/C=C/C', alt: 'Los dos isómeros geométricos' },
+    { id: 'st-bad', type: 'structure', title: 'Una SMILES mal escrita', smiles: 'CH3CH2OH', formula: 'C2H6O', alt: 'Etanol' }
+  ],
   slides: [
     {
       id: 'sl-aula', type: 'slides', title: 'Derivadas', summary: 'Tema 3 · Cálculo I', theme: 'aula', transition: 'fade',
@@ -202,6 +340,67 @@ const raw: Record<string, unknown[]> = {
     { id: 'sl-chalk', type: 'slides', title: 'Pizarra', theme: 'chalk', slides: [{ layout: 'focus', title: 'Tema «chalk»', blocks: [{ type: 'math', tex: 'E = mc^2' }] }] }
   ],
   drawing: [
+    {
+      id: 'dr-objects', type: 'drawing', title: 'Objetos hechos', width: 560, height: 300,
+      items: [
+        { kind: 'rect', x: 0, y: 238, w: 560, h: 16, fill: 'gray', fillStyle: 'hatch', width: 0 },
+        { kind: 'line', x1: 0, y1: 238, x2: 560, y2: 238, width: 2 },
+        { kind: 'object', object: 'sun', x: 500, y: 56, w: 70, label: 'Sol', motion: { turn: 't*20' } },
+        { kind: 'object', object: 'cloud', x: 330, y: 56, w: 90 },
+        { kind: 'object', object: 'tree', x: 60, y: 192, w: 90, label: 'Árbol' },
+        { kind: 'object', object: 'house', x: 170, y: 200, w: 80 },
+        { kind: 'object', id: 'walker', name: 'Persona', object: 'person', x: 280, y: 204, w: 64, label: 'Persona' },
+        { kind: 'object', object: 'car', x: 420, y: 222, w: 90, fill: 'blue', label: 'Coche' }
+      ],
+      time: { name: 't', min: '0', max: '18', loop: true, autoplay: true },
+      caption: 'Personas, coches, árboles, el sol… dibujados con la misma tinta que el resto del dibujo.'
+    },
+    {
+      id: 'dr-marks', type: 'drawing', title: 'Marcas de geometría', width: 460, height: 300,
+      items: [
+        { kind: 'grid', x: 20, y: 20, w: 420, h: 260, step: 20 },
+        { kind: 'polygon', id: 'tri', name: 'triángulo', points: [[80, 240], [340, 240], [80, 80]], fill: 'blue', opacity: 0.08 },
+        { kind: 'angle', points: [[340, 240], [80, 240], [80, 80]] },
+        { kind: 'angle', id: 'alfa', name: 'ángulo α', points: [[80, 240], [340, 240], [80, 80]], r: 44, label: '$\\alpha$', stroke: 'accent' },
+        { kind: 'measure', x1: 80, y1: 240, x2: 340, y2: 240, offset: 22, label: '$b = 4$ cm' },
+        { kind: 'brace', x1: 80, y1: 80, x2: 80, y2: 240, label: '$a$' },
+        { kind: 'measure', x1: 340, y1: 240, x2: 80, y2: 80, offset: 18, label: '$c$' },
+        { kind: 'polyline', points: [[360, 60], [390, 110], [420, 70], [440, 120]], smooth: true, stroke: 'teal', dashed: true }
+      ],
+      caption: 'Ángulo de tres puntos (con su cuadradito si es recto), cota, llave, rejilla y una curva suave.'
+    },
+    {
+      id: 'dr-inscribed', type: 'drawing', title: 'Ángulo inscrito', width: 400, height: 320,
+      items: [
+        { kind: 'circle', cx: 200, cy: 160, r: 110, stroke: 'gray' },
+        { kind: 'dot', id: 'A', cx: 104.7, cy: 215, label: 'A', anchor: 'auto' },
+        { kind: 'dot', id: 'B', cx: 295.3, cy: 215, label: 'B', anchor: 'auto' },
+        { kind: 'dot', id: 'P', cx: 180.9, cy: 51.7, label: 'P', anchor: 'auto', stage: 1 },
+        { kind: 'polyline', points: [[104.7, 215], [180.9, 51.7], [295.3, 215]], stage: 1 },
+        { kind: 'angle', id: 'inscrito', name: 'ángulo inscrito', points: [[104.7, 215], [180.9, 51.7], [295.3, 215]], r: 30, label: '$\\alpha$', stage: 1 },
+        { kind: 'dot', id: 'O', cx: 200, cy: 160, label: 'O', anchor: 'auto', stage: 2 },
+        { kind: 'polyline', points: [[104.7, 215], [200, 160], [295.3, 215]], stroke: 'accent', stage: 2 },
+        { kind: 'angle', id: 'central', name: 'ángulo central', points: [[104.7, 215], [200, 160], [295.3, 215]], r: 26, label: '$2\\alpha$', stroke: 'accent', stage: 2 }
+      ],
+      steps: [
+        { title: 'El arco', md: 'Fijamos el arco $AB$.', show: 0 },
+        { title: 'Ángulo inscrito', md: 'Desde $P$, sobre la circunferencia, se ve $AB$ con un ángulo $\\alpha$.', show: 1, highlight: ['inscrito'] },
+        { title: 'Ángulo central', md: 'Desde el centro $O$ se ve con el ángulo central.', show: 2, highlight: ['central'] },
+        { title: 'La relación', md: 'El central es el doble del inscrito: $2\\alpha$.', highlight: ['inscrito', 'central'] }
+      ]
+    },
+    {
+      id: 'dr-moving', type: 'drawing', title: 'Un coche que avanza', width: 460, height: 230, style: 'hand',
+      params: [{ name: 's', label: 'Posición', min: 0, max: 280, step: 1, value: 0, unit: 'm' }],
+      items: [
+        { kind: 'rect', x: 0, y: 176, w: 460, h: 16, fill: 'gray', fillStyle: 'hatch', width: 0 },
+        { kind: 'line', x1: 0, y1: 176, x2: 460, y2: 176, width: 2 },
+        { kind: 'object', id: 'car', name: 'Coche', object: 'car', x: 70, y: 150, w: 90, label: 'Coche', motion: { dx: 's' } },
+        { kind: 'arrow', id: 'v', name: 'Velocidad', x1: 120, y1: 104, x2: 176, y2: 104, stroke: 'accent', label: '$\\vec v$', motion: { dx: 's' } },
+        { kind: 'object', object: 'tree', x: 400, y: 128, w: 70 }
+      ],
+      caption: 'Arrastra la posición: el coche y su velocidad se mueven juntos.'
+    },
     {
       id: 'dr-1', type: 'drawing', title: 'Teorema de Pitágoras', width: 420, height: 300,
       items: [

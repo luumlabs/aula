@@ -4,7 +4,7 @@
 import type { Exercise } from '@shared/schema'
 import type { GradeOpenResult, PrepareMoreResult } from '@shared/ipc/study'
 import { reviewCredit, type OpenAnswerReview } from '@engine/grading'
-import { api } from '@renderer/lib/api'
+import { api, isAulaError } from '@renderer/lib/api'
 import i18n from '@renderer/i18n'
 import { isDemo } from '@renderer/lib/demo'
 import { makeResult, type GradeResult } from '@renderer/exercises'
@@ -42,9 +42,10 @@ export async function gradeOpenWithAI(packId: string, exercise: Exercise, answer
 
 /**
  * Pide a Aula más ejercicios para un concepto con la tubería real del curso: la petición (`study.prepareMore`) y la
- * ampliación (`generation.extend`). Devuelve la ejecución (para seguirla en su monitor) o null si no hay IA.
+ * ampliación (`generation.extend`). Devuelve la ejecución (para seguirla en su monitor), `{ busy }` con el motivo si Aula
+ * ya está con el curso (o su creación quedó a medias) o null si no hay IA.
  */
-export async function prepareMore(packId: string, skillId: string, conceptId: string | undefined, focus: string): Promise<{ runId: string } | null> {
+export async function prepareMore(packId: string, skillId: string, conceptId: string | undefined, focus: string): Promise<{ runId: string } | { busy: string } | null> {
   let instruction = i18n.t('study:prepareMoreInstruction', { focus })
   try {
     const r = (await invoke('study.prepareMore', { packId, skillId, conceptId })) as PrepareMoreResult
@@ -55,8 +56,10 @@ export async function prepareMore(packId: string, skillId: string, conceptId: st
   try {
     const r = await invoke('generation.extend', { packId, instruction, skillId })
     if (isObj(r) && typeof r.runId === 'string') return { runId: r.runId }
-  } catch {
-    /* sin IA */
+  } catch (err) {
+    // el curso está ocupado o su creación quedó a medias: lo dice el proceso principal (con IA, no es «configúrala»)
+    if (isAulaError(err) && (err.code === 'generation_busy' || err.code === 'generation_unfinished')) return { busy: err.message }
+    /* si no, sin IA */
   }
   return null
 }

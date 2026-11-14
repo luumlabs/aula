@@ -16,6 +16,7 @@ const VIEWS: Record<string, AnyBlock> = {
   simulation: view(() => import('../SimulationBlock')),
   map: view(() => import('../MapBlock')),
   model3d: view(() => import('../Model3DBlock')),
+  structure: view(() => import('../StructureBlock')),
   slides: view(() => import('../SlidesBlock'))
 }
 

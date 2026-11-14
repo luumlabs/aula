@@ -8,11 +8,13 @@ import type { ExamRun, ExamRunItem, Exercise } from '@shared/schema'
 import { examExercises } from '@engine/study'
 import { Button, cx, Dialog, Icon, IconButton, LiveDot, ProgressRing, Tooltip } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
+import { useScreenActive } from '@renderer/app/router'
 import { ExerciseView, snapshotInput, useExercise } from '@renderer/exercises'
 import { inputIsEmpty } from '@renderer/exercises/model'
 import { GlassCapsule, StudyFrame, TopCapsule, CapsuleDivider } from '../Chrome'
 import { updateProgress, type CourseData } from '../data'
 import { useBlockCtx, useInk } from '../kit'
+import { useExamGuard } from './examGuard'
 
 const answeredItem = (it: ExamRunItem, ex: Exercise | undefined): boolean => !!ex && it.answer !== undefined && it.answer !== null && !inputIsEmpty(snapshotInput(ex, it.answer))
 
@@ -36,6 +38,9 @@ export function ExamRunView({ data, run: initial, notice, onExit, onSubmit }: { 
   const [dialog, setDialog] = useState<'map' | 'submit' | null>(null)
   const since = useRef(Date.now())
   const [, setTick] = useState(0)
+  // el menú de examen solo con el simulacro en marcha a la vista: no en la portada ni en el informe y su práctica, ni en la
+  // capa que se va al cambiar de pantalla
+  useExamGuard(useScreenActive())
 
   // el tiempo corre en la pregunta a la vista
   const commitTime = useCallback((r: ExamRun): ExamRun => {

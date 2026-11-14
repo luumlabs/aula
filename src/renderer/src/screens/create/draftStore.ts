@@ -22,7 +22,7 @@ export interface CreateForm {
   web: boolean | null
   verify: boolean
   lessonMode: LessonMode
-  /** null: el idioma de la interfaz. */
+  /** El idioma elegido en este formulario; null: el que recuerdan los ajustes («Idioma de los cursos nuevos»). */
   pickedLanguage: string | null
   draftId?: string
   official: string[]
@@ -88,6 +88,20 @@ export function formFromPrefill(prefill: { title?: string; examDate?: string; to
   const f: CreateForm = { ...EMPTY_FORM, title: prefill.title ?? '', date: prefill.examDate ? prefill.examDate.slice(0, 10) : '', topics: prefill.topics ?? '', more: !!prefill.topics, gather: prefill.fromPlatform ? 'auto' : null, prefillKey: key }
   if (prefill.eventId) f.eventId = prefill.eventId
   return f
+}
+
+/**
+ * El idioma que se queda el formulario vacío tras crear un curso: el elegido, salvo que ya sea el que recuerdan los ajustes
+ * (entonces null, y el formulario sigue a los ajustes si cambian). Si guardar en los ajustes falló (p. ej. en un dispositivo
+ * que no puede cambiarlos), la elección no se pierde. Puro.
+ */
+export function keptLanguage(picked: string | null, remembered: string): string | null {
+  return picked && picked !== remembered ? picked : null
+}
+
+/** Tras empezar a crear el curso: el formulario vacío (la propuesta de la ruta ya está usada: volver atrás no la repite) con el idioma elegido. Puro. */
+export function formAfterStart(prefillKey: string | undefined, picked: string | null, remembered: string): CreateForm {
+  return { ...formFromPrefill({}, prefillKey ?? ''), prefillKey, pickedLanguage: keptLanguage(picked, remembered) }
 }
 
 function load(): CreateForm {

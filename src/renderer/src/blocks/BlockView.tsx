@@ -20,6 +20,7 @@ import { ExploreBlockView, PlotBlockView } from './plot/PlotBlock'
 import { ChartBlockView } from './chart/ChartBlock'
 import { TimelineBlockView } from './timeline/TimelineBlock'
 import { BlockBoundary, UnknownBlockView } from './UnknownBlock'
+import { AskLayer } from './ask/AskLayer'
 import './blocks.css'
 
 type Lazy<T extends BlockType> = LazyExoticComponent<ComponentType<BlockProps<BlockOf<T>>>>
@@ -30,11 +31,12 @@ const LabeledBlock: Lazy<'labeled'> = lazy(() => import('./visual/LabeledBlock')
 const Model3DBlock: Lazy<'model3d'> = lazy(() => import('./visual/Model3DBlock'))
 const SimulationBlock: Lazy<'simulation'> = lazy(() => import('./visual/SimulationBlock'))
 const MapBlock: Lazy<'map'> = lazy(() => import('./visual/MapBlock'))
+const StructureBlock: Lazy<'structure'> = lazy(() => import('./visual/StructureBlock'))
 // Las diapositivas no tienen tipo propio en el esquema: llegan como bloque desconocido con `rawType: 'slides'`
 const SlidesBlock: Lazy<'unknown'> = lazy(() => import('./visual/SlidesBlock'))
 
 /** Tipos que ocupan el ancho de figura (más que la columna de lectura). */
-const WIDE: ReadonlySet<string> = new Set(['plot', 'explore', 'chart', 'timeline', 'diagram', 'drawing', 'labeled', 'model3d', 'simulation', 'map', 'image', 'table', 'compare', 'formulas', 'slides'])
+const WIDE: ReadonlySet<string> = new Set(['plot', 'explore', 'chart', 'timeline', 'diagram', 'drawing', 'labeled', 'model3d', 'simulation', 'map', 'structure', 'image', 'table', 'compare', 'formulas', 'slides'])
 
 function VisualFallback({ ctx }: { ctx: BlockContext }) {
   return <div className={cx('skeleton w-full', ctx.mode === 'chat' ? 'h-[180px] rounded-[16px]' : 'h-[280px] rounded-[22px]')} aria-busy />
@@ -69,6 +71,7 @@ export function BlockView({ block, ctx }: BlockProps) {
     case 'model3d': return <Suspense fallback={<VisualFallback ctx={ctx} />}><Model3DBlock block={block} ctx={ctx} /></Suspense>
     case 'simulation': return <Suspense fallback={<VisualFallback ctx={ctx} />}><SimulationBlock block={block} ctx={ctx} /></Suspense>
     case 'map': return <Suspense fallback={<VisualFallback ctx={ctx} />}><MapBlock block={block} ctx={ctx} /></Suspense>
+    case 'structure': return <Suspense fallback={<VisualFallback ctx={ctx} />}><StructureBlock block={block} ctx={ctx} /></Suspense>
     case 'unknown':
       if (block.rawType === 'slides') return <Suspense fallback={<VisualFallback ctx={ctx} />}><SlidesBlock block={block} ctx={ctx} /></Suspense>
       return <UnknownBlockView block={block} ctx={ctx} />
@@ -80,7 +83,10 @@ export function SafeBlockView({ block, ctx }: BlockProps) {
   const { t } = useTranslation('blocks')
   return (
     <BlockBoundary title={t('unknown.title')} detail={t('unknown.failed')} compact={ctx.mode === 'chat'}>
-      <BlockView block={block} ctx={ctx} />
+      {/* marcar y preguntar al tutor (solo en los bloques visuales y donde hay tutor) */}
+      <AskLayer block={block} ctx={ctx}>
+        <BlockView block={block} ctx={ctx} />
+      </AskLayer>
     </BlockBoundary>
   )
 }

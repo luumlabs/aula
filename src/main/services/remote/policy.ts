@@ -8,6 +8,7 @@
 // menos lo que necesita la pantalla del equipo donde corre Aula o deja sin acceso a todos (`OWNER_DENIED`).
 import type { SettingsPatch } from '@shared/settings'
 import { settingsPatchChecks } from '@shared/settings/patch'
+import { COURSE_LANGUAGE_CHOICES } from '@shared/settings/courseLanguage'
 
 // («live»: el navegador de Aula en vivo, para iniciar sesión o hacer una tarea desde el dispositivo)
 const DOMAINS_OPEN: ReadonlySet<string> = new Set(['achievements', 'automations', 'chat', 'course', 'generation', 'history', 'home', 'live', 'progress', 'search', 'stats', 'study'])
@@ -23,11 +24,12 @@ const METHODS_OPEN: ReadonlySet<string> = new Set([
   'documents.find', 'documents.import', 'documents.kinds', 'documents.library', 'documents.open', 'documents.saveCards', 'documents.search', 'documents.setPage', 'documents.unannotate',
   'memory.list', 'memory.status', 'memory.add', 'memory.edit', 'memory.pause',
   'platforms.list', 'platforms.courses', 'platforms.check',
-  'settings.get'
+  'settings.get', 'settings.systemLanguages'
 ])
 
 /** Métodos de la ventana del Mac que en un dispositivo no hacen nada (el marco de la ventana con el tema, sus avisos…). */
-const METHODS_LOCAL_NOOP: ReadonlySet<string> = new Set(['app.setTheme', 'app.notify', 'app.powerState', 'updates.state', 'secrets.status'])
+// (el menú contextual nativo solo existe en la ventana del Mac: el simulacro y los campos de respuesta no le dicen nada a un dispositivo)
+const METHODS_LOCAL_NOOP: ReadonlySet<string> = new Set(['app.setTheme', 'app.notify', 'app.powerState', 'updates.state', 'secrets.status', 'app.setExamMode', 'app.contextTarget'])
 
 export type RemoteVerdict = 'allow' | 'noop' | 'deny'
 
@@ -54,7 +56,7 @@ export function ownerCodexLogin(args: unknown): { deviceAuth: true } | null {
 }
 
 /** Lo que en un propietario no hace nada: el marco de la ventana y sus avisos (los del dispositivo los da su app). */
-const OWNER_NOOP: ReadonlySet<string> = new Set(['app.setTheme', 'app.notify', 'app.powerState', 'updates.state'])
+const OWNER_NOOP: ReadonlySet<string> = new Set(['app.setTheme', 'app.notify', 'app.powerState', 'updates.state', 'app.setExamMode', 'app.contextTarget'])
 
 /** El veredicto para un propietario: lo de la ventana, menos `OWNER_DENIED`. */
 export function ownerVerdict(method: string): RemoteVerdict {
@@ -95,6 +97,7 @@ const SETTINGS_OPEN: ReadonlyMap<string, ReadonlyMap<string, Check>> = new Map([
     ['motion', (v, k) => oneOf(v, k, ['system', 'full', 'reduced'] as const)],
     ['name', (v, k) => text(v, k, 80)],
     ['language', (v, k) => oneOf(v, k, ['system', 'es', 'en'] as const)],
+    ['courseLanguage', (v, k) => oneOf(v, k, COURSE_LANGUAGE_CHOICES)],
     ['reminders', bool],
     ['reminderTime', time]
   ])],

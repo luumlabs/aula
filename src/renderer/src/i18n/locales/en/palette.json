@@ -11,6 +11,10 @@
   },
   "actions": {
     "importCourse": "Import a course (.aulapack)",
-    "memory": "What Aula remembers"
+    "memory": "What Aula remembers",
+    "themeDark": "Dark mode",
+    "themeLight": "Light mode",
+    "cursorSystem": "Use the system cursor",
+    "cursorSun": "Use the sun cursor"
   }
 }

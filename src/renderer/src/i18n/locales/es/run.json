@@ -47,7 +47,7 @@
   "start": "Empezar a estudiar",
   "failed": "No se pudo terminar",
   "limit": "Se paró por un límite de uso",
-  "limitBody": "No se pierde nada. Reanuda cuando se renueve el límite o quédate con lo que hay.",
+  "limitBody": "No se pierde nada y lo que ya está listo se puede estudiar. Reanuda cuando se renueve el límite, cambia de proveedor o quédate con lo que hay.",
   "cancelled": "Creación detenida",
   "elapsed": "{{min}} min",
   "notFound": "No encuentro esta creación",
@@ -89,5 +89,8 @@
     "body": "Lo que ya está escrito se queda. Puedes reanudarla luego desde aquí o desde el curso.",
     "confirm": "Parar",
     "keep": "Seguir"
-  }
+  },
+  "openTopic": "Estudiar el tema {{topic}}",
+  "quota": "La IA se quedó sin saldo o sin cuota",
+  "quotaBody": "No se pierde nada. Recarga saldo o cambia de proveedor y pulsa Reanudar. Mientras, puedes estudiar lo que ya está listo."
 }

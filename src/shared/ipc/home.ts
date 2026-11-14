@@ -50,7 +50,12 @@ export interface HomeCourse {
   examDate?: string | null
   dueCards: number
   mistakes: number
+  /** Temas planificados. */
   skillCount: number
+  /** Temas listos para estudiar (`@engine/study/topics`): mientras se crea el curso, los que ya se pueden abrir. */
+  readyCount: number
+  /** Temas con algo escrito, auditados o no: si la creación se paró, lo que se puede estudiar (y no «el curso está vacío»). */
+  writtenCount: number
   generating?: boolean
 }
 

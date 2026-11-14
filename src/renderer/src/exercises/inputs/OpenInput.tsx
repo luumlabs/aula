@@ -10,6 +10,7 @@ import { wordCount } from '../normalize'
 import type { GradeResult } from '../types'
 import { KeyCap } from '../ui'
 import type { InputProps } from './shared'
+import { answerField } from './answerField'
 
 export function OpenInput({ answer, draft, set, locked, autoFocus, onSubmit }: InputProps<AnswerOf<'open'>>) {
   const { t } = useTranslation('study')
@@ -30,6 +31,7 @@ export function OpenInput({ answer, draft, set, locked, autoFocus, onSubmit }: I
   return (
     <div className="flex flex-col gap-1.5">
       <textarea
+        {...answerField}
         ref={ref}
         value={draft.text}
         readOnly={locked}

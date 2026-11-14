@@ -13,7 +13,7 @@ type Lang = 'es' | 'en'
 
 const TEXT = {
   es: {
-    about: 'Acerca de Aula', settings: 'Ajustes…', hide: 'Ocultar Aula', hideOthers: 'Ocultar otros', showAll: 'Mostrar todo', quit: 'Salir de Aula',
+    about: 'Acerca de Aula', settings: 'Ajustes…', services: 'Servicios', hide: 'Ocultar Aula', hideOthers: 'Ocultar otros', showAll: 'Mostrar todo', quit: 'Salir de Aula',
     file: 'Archivo', newCourse: 'Nuevo curso con Aula…', importCourse: 'Importar curso…', close: 'Cerrar ventana',
     edit: 'Edición', undo: 'Deshacer', redo: 'Rehacer', cut: 'Cortar', copy: 'Copiar', paste: 'Pegar', pasteMatch: 'Pegar con el mismo estilo', del: 'Eliminar', selectAll: 'Seleccionar todo', find: 'Buscar en Aula…',
     view: 'Ver', sidebar: 'Mostrar u ocultar la barra lateral', zoomIn: 'Aumentar', zoomOut: 'Reducir', zoomReset: 'Tamaño real', fullscreen: 'Pantalla completa', reload: 'Recargar', devtools: 'Herramientas de desarrollo',
@@ -23,7 +23,7 @@ const TEXT = {
     legal: 'Software libre con la licencia GNU AGPL v3 · Sin ninguna garantía'
   },
   en: {
-    about: 'About Aula', settings: 'Settings…', hide: 'Hide Aula', hideOthers: 'Hide Others', showAll: 'Show All', quit: 'Quit Aula',
+    about: 'About Aula', settings: 'Settings…', services: 'Services', hide: 'Hide Aula', hideOthers: 'Hide Others', showAll: 'Show All', quit: 'Quit Aula',
     file: 'File', newCourse: 'New Course with Aula…', importCourse: 'Import Course…', close: 'Close Window',
     edit: 'Edit', undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste', pasteMatch: 'Paste and Match Style', del: 'Delete', selectAll: 'Select All', find: 'Search Aula…',
     view: 'View', sidebar: 'Show or Hide Sidebar', zoomIn: 'Zoom In', zoomOut: 'Zoom Out', zoomReset: 'Actual Size', fullscreen: 'Full Screen', reload: 'Reload', devtools: 'Developer Tools',
@@ -57,6 +57,9 @@ export function buildMenuTemplate(lang: Lang, platform: NodeJS.Platform, dev: bo
       { label: t.about, role: 'about' },
       { type: 'separator' },
       cmd(t.settings, 'settings', 'CmdOrCtrl+,'),
+      { type: 'separator' },
+      // los Servicios del sistema sobre el texto seleccionado (buscar, consultar, hablar…)
+      { label: t.services, role: 'services' },
       { type: 'separator' },
       { label: t.hide, role: 'hide' },
       { label: t.hideOthers, role: 'hideOthers' },

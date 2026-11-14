@@ -482,14 +482,14 @@ textarea:focus-visible {
 .aula-rich h1 { font-size: 24px; line-height: 30px; }
 .aula-rich h2 { font-size: 20px; line-height: 26px; }
 .aula-rich h3 { font-size: 17px; line-height: 24px; }
-.aula-rich ul, .aula-rich ol { margin: 0.3em 0 0.7em; padding-left: 1.3em; }
+.aula-rich ul, .aula-rich ol { margin: 0.3em 0 0.7em; padding-inline-start: 1.3em; }
 .aula-rich ul { list-style: disc; }
 .aula-rich ol { list-style: decimal; }
 .aula-rich li { margin: 0.15em 0; }
 .aula-rich strong { font-weight: 600; }
 .aula-rich code { font-family: var(--font-mono); font-size: 0.92em; background: var(--sunken); padding: 1px 5px; border-radius: 5px; }
 .aula-rich table { border-collapse: collapse; margin: 0.6em 0; }
-.aula-rich th, .aula-rich td { border-bottom: 0.5px solid var(--line); padding: 6px 10px; text-align: left; }
+.aula-rich th, .aula-rich td { border-bottom: 0.5px solid var(--line); padding: 6px 10px; text-align: start; }
 .aula-rich-inline .katex { font-size: 1em; }
 
 .aula-formula .katex-display { margin: 0; padding: 2px 0; overflow: visible; }

@@ -103,7 +103,9 @@ export function MatchingInput({ answer, draft, set, locked, reveal, exerciseId, 
   return (
     <div>
       <div className="t-ui text-text2 mb-2.5">{t('ex.match.help')}</div>
-      <div ref={box} className="relative flex items-start select-none">
+      {/* la geometría (las anclas, las líneas y los puntos) es de izquierda a derecha: con un idioma de derecha a izquierda
+          alrededor, las columnas no se dan la vuelta (el texto de cada elemento sí va en su sentido) */}
+      <div ref={box} dir="ltr" className="relative flex items-start select-none">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           {lefts.map((l, i) => {
             const paired = matches[l] !== undefined

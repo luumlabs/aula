@@ -11,6 +11,7 @@ import { createFakeModel, setModelOverride } from '../ai'
 import { isPreparing } from '../calendar/preparation'
 import { writeJSONAtomic } from '../fs'
 import { setDataRoot } from '../paths'
+import { updateSettings } from '../settings'
 import { getLibrary, type PackStore } from '../store'
 import { boundValidator } from '../study/assets'
 import { scriptedAgents } from './agents'
@@ -142,7 +143,9 @@ describe('crear un curso', () => {
     expect(s.loadSkill(skill.id).exercises.length).toBe(before + 3)
     // solo se verificó lo nuevo de esa habilidad
     expect(st?.aula2.lanes.filter((l) => l.role === 'verifier').map((l) => l.skill)).toEqual([skill.id])
-    expect(svc.run(r.runId)).toMatchObject({ mode: 'extend', state: 'done' })
+    expect(svc.run(r.runId)).toMatchObject({ mode: 'extend', state: 'done', skill: skill.id })
+    // Aprender enseña ese tema «escribiéndose» mientras dura: el resumen de la lista también dice cuál es
+    expect(svc.runs().find((x) => x.id === r.runId)).toMatchObject({ mode: 'extend', skill: skill.id })
     // un solo grupo del historial, que se deshace entero
     const history = getLibrary().history!
     const group = history.groups({ courseID: packId }).find((g) => g.id === `pipeline-${r.runId}`)
@@ -218,6 +221,9 @@ describe('detener, reanudar y quedarse con lo que hay', () => {
     expect(paused?.aula2.state).toBe('paused')
     expect(svc.run(r.runId)?.state).toBe('paused')
     expect(isPreparing(store(r.packId))).toBe(true)
+    // ampliar ahora escondería la creación a medias (pasaría a ser la última ejecución, sin «Reanudar» en ninguna parte)
+    await expect(svc.extend(r.packId, 'Escribe completo el primer tema')).rejects.toMatchObject({ code: 'generation_unfinished' })
+    expect(svc.runs().filter((x) => x.packId === r.packId).map((x) => x.id)).toEqual([r.runId])
     process.env.AULA_FAKE_TEAM_DELAY_MS = '0'
     await svc.resume(r.runId)
     const done = await svc.whenFinished(r.runId)
@@ -238,6 +244,9 @@ describe('detener, reanudar y quedarse con lo que hay', () => {
     expect(isPreparing(s)).toBe(false)
     expect(existsSync(join(s.runsDirectory, `${r.runId}.kept.json`))).toBe(true)
     expect(svc.run(r.runId)?.state).toBe('done')
+    // ya es un curso normal: se puede ampliar
+    const more = await svc.extend(r.packId, 'Añade un ejemplo resuelto más')
+    expect((await svc.whenFinished(more.runId))?.aula2.state).toBe('done')
   })
 
   it('A3-P2-8: sin ningún tema escrito no se ofrece un curso «listo» con 0 temas', async () => {
@@ -315,5 +324,25 @@ describe('idioma del curso y forma de las lecciones', () => {
     expect(s.loadProgress().settings.lessonMode).toBe('reading')
     const raw = JSON.parse(readFileSync(join(s.runsDirectory, `${r.runId}.json`), 'utf8')) as { request: Record<string, unknown> }
     expect(raw.request).toMatchObject({ language: 'fr', lessonMode: 'reading' })
+  })
+
+  it('con fecha, el examen se llama en el idioma del curso (no «Examen» en un curso en alemán)', async () => {
+    process.env.AULA_FAKE_TEAM_DELAY_MS = '40'
+    const r = await svc.start(undefined, { ...BASE, title: 'Thermodynamik', topics: 'Hauptsätze', language: 'de', examDate: new Date(2026, 11, 3, 9, 0).toISOString(), verify: false })
+    // nada más crearlo (antes de que el plan diga otra cosa)
+    expect(store(r.packId).loadPack().exam?.title).toBe('Prüfung')
+    await svc.whenFinished(r.runId)
+    process.env.AULA_FAKE_TEAM_DELAY_MS = '0'
+  })
+
+  it('sin idioma en la petición, el de «Idioma de los cursos nuevos»', async () => {
+    updateSettings({ general: { courseLanguage: 'it' } })
+    try {
+      const r = await svc.start(undefined, { ...BASE, title: 'Rinascimento', topics: 'Firenze, i Medici', verify: false })
+      expect(store(r.packId).loadPack().language).toBe('it')
+      await svc.whenFinished(r.runId)
+    } finally {
+      updateSettings({ general: { courseLanguage: 'auto' } })
+    }
   })
 })

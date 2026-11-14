@@ -1,7 +1,7 @@
 // La tarjeta final del monitor: curso nuevo frente a «Pedir cambios».
 import { describe, expect, it } from 'vitest'
 import type { RunReport } from '@shared/generation/types'
-import { doneSummary, shownSkillStatus } from './summary'
+import { doneSummary, readySkills, shownSkillStatus } from './summary'
 
 const report = (o: Partial<RunReport> = {}): RunReport => ({
   skillsReady: 2, skillsNeedingReview: 0, skillsFailed: 0, lessonBlocks: 30, exercises: 21, cards: 12, decks: 0, verified: 18, fixed: 0, flagged: 0, minutes: 9, notes: [], ...o
@@ -28,5 +28,23 @@ describe('doneSummary', () => {
     expect(shownSkillStatus('pending', 'extend', true)).toBe('pending')
     expect(shownSkillStatus('pending', 'create', false)).toBe('pending')
     expect(shownSkillStatus('done', 'extend', false)).toBe('done')
+  })
+
+  it('parada por un límite o en pausa, nadie escribe: lo que iba a escribirse espera', () => {
+    expect(shownSkillStatus('running', 'create', false)).toBe('pending')
+    expect(shownSkillStatus('repairing', 'create', false)).toBe('pending')
+    expect(shownSkillStatus('running', 'create', true)).toBe('running')
+    expect(shownSkillStatus('failed', 'create', false)).toBe('failed')
+  })
+})
+
+describe('readySkills', () => {
+  it('lo escrito se puede estudiar ya (también mientras se verifica); lo pendiente, lo que se escribe o falló, no', () => {
+    const skills = [
+      { id: 'a', status: 'done' as const }, { id: 'b', status: 'needsReview' as const }, { id: 'c', status: 'verifying' as const },
+      { id: 'd', status: 'running' as const }, { id: 'e', status: 'repairing' as const }, { id: 'f', status: 'pending' as const }, { id: 'g', status: 'failed' as const }
+    ]
+    expect([...readySkills(skills)]).toEqual(['a', 'b', 'c'])
+    expect(readySkills([]).size).toBe(0)
   })
 })

@@ -1,8 +1,12 @@
 // Port de Tests/StudyEngineTests/LearnBridgeTests.swift y GuidedLearnBridgeTests.swift (con el curso de ejemplo de funciones).
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { emptyProgress, makeExercise, makePack, makeSkill, makeSkillProgress, type ItemID, type Pack, type Skill, type StudyProgress } from '@shared/schema'
+import { parseJSON } from '@engine/base/json'
+import { decodePack, decodeSkill, emptyProgress, makeExercise, makePack, makeSkill, makeSkillProgress, type ItemID, type Pack, type Skill, type StudyProgress } from '@shared/schema'
 import { functionsCourse } from '@main/services/store/samples'
-import { Rating } from '@engine/learn'
+import { Rating, type PlanItem } from '@engine/learn'
+import { topicIsReady } from './topics'
 import { correct, numeric, text, tryIt } from './testutil'
 import { LearningController } from './learning'
 import { LearnBridge } from './bridge'
@@ -187,5 +191,68 @@ describe('LearnBridge en modo guiado', () => {
       expect(items.find((i) => i.skillID === 'a')?.kind).toBe('practice')
       expect(p.skills.a.learning).toEqual({})
     }
+  })
+})
+
+describe('LearnBridge con temas sin escribir', () => {
+  // el curso de tests/fixtures, en el formato real del disco
+  const DIR = join(__dirname, '../../../tests/fixtures/demo-course/exam-2-math112')
+  function fixture(): [Pack, Record<ItemID, Skill>] {
+    const pack = decodePack(parseJSON(readFileSync(join(DIR, 'pack.json'), 'utf8')))
+    const skills = Object.fromEntries(pack.skills.map((r) => [r.id, decodeSkill(parseJSON(readFileSync(join(DIR, 'skills', `${r.id}.json`), 'utf8')))]))
+    return [pack, skills]
+  }
+  const planIDs = (items: { skillID?: string | null }[]): string[] => items.map((i) => i.skillID).filter((x): x is string => !!x)
+
+  it('el plan deja fuera los temas sin lección ni ejercicios: «Estudiar ahora» no lleva a un tema vacío', () => {
+    const [pack, skills] = fixture()
+    const full = LearnBridge.dailyPlan(pack, skills, emptyProgress(), 600, t0, 'es')
+    expect(full.length).toBeGreaterThan(0)
+    // dos temas aún sin escribir (o que fallaron al crearse): el plan sigue, sin ellos
+    const blank = new Set(pack.skills.slice(0, 2).map((r) => r.id))
+    expect(planIDs(full).some((id) => blank.has(id))).toBe(true)
+    const partial: Record<ItemID, Skill> = Object.fromEntries(Object.entries(skills).map(([id, s]) => [id, blank.has(id) ? { ...s, lesson: [], exercises: [], templates: [] } : s]))
+    const plan = LearnBridge.dailyPlan(pack, partial, emptyProgress(), 600, t0, 'es')
+    expect(plan.length).toBeGreaterThan(0)
+    expect(planIDs(plan).some((id) => blank.has(id))).toBe(false)
+    // sin las habilidades cargadas se mira el resumen del curso (los recuentos de pack.json)
+    const refs: Pack = { ...pack, skills: pack.skills.map((r) => (blank.has(r.id) ? { ...r, status: 'empty' as const, counts: { lessonBlocks: 0, exercises: 0, templates: 0, cards: 0, decks: 0 } } : r)) }
+    const fromRefs = LearnBridge.dailyPlan(refs, {}, emptyProgress(), 600, t0, 'es')
+    expect(planIDs(fromRefs).some((id) => blank.has(id))).toBe(false)
+    expect(planIDs(fromRefs).length).toBeGreaterThan(0)
+  })
+
+  it('lo que aún no está escrito sigue contando para los pesos: la razón dice lo mismo que con el curso terminado', () => {
+    const [pack, skills] = fixture()
+    const reasonOf = (items: PlanItem[], id: string): string | undefined => items.find((i) => i.skillID === id)?.reason
+    const full = LearnBridge.dailyPlan(pack, skills, emptyProgress(), 600, t0, 'es')
+    // creándose: los dos primeros temas listos (10 + 10 de 100 puntos), el siguiente escribiéndose y el resto en cola
+    const zero = { lessonBlocks: 0, exercises: 0, templates: 0, cards: 0, decks: 0 }
+    const refs = pack.skills.map((r, i) => (i < 2 ? r : i === 2 ? { ...r, status: 'draft' as const } : { ...r, status: 'empty' as const, counts: zero }))
+    const empty = new Set(refs.filter((r) => r.status === 'empty').map((r) => r.id))
+    const written: Record<ItemID, Skill> = Object.fromEntries(Object.entries(skills).map(([id, s]) => [id, empty.has(id) ? { ...s, lesson: [], exercises: [], templates: [] } : s]))
+    const plan = LearnBridge.dailyPlan({ ...pack, skills: refs }, written, emptyProgress(), 600, t0, 'es', topicIsReady)
+    const ready = new Set(pack.skills.slice(0, 2).map((r) => r.id))
+    expect(planIDs(plan).length).toBeGreaterThan(0)
+    expect(planIDs(plan).every((id) => ready.has(id))).toBe(true)
+    // con solo los dos listos en la cuenta, «Vale 10 puntos» pasaba a «Pesa el 50 % del examen»
+    expect(reasonOf(plan, 'reference-angles')).toMatch(/^Vale 10 puntos/)
+    expect(reasonOf(plan, 'reference-angles')).toBe(reasonOf(full, 'reference-angles'))
+  })
+
+  it('un curso terminado con un tema que falló al crearse: los demás conservan sus puntos', () => {
+    const [pack, skills] = fixture()
+    const failed = pack.skills[2].id
+    const plan = LearnBridge.dailyPlan(pack, { ...skills, [failed]: { ...skills[failed], lesson: [], exercises: [], templates: [] } }, emptyProgress(), 600, t0, 'es')
+    expect(planIDs(plan)).not.toContain(failed)
+    expect(plan.find((i) => i.skillID === 'reference-angles')?.reason).toMatch(/^Vale 10 puntos/)
+  })
+
+  it('un tema con solo ejercicios (sin lección) sí entra: se puede practicar', () => {
+    const [pack, skills] = fixture()
+    const id = pack.skills[0].id
+    const onlyPractice = { ...skills, [id]: { ...skills[id], lesson: [] } }
+    const plan = LearnBridge.dailyPlan(pack, onlyPractice, emptyProgress(), 600, t0, 'es')
+    expect(planIDs(plan)).toContain(id)
   })
 })

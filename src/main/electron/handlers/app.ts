@@ -7,7 +7,9 @@ import { paths } from '@main/services/paths'
 import { legalFallbackURL, legalFilePath } from '@main/services/legal'
 import { isLegalDoc } from '@shared/legal'
 import { invalidArgs } from '@main/services/errors'
+import '@shared/ipc/app'
 import { getMainWindow } from '../window'
+import { contextGuard } from '../context-menu'
 import { secretProtection } from '../secrets'
 import { powerState } from '../power'
 import { noticeNeeded } from '@shared/ipc/power'
@@ -56,6 +58,17 @@ export function register(): void {
   handle('app.setTheme', ({ dark }) => {
     if (typeof dark !== 'boolean') throw invalidArgs('Tema no válido')
     applyWindowTheme(dark)
+  })
+  // el menú del clic derecho de la ventana (context-menu.ts): un dispositivo a distancia no tiene, así que no cuenta
+  handle('app.setExamMode', (args, ctx) => {
+    const exam: unknown = (args as { exam?: unknown } | undefined)?.exam
+    if (typeof exam !== 'boolean') throw invalidArgs('Simulacro no válido')
+    if (!ctx.remote) contextGuard.setExam(exam)
+  })
+  handle('app.contextTarget', (args, ctx) => {
+    const field: unknown = (args as { exerciseField?: unknown } | undefined)?.exerciseField
+    if (typeof field !== 'boolean') throw invalidArgs('Destino del menú no válido')
+    if (!ctx.remote) contextGuard.markAnswerField(field)
   })
 }
 

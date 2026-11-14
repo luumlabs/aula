@@ -177,7 +177,8 @@
       "failed": "No se pudo crear el curso",
       "stopped": "El curso se quedó sin temas",
       "limit": "Se paró por un límite de uso",
-      "building": "Todavía no hay temas"
+      "building": "Todavía no hay temas",
+      "quota": "La IA se quedó sin saldo"
     },
     "reason": {
       "auth": "La IA que usa Aula no tiene la sesión iniciada, así que no pudo empezar a escribir. Inicia sesión (en Ajustes → Tu IA verás cómo) y vuelve a intentarlo.",
@@ -187,7 +188,8 @@
       "limit": "Se alcanzó un límite de uso de la IA antes de terminar. No se pierde nada: vuelve a intentarlo cuando se renueve.",
       "noMaterial": "No había de dónde sacar el contenido: añade materiales, escribe el temario o permite la búsqueda en internet.",
       "other": "Algo salió mal mientras Aula preparaba el curso y no llegó a escribir ningún tema. Puedes volver a intentarlo con la misma petición.",
-      "stopped": "La creación quedó en pausa (la paraste tú o se cerró Aula). No se pierde nada: Aula puede seguir donde se quedó."
+      "stopped": "La creación quedó en pausa (la paraste tú o se cerró Aula). No se pierde nada: Aula puede seguir donde se quedó.",
+      "quota": "La IA se quedó sin saldo o sin cuota antes de escribir ningún tema. No se pierde nada: recarga saldo o cambia de proveedor y vuelve a intentarlo."
     },
     "buildingBody": "Los temas aparecerán aquí en cuanto estén escritos. Puedes seguir el trabajo del equipo en el monitor.",
     "building": {
@@ -222,12 +224,24 @@
       "title": {
         "paused": "Creación en pausa al {{pct}}",
         "failed": "La creación se paró por un error al {{pct}}",
-        "limit": "Creación en pausa por un límite de uso ({{pct}})"
+        "limit": "Creación en pausa por un límite de uso ({{pct}})",
+        "quota": "Creación en pausa: la IA se quedó sin saldo ({{pct}})"
       },
       "body": "Este curso no está terminado: pueden faltar temas, el glosario, las fórmulas o el simulacro.",
       "resume": "Reanudar",
       "keep": "Quedarme con lo que hay",
-      "kept": "Hecho: el curso se queda como está"
+      "kept": "Hecho: el curso se queda como está",
+      "quotaBody": "Recarga saldo o cambia de proveedor y pulsa Reanudar. Mientras, puedes estudiar lo que ya está listo."
+    },
+    "studyReady": "Empezar con lo que está listo ({{n}})",
+    "readyCount_one": "{{ready}} de {{count}} tema listo",
+    "readyCount_other": "{{ready}} de {{count}} temas listos",
+    "limit": {
+      "renewsAt": "El límite se renueva hacia las {{time}}.",
+      "renewsOn": "El límite se renueva el {{day}} hacia las {{time}}.",
+      "renewed": "El límite ya debería haberse renovado: puedes reanudar.",
+      "switchProvider": "Cambiar de proveedor",
+      "aiSettings": "Ajustes de IA"
     }
   },
   "research": {
@@ -239,5 +253,10 @@
   "examWasAgo_other": "Fue hace {{count}} días",
   "examPastBody": "¿Qué tal te fue? Un repaso corto de vez en cuando hace que no se te olvide lo aprendido; Aula sigue planificando sin fecha límite.",
   "keepReviewing": "Seguir repasando",
-  "addNextExam": "Añadir el próximo examen"
+  "addNextExam": "Añadir el próximo examen",
+  "learn": {
+    "writing": "Escribiéndose…",
+    "queued": "En cola",
+    "unwritten": "Sin escribir"
+  }
 }

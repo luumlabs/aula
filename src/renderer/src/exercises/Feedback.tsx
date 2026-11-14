@@ -122,7 +122,8 @@ export function InvalidNotice({ result }: { result: GradeResult }) {
           <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-warning" />
           <div className="min-w-0">
             <div className="t-ui font-semibold" style={{ color: 'var(--warning)' }}>{t('ex.invalid.title')}</div>
-            <div className="t-callout text-text"><RichText text={format || t('ex.invalid.body')} /></div>
+            {/* el aviso es de Aula (en el idioma de la interfaz), no del curso */}
+            <div className="t-callout text-text"><RichText text={format || t('ex.invalid.body')} ui /></div>
           </div>
         </div>
       )}

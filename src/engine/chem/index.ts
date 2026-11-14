@@ -65,6 +65,24 @@ export type { PHResult } from './acid-base'
 export { Measurement, SigFigCount, SigFigs, countSigFigs, parseWrittenNumber } from './sigfigs'
 export type { WrittenNumber } from './sigfigs'
 
+// MARK: Fórmulas estructurales (SMILES)
+
+export {
+  EXPANDED_MAX_HEAVY, SMILES_MAX_ATOMS, SMILES_MAX_LENGTH, SmilesError, heavyAtomCount, isReactionSmiles, parseSmiles, parseStructure,
+  smilesComposition, smilesText, withExplicitHydrogens,
+} from './smiles'
+export type {
+  BondOrder, ParsedStructure, ReactionSide, SmilesAtom, SmilesBond, SmilesComposition, SmilesErrorKind, SmilesMolecule, SmilesSpecies,
+} from './smiles'
+export { smilesErrorHint, smilesErrorMessage } from './smiles-messages'
+export { layoutQuality, layoutStructure } from './structure-layout'
+export type { LayoutOptions, LayoutQuality, StructureLayout } from './structure-layout'
+export { depictStructure, estimateMeasure } from './structure-depict'
+export type { AromaticMode, Depiction, DepictLabel, DepictOptions, LabelPart, Measure, StructureStyle } from './structure-depict'
+export { FUNCTIONAL_GROUP_KINDS, detectFunctionalGroups, groupKindsForLabel } from './functional-groups'
+export type { FunctionalGroup, FunctionalGroupKind } from './functional-groups'
+export { GROUP_NAMES_ES, structureInfo } from './structure-tool'
+
 // MARK: Nomenclatura
 
 export { Nomenclature, formulaForName, nameOf, nameOfText } from './nomenclature'

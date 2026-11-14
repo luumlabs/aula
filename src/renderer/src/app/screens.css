@@ -43,15 +43,6 @@
   opacity: 0;
 }
 
-/* Con la ventana sin ver (ambient.css pausa TODAS las animaciones con data-ambient="off"), una entrada pausada se quedaría en
-   opacidad 0 (relleno «backwards»): la pantalla en blanco. El cambio de pantalla no es adorno: sin ventana a la vista se hace
-   sin animación (más específico que la regla de ambient.css). */
-:root[data-ambient='off'] .screen-enter,
-:root[data-ambient='off'] .tab-enter,
-:root[data-ambient='off'] .screen-fallback {
-  animation: none !important;
-}
-:root[data-ambient='off'] .screen-leave {
-  animation: none !important;
-  opacity: 0;
-}
+/* data-ambient (ambient.css/ambient.ts) NO toca estas animaciones: solo pausa bucles, y estas terminan solas. Quitarlas con
+   la ventana sin ver y volver a ponerlas al volver las arranca otra vez desde opacidad 0: toda la pantalla parpadeaba
+   (power.e2e.ts). La capa que se va se quita igual con su temporizador (LEAVE_MS en App.tsx). */

@@ -1,10 +1,10 @@
 // El equipo de IA que crea y amplía cursos (port de StudyEngine/Pipeline): la tubería por etapas, los agentes (el modelo activo
 // o el equipo simulado de `AULA_FAKE_AI`), el área de preparación de materiales y el servicio que usa el IPC.
 import type { GenerationRequest } from '@engine/pipeline'
-import { tr } from '@shared/ai/i18n'
 import { FAKE_PROVIDER_ID, resolveActiveModel } from '../ai'
 import { calendarService } from '../calendar'
 import { getSettings } from '../settings'
+import { defaultCourseLanguage } from '../settings/courseLanguage'
 import { getLibrary } from '../store'
 import { LiveWebAccess } from '../tools'
 import { calendarCampus, courseSearch, packImporter } from './adapters'
@@ -48,6 +48,7 @@ export function createGenerationService(o: { emit?: GenerationServiceOptions['em
     linkEvent: (eventId, packId) => calendarService().link(eventId, packId),
     maxParallel: () => getSettings().ai.maxParallel,
     webSearch: () => getSettings().data.webSearch,
-    language: () => (tr('es', 'en') === 'en' ? 'en' : 'es')
+    // el del ajuste «Idioma de los cursos nuevos» (con «auto», el del sistema), igual que el formulario y el asistente
+    language: defaultCourseLanguage
   })
 }

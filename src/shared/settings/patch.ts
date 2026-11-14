@@ -2,6 +2,7 @@
 // Las IA (proveedores, ejecutables, referencias de claves) y las cuentas de plataformas se cambian con sus propios métodos
 // (ai.*, platforms.*), que validan y nunca aceptan rutas de programas ni referencias de secretos desde la interfaz.
 import type { SettingsPatch } from './index'
+import { COURSE_LANGUAGE_CHOICES } from './courseLanguage'
 
 export class SettingsPatchError extends Error {}
 
@@ -39,7 +40,8 @@ const SECTIONS: Record<string, Record<string, (v: unknown, k: string) => unknown
     cursor: (v, k) => oneOf(v, k, ['sun', 'system'] as const),
     reminders: bool,
     reminderTime: time,
-    name: (v, k) => text(v, k, 80)
+    name: (v, k) => text(v, k, 80),
+    courseLanguage: (v, k) => oneOf(v, k, COURSE_LANGUAGE_CHOICES)
   },
   data: { memory: bool, webSearch: bool, autoUpdate: bool },
   persistent: {

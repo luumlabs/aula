@@ -111,6 +111,8 @@ export interface RunView {
   icon: string
   hue: number
   mode: 'create' | 'extend'
+  /** Una ampliación de un solo tema («Escribir este tema ahora», «Pedir cambios» de un tema): cuál. */
+  skill?: string
   state: RunState
   stage: GenerationStage
   stages: Record<GenerationStage, StageStatus>
@@ -142,4 +144,8 @@ export interface RunSummary {
   progress: number
   stageLabel: string
   updated: string
+  /** Crear el curso o ampliarlo (sin dato: como una creación, lo de antes). Una ampliación no deja el curso a medias. */
+  mode?: 'create' | 'extend'
+  /** El tema de una ampliación de un solo tema: Aprender lo enseña «escribiéndose» mientras dura. */
+  skill?: string
 }

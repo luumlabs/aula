@@ -5,7 +5,7 @@ import { dailyPlan, dueCardCount, dueMistakes, readiness, skillMastery } from '@
 import type { AssistantCalendarEvent } from '@engine/calendar'
 import type { AssistantRefKind } from '@shared/assistant/types'
 import type { JSONObject, JSONValue } from '@shared/ai/json'
-import { encodeExercise, orderedSkills, type Pack, type Skill, type SkillRef, type StudyProgress } from '@shared/schema'
+import { encodeBlock, encodeExercise, orderedSkills, type Block, type Pack, type Skill, type SkillRef, type StudyProgress } from '@shared/schema'
 import type { AgentTool } from '../../ai/model'
 import type { PackStore } from '../../store/packStore'
 import type { ToolEnv } from '../host'
@@ -131,10 +131,46 @@ export function getCourseTool(env: ToolEnv): AgentTool {
     })
 }
 
+/** Un bloque de la lección por su id o, si no está, del enunciado de uno de sus ejercicios (una figura marcada en la práctica). */
+export function findLessonBlock(skill: Skill, id: string): { block: Block; exerciseID?: string } | undefined {
+  const inLesson = skill.lesson.find((b) => b.id === id)
+  if (inLesson) return { block: inLesson }
+  for (const e of skill.exercises) {
+    const parts = e.answer.kind === 'multi' ? e.answer.parts.flatMap((p) => p.prompt) : []
+    const b = [...e.prompt, ...parts].find((x) => x.id === id)
+    if (b) return { block: b, exerciseID: e.id }
+  }
+  return undefined
+}
+
+/** Las partes con nombre de un bloque (los nodos, las partes rotuladas, los países…): cada objeto con `id` y un nombre. */
+export function namedParts(v: JSONValue, out: JSONObject[] = [], max = 80): JSONObject[] {
+  if (out.length >= max || v === null || typeof v !== 'object') return out
+  if (Array.isArray(v)) {
+    for (const x of v) namedParts(x, out, max)
+    return out
+  }
+  const name = [v.name, v.label, v.title].find((x): x is string => typeof x === 'string' && x.trim() !== '')
+  if ((typeof v.id === 'string' || typeof v.id === 'number') && name && v.type === undefined) out.push({ id: v.id, name: clip(name, 120) })
+  for (const x of Object.values(v)) namedParts(x, out, max)
+  return out
+}
+
+/** Un bloque para la IA: entero si es pequeño; si no, lo esencial y sus partes con nombre. */
+function blockForAI(b: Block): JSONObject {
+  const full = encodeBlock(b)
+  if (JSON.stringify(full).length <= 12_000) return full
+  const o: JSONObject = { id: full.id ?? null, type: full.type ?? null }
+  for (const k of ['title', 'alt', 'caption', 'kind', 'form']) if (typeof full[k] === 'string') o[k] = clip(full[k] as string, 400)
+  o.parts = namedParts(full)
+  o.note = 'Large block: only its named parts are listed.'
+  return o
+}
+
 export function getLessonTool(env: ToolEnv, name: 'get_lesson' | 'get_skill'): AgentTool {
   return tool(name,
-    "One lesson (skill) of a course: summary, objectives, an outline of the lesson blocks, its exercises (ids and statements, without answers), flashcards and the student's progress in it.",
-    Schema.object([['course_id', Schema.string('the course (optional: if omitted all courses are searched)')], ['skill_id', Schema.string()]], ['skill_id']),
+    "One lesson (skill) of a course: summary, objectives, an outline of the lesson blocks (with their ids), its exercises (ids and statements, without answers), flashcards and the student's progress in it. With `block_id`, that one block in full instead (a figure's exact parts, e.g. the figure the student marked).",
+    Schema.object([['course_id', Schema.string('the course (optional: if omitted all courses are searched)')], ['skill_id', Schema.string()], ['block_id', Schema.string('optional: one block of the lesson (or of an exercise statement) to read in full')]], ['skill_id']),
     (a) => {
       const sid = a.string('skill_id', ['lesson_id', 'id'])
       if (!sid) return outError("Missing 'skill_id'.")
@@ -142,9 +178,15 @@ export function getLessonTool(env: ToolEnv, name: 'get_lesson' | 'get_skill'): A
       if (!found) return outError(`No lesson '${sid}'. Use find_items or get_course.`)
       const { store, pack, skill } = found
       if (store.wasImported) env.trust.noteExternalContent()
+      const bid = a.string('block_id', ['blockID'])?.trim()
+      if (bid) {
+        const hit = findLessonBlock(skill, bid)
+        if (!hit) return outError(`No block '${bid}' in lesson '${skill.id}'. Call get_lesson without block_id to see the block ids.`)
+        return outJSON({ ok: true, course_id: pack.id, skill_id: skill.id, block: blockForAI(hit.block), ...(hit.exerciseID ? { in_exercise_statement: hit.exerciseID } : {}) })
+      }
       const sp = store.loadProgress().skills[skill.id]
       const outline = skill.lesson.slice(0, 40).map((b) => {
-        const o: JSONObject = { type: b.type }
+        const o: JSONObject = { id: b.id, type: b.type }
         const t = textOfBlocks([b])
         if (t) o.text = clip(t, 220)
         return o

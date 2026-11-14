@@ -7,10 +7,11 @@ import {
   oxidationStatesInfo, parseGiven, pHInfo, redoxInfo, significantFiguresInfo, stoichiometryInfo, type JsonSchemaObject,
 } from './tools'
 import type { ChemToolResult } from './types'
+import { structureInfo } from './structure-tool'
 
 export const CHEMISTRY_ACTIONS = [
   'element', 'electron_configuration', 'molar_mass', 'empirical_formula', 'balance', 'stoichiometry', 'oxidation_states', 'redox',
-  'convert', 'ph', 'sig_figs', 'name',
+  'convert', 'ph', 'sig_figs', 'name', 'structure',
 ] as const
 
 export type ChemistryAction = (typeof CHEMISTRY_ACTIONS)[number]
@@ -25,7 +26,8 @@ export const CHEMISTRY_TOOL: { readonly name: 'chemistry'; readonly description:
     'balance (input: "Fe + O2 -> Fe2O3"; ionic ok: "MnO4^- + Fe^2+ + H^+ -> Mn^2+ + Fe^3+ + H2O"; write charges with ^) · ' +
     'stoichiometry (input: equation, given: {"Fe":"10 g","O2":"0.5 mol"}, find: "Fe2O3", optional actual_yield: "12 g" → limiting reactant, moles, grams, % yield) · ' +
     'oxidation_states (input: species) · redox (input: equation → what is oxidized/reduced) · convert (input: "10 g", to: "mol", formula: "H2O") · ' +
-    'ph (input: "HCl 0.01 M" | "CH3COOH 0.1 M Ka=1.8e-5" | "NaOH 0.05 M") · sig_figs (input: "0.00450") · name (input: "NaCl" → name, or "sulfato de hierro(III)" → formula). ' +
+    'ph (input: "HCl 0.01 M" | "CH3COOH 0.1 M Ka=1.8e-5" | "NaOH 0.05 M") · sig_figs (input: "0.00450") · name (input: "NaCl" → name, or "sulfato de hierro(III)" → formula) · ' +
+    'structure (input: a SMILES like "CC(=O)Oc1ccccc1C(=O)O" or a reaction "CC(=O)O.OCC>>CC(=O)OCC.O" → checks it; molecular formula, molar mass, atoms numbered from 1 for the groups/notes of a structure block, rings, functional groups, drawing warnings; call it before writing every structure block). ' +
     'Results include the steps explained in Spanish and LaTeX.',
   parameters: {
     type: 'object',
@@ -146,6 +148,11 @@ export function runChemistryTool(rawArgs: unknown): ChemistryToolOutput {
       break
     case 'name':
       r = nameInfo(input)
+      break
+    case 'structure':
+    case 'smiles':
+    case 'molecule':
+      r = structureInfo(input)
       break
     default:
       return errorOut(`Unknown action '${action}'. Use one of: ${CHEMISTRY_ACTIONS.join(', ')}.`)

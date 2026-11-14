@@ -109,8 +109,11 @@ test('Blackboard Ultra: acceso en una ventana emergente y panel que cambia sin n
   try {
     const acc = await invoke<View>(page, 'platforms.add', { url: fake.blackboardURL, kind: 'blackboard' })
     const win = await openSignIn(app, page, acc.id)
-    await win.getByRole('button', { name: 'Iniciar sesión con la universidad' }).click({ timeout: 15_000 })
-    const popup = await app.waitForEvent('window', { timeout: 10_000 })
+    // se espera la ventana emergente desde antes del clic: si se abre muy deprisa, no se pierde
+    const [popup] = await Promise.all([
+      app.waitForEvent('window', { timeout: 15_000 }),
+      win.getByRole('button', { name: 'Iniciar sesión con la universidad' }).click({ timeout: 15_000 })
+    ])
     await popup.waitForURL(/idp\.localhost:\d+\/idp\/popup/)
     await popup.getByRole('button', { name: 'Continuar' }).click()
     await popup.waitForURL(/idp\/mfa/)

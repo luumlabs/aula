@@ -23,6 +23,9 @@ const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
 
 export const INK = 'var(--viz-accent, var(--accent))'
 
+/** El color del papel de un dibujo (el del fondo donde está; un pozo puede cambiarlo con --draw-paper). */
+export const PAPER = 'var(--draw-paper, var(--paper))'
+
 /** Color CSS para un nombre («blue», «rojo», «accent», «#2f67a9»…). Sin nombre (o desconocido): `fallback`. «accent» es la tinta del curso. */
 export function vizColor(name: string | undefined, fallback = INK): string {
   const n = name?.trim().toLowerCase()
@@ -36,6 +39,8 @@ export function vizColor(name: string | undefined, fallback = INK): string {
     case 'olive': case 'oliva': return 'var(--viz-olive)'
     case 'gray': case 'grey': case 'gris': return 'var(--text2)'
     case 'ink': case 'black': case 'white': case 'negro': case 'blanco': return 'var(--text)'
+    // el papel bajo un dibujo (tapa lo que queda detrás); «white» sigue siendo tinta en los cursos de siempre
+    case 'paper': case 'papel': return PAPER
     default: return HEX.test(n) ? n : fallback
   }
 }

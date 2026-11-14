@@ -11,6 +11,7 @@ import type { DocumentItem, DocumentPlan, DocumentQuestion } from '@shared/docum
 import type { AssetReader } from './markdown'
 import { block as markdownBlock, calloutName } from './markdown'
 import { blanks, choiceLetter, printablePrompt, stableShuffle } from './planner'
+import { compareRawCells } from './shapes-markdown'
 import { texToMath } from './texMath'
 import { longDate, pointsText, words, type DocLang } from './words'
 
@@ -165,7 +166,7 @@ class DocxBuilder {
         first = false
       } else {
         if (first) { this.inlinePara([num, pts], 'Question'); first = false }
-        this.block(b)
+        this.block(b, true)
       }
     }
     if (first) this.inlinePara([num], 'Question')
@@ -223,7 +224,8 @@ class DocxBuilder {
 
   // MARK: Bloques
 
-  private block(b: Block): void {
+  /** `inPrompt`: el bloque está en el enunciado de una pregunta y no debe dar la respuesta. */
+  private block(b: Block, inPrompt = false): void {
     const w = words(this.lang)
     switch (b.type) {
       case 'text': this.rich(parseRichText(b.md)); return
@@ -245,7 +247,8 @@ class DocxBuilder {
       case 'table': this.tableBlock(b.headers, b.rows, b.caption); return
       case 'compare':
         if (b.title) this.inlinePara([{ kind: 'bold', children: parseInline(b.title) }], 'Normal')
-        this.tableBlock(['', b.leftTitle, b.rightTitle], b.rows.map((r) => [r.label ?? '', r.left, r.right]))
+        // la diferencia clave en negrita, como en Markdown (y destacada en la app)
+        this.tableBlock(['', b.leftTitle, b.rightTitle], b.rows.map(compareRawCells), undefined, b.rows.map((r) => r.tone === 'key'))
         return
       case 'steps':
         if (b.title) this.inlinePara([{ kind: 'bold', children: parseInline(b.title) }], 'Normal')
@@ -274,7 +277,7 @@ class DocxBuilder {
       }
       default: {
         // sin dibujo: la descripción (y los datos, en las gráficas) que da Markdown
-        const [md] = markdownBlock(b, { plan: this.plan, folder: '', lang: this.lang, asset: () => undefined })
+        const [md] = markdownBlock(b, { plan: this.plan, folder: '', lang: this.lang, asset: () => undefined, inPrompt })
         if (md) this.rich(parseRichText(md))
       }
     }
@@ -331,12 +334,19 @@ class DocxBuilder {
     }
   }
 
-  private tableBlock(headers: string[], rows: string[][], caption?: string): void {
+  /** Una tabla; `boldRows[k]`: la fila k va entera en negrita (sobre lo que ya traiga cada celda). */
+  private tableBlock(headers: string[], rows: string[][], caption?: string, boldRows: boolean[] = []): void {
     const cols = Math.max(headers.length, ...rows.map((r) => r.length), 0)
     if (!cols) return
     const out: TableRow[] = []
     if (headers.length) out.push(this.row(Array.from({ length: cols }, (_, i) => parseInline(headers[i] ?? '')), true))
-    for (const r of rows) out.push(this.row(Array.from({ length: cols }, (_, i) => parseInline(r[i] ?? '')), false))
+    rows.forEach((r, k) => {
+      const cell = (i: number): Inline[] => {
+        const inl = parseInline(r[i] ?? '')
+        return boldRows[k] && inl.length ? [{ kind: 'bold', children: inl }] : inl
+      }
+      out.push(this.row(Array.from({ length: cols }, (_, i) => cell(i)), false))
+    })
     this.push(this.table(out, cols))
     if (caption) this.inlinePara(parseInline(caption), 'Caption')
   }

@@ -227,6 +227,73 @@ describe('flujo clásico', () => {
     expect(s.stages.verify).toBe('skipped')
   })
 
+  it('mientras un repaso reescribe un tema, el curso no lo ofrece como listo (y al terminar vuelve a estarlo)', async () => {
+    const during: string[] = []
+    const agents = scriptedAgents(async (task, call) => {
+      switch (task.role) {
+        case 'planner': await call('set_course_plan', Fixture.plan); return 'ok'
+        case 'author': {
+          const id = Fixture.skillID(task)
+          // el estado del curso cuando empieza el segundo intento (el primero dejó «resta» por revisar)
+          if (task.prompt.includes('repair attempt')) during.push(String(store.loadPack().skills.find((r) => r.id === id)?.status))
+          return Fixture.author(task, call, id === 'resta')
+        }
+        case 'crossCutting': return Fixture.crossCutting(call)
+        default: return ''
+      }
+    })
+    const s = await new GenerationPipeline({ library: lib, request: request({ verify: false }), agents }).run()
+    expect(s.skills.find((k) => k.id === 'resta')).toMatchObject({ attempts: 2, status: 'done' })
+    expect(during).toEqual(['draft'])
+    expect(store.loadPack().skills.find((r) => r.id === 'resta')?.status).toBe('ready')
+  })
+
+  it('un tema que se da por perdido queda «por revisar» en el curso enseguida, no «escribiéndose» hasta el final', async () => {
+    let afterAuthoring: string | undefined
+    const agents = scriptedAgents(async (task, call) => {
+      switch (task.role) {
+        case 'planner': await call('set_course_plan', Fixture.plan); return 'ok'
+        case 'author':
+          if (Fixture.skillID(task) === 'resta') {
+            // la lección llega, pero los tres intentos se cortan (p. ej., por tiempo)
+            if (!task.prompt.includes('repair attempt')) await call('write_lesson', Fixture.lesson('resta'))
+            throw new Error('El agente se cortó')
+          }
+          return Fixture.author(task, call, false)
+        case 'crossCutting':
+          afterAuthoring = store.loadPack().skills.find((r) => r.id === 'resta')?.status
+          return Fixture.crossCutting(call)
+        default: return ''
+      }
+    })
+    const s = await new GenerationPipeline({ library: lib, request: request({ verify: false, parallel: 1 }), agents }).run()
+    expect(s.skills.find((k) => k.id === 'resta')).toMatchObject({ status: 'needsReview', attempts: 3 })
+    // el monitor y el curso dicen lo mismo en cuanto se da por perdido (antes seguía en borrador: «escribiéndose»)
+    expect(afterAuthoring).toBe('needsReview')
+  })
+
+  it('detener a mitad de un repaso no deja el tema en borrador para siempre', async () => {
+    let pipe: GenerationPipeline | undefined
+    const agents = scriptedAgents(async (task, call) => {
+      switch (task.role) {
+        case 'planner': await call('set_course_plan', Fixture.plan); return 'ok'
+        case 'author':
+          if (Fixture.skillID(task) === 'resta' && task.prompt.includes('repair attempt')) {
+            pipe?.cancel()
+            await sleep(5)
+            throw new AIError('cancelled', 'Cancelado.', { code: 'cancelled' })
+          }
+          return Fixture.author(task, call, Fixture.skillID(task) === 'resta')
+        default: return ''
+      }
+    })
+    pipe = new GenerationPipeline({ library: lib, request: request({ verify: false, parallel: 1 }), agents })
+    const s = await pipe.run()
+    expect(s.aula2.state).toBe('paused')
+    // la auditoría de lo que hay: por revisar (le faltan ejercicios), no «escribiéndose»
+    expect(store.loadPack().skills.find((r) => r.id === 'resta')?.status).toBe('needsReview')
+  })
+
   it('una habilidad que nunca cumple queda por revisar, no fallida', async () => {
     const agents = scriptedAgents(async (task, call) => {
       switch (task.role) {
@@ -379,6 +446,41 @@ describe('flujo clásico', () => {
     expect(store.loadSkill('suma').exercises).toHaveLength(8)
   })
 
+  it('«Escribir este tema ahora» de un tema con ejercicios y sin lección: no se ofrece como listo con la lección a medias', async () => {
+    const base = scriptedAgents(async (task, call) => {
+      switch (task.role) {
+        case 'planner': await call('set_course_plan', Fixture.plan); return 'ok'
+        case 'author': return Fixture.author(task, call, false)
+        case 'crossCutting': return Fixture.crossCutting(call)
+        default: return ''
+      }
+    })
+    await new GenerationPipeline({ library: lib, request: request({ verify: false }), agents: base }).run()
+    // el escritor de la lección falló: «resta» quedó por revisar, con sus ejercicios y sin lección
+    store.updateSkill('resta', (k) => { k.lesson = []; k.status = 'needsReview' })
+    const status = (): string | undefined => store.loadPack().skills.find((r) => r.id === 'resta')?.status
+    const during: Array<string | undefined> = []
+    const extender = scriptedAgents(async (task, call) => {
+      if (task.role !== 'extender') return ''
+      during.push(status())
+      await call('write_lesson', Fixture.lesson('resta'))
+      // con el primer bloque ya escrito sigue sin estar listo (la auditoría llega al final)
+      during.push(status())
+      return 'lección escrita'
+    })
+    const mode = { kind: 'extend' as const, instruction: 'Escribe solo la lección de «Restar»', skill: 'resta' }
+    const s = await new GenerationPipeline({ library: lib, request: request({ verify: false, mode }), agents: extender }).run()
+    expect(s.aula2.state).toBe('done')
+    expect(during).toEqual(['draft', 'draft'])
+    expect(['ready', 'needsReview']).toContain(status())
+    // si la ampliación se corta sin tocarlo, el tema vuelve a como estaba (no en borrador para siempre)
+    store.updateSkill('resta', (k) => { k.lesson = []; k.status = 'needsReview' })
+    const broken = scriptedAgents(async (task) => { if (task.role === 'extender') throw new Error('El agente se cortó'); return '' })
+    const f = await new GenerationPipeline({ library: lib, request: request({ verify: false, mode }), agents: broken }).run()
+    expect(f.aula2.state).toBe('failed')
+    expect(status()).toBe('needsReview')
+  })
+
   it('sin ningún material falla enseguida con un mensaje claro', async () => {
     const r = request()
     r.topics = ''
@@ -430,6 +532,39 @@ describe('flujo clásico', () => {
     expect(s.aula2.errorCode).toBe('ai_budget')
     expect(s.aula2.resumeAt).toBe('2026-11-01T00:00:00.000Z')
     expect(s.stages.crossCutting).toBe('pending')
+  })
+
+  it('una clave de API sin saldo (402) para la ejecución entera y queda para reanudar, sin fallar tema a tema', async () => {
+    const roles: string[] = []
+    const agents = scriptedAgents(async (task, call) => {
+      roles.push(task.role)
+      switch (task.role) {
+        case 'planner': await call('set_course_plan', Fixture.plan); return 'ok'
+        case 'author':
+          if (Fixture.skillID(task) === 'resta') throw new AIError('http', 'DeepSeek indica que no tienes saldo suficiente (402).', { status: 402, providerMessage: 'Insufficient Balance' })
+          return Fixture.author(task, call, false)
+        default: return ''
+      }
+    })
+    const s = await new GenerationPipeline({ library: lib, request: request({ verify: false, parallel: 1 }), agents }).run()
+    expect(s.aula2.state).toBe('limit')
+    expect(s.aula2.errorCode).toBe('ai_quota')
+    expect(s.failure).toContain('402')
+    // no se reintentó «resta» ni se siguió con el glosario: se para y se reanuda tras recargar o cambiar de proveedor
+    expect(roles.filter((r) => r === 'author')).toHaveLength(2)
+    expect(s.skills.find((k) => k.id === 'resta')?.status).not.toBe('failed')
+    expect(s.skills.find((k) => k.id === 'suma')?.status).toBe('done')
+    expect(s.stages.crossCutting).toBe('pending')
+  })
+
+  it('un 429 de cuota agotada también para la ejecución (no es un límite por minuto)', async () => {
+    const agents = scriptedAgents(async (task, call) => {
+      if (task.role === 'planner') { await call('set_course_plan', Fixture.plan); return 'ok' }
+      throw new AIError('http', 'Se agotó la cuota o el saldo de tu cuenta de OpenAI (429).', { status: 429, providerMessage: 'You exceeded your current quota, please check your plan and billing details.' })
+    })
+    const s = await new GenerationPipeline({ library: lib, request: request({ verify: false, parallel: 1 }), agents }).run()
+    expect(s.aula2.state).toBe('limit')
+    expect(s.aula2.errorCode).toBe('ai_quota')
   })
 
   it('sin red el plan falla tras UN reintento rápido, y el monitor dijo por qué esperaba', async () => {

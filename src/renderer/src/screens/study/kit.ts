@@ -1,27 +1,56 @@
 // Piezas compartidas de los modos de estudio: el contexto de los bloques del curso, anotar un resultado en el progreso
 // (con el motor, al instante) y salir al curso.
 import { openCourseSource } from '../documents/lib'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import type { Exercise, Pack } from '@shared/schema'
 import { recordAttempt, recordStudyTime, type AttemptRecord } from '@engine/study'
 import { isLanguageCourse } from '@engine/grading'
-import { makeBlockContext, type BlockContext } from '@renderer/blocks/types'
+import { makeBlockContext, type AskFrom, type BlockContext } from '@renderer/blocks/types'
 import { toneForHue, useTheme } from '@renderer/design'
-import { navigate, type CourseTab } from '@renderer/app/router'
+import { navigate, useRoute, type CourseTab } from '@renderer/app/router'
 import { finalCredit, hintsUsed, inputSummary, elapsedSeconds, type GradeResult, type RunState } from '@renderer/exercises'
 import type { TutorContext } from '@shared/assistant/types'
 import { useTutor } from './TutorPanel'
 import { updateProgress, useStudyStore, type SyncOp } from './data'
 import { activePlan } from './plan/session'
 
-/** Contexto de los bloques de una lección o un enunciado del curso. */
-export function useBlockCtx(pack: Pack, skillId?: string, extra: Partial<BlockContext> = {}): BlockContext {
+/** Desde qué pantalla se pregunta al tutor por una figura: todos los modos de estudio menos el simulacro (allí no hay tutor). */
+export function tutorScreenOf(route: ReturnType<typeof useRoute>): string | undefined {
+  return route.name === 'study' && route.mode !== 'exam' ? (route.mode === 'learn' ? 'lesson' : route.mode) : undefined
+}
+
+/**
+ * Lo que sabe el tutor de una pregunta de «Marcar»: la figura y, si está en el enunciado de un ejercicio, cuál es, lo que
+ * respondió el estudiante (si la pantalla lo sabe: `exercise`) y si aún está sin resolver (entonces ayuda con pistas).
+ */
+export function markedFigureContext(base: { courseID: string; skillID?: string; screen: string }, blockID: string, from?: AskFrom, exercise?: TutorContext): TutorContext {
+  const ctx: TutorContext = { ...base, blockID }
+  if (!from) return ctx
+  const known = exercise?.exerciseID === from.exerciseId ? exercise : undefined
+  const done = 'finished: the solution is on screen'
+  const lastResult = from.unsolved ? (known?.lastResult ?? 'not solved yet') : known?.lastResult ? `${known.lastResult} (${done})` : done
+  return { ...ctx, skillID: known?.skillID ?? base.skillID, exerciseID: from.exerciseId, ...(known?.lastInput ? { lastInput: known.lastInput } : {}), lastResult }
+}
+
+/**
+ * Contexto de los bloques de una lección o un enunciado del curso. `exercise`: lo que la pantalla sabe del ejercicio a la vista
+ * (para que el tutor vea su respuesta si pregunta por una figura de su enunciado).
+ */
+export function useBlockCtx(pack: Pack, skillId?: string, extra: Partial<BlockContext> = {}, opts: { exercise?: (id: string) => TutorContext | undefined } = {}): BlockContext {
   const { onTryIt } = extra
+  // «Marcar y preguntar» lleva al tutor del curso: en todos los modos de estudio menos el simulacro (allí no hay tutor)
+  const route = useRoute()
+  const tutorScreen = tutorScreenOf(route)
+  const exerciseRef = useRef(opts.exercise)
+  exerciseRef.current = opts.exercise
   return useMemo(
     () =>
       makeBlockContext(pack.id, pack.language, {
         skillId,
         hue: pack.hue,
+        onAskTutor: tutorScreen
+          ? (blockId, message, from) => askTutor(message, markedFigureContext({ courseID: pack.id, skillID: skillId, screen: tutorScreen }, blockId, from, from ? exerciseRef.current?.(from.exerciseId) : undefined))
+          : undefined,
         sourceTitle: (id) => pack.sources.find((s) => s.id === id)?.title,
         // la cita abre el material en su página, o la grabación en su minuto; si ya no está, la lista de materiales
         onOpenSource: (ref) => (pack.sources.some((s) => s.id === ref.source) ? openCourseSource(pack.id, ref.source, ref.page, ref.at) : navigate({ name: 'course', id: pack.id, tab: 'materials' })),
@@ -29,7 +58,7 @@ export function useBlockCtx(pack: Pack, skillId?: string, extra: Partial<BlockCo
         ...extra
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pack, skillId, onTryIt]
+    [pack, skillId, onTryIt, tutorScreen]
   )
 }
 

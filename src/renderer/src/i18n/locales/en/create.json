@@ -62,6 +62,7 @@
     }
   },
   "courseLanguage": "Course language",
+  "courseLanguageHint": "Aula explains everything in this language and remembers it for your next courses.",
   "depth": "Course size",
   "depths": {
     "quick": {

@@ -11,6 +11,7 @@ import { api } from '@renderer/lib/api'
 import { navigate } from '@renderer/app/router'
 import { CourseActions, type CourseAction } from './Actions'
 import { failureReason, type CoursePartial, type CourseRunIssue } from './failure'
+import { LimitNotice, StudyReadyButton, SwitchProviderButton } from './StudyWhileBuilding'
 
 const MARK: Record<CourseRunIssue, MarkState> = { failed: 'offline', stopped: 'paused', limit: 'paused', building: 'working' }
 
@@ -68,7 +69,7 @@ export function CourseCreationFailed({ pack, runId, issue }: { pack: Pack; runId
             <AulaMark size={52} state={MARK[issue]} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="t-title2">{t(`failure.title.${issue}`)}</h2>
+            <h2 className="t-title2">{reason === 'quota' ? t('failure.title.quota') : t(`failure.title.${issue}`)}</h2>
             {issue !== 'building' && <p className="t-body text-text2 mt-1.5">{t(`failure.reason.${reason}`)}</p>}
             {issue === 'building' && <p className="t-body text-text2 mt-1.5">{t('failure.buildingBody')}</p>}
             {detail && issue !== 'building' && (
@@ -77,6 +78,8 @@ export function CourseCreationFailed({ pack, runId, issue }: { pack: Pack; runId
                 <div className="t-footnote text-text2 mt-0.5 break-words">{detail}</div>
               </div>
             )}
+            {/* un límite: cuándo se renueva y dónde cambiar de IA («Reintentar» usa la que esté activa) */}
+            {run && (reason === 'limit' || reason === 'quota') && <LimitNotice run={run} showDetail={false} />}
             <div className="mt-5 flex flex-wrap items-center gap-2">
               {issue === 'building' ? (
                 <Button variant="primary" icon={<Icon name="activity" size={14} />} onClick={() => navigate({ name: 'run', id: runId })}>
@@ -136,9 +139,10 @@ function RequestCard({ pack, run, delay }: { pack: Pack; run: RunView | null; de
   )
 }
 
-/** Un curso que aún se está creando pero ya tiene temas: una franja encima de las pestañas con cuánto lleva y «Ver el progreso»,
- * para que no parezca terminado (antes solo Hoy decía «Creándose…»). Se va sola cuando la creación termina. */
-export function CourseBuildingBanner({ run }: { run: RunSummary }) {
+/** Un curso que aún se está creando pero ya tiene temas listos: una franja encima de las pestañas con cuánto lleva, cuántos temas
+ * están listos y «Empezar con lo que está listo» (antes solo «Ver el progreso», aunque el texto decía que ya se podía estudiar).
+ * Se va sola cuando la creación termina. */
+export function CourseBuildingBanner({ run, ready, total }: { run: RunSummary; ready: number; total: number }) {
   const { t } = useTranslation(['course', 'common'])
   const fraction = Math.min(1, Math.max(0, run.progress || 0))
   const progress = t('failure.building.progress', { pct: fmtPercent(fraction) })
@@ -156,19 +160,25 @@ export function CourseBuildingBanner({ run }: { run: RunSummary }) {
             {/* el porcentaje cambia a menudo: lo lee la barra (aria-valuenow), no se anuncia como texto */}
             <span aria-hidden className="t-caption text-text3 tabular shrink-0">{progress}</span>
           </div>
+          <div className="t-caption text-text3 tabular mt-1">{t('failure.readyCount', { ready, count: total })}</div>
         </div>
-        <Button variant="secondary" size="sm" icon={<Icon name="activity" size={13} />} onClick={() => navigate({ name: 'run', id: run.id })}>
-          {t('failure.watch')}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <StudyReadyButton packId={run.packId} ready={ready} />
+          <Button variant="secondary" size="sm" icon={<Icon name="activity" size={13} />} onClick={() => navigate({ name: 'run', id: run.id })}>
+            {t('failure.watch')}
+          </Button>
+        </div>
       </div>
     </Card>
   )
 }
 
-/** Un curso a medias (la creación se cortó con temas ya escritos): una franja encima de las pestañas con hasta dónde llegó,
- * «Reanudar» (sigue donde se quedó), «Quedarme con lo que hay» (lo da por terminado) y el registro (J2-2). */
-export function CoursePartialBanner({ run, partial }: { run: RunSummary; partial: CoursePartial }) {
+/** Un curso a medias (la creación se cortó con temas ya listos): una franja encima de las pestañas con hasta dónde llegó, cuántos
+ * temas están listos, «Empezar con lo que está listo», «Reanudar» (sigue donde se quedó, con la IA activa), «Quedarme con lo que
+ * hay» (lo da por terminado) y el registro (J2-2). Si fue un límite, cuándo se renueva y «Cambiar de proveedor». */
+export function CoursePartialBanner({ run, partial, ready, total }: { run: RunSummary; partial: CoursePartial; ready: number; total: number }) {
   const { t } = useTranslation(['course', 'common'])
+  const view = useRunView(run.id)
   const [busy, setBusy] = useState<'resume' | 'keep' | null>(null)
   const act = async (kind: 'resume' | 'keep'): Promise<void> => {
     setBusy(kind)
@@ -187,26 +197,32 @@ export function CoursePartialBanner({ run, partial }: { run: RunSummary; partial
     }
   }
   const pct = fmtPercent(Math.min(1, Math.max(0, run.progress || 0)))
+  const quota = partial === 'limit' && view?.errorCode === 'ai_quota'
   return (
     <Card padded className="mt-5" role="status" data-course-partial={partial} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}>
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-start gap-4">
         <div className="shrink-0 text-text2">
           <AulaMark size={34} state={partial === 'failed' ? 'offline' : 'paused'} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="t-headline">{t(`failure.partial.title.${partial}`, { pct })}</div>
-          <p className="t-footnote text-text2 mt-0.5">{t('failure.partial.body')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="primary" size="sm" icon={<Icon name="refresh" size={13} />} loading={busy === 'resume'} disabled={!!busy} onClick={() => void act('resume')}>
-            {t('failure.partial.resume')}
-          </Button>
-          <Button variant="secondary" size="sm" loading={busy === 'keep'} disabled={!!busy} onClick={() => void act('keep')}>
-            {t('failure.partial.keep')}
-          </Button>
-          <Button variant="ghost" size="sm" icon={<Icon name="activity" size={13} />} onClick={() => navigate({ name: 'run', id: run.id })}>
-            {t('failure.openLog')}
-          </Button>
+          <div className="t-headline">{quota ? t('failure.partial.title.quota', { pct }) : t(`failure.partial.title.${partial}`, { pct })}</div>
+          <p className="t-footnote text-text2 mt-0.5">{quota ? t('failure.partial.quotaBody') : t('failure.partial.body')}</p>
+          <div className="t-caption text-text3 tabular mt-1">{t('failure.readyCount', { ready, count: total })}</div>
+          {/* lo que dijo la IA (trae cuándo se renueva o «elige otro proveedor»); cambiarla va con las acciones */}
+          {partial === 'limit' && view && <LimitNotice run={view} button={false} />}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <StudyReadyButton packId={run.packId} ready={ready} />
+            <Button variant="secondary" size="sm" icon={<Icon name="refresh" size={13} />} loading={busy === 'resume'} disabled={!!busy} onClick={() => void act('resume')}>
+              {t('failure.partial.resume')}
+            </Button>
+            {partial === 'limit' && <SwitchProviderButton errorCode={view?.errorCode} />}
+            <Button variant="ghost" size="sm" loading={busy === 'keep'} disabled={!!busy} onClick={() => void act('keep')}>
+              {t('failure.partial.keep')}
+            </Button>
+            <Button variant="ghost" size="sm" icon={<Icon name="activity" size={13} />} onClick={() => navigate({ name: 'run', id: run.id })}>
+              {t('failure.openLog')}
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

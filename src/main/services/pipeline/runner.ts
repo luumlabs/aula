@@ -24,6 +24,7 @@ import type { PageRasterizer } from '@shared/ingest'
 import type { Pack, Skill } from '@shared/schema'
 import { AIError, BudgetError, withAIUse } from '../ai'
 import { classificationText } from '../ai/errors'
+import { waitText } from '../ai/http/providerErrors'
 import type { AIUseScope } from '../costs'
 import { QuestionBroker, NO_ANSWER } from '../agents/questions'
 import { log } from '../log'
@@ -515,6 +516,8 @@ export class GenerationPipeline {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       if (this.controller.signal.aborted || this.fatal) return
       this.updateSkill(id, (s) => { s.status = attempt === 1 ? 'running' : 'repairing'; s.attempts = attempt })
+      // un repaso (o una creación reanudada sobre lo que ya había) reescribe el tema: no se ofrece como listo mientras cambia
+      const rewriting = this.markRewriting(id, true)
       try {
         const pack = this.loadPack()
         const ref = pack.skills.find((s) => s.id === id)
@@ -531,10 +534,16 @@ export class GenerationPipeline {
           })
         }
       } catch (err) {
-        if (isCancelled(err, this.controller.signal)) return
-        if (isFatal(err)) { if (err instanceof Error) this.setFatal(err); return }
+        // parada a mitad de una reescritura: el tema queda como lo deje la auditoría de lo que hay, no en borrador para siempre
+        if (isCancelled(err, this.controller.signal)) { if (rewriting) this.persistAudit(id); return }
+        if (isFatal(err)) { if (err instanceof Error) this.setFatal(err); if (rewriting) this.persistAudit(id); return }
         this.updateSkill(id, (s) => { s.note = `Error: ${errorText(err)}` })
-        if (attempt === maxAttempts) { this.updateSkill(id, (s) => { s.status = this.loadSkill(id)?.lesson.length ? 'needsReview' : 'failed' }); return }
+        if (attempt === maxAttempts) {
+          // se da por perdido: el curso dice lo mismo que el monitor (por revisar), no «escribiéndose» hasta el final
+          if (this.hasContent(id)) this.persistAudit(id)
+          this.updateSkill(id, (s) => { s.status = this.loadSkill(id)?.lesson.length ? 'needsReview' : 'failed' })
+          return
+        }
         continue
       }
       if (usesTeam(this.state.request)) this.linkPractice(id)
@@ -547,6 +556,18 @@ export class GenerationPipeline {
     // agotados los intentos: se deja con lo que hay y se marca para revisión
     const left = this.audit(id)
     this.updateSkill(id, (s) => { s.status = this.loadSkill(id)?.lesson.length ? 'needsReview' : 'failed'; s.openIssues = left.length; s.note = left[0]?.forUser ?? '' })
+  }
+
+  /** El tema vuelve a borrador mientras se reescribe: la auditoría del final del intento lo deja otra vez listo o por revisar.
+   * Sin contenido no hay nada que esconder; sin `withLesson`, solo si aún no tiene lección (la que se va a escribir). ¿Se marcó? */
+  private markRewriting(id: string, withLesson: boolean): boolean {
+    const skill = this.loadSkill(id)
+    if (!skill || !(skill.lesson.length || skill.exercises.length) || (skill.status !== 'ready' && skill.status !== 'needsReview')) return false
+    if (!withLesson && skill.lesson.length) return false
+    try {
+      this.store.updateSkill(id, (s) => { s.status = 'draft' })
+      return true
+    } catch { return false }
   }
 
   private hasContent(id: string): boolean {
@@ -849,14 +870,24 @@ export class GenerationPipeline {
 
   private async extendStage(instruction: string, skill: string | undefined): Promise<void> {
     this.stage('author', 'running', tr('Aplicando tu petición', 'Applying your request'))
+    // «Escribir este tema ahora» de un tema que ya tenía sus ejercicios: no se ofrece como listo con la lección a medias
+    // («Pedir cambios» de un tema con lección deja seguir leyéndolo)
+    const rewriting = skill ? this.markRewriting(skill, false) : false
     const before = this.revisions()
     const pack = this.loadPack()
     const browser = this.browser()
     const prompt = extendPrompt(this.state.request, this.promptCourse(pack), instruction, skill, courseDigest(pack, (id) => this.loadSkill(id)), !!browser)
     const set: ToolSet = skill ? { kind: 'skillAuthor', skill } : { kind: 'all' }
-    await this.runAgent({ role: 'extender', set, stage: 'author', skill, prompt, maxSteps: DEPTHS[this.state.request.depth].maxSteps, timeoutSec: 1800, lane: tr('Cambios que pediste', 'The changes you asked for'), computer: !skill })
+    try {
+      await this.runAgent({ role: 'extender', set, stage: 'author', skill, prompt, maxSteps: DEPTHS[this.state.request.depth].maxSteps, timeoutSec: 1800, lane: tr('Cambios que pediste', 'The changes you asked for'), computer: !skill })
+    } catch (err) {
+      // sin terminar: el tema queda como lo deje la auditoría de lo que hay, no en borrador para siempre
+      if (rewriting && skill) this.persistAudit(skill)
+      throw err
+    }
     const after = this.revisions()
     const changed = [...after.entries()].filter(([id, rev]) => before.get(id) !== rev).map(([id]) => id)
+    if (rewriting && skill && !changed.includes(skill)) this.persistAudit(skill)
     this.seedSkillStates(this.loadPack())
     for (const id of changed) {
       this.persistAudit(id)
@@ -986,13 +1017,19 @@ export class GenerationPipeline {
         return result
       } catch (err) {
         if (isCancelled(err, this.controller.signal) || !(err instanceof AIError)) throw err
-        const decision = retryDecision({ kind: err.kind, status: err.status, retryAfter: err.retryAfter, text: classificationText(err) }, attempt)
+        const decision = retryDecision({ kind: err.kind, status: err.status, retryAfter: err.retryAfter, text: classificationText(err), code: err.code }, attempt)
+        // sin saldo o sin cuota: vale para todos los agentes; se para y se reanuda tras recargar o cambiar de proveedor
+        if (decision.action === 'quota') throw new LimitStop(err.message, undefined, 'ai_quota')
         if (decision.action === 'limit') {
           const at = decision.resumeAfterSec !== undefined ? new Date(this.now().getTime() + decision.resumeAfterSec * 1000) : undefined
           if (!decision.long) throw new LimitStop(err.message, at)
           // un límite que tarda en renovarse: se para y queda para reanudar
-          const mins = Math.round((decision.resumeAfterSec ?? 0) / 60)
-          throw new LimitStop(tr(`${err.message} (el límite se renueva en unos ${mins} min; la ejecución queda guardada para reanudarla).`, `${err.message} (the limit renews in about ${mins} min; the run is saved so you can resume it).`), at)
+          const wait = waitText(decision.resumeAfterSec ?? 0)
+          // si el mensaje ya dice cuándo se renueva (p. ej. el límite diario de Gemini), no se repite
+          const note = err.message.includes(wait)
+            ? tr('(la ejecución queda guardada para reanudarla)', '(the run is saved so you can resume it)')
+            : tr(`(el límite se renueva en unos ${wait}; la ejecución queda guardada para reanudarla)`, `(the limit renews in about ${wait}; the run is saved so you can resume it)`)
+          throw new LimitStop(`${err.message} ${note}.`, at)
         }
         if (decision.action === 'fail') throw err
         // el monitor dice por qué espera y cuándo vuelve a probar

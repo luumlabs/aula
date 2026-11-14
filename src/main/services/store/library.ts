@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, renameSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { IDs } from '@engine/base/ids'
+import { readyTopicCount, writtenTopicCount } from '@engine/study/topics'
 import { decodePack, encodePack, packHasExam, type ItemID, type Pack, type PackSummary } from '@shared/schema'
 import { tr } from '@shared/ai/i18n'
 import { ChangeHistory } from './history/changeHistory'
@@ -248,7 +249,7 @@ export function summarize(p: Pack, id: ItemID = p.id): PackSummary {
   let exercises = 0, cards = 0
   for (const s of p.skills) { exercises += s.counts.exercises + s.counts.templates; cards += s.counts.cards }
   const out: PackSummary = {
-    id, title: p.title, subject: p.subject, icon: p.icon, hue: p.hue, updated: p.updated, skillCount: p.skills.length,
+    id, title: p.title, subject: p.subject, icon: p.icon, hue: p.hue, updated: p.updated, skillCount: p.skills.length, readyCount: readyTopicCount(p.skills), writtenCount: writtenTopicCount(p.skills),
     exerciseCount: exercises, cardCount: cards, language: p.language, hasExam: packHasExam(p)
   }
   if (p.exam?.date !== undefined) out.examDate = p.exam.date

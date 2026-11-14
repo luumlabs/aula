@@ -12,7 +12,12 @@ export interface PackSummary {
   hue: number
   updated: ISODate
   examDate?: ISODate
+  /** Temas planificados (pueden estar aún vacíos mientras se crea el curso). */
   skillCount: number
+  /** Temas listos para estudiar: ya auditados por la tubería y con contenido (`@engine/study/topics`). Lo pone `summarize`. */
+  readyCount?: number
+  /** Temas con algo escrito, auditados o no (un borrador a medias cuenta). Lo pone `summarize`. */
+  writtenCount?: number
   /** Ejercicios y plantillas. */
   exerciseCount: number
   cardCount: number

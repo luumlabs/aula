@@ -1,20 +1,32 @@
-// Gráfico de datos en SVG: barras que crecen desde la base, líneas que se dibujan, áreas, dispersión y sectores que se
-// barren. Una serie usa la tinta del curso; varias, la paleta validada en orden (con leyenda). Cursor: lectura del dato.
+// Gráfico de datos en SVG: barras que crecen desde la base (horizontales si los nombres son largos), líneas que se dibujan,
+// áreas, dispersión (con el nombre junto a cada punto) y sectores que se barren. Una serie usa la tinta del curso; varias,
+// la paleta validada en orden (con leyenda). El dato del que habla la lección (`highlight`) se destaca. Cursor: lectura
+// del dato. Nombres en dos líneas, barras horizontales y destacados adaptados de Sketchy
+// (https://github.com/ddkbs/sketchy), MIT © 2026 ddkbs: src/figures/chart.ts.
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { cx, useTheme } from '@renderer/design'
 import type { BlockOf, ChartBlock, ChartSeries } from '@shared/schema/blocks'
 import type { BlockContext, BlockProps } from '../types'
 import { Caption, Figure, useAnimate, useBlocksT, useProgress, useSeen, useWidth } from '../shared'
-import { categoricalColors, seriesColors, withAlpha } from '../colors'
+import { categoricalColors, inkColor, seriesColors, withAlpha } from '../colors'
 import { formatNumber } from '../plot/ticks'
-import { arcPath, bands, categoryLabels, compactNumber, foldSlices, isCategoricalX, niceDomain, pieSlices, safeSeries, smoothPath, valueExtent, xExtent } from './scale'
+import { canvasMeasure, useFontsReady } from '../visual/shared/measure'
+import { HBarChart } from './HBarChart'
+import { placeScatterLabels } from './pointLabels'
+import {
+  arcPath, bands, categoryLabels, compactNumber, fitsTwoLines, foldSlices, isCategoricalX, isNumericLabel, labelLines, niceDomain, pieSlices, preferHorizontal, safeSeries, shortTimeLabels,
+  smoothPath, valueExtent, xExtent
+} from './scale'
 
 type Fmt = (v: number) => string
 
 const percent = (v: number, lang: string, digits: number): string => formatNumber(v, lang, digits) + (lang.startsWith('es') ? ' %' : '%')
 
 const ease = [0.2, 0.7, 0.2, 1] as const
+
+/** Medida de los nombres de las categorías (11,5 px, la letra de la interfaz). */
+const labelWidth = (s: string): number => canvasMeasure(s, 11.5, false)
 
 export function ChartBlockView({ block, ctx }: BlockProps<BlockOf<'chart'>>) {
   const t = useBlocksT()
@@ -33,9 +45,9 @@ export function ChartBlockView({ block, ctx }: BlockProps<BlockOf<'chart'>>) {
       ) : pie ? (
         <PieChart b={block} series={series} colors={colors} fmt={fmt} ctx={ctx} />
       ) : block.kind === 'bar' || block.kind === 'histogram' ? (
-        <BarChart b={block} series={series} colors={colors} fmt={fmt} ctx={ctx} />
+        <Bars b={block} series={series} colors={colors} fmt={fmt} ctx={ctx} ink={inkColor(ctx.hue, dark)} />
       ) : (
-        <XYChart b={block} series={series} colors={colors} fmt={fmt} ctx={ctx} />
+        <XYChart b={block} series={series} colors={colors} fmt={fmt} ctx={ctx} ink={inkColor(ctx.hue, dark)} />
       )}
     </Figure>
   )
@@ -80,16 +92,41 @@ interface ChartProps {
   colors: string[]
   fmt: Fmt
   ctx: BlockContext
+  /** Tinta del curso (la banda de la categoría destacada). */
+  ink?: string
 }
 
-/** Tamaño y márgenes comunes de los gráficos cartesianos. */
-function useFrame(ctx: BlockContext, b: ChartBlock) {
+/** Tamaño y márgenes comunes de los gráficos cartesianos (`extraBottom`: una segunda línea de nombres). */
+function useFrame(ctx: BlockContext, b: ChartBlock, extraBottom = 0) {
   const ref = useRef<HTMLDivElement>(null)
   const width = useWidth(ref)
-  const height = ctx.mode === 'chat' ? 200 : 250
+  const height = (ctx.mode === 'chat' ? 200 : 250) + extraBottom
   const top = b.yLabel ? 26 : 16
-  const bottom = b.xLabel ? 44 : 26
+  const bottom = (b.xLabel ? 44 : 26) + extraBottom
   return { ref, width, height, rect: { x: 48, y: top, w: Math.max(10, width - 60), h: Math.max(10, height - top - bottom) } }
+}
+
+/** Categorías destacadas (algún punto con `highlight`). */
+const highlighted = (series: ChartSeries[], n: number): boolean[] => Array.from({ length: n }, (_, i) => series.some((s) => s.points[i]?.highlight))
+
+/**
+ * Barras: horizontales si se piden (`horizontal`) o, sin decirlo, si los nombres no caben ni en dos líneas bajo su barra;
+ * si no, verticales. Los histogramas, siempre verticales.
+ */
+function Bars(props: ChartProps) {
+  const { b, series, ctx } = props
+  const ref = useRef<HTMLDivElement>(null)
+  const width = useWidth(ref)
+  const fonts = useFontsReady()
+  const horizontal = useMemo(() => {
+    if (b.kind !== 'bar') return false
+    if (b.horizontal !== undefined) return b.horizontal
+    const labels = categoryLabels(series, (v) => formatNumber(v, ctx.language))
+    if (labels.every(isNumericLabel)) return false
+    return preferHorizontal(labels, (width - 60) / Math.max(1, labels.length), labelWidth, ctx.language)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b.kind, b.horizontal, series, ctx.language, width, fonts])
+  return <div ref={ref} className="w-full">{horizontal ? <HBarChart {...props} ink={props.ink ?? 'var(--accent)'} /> : <BarChart {...props} />}</div>
 }
 
 function Axes({ rect, ticks, Y, lang, b, height }: { rect: { x: number; y: number; w: number; h: number }; ticks: number[]; Y: (v: number) => number; lang: string; b: ChartBlock; height: number }) {
@@ -119,16 +156,32 @@ function Axes({ rect, ticks, Y, lang, b, height }: { rect: { x: number; y: numbe
   )
 }
 
-/** Etiquetas de las categorías: se aclaran (una de cada k) si no caben. */
-function CategoryLabels({ labels, centers, y, slot }: { labels: string[]; centers: number[]; y: number; slot: number }) {
-  const longest = Math.max(1, ...labels.map((l) => Array.from(l).length))
-  const every = Math.max(1, Math.ceil((longest * 6.4 + 8) / Math.max(1, slot)))
+/**
+ * Cómo se escriben los nombres de las categorías bajo el eje: todos, en una o dos líneas, si caben así; meses y días
+ * abreviados («Ene», «Feb»…) si así caben todos; si no (muchas categorías o fechas y números), uno de cada k en una línea.
+ */
+function categoryLayout(labels: string[], slot: number, lang: string): { lines: string[][]; every: number; rows: number } {
+  const w = Math.max(10, slot - 6)
+  const text = labels.some((l) => !isNumericLabel(l))
+  if (text && labels.every((l) => fitsTwoLines(l, w, labelWidth))) {
+    const lines = labels.map((l) => labelLines(l, w, labelWidth))
+    return { lines, every: 1, rows: Math.max(1, ...lines.map((x) => x.length)) }
+  }
+  const short = text ? shortTimeLabels(labels, lang) : undefined
+  if (short && short.every((l) => labelWidth(l) <= w)) return { lines: short.map((l) => [l]), every: 1, rows: 1 }
+  const longest = Math.max(1, ...labels.map((l) => labelWidth(Array.from(l).length > 18 ? Array.from(l).slice(0, 17).join('') + '…' : l)))
+  const every = Math.max(1, Math.ceil((longest + 8) / Math.max(1, slot)))
+  return { lines: labels.map((l) => [Array.from(l).length > 18 ? Array.from(l).slice(0, 17).join('') + '…' : l]), every, rows: 1 }
+}
+
+/** Etiquetas de las categorías (en una o dos líneas; la destacada, en negrita). */
+function CategoryLabels({ layout, centers, y, hl }: { layout: { lines: string[][]; every: number }; centers: number[]; y: number; hl?: boolean[] }) {
   return (
     <g fontSize={11.5} fill="var(--text2)" textAnchor="middle">
-      {labels.map((l, i) =>
-        i % every === 0 ? (
-          <text key={i} x={centers[i]} y={y}>
-            {Array.from(l).length > 18 ? Array.from(l).slice(0, 17).join('') + '…' : l}
+      {layout.lines.map((ls, i) =>
+        i % layout.every === 0 || hl?.[i] ? (
+          <text key={i} x={centers[i]} y={y} fill={hl?.[i] ? 'var(--text)' : undefined} fontWeight={hl?.[i] ? 600 : undefined}>
+            {ls.map((l, k) => <tspan key={k} x={centers[i]} dy={k ? 13 : 0}>{l}</tspan>)}
           </text>
         ) : null
       )}
@@ -144,15 +197,22 @@ function barPath(x: number, yTop: number, w: number, h: number, up: boolean, rou
   return `M${x} ${yTop}V${yTop + h - r}Q${x} ${yTop + h} ${x + r} ${yTop + h}H${x + w - r}Q${x + w} ${yTop + h} ${x + w} ${yTop + h - r}V${yTop}Z`
 }
 
-function BarChart({ b, series, colors, fmt, ctx }: ChartProps) {
-  const { ref, width, height, rect } = useFrame(ctx, b)
+function BarChart({ b, series, colors, fmt, ctx, ink }: ChartProps) {
+  const labels = categoryLabels(series, (v) => formatNumber(v, ctx.language))
+  const n = labels.length
+  const probe = useRef<HTMLDivElement>(null)
+  const outer = useWidth(probe)
+  useFontsReady()
+  const cats = categoryLayout(labels, Math.max(10, outer - 60) / Math.max(1, n), ctx.language)
+  const { ref, width, height, rect } = useFrame(ctx, b, (cats.rows - 1) * 13)
   const animate = useAnimate(ctx)
   const seen = useSeen(ref, ctx)
   const [hover, setHover] = useState<number | null>(null)
   const histogram = b.kind === 'histogram'
   const stacked = b.stacked && series.length > 1
-  const labels = categoryLabels(series, (v) => formatNumber(v, ctx.language))
-  const n = labels.length
+  const hl = highlighted(series, n)
+  const anyHl = hl.some(Boolean)
+  const single = series.length === 1
   const [lo, hi] = valueExtent(series, stacked)
   const dom = niceDomain(lo, hi, Math.max(3, Math.floor(rect.h / 46)))
   const Y = (v: number) => rect.y + rect.h - ((v - dom.lo) / (dom.hi - dom.lo)) * rect.h
@@ -161,9 +221,12 @@ function BarChart({ b, series, colors, fmt, ctx }: ChartProps) {
   const centers = bs.map((bd) => rect.x + bd.start + (bd.bar * (stacked ? 1 : series.length) + bd.gap * ((stacked ? 1 : series.length) - 1)) / 2 - (histogram ? 1 : 0))
   const showValues = b.showValues && !stacked && n * series.length <= 24 && (bs[0]?.bar ?? 0) >= 14
   return (
+    <div ref={probe} className="w-full">
     <div ref={ref} className="relative w-full" style={{ height }} onPointerLeave={() => setHover(null)}>
       <svg width={width} height={height} className="absolute inset-0 overflow-visible" role="img" aria-label={b.title ?? ''}>
         <Axes rect={rect} ticks={dom.ticks} Y={Y} lang={ctx.language} b={b} height={height} />
+        {/* con varias series, la categoría destacada lleva una banda de la tinta del curso */}
+        {!single && hl.map((on, i) => on && <rect key={`hb${i}`} x={rect.x + i * (rect.w / n)} y={rect.y} width={rect.w / n} height={rect.h} fill={withAlpha(ink ?? 'var(--accent)', 10)} rx={6} />)}
         {hover !== null && bs[hover] && <rect x={rect.x + hover * (rect.w / n)} y={rect.y} width={rect.w / n} height={rect.h} fill="var(--fill1)" rx={6} />}
         {bs.map((bd, i) => {
           let pos = 0
@@ -205,20 +268,23 @@ function BarChart({ b, series, colors, fmt, ctx }: ChartProps) {
                 const gapPx = stacked && ((v > 0 && pos - v > 0) || (v < 0 && neg - v < 0)) ? 2 : 0
                 const isEnd = !stacked || (v > 0 ? k === lastIndex(series, i, true) : k === lastIndex(series, i, false))
                 const h = Math.max(0, z - a - gapPx)
-                return <path key={k} d={barPath(x, v > 0 ? a : a + gapPx, bd.bar, h, v > 0, isEnd && !histogram ? 4 : 0)} fill={colors[k]} />
+                // una sola serie con un dato destacado: las demás barras, más claras
+                const fill = single && anyHl && !hl[i] ? withAlpha(colors[k], 38) : colors[k]
+                return <path key={k} d={barPath(x, v > 0 ? a : a + gapPx, bd.bar, h, v > 0, isEnd && !histogram ? 4 : 0)} fill={fill} data-ask-part={`bar:${i}:${k}`} data-ask-label={single ? labels[i] : `${labels[i]} · ${s.name}`} />
               })}
             </motion.g>
           )
         })}
-        {showValues && (
+        {(showValues || (anyHl && !stacked)) && (
           <motion.g fontSize={11} fill="var(--text2)" textAnchor="middle" className="tabular" initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ delay: 0.5 + n * 0.045, duration: 0.3 }}>
             {bs.map((bd, i) =>
               series.map((s, k) => {
                 const v = s.points[i]?.y
-                if (v === undefined) return null
+                // la cifra del destacado se ve siempre
+                if (v === undefined || (!showValues && !hl[i])) return null
                 const x = rect.x + bd.start + k * (bd.bar + bd.gap) + bd.bar / 2
                 return (
-                  <text key={`${i}-${k}`} x={x} y={v >= 0 ? Y(v) - 5 : Y(v) + 13}>
+                  <text key={`${i}-${k}`} x={x} y={v >= 0 ? Y(v) - 5 : Y(v) + 13} fill={hl[i] ? 'var(--text)' : undefined} fontWeight={hl[i] ? 600 : undefined}>
                     {compactNumber(v, ctx.language)}
                   </text>
                 )
@@ -226,7 +292,7 @@ function BarChart({ b, series, colors, fmt, ctx }: ChartProps) {
             )}
           </motion.g>
         )}
-        <CategoryLabels labels={labels} centers={centers} y={rect.y + rect.h + 16} slot={rect.w / Math.max(1, n)} />
+        <CategoryLabels layout={cats} centers={centers} y={rect.y + rect.h + 16} hl={hl} />
         {/* zonas de cursor: la banda entera de cada categoría */}
         {Array.from({ length: n }, (_, i) => (
           <rect key={`h${i}`} x={rect.x + i * (rect.w / n)} y={rect.y} width={rect.w / n} height={rect.h + 20} fill="transparent" onPointerEnter={() => setHover(i)} />
@@ -238,6 +304,7 @@ function BarChart({ b, series, colors, fmt, ctx }: ChartProps) {
           {series.map((s, k) => (s.points[hover] ? <TipRow key={k} color={series.length > 1 ? colors[k] : undefined} label={series.length > 1 ? s.name : b.yLabel ?? ''} value={fmt(s.points[hover].y)} /> : null))}
         </Tip>
       )}
+    </div>
     </div>
   )
 }
@@ -252,13 +319,19 @@ function lastIndex(series: ChartSeries[], i: number, positive: boolean): number 
 }
 
 function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
-  const { ref, width, height, rect } = useFrame(ctx, b)
-  const animate = useAnimate(ctx)
-  const seen = useSeen(ref, ctx)
-  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
   const categorical = isCategoricalX(series)
   const labels = categoryLabels(series, (v) => formatNumber(v, ctx.language))
   const n = labels.length
+  const probe = useRef<HTMLDivElement>(null)
+  const outer = useWidth(probe)
+  const fonts = useFontsReady()
+  const cats = categorical ? categoryLayout(labels, Math.max(10, outer - 60) / Math.max(1, n), ctx.language) : undefined
+  const { ref, width, height, rect } = useFrame(ctx, b, ((cats?.rows ?? 1) - 1) * 13)
+  const animate = useAnimate(ctx)
+  const seen = useSeen(ref, ctx)
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+  const hl = highlighted(series, n)
+  const anyHl = hl.some(Boolean)
   const stacked = b.stacked && b.kind === 'area' && series.length > 1
   const [lo, hi] = valueExtent(series, stacked)
   const dom = niceDomain(lo, hi, Math.max(3, Math.floor(rect.h / 46)), b.kind === 'area')
@@ -274,13 +347,22 @@ function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
       const base = stacked ? cum[i] ?? 0 : 0
       const y = base + p.y
       if (stacked) cum[i] = y
-      return { x: X(p.x ?? i, i), y: Y(y), base: Y(base), v: p.y, xv: p.x ?? i, i, label: p.label }
+      return { x: X(p.x ?? i, i), y: Y(y), base: Y(base), v: p.y, xv: p.x ?? i, i, label: p.label, highlight: p.highlight }
     })
     return scatter ? pts : [...pts].sort((a, c) => a.x - c.x)
   })
   const markers = !scatter && Math.max(...series.map((s) => s.points.length)) <= 40
   const near = hover ? nearest(pixel, hover, scatter) : null
+  // dispersión: el nombre junto a cada punto (si hay pocos con nombre; en papel, siempre que quepa)
+  const named = useMemo(
+    () => (scatter ? placeScatterLabels(pixel.flat(), (s) => canvasMeasure(s, 11.5, false), { x: 2, y: 0, w: width - 4, h: rect.y + rect.h + 4 }, { always: ctx.mode === 'print' }) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scatter, series, width, height, fonts, ctx.mode]
+  )
+  const flat = pixel.flat()
+  const pointName = (p: PixelPt): string => p.label ?? (categorical ? labels[p.i] : `${formatNumber(p.xv, ctx.language)}; ${formatNumber(p.v, ctx.language)}`)
   return (
+    <div ref={probe} className="w-full">
     <div
       ref={ref}
       className="relative w-full"
@@ -294,8 +376,8 @@ function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
     >
       <svg width={width} height={height} className="absolute inset-0 overflow-visible" role="img" aria-label={b.title ?? ''}>
         <Axes rect={rect} ticks={dom.ticks} Y={Y} lang={ctx.language} b={b} height={height} />
-        {categorical ? (
-          <CategoryLabels labels={labels} centers={labels.map((_, i) => X(0, i))} y={rect.y + rect.h + 16} slot={rect.w / Math.max(1, n)} />
+        {cats ? (
+          <CategoryLabels layout={cats} centers={labels.map((_, i) => X(0, i))} y={rect.y + rect.h + 16} hl={hl} />
         ) : (
           <g fontSize={11} fill="var(--text3)" className="tabular" textAnchor="middle">
             {xdom.ticks.map((v, i) => (
@@ -311,7 +393,10 @@ function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
             return (
               <g key={k}>
                 {pts.map((p, i) => (
-                  <motion.circle key={i} cx={p.x} cy={p.y} r={5} fill={colors[k]} fillOpacity={0.92} stroke="var(--surface)" strokeWidth={2} initial={animate ? { scale: 0 } : false} animate={seen ? { scale: 1 } : undefined} transition={{ type: 'spring', stiffness: 420, damping: 22, delay: 0.1 + Math.min(i, 60) * 0.012 + k * 0.1 }} style={{ transformBox: 'fill-box', originX: 0.5, originY: 0.5 }} />
+                  <g key={i} data-ask-part={`point:${k}:${p.i}`} data-ask-label={pointName(p)}>
+                    {p.highlight && <motion.circle cx={p.x} cy={p.y} r={10} fill="none" stroke={colors[k]} strokeWidth={1.5} initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ delay: 0.5 }} />}
+                    <motion.circle cx={p.x} cy={p.y} r={p.highlight ? 6.5 : 5} fill={colors[k]} fillOpacity={anyHl && !p.highlight ? 0.5 : 0.92} stroke="var(--surface)" strokeWidth={2} initial={animate ? { scale: 0 } : false} animate={seen ? { scale: 1 } : undefined} transition={{ type: 'spring', stiffness: 420, damping: 22, delay: 0.1 + Math.min(i, 60) * 0.012 + k * 0.1 }} style={{ transformBox: 'fill-box', originX: 0.5, originY: 0.5 }} />
+                  </g>
                 ))}
               </g>
             )
@@ -322,10 +407,20 @@ function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
             <g key={k}>
               {area && <motion.path d={area} fill={withAlpha(colors[k], 16)} initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ duration: 0.6, delay: 0.7 + k * 0.12 }} />}
               <motion.path d={line} fill="none" stroke={colors[k]} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" initial={animate ? { pathLength: 0 } : false} animate={seen ? { pathLength: 1 } : undefined} transition={{ duration: 1.1, delay: 0.1 + k * 0.12, ease: [0.45, 0, 0.25, 1] }} />
-              {markers &&
-                pts.map((p, i) => (
-                  <motion.circle key={i} cx={p.x} cy={p.y} r={4} fill={colors[k]} stroke="var(--surface)" strokeWidth={2} initial={animate ? { scale: 0 } : false} animate={seen ? { scale: 1 } : undefined} transition={{ type: 'spring', stiffness: 420, damping: 22, delay: 0.25 + (i / Math.max(1, pts.length)) * 1.0 + k * 0.12 }} style={{ transformBox: 'fill-box', originX: 0.5, originY: 0.5 }} />
-                ))}
+              {pts.map((p, i) =>
+                markers || p.highlight ? (
+                  <g key={i} data-ask-part={`point:${k}:${p.i}`} data-ask-label={series.length > 1 ? `${pointName(p)} · ${series[k].name}` : pointName(p)}>
+                    {/* el punto del que habla la lección: más grande y con un anillo */}
+                    {p.highlight && <motion.circle cx={p.x} cy={p.y} r={9.5} fill="none" stroke={colors[k]} strokeWidth={1.5} initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ delay: 0.35 + (i / Math.max(1, pts.length)) * 1.0 + k * 0.12 }} />}
+                    <motion.circle cx={p.x} cy={p.y} r={p.highlight ? 6 : 4} fill={colors[k]} stroke="var(--surface)" strokeWidth={2} initial={animate ? { scale: 0 } : false} animate={seen ? { scale: 1 } : undefined} transition={{ type: 'spring', stiffness: 420, damping: 22, delay: 0.25 + (i / Math.max(1, pts.length)) * 1.0 + k * 0.12 }} style={{ transformBox: 'fill-box', originX: 0.5, originY: 0.5 }} />
+                    {p.highlight && (
+                      <motion.text x={p.x} y={p.y - 14} fontSize={11} fontWeight={600} fill="var(--text)" textAnchor="middle" className="tabular" initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ delay: 1.2 + k * 0.12 }}>
+                        {compactNumber(p.v, ctx.language)}
+                      </motion.text>
+                    )}
+                  </g>
+                ) : null
+              )}
               {b.showValues && pts.length > 0 && (
                 <motion.text x={pts[pts.length - 1].x} y={pts[pts.length - 1].y - 9} fontSize={11} fill="var(--text2)" textAnchor="middle" className="tabular" initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ delay: 1.2 + k * 0.12 }}>
                   {compactNumber(pts[pts.length - 1].v, ctx.language)}
@@ -334,6 +429,18 @@ function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
             </g>
           )
         })}
+        {named.length > 0 && (
+          <motion.g fontSize={11.5} fill="var(--text2)" initial={animate ? { opacity: 0 } : false} animate={seen ? { opacity: 1 } : undefined} transition={{ delay: 0.45 + Math.min(flat.length, 60) * 0.012, duration: 0.4 }} pointerEvents="none">
+            {named.map((l) => {
+              const p = flat[l.index]
+              return (
+                <text key={l.index} x={l.at.x - l.w * l.at.ax} y={l.at.y - l.h * l.at.ay + l.h * 0.74} fill={p.highlight ? 'var(--text)' : undefined} fontWeight={p.highlight ? 600 : undefined}>
+                  {l.text}
+                </text>
+              )
+            })}
+          </motion.g>
+        )}
         {near && near.points.map((p) => <circle key={`n${p.k}`} cx={p.x} cy={p.y} r={5.5} fill={colors[p.k]} stroke="var(--surface)" strokeWidth={2} pointerEvents="none" />)}
       </svg>
       {near && (
@@ -345,10 +452,11 @@ function XYChart({ b, series, colors, fmt, ctx }: ChartProps) {
         </Tip>
       )}
     </div>
+    </div>
   )
 }
 
-type PixelPt = { x: number; y: number; v: number; xv: number; i: number; label?: string }
+type PixelPt = { x: number; y: number; v: number; xv: number; i: number; label?: string; highlight?: boolean }
 
 /** El dato más cercano al cursor: en dispersión, el punto (a menos de 28 px); si no, la x más cercana en todas las series. */
 function nearest(pixel: PixelPt[][], h: { x: number; y: number }, scatter: boolean): { x: number; i: number; xv: number; title?: string; points: Array<{ k: number; x: number; y: number; v: number }> } | null {
@@ -384,7 +492,7 @@ function PieChart({ b, series, fmt, ctx }: ChartProps) {
   const p = useProgress(seen, animate, 1100, 100)
   const [hover, setHover] = useState<number | null>(null)
   const pts = series[0]?.points ?? []
-  const items = foldSlices(pts.map((q, i) => ({ label: q.label ?? (q.x !== undefined ? formatNumber(q.x, ctx.language) : String(i + 1)), value: q.y })), 8, t('chart.other'))
+  const items = foldSlices(pts.map((q, i) => ({ label: q.label ?? (q.x !== undefined ? formatNumber(q.x, ctx.language) : String(i + 1)), value: q.y, highlight: q.highlight })), 8, t('chart.other'))
   const slices = pieSlices(items.map((x) => x.value))
   // cada sector, su color: en una rampa de un solo tono los sectores pequeños no se distinguían
   const colors = categoricalColors(items.length, ctx.hue)
@@ -405,10 +513,13 @@ function PieChart({ b, series, fmt, ctx }: ChartProps) {
             if (s.a0 >= sweep) return null
             const a1 = Math.min(s.a1, sweep)
             const mid = (s.a0 + s.a1) / 2
-            const off = hover === s.index ? 5 : 0
+            // el sector destacado sale un poco, como al pasar el ratón
+            const off = hover === s.index || (hover === null && items[s.index]?.highlight) ? 5 : 0
             return (
               <path
                 key={s.index}
+                data-ask-part={`slice:${s.index}`}
+                data-ask-label={items[s.index]?.label}
                 d={arcPath(cx0 + Math.sin(mid) * off, cx0 - Math.cos(mid) * off, r0, R, s.a0, a1)}
                 fill={colors[s.index % colors.length]}
                 stroke="var(--surface)"
@@ -442,7 +553,7 @@ function PieChart({ b, series, fmt, ctx }: ChartProps) {
               transition={{ delay: 0.2 + i * 0.06, duration: 0.3 }}
             >
               <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: colors[i % colors.length] }} />
-              <span className="min-w-0 flex-1 truncate text-text">{it.label}</span>
+              <span className={cx('min-w-0 flex-1 truncate text-text', it.highlight && 'font-semibold')}>{it.label}</span>
               {valueColumn && <span className="tabular text-text2">{fmt(it.value)}</span>}
               <span className="min-w-12 whitespace-nowrap text-right tabular font-semibold text-text">{percent(share * 100, ctx.language, share < 0.01 ? 2 : share < 0.1 ? 1 : 0)}</span>
             </motion.li>

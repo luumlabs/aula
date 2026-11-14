@@ -2,7 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { connectionFailureMessage, slowConnectionMessage } from '../agents/claude'
 import { CLIErrorClassifier } from '../agents/errors'
-import { isUnreachable, RETRY_ATTEMPTS, retryDecision, retryReason, waitingText } from './retry'
+import { classificationText } from '../ai/errors'
+import { fromHTTP } from '../ai/http/providerErrors'
+import { Fixtures } from '../ai/testing/fixtures'
+import { isUnreachable, LONG_LIMIT_SEC, RETRY_ATTEMPTS, retryDecision, retryReason, waitingText, type RetryInput } from './retry'
 
 const refused = 'Claude Code no pudo conectarse a internet. Revisa tu conexión e inténtalo de nuevo. Detalle: API Error: Connection refused — a firewall or proxy may be blocking it (ECONNREFUSED)'
 
@@ -52,9 +55,48 @@ describe('retryDecision', () => {
     expect(retryDecision({ kind: 'notLoggedIn', text: 'Not logged in' }, 1)).toEqual({ action: 'fail' })
   })
 
+  it('un límite de hasta LONG_LIMIT_SEC se espera entero (reintentar antes fallaría seguro); el resto, como mucho 90 s', () => {
+    expect(retryDecision({ kind: 'rateLimited', retryAfter: 300, text: '429' }, 1)).toEqual({ action: 'retry', waitSec: 300, reason: 'rateLimited' })
+    expect(retryDecision({ kind: 'rateLimited', retryAfter: LONG_LIMIT_SEC, text: '429' }, 2)).toEqual({ action: 'retry', waitSec: LONG_LIMIT_SEC, reason: 'rateLimited' })
+    expect(retryDecision({ kind: 'rateLimited', text: '429' }, 2)).toEqual({ action: 'retry', waitSec: 20, reason: 'rateLimited' })
+    expect(retryDecision({ kind: 'http', status: 503, retryAfter: 300, text: '503' }, 1)).toEqual({ action: 'retry', waitSec: 90, reason: 'server' })
+  })
+
+  it('sin saldo o sin cuota (402, 429 de saldo) para la ejecución en vez de fallar tema a tema', () => {
+    expect(retryDecision({ kind: 'http', status: 402, code: 'ai_quota', text: 'Insufficient Balance' }, 1)).toEqual({ action: 'quota' })
+    expect(retryDecision({ kind: 'http', status: 429, code: 'ai_quota', text: 'You exceeded your current quota' }, 1)).toEqual({ action: 'quota' })
+    // un 400 normal sigue fallando sin más
+    expect(retryDecision({ kind: 'http', status: 400, code: 'ai_invalid_request', text: 'bad request' }, 1)).toEqual({ action: 'fail' })
+  })
+
   it('el monitor dice el motivo de la espera', () => {
     expect(waitingText('unreachable', 5)).toBe('Sin conexión con la IA. Pruebo otra vez en 5 s…')
     expect(waitingText('server', 20, 529)).toContain('529')
     expect(waitingText('rateLimited', 30)).toContain('30 s')
+    expect(waitingText('rateLimited', 300)).toContain('5 min')
+  })
+})
+
+describe('de la respuesta del proveedor a la decisión de la tubería', () => {
+  const input = (status: number, body: string, provider: string, nowMs?: number): RetryInput => {
+    const { error } = fromHTTP(status, body, new Headers(), { provider, model: 'm' }, nowMs)
+    return { kind: error.kind, status: error.status, retryAfter: error.retryAfter, text: classificationText(error), code: error.code }
+  }
+
+  it('el límite diario de Gemini gratis para al primer intento y se reanuda a medianoche del Pacífico (no 41 s)', () => {
+    // 10:00 en Los Ángeles: quedan 14 h
+    const d = retryDecision(input(429, Fixtures.gemini429PerDay, 'Google Gemini', Date.parse('2026-11-13T18:00:00Z')), 1)
+    expect(d).toEqual({ action: 'limit', resumeAfterSec: 14 * 3600, long: true })
+    // el de por minuto se sigue esperando
+    expect(retryDecision(input(429, Fixtures.gemini429PerMinute, 'Google Gemini'), 1)).toEqual({ action: 'retry', waitSec: 39, reason: 'rateLimited' })
+  })
+
+  it('el límite diario de Groq (TPD, ~19 min) para al primer intento', () => {
+    expect(retryDecision(input(429, Fixtures.groq429PerDay, 'Groq'), 1)).toMatchObject({ action: 'limit', long: true })
+  })
+
+  it('el tope de gasto de Anthropic (400) para la ejecución como cuota, sin fallar tema a tema', () => {
+    expect(retryDecision(input(400, Fixtures.anthropicSpendLimit400, 'Anthropic'), 1)).toEqual({ action: 'quota' })
+    expect(retryDecision(input(400, Fixtures.anthropicLowCredit400, 'Anthropic'), 1)).toEqual({ action: 'quota' })
   })
 })

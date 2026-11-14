@@ -62,6 +62,7 @@
     }
   },
   "courseLanguage": "Idioma del curso",
+  "courseLanguageHint": "Aula te lo explica todo en este idioma y lo recuerda para tus próximos cursos.",
   "depth": "Tamaño del curso",
   "depths": {
     "quick": {
