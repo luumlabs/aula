@@ -10,7 +10,7 @@
 //   Registro y errores:  recordAttempt · recordStudyTime · completeLesson · dueMistakes · mistakesNotebook · withSkillProgress
 //   Resúmenes:           readiness · dailyPlan · studyStats · courseOverview · homeSummary
 import type {
-  Attempt, Block, ExamBlueprint, ExamRun, ExamRunItem, Exercise, ItemID, LearningPhase, MistakeEntry, Pack, Skill, SkillProgress, StudyProgress
+  Attempt, Block, ExamBlueprint, ExamRun, ExamRunItem, Exercise, ItemID, LearningPhase, MistakeEntry, Pack, Skill, SkillProgress, SkillRef, StudyProgress
 } from '@shared/schema'
 import type { CourseOverview } from '@shared/ipc/course-view'
 import type { HomeEvent, HomeSummary } from '@shared/ipc/home'
@@ -270,8 +270,8 @@ export function readiness(pack: Pack, progress: StudyProgress, now: Date, lang?:
 }
 
 /** Plan de hoy del curso (puntos por minuto, prerrequisitos, repasos, errores, simulacro y repaso final). */
-export function dailyPlan(pack: Pack, skills: SkillsInput, progress: StudyProgress, minutes: number, now: Date, lang?: StudyLang): PlanItem[] {
-  return LearnBridge.dailyPlan(pack, skills, progress, minutes, now, lang)
+export function dailyPlan(pack: Pack, skills: SkillsInput, progress: StudyProgress, minutes: number, now: Date, lang?: StudyLang, isAvailable?: (ref: SkillRef) => boolean): PlanItem[] {
+  return LearnBridge.dailyPlan(pack, skills, progress, minutes, now, lang, isAvailable)
 }
 
 /** Minutos por día, racha, semana, precisión… de uno o varios cursos juntos. */

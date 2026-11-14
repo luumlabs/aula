@@ -1,7 +1,8 @@
 // El cursor de Aula, el mismo de los vídeos: un sol pequeño (el del icono) en lugar de la flecha. Al moverse deja una cola de
 // cometa cálida que se apaga en un instante, y al pulsar abre una onda ladrillo.
 //   · El sol es una imagen de cursor del sistema, así que va sin retraso. Sobre lo que se puede pulsar lleva un aro; en los
-//     campos de texto vuelve la barra de escribir, y lo que arrastra o amplía conserva su cursor.
+//     campos de texto y sobre el texto que se puede seleccionar vuelve la barra de texto, y lo que arrastra o amplía
+//     conserva su cursor.
 //   · La cola y la onda se pintan en un lienzo encima de todo que no recibe clics y solo trabaja mientras hay algo que pintar.
 //   · Con movimiento reducido, solo el sol (sin cola ni onda). En Ajustes → Apariencia se vuelve al cursor del sistema.
 import { useEffect } from 'react'
@@ -23,6 +24,16 @@ const PRESSABLE =
 const TYPING =
   ':is(input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit], [type=color], [type=file]), textarea, ' +
   "[contenteditable=true], [contenteditable=''], [contenteditable=plaintext-only])"
+/** Lo que se pulsa, arrastra o no se selecciona: dentro, el texto no lleva la barra (conserva su cursor). */
+const NOT_TEXT =
+  'button, a[href], summary, label, select, [role=button], [role=link], [role=tab], [role=option], [role=radio], [role=checkbox], ' +
+  '[role=slider], [role=menuitem], .cursor-pointer, .cursor-default, .viz-grab, .cursor-grab, .cursor-grabbing, .cursor-crosshair, ' +
+  '.cursor-zoom-in, .cursor-zoom-out, .select-none'
+/** El texto que se puede seleccionar (la lectura de los modos de estudio, el chat, Materiales…): la barra de texto sobre sus
+ *  párrafos, como con el cursor del sistema. */
+const READING =
+  ':is(.selectable, .select-text) :is(p, li, dt, dd, td, th, blockquote, figcaption, h1, h2, h3, h4, h5, h6, pre, .aula-rich-inline)' +
+  `:not(:is(${NOT_TEXT}), :is(${NOT_TEXT}) *)`
 
 /** El sol pintado a `scale` (1 o 2) en un cuadrado de 32 px de lado, con el centro como punto activo. */
 function sunImage(tone: Tone, scale: number, ring: boolean): string {
@@ -69,7 +80,9 @@ function cursorCSS(tone: Tone): string {
   return [
     `html.sun-cursor, html.sun-cursor body, html.sun-cursor button { ${base} }`,
     `html.sun-cursor ${PRESSABLE} { ${decl(true, 'pointer')} }`,
-    `html.sun-cursor ${TYPING} { cursor: text; }`
+    `html.sun-cursor ${TYPING} { cursor: text; }`,
+    // aparte: si un navegador no entendiera el selector, la regla de los campos no se pierde con ella
+    `html.sun-cursor ${READING} { cursor: text; }`
   ].join('\n')
 }
 

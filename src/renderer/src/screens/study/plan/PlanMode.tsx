@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { dailyPlan, studyStats } from '@engine/study'
+import { topicCounts } from '@engine/study/topics'
 import type { PlanItem } from '@engine/learn'
 import { Button, Card, cx, EmptyState, Icon, InkCheck, InkStrike, Stagger, StaggerItem, type IconName } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
@@ -14,6 +15,8 @@ import type { CourseData } from '../data'
 import { SessionSummary } from '../Summary'
 import { activePlan, endPlan, runStep, startPlan, usePlanStore } from './session'
 import { navigate } from '@renderer/app/router'
+import { planAvailability } from '../../course/failure'
+import { useCourseRun } from '../../course/runs'
 
 const KIND_ICON: Record<PlanItem['kind'], IconName> = { review: 'cards', mistakes: 'mistakes', learn: 'learn', practice: 'practice', mock: 'exam', diagnostic: 'practice', rest: 'clock' }
 
@@ -27,9 +30,11 @@ export function PlanMode({ data }: { data: CourseData }) {
     navigate({ name: 'course', id: packId }, { replace: true })
   }
   const built = useRef(false)
+  // mientras Aula escribe el curso, el plan solo propone los temas ya listos (como Hoy); los demás cuentan igual para los pesos
+  const isAvailable = planAvailability(useCourseRun(packId), topicCounts(data.pack.skills))
   const items = useMemo(() => {
     try {
-      return dailyPlan(data.pack, data.skills, data.progress, data.progress.settings.dailyMinutes || 45, new Date(), gradeLang(i18n.language))
+      return dailyPlan(data.pack, data.skills, data.progress, data.progress.settings.dailyMinutes || 45, new Date(), gradeLang(i18n.language), isAvailable)
     } catch {
       return []
     }

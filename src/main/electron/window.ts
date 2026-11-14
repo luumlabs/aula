@@ -1,9 +1,12 @@
 // Ventana principal: sin barra de título del sistema (la interfaz dibuja la suya), segura y con tamaño recordado.
-import { app, BrowserWindow, nativeTheme, screen, shell } from 'electron'
+import { app, BrowserWindow, clipboard, Menu, nativeTheme, screen, shell } from 'electron'
 import { join } from 'node:path'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { trustWebContents, emit } from './rpc'
 import { paths } from '@main/services/paths'
+import { getSettings } from '@main/services/settings'
+import { buildContextMenuTemplate, contextGuard, translateTarget } from './context-menu'
+import { menuLanguage } from './menu'
 import { APP_ORIGIN, APP_SCHEME } from './protocol'
 import { watchPower } from './power'
 import { showWhenReady, windowsAlwaysHidden } from './visibility'
@@ -127,8 +130,38 @@ export function createMainWindow(): BrowserWindow {
   win.webContents.on('will-redirect', (e, url) => {
     if (!isAppURL(url)) e.preventDefault()
   })
+  installContextMenu(win)
 
   // la interfaz por su protocolo propio (app://aula), nunca por file://
   void win.loadURL(appURL('index.html', process.env.AULA_DEMO ? { demo: '1' } : undefined))
   return win
+}
+
+/** El clic derecho (context-menu.ts): copiar, consultar, traducir o buscar lo seleccionado y editar en los campos. */
+function installContextMenu(win: BrowserWindow): void {
+  const wc = win.webContents
+  wc.on('context-menu', (_e, params) => {
+    const template = buildContextMenuTemplate(
+      params,
+      {
+        lang: menuLanguage(getSettings().general.language, app.getLocale()),
+        platform: process.platform,
+        translateTo: translateTarget([...app.getPreferredSystemLanguages(), app.getLocale()]),
+        ...contextGuard.take()
+      },
+      {
+        lookUp: () => wc.showDefinitionForSelection(),
+        // solo la web por https (el traductor y el buscador)
+        openExternal: (url) => {
+          if (/^https:\/\//i.test(url)) void shell.openExternal(url)
+        },
+        replaceMisspelling: (word) => wc.replaceMisspelling(word),
+        copyText: (text) => clipboard.writeText(text)
+      }
+    )
+    if (template.length && !win.isDestroyed()) Menu.buildFromTemplate(template).popup({ window: win })
+  })
+  // al recargarse o caerse la página, el simulacro que se avisó ya no está abierto
+  wc.on('did-navigate', () => contextGuard.reset())
+  wc.on('render-process-gone', () => contextGuard.reset())
 }

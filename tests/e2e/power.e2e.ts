@@ -1,6 +1,6 @@
 // Energía (J4-1): con la ventana minimizada u oculta, lo ambiental se para (html[data-ambient="off"]) pero NINGUNA entrada,
 // salida o respuesta se queda pausada a medias: al volver, la pantalla está entera y visible. Se minimiza/oculta justo a mitad
-// de una navegación, que es cuando hay entradas en marcha.
+// de una navegación, que es cuando hay entradas en marcha. Y al volver, la pantalla NO vuelve a entrar (sin parpadeo).
 import { test, expect, type Page, type ElectronApplication } from 'playwright/test'
 import { go, homeWithDemoCourse, launch } from './helpers'
 
@@ -10,9 +10,16 @@ const COURSE = 'exam-2-math112'
 type El = { dataset: Record<string, string | undefined>; innerText: string }
 interface Anim { playState: string; effect: { getTiming(): { iterations: number } } | null }
 interface Win {
-  document: { documentElement: El; querySelectorAll(s: string): ArrayLike<El>; getAnimations(): Anim[] }
+  document: {
+    documentElement: El
+    querySelectorAll(s: string): ArrayLike<El>
+    getAnimations(): Anim[]
+    addEventListener(type: 'animationstart', fn: (e: { animationName: string }) => void, capture: boolean): void
+  }
   getComputedStyle(e: El): { opacity: string }
   __aula: { navigate(r: unknown): void }
+  /** Nombres de las animaciones CSS que han empezado desde que se empezó a escuchar. */
+  __starts?: string[]
 }
 
 const ambient = (page: Page) => page.evaluate(() => (globalThis as unknown as Win).document.documentElement.dataset.ambient ?? 'run')
@@ -79,6 +86,42 @@ test('minimizar u ocultar a mitad de una navegación: se para lo ambiental y al 
     expect(f?.opacity).toBeGreaterThan(0.99)
     expect(f?.text).toBeGreaterThan(20)
     expect(await pausedFinite(page)).toBe(0)
+  }
+  expect(errors).toEqual([])
+  await app.close()
+})
+
+// Antes, con data-ambient="off" las entradas pasaban a `animation: none` y, al quitarlo, empezaban otra vez desde opacidad 0:
+// toda la pantalla (y la pestaña del curso) parpadeaba al volver a la ventana. Las entradas solo se ven una vez.
+test('al volver a ver la ventana la pantalla no vuelve a entrar (sin parpadeo)', async () => {
+  test.setTimeout(90_000)
+  const { app, page } = await launch({ home: homeWithDemoCourse() })
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await go(page, { name: 'course', id: COURSE })
+  await expect.poll(async () => (await front(page))?.screen).toBe('course')
+  await expect.poll(() => ambient(page)).not.toBe('off')
+  // que termine la entrada de la pantalla y de la pestaña
+  await page.waitForTimeout(1_000)
+  await page.evaluate(() => {
+    const w = globalThis as unknown as Win
+    w.__starts = []
+    w.document.addEventListener('animationstart', (e) => w.__starts?.push(e.animationName), true)
+  })
+
+  for (const how of ['minimize', 'hide'] as const) {
+    await hideWindow(app, how)
+    await expect.poll(() => ambient(page), { timeout: 5_000 }).toBe('off')
+    await page.waitForTimeout(300)
+    await showWindow(app)
+    await expect.poll(() => ambient(page), { timeout: 5_000 }).not.toBe('off')
+    await page.waitForTimeout(400)
+    const starts = await page.evaluate(() => (globalThis as unknown as Win).__starts ?? [])
+    // .screen-enter y .tab-enter usan los fotogramas «screen-enter»; «tab-enter» por si un día tiene los suyos
+    expect(starts.filter((n) => n === 'screen-enter' || n === 'tab-enter'), `al volver tras ${how}`).toEqual([])
+    const f = await front(page)
+    expect(f?.screen).toBe('course')
+    expect(f?.opacity).toBeGreaterThan(0.99)
   }
   expect(errors).toEqual([])
   await app.close()

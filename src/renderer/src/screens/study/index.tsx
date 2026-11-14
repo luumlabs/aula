@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, EmptyState, Spinner } from '@renderer/design'
 import { useRoute, navigate, routeKey, type Route } from '@renderer/app/router'
 import { useScreenTitle } from '@renderer/app/title'
+import { StudyLanguage } from '@renderer/lib/contentLanguage'
 import { flushProgress, useCourseData } from './data'
 import { LearnMode } from './learn/LearnMode'
 import { PracticeMode } from './practice/PracticeMode'
@@ -43,7 +44,8 @@ export default function StudyScreen() {
   const key = `${r.mode}:${r.skill ?? ''}`
   return (
     <>
-      {modeView(r.mode, key, data, r.skill)}
+      {/* el texto del curso (RichText) va en su idioma; la interfaz, en el suyo */}
+      <StudyLanguage.Provider value={data.pack.language}>{modeView(r.mode, key, data, r.skill)}</StudyLanguage.Provider>
       {/* en el simulacro no hay tutor: «sin pistas ni explicaciones hasta entregar» */}
       {r.mode !== 'exam' && <TutorPanel screenKey={routeKey(r)} />}
     </>

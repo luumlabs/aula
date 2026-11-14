@@ -229,9 +229,33 @@ function ScreenLayer({ layer, active, onGone, onEntered }: { layer: Layer; activ
       cancelAnimationFrame(second)
     }
   }, [active])
+  // la entrada se ve una sola vez: al terminar o cancelarse SU animación (no la de un hijo, p. ej. .tab-enter) se quita la
+  // clase, y un cambio de estilo posterior (data-ambient, movimiento reducido…) ya no puede volver a arrancarla
+  const { reducedMotion } = useTheme()
+  const [entering, setEntering] = useState(true)
+  // con movimiento reducido no hay animación ni `animationend`: se quita ya, o al volver a «Completo» la pantalla entraba otra vez
+  useEffect(() => {
+    if (reducedMotion) setEntering(false)
+  }, [reducedMotion])
+  // a mano porque React no tiene onAnimationCancel
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = box.current
+    if (!el || !entering) return
+    const done = (e: AnimationEvent) => {
+      if (e.target === el && e.animationName === 'screen-enter') setEntering(false)
+    }
+    el.addEventListener('animationend', done)
+    el.addEventListener('animationcancel', done)
+    return () => {
+      el.removeEventListener('animationend', done)
+      el.removeEventListener('animationcancel', done)
+    }
+  }, [entering])
   return (
     <div
-      className={active ? 'screen-layer screen-enter relative flex min-h-0 flex-1 flex-col' : 'screen-layer screen-leave absolute inset-0 flex min-h-0 flex-col overflow-hidden pointer-events-none'}
+      ref={box}
+      className={active ? cx('screen-layer relative flex min-h-0 flex-1 flex-col', entering && 'screen-enter') : 'screen-layer screen-leave absolute inset-0 flex min-h-0 flex-col overflow-hidden pointer-events-none'}
       data-screen={layer.route.name}
       data-active={active ? 'true' : 'false'}
       aria-hidden={active ? undefined : true}

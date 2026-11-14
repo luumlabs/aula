@@ -26,6 +26,14 @@ describe('sanitizeSettingsPatch', () => {
     })
     expect(p).toEqual({ ai: { maxParallel: 3 } })
   })
+  it('el idioma de los cursos nuevos: «auto» o uno de los idiomas de curso', () => {
+    expect(sanitizeSettingsPatch({ general: { courseLanguage: 'de' } })).toEqual({ general: { courseLanguage: 'de' } })
+    expect(sanitizeSettingsPatch({ general: { courseLanguage: 'pt-BR' } })).toEqual({ general: { courseLanguage: 'pt-BR' } })
+    expect(sanitizeSettingsPatch({ general: { courseLanguage: 'auto' } })).toEqual({ general: { courseLanguage: 'auto' } })
+    expect(() => sanitizeSettingsPatch({ general: { courseLanguage: 'tlh' } })).toThrow(SettingsPatchError)
+    expect(() => sanitizeSettingsPatch({ general: { courseLanguage: 'DE' } })).toThrow(SettingsPatchError)
+    expect(() => sanitizeSettingsPatch({ general: { courseLanguage: 7 } })).toThrow(SettingsPatchError)
+  })
   it('rechaza tipos y rangos imposibles', () => {
     expect(() => sanitizeSettingsPatch({ general: { theme: 'neon' } })).toThrow(SettingsPatchError)
     expect(() => sanitizeSettingsPatch({ general: { textScale: 9 } })).toThrow(SettingsPatchError)

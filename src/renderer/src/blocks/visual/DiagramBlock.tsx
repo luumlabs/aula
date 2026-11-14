@@ -291,7 +291,7 @@ function StepsPanel({ b, step, playing, onGo, onToggle, onAll, reduced }: { b: D
 }
 
 /** Barra de pasos: un punto por paso; se pulsa o se arrastra (y con ← →). */
-function StepScrubber({ n, step, onGo }: { n: number; step: number | null; onGo: (k: number) => void }) {
+export function StepScrubber({ n, step, onGo }: { n: number; step: number | null; onGo: (k: number) => void }) {
   const { t } = useTranslation('visual')
   const track = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -313,6 +313,7 @@ function StepScrubber({ n, step, onGo }: { n: number; step: number | null; onGo:
     if (e.key === 'End') onGo(n - 1)
   }
   const frac = step === null || n <= 1 ? 0 : step / (n - 1)
+  // arrastrarlo no selecciona el texto de al lado (la columna de estudio se selecciona) ni desplaza la página en táctil
   return (
     <div
       role="slider"
@@ -321,7 +322,7 @@ function StepScrubber({ n, step, onGo }: { n: number; step: number | null; onGo:
       aria-valuemin={1}
       aria-valuemax={n}
       aria-valuenow={(step ?? 0) + 1}
-      className="relative flex-1 min-w-[120px] h-7 mx-1.5 cursor-pointer outline-none group"
+      className="relative flex-1 min-w-[120px] h-7 mx-1.5 cursor-pointer outline-none group select-none touch-none"
       onPointerDown={down}
       onPointerMove={(e) => dragging.current && pick(e.clientX)}
       onPointerUp={() => (dragging.current = false)}

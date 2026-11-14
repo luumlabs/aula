@@ -7,6 +7,7 @@ import { RichText } from '@renderer/lib/RichText'
 import { cx } from '@renderer/design'
 import { blankWidth } from '../normalize'
 import { partTone, type InputProps } from './shared'
+import { answerField } from './answerField'
 
 /** Trozos del texto: texto y huecos (índice desde 0). */
 export function clozeSegments(text: string): ({ kind: 'text'; text: string } | { kind: 'blank'; index: number })[] {
@@ -50,6 +51,7 @@ export function ClozeInput({ answer, draft, set, locked, reveal, result, onSubmi
         return (
           <Fragment key={k}>
             <input
+              {...answerField}
               ref={isFirst ? first : undefined}
               value={value}
               readOnly={locked}

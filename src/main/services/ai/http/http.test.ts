@@ -6,7 +6,7 @@ import { msg, type ChatMessage, type ToolCall } from '@shared/ai/types'
 import { AIError, isCancellation, isContextLengthError, looksLikeToolRejection } from '../errors'
 import { anthropicMessagesURL, anthropicModelsURL, hostOf, openAIChatURL, openAIModelsURL, openAIResponsesURL, isLocalOrPrivateHost } from './endpoints'
 import { durationSeconds, retryAfterSeconds } from './retryAfter'
-import { fromHTTP, fromStreamError, fromTransport, parseErrorBody, type ErrorContext } from './providerErrors'
+import { fromHTTP, fromStreamError, fromTransport, parseErrorBody, retryDelayInText, secondsUntilMidnight, SHORT_LIMIT_SEC, type ErrorContext } from './providerErrors'
 import { scrubSecrets } from './redactor'
 import { backoffDelay, defaultHTTPOptions, RetryableFailure, startIdleWatch, withRetry, ActivityTracker } from './options'
 import { LocalFlags, sanitizedExtraHeaders, LEGACY_FLAG_PREFIX } from './localFlags'
@@ -240,6 +240,108 @@ describe('errores de los proveedores', () => {
     expect(r.error.kind).toBe('http')
     expect(r.error.code).toBe('ai_quota')
     expect(r.error.message).toContain('cuota')
+  })
+  it('Gemini gratis: un 429 «exceeded your current quota» con espera corta es un límite por minuto, no saldo agotado', () => {
+    const gemini: ErrorContext = { provider: 'Google Gemini', model: 'gemini-flash-latest', host: 'generativelanguage.googleapis.com' }
+    expect(parseErrorBody(Fixtures.gemini429PerMinute).retryDelay).toBe(39)
+    const r = fromHTTP(429, Fixtures.gemini429PerMinute, new Headers(), gemini)
+    expect(r.error.kind).toBe('rateLimited')
+    expect(r.error.code).toBe('ai_rate_limit')
+    // la espera de RetryInfo, no la del texto (39,58 s) ni ninguna inventada
+    expect(r.error.retryAfter).toBe(39)
+    expect(r.error.message).toContain('39 s')
+    // sin RetryInfo, la espera escrita en el mensaje también vale
+    const textOnly = '[{"error":{"code":429,"message":"You exceeded your current quota, please check your plan and billing details.\\nPlease retry in 12.4s.","status":"RESOURCE_EXHAUSTED"}}]'
+    expect(fromHTTP(429, textOnly, new Headers(), gemini).error.kind).toBe('rateLimited')
+    expect(fromHTTP(429, textOnly, new Headers(), gemini).error.retryAfter).toBeCloseTo(12.4)
+    // sin ninguna espera es cuota o saldo de verdad (hay que mirar la facturación)
+    const billing = fromHTTP(429, Fixtures.gemini429Billing, new Headers(), gemini)
+    expect(billing.error.kind).toBe('http')
+    expect(billing.error.code).toBe('ai_quota')
+  })
+  it('Gemini gratis: el límite DIARIO (QuotaFailure «PerDay») espera hasta medianoche del Pacífico, no los 41 s de RetryInfo', () => {
+    const gemini: ErrorContext = { provider: 'Google Gemini', model: 'gemini-flash-latest', host: 'generativelanguage.googleapis.com' }
+    expect(parseErrorBody(Fixtures.gemini429PerDay).dailyQuota).toBe(true)
+    expect(parseErrorBody(Fixtures.gemini429PerMinute).dailyQuota).toBeUndefined()
+    // 13 nov 2026, 10:00 en Los Ángeles (PST, UTC−8): quedan 14 h hasta la medianoche de allí
+    const now = Date.parse('2026-11-13T18:00:00Z')
+    const r = fromHTTP(429, Fixtures.gemini429PerDay, new Headers(), gemini, now)
+    expect(r.error.kind).toBe('rateLimited')
+    expect(r.error.code).toBe('ai_rate_limit')
+    expect(r.error.retryAfter).toBe(14 * 3600)
+    expect(r.retryAfter).toBe(14 * 3600)
+    // una espera larga: ni el bucle ni la tubería la gastan en reintentos (ver retry.test.ts)
+    expect(r.error.retryAfter!).toBeGreaterThan(SHORT_LIMIT_SEC)
+    expect(r.error.message).toContain('diario')
+    expect(r.error.message).toContain('14 h')
+    // el mismo cuerpo con un límite por minuto sigue siendo la espera corta de RetryInfo
+    expect(fromHTTP(429, Fixtures.gemini429PerMinute, new Headers(), gemini, now).error.retryAfter).toBe(39)
+  })
+  it('segundos hasta la próxima medianoche de una zona horaria (también los días de cambio de hora)', () => {
+    const la = 'America/Los_Angeles'
+    // 23:59:30 en Los Ángeles
+    expect(secondsUntilMidnight(la, Date.parse('2026-11-13T07:59:30Z'))).toBe(30)
+    // justo a medianoche cuenta la siguiente; las fracciones de segundo se respetan
+    expect(secondsUntilMidnight(la, Date.parse('2026-11-13T08:00:00Z'))).toBe(86_400)
+    expect(secondsUntilMidnight(la, Date.parse('2026-11-13T07:59:59.250Z'))).toBeCloseTo(0.75)
+    // en verano (PDT, UTC−7)
+    expect(secondsUntilMidnight(la, Date.parse('2026-07-01T19:00:00Z'))).toBe(12 * 3600)
+    // 8 mar 2026 a la 01:00 PST: ese día se adelanta la hora (de 2:00 a 3:00), quedan 22 h reales
+    expect(secondsUntilMidnight(la, Date.parse('2026-03-08T09:00:00Z'))).toBe(22 * 3600)
+    // 1 nov 2026 a las 00:30 PDT: ese día se atrasa la hora, quedan 24,5 h reales
+    expect(secondsUntilMidnight(la, Date.parse('2026-11-01T07:30:00Z'))).toBe(24.5 * 3600)
+    expect(secondsUntilMidnight('UTC', Date.parse('2026-11-13T18:00:00Z'))).toBe(6 * 3600)
+    // 23:30 en la India (UTC+5:30, desfase con media hora)
+    expect(secondsUntilMidnight('Asia/Kolkata', Date.parse('2026-11-13T18:00:00Z'))).toBe(30 * 60)
+  })
+  it('Groq: «billing» dentro de un enlace no es cuota; la espera del mensaje se respeta', () => {
+    const minute = map(429, Fixtures.groq429PerMinute)
+    expect(minute.error.kind).toBe('rateLimited')
+    expect(minute.error.retryAfter).toBe(5.5)
+    // el límite diario se renueva solo: se espera (la tubería se para y queda para reanudar), no es saldo
+    const day = map(429, Fixtures.groq429PerDay)
+    expect(day.error.kind).toBe('rateLimited')
+    expect(day.error.code).toBe('ai_rate_limit')
+    expect(day.error.retryAfter).toBeCloseTo(1152.384)
+    // la cabecera manda sobre el texto
+    expect(map(429, Fixtures.groq429PerMinute, { 'retry-after': '7' }).error.retryAfter).toBe(7)
+  })
+  it('un código de saldo agotado es cuota aunque venga una espera (OpenAI manda cabeceras de reinicio siempre)', () => {
+    const r = map(429, Fixtures.openAIQuota429, { 'x-ratelimit-reset-requests': '20ms' })
+    expect(r.error.code).toBe('ai_quota')
+    expect(r.error.kind).toBe('http')
+    // con las palabras de saldo y una espera larga (más de una hora) también
+    expect(map(429, '{"error":{"message":"Monthly spend limit reached. Add credit to continue."}}', { 'retry-after': '86400' }).error.code).toBe('ai_quota')
+  })
+  it('Anthropic sin saldo contesta 400 «credit balance is too low»: es cuota, no una petición mala', () => {
+    const r = fromHTTP(400, Fixtures.anthropicLowCredit400, new Headers(), { provider: 'Anthropic', model: 'claude-sonnet-5-5' })
+    expect(r.error.code).toBe('ai_quota')
+    expect(r.error.status).toBe(400)
+    expect(r.error.message).toContain('saldo')
+    expect(r.retryable).toBe(false)
+    expect(map(400, '{"error":{"message":"Invalid JSON"}}').error.code).toBe('ai_invalid_request')
+  })
+  it('Anthropic con el tope de gasto alcanzado (400 «reached your specified API usage limits») es cuota, con su propio consejo', () => {
+    const anthropic: ErrorContext = { provider: 'Anthropic', model: 'claude-sonnet-5-5' }
+    const r = fromHTTP(400, Fixtures.anthropicSpendLimit400, new Headers(), anthropic)
+    expect(r.error.kind).toBe('http')
+    expect(r.error.code).toBe('ai_quota')
+    expect(r.error.status).toBe(400)
+    expect(r.retryable).toBe(false)
+    expect(r.error.message).toContain('tope de gasto')
+    expect(r.error.message).not.toContain('Recarga')
+    // la fecha en que vuelve el acceso llega en el detalle del proveedor
+    expect(r.error.message).toContain('2026-12-01')
+    // con un tope de un espacio de trabajo, igual
+    const workspace = '{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified workspace API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."}}'
+    expect(fromHTTP(400, workspace, new Headers(), anthropic).error.code).toBe('ai_quota')
+  })
+  it('lee la espera escrita en el mensaje', () => {
+    expect(retryDelayInText('Please retry in 39.582164185s.')).toBeCloseTo(39.582164185)
+    expect(retryDelayInText('Please try again in 20s.')).toBe(20)
+    expect(retryDelayInText('Please try again in 1m30.5s')).toBe(90.5)
+    expect(retryDelayInText('Please try again in 250ms')).toBe(0.25)
+    expect(retryDelayInText('Please try again later.')).toBeUndefined()
   })
   it('5xx, 408 y 409 se reintentan; 4xx no; x-should-retry: false manda', () => {
     for (const s of [500, 502, 503, 504, 520, 529, 408, 409]) {

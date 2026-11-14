@@ -4,6 +4,8 @@ declare module './contract' {
   interface RpcMethods {
     'settings.get': { args: void; result: AppSettings }
     'settings.update': { args: SettingsPatch; result: AppSettings }
+    /** Los idiomas preferidos del sistema («de-DE», «en-US»…): con «Idioma de los cursos nuevos» en «auto» manda el primero que Aula escribe. */
+    'settings.systemLanguages': { args: void; result: string[] }
     /** «Exportar todo»: elige dónde y guarda un .zip de la carpeta de datos (sin claves ni cookies). null = cancelado. */
     'data.exportAll': { args: void; result: { path: string } | null }
     /** «Borrar todos los datos»: Aula se reinicia y vacía su carpeta de datos antes de leer nada. */

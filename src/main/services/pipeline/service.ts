@@ -7,6 +7,7 @@ import {
   currentStage, DEPTHS, encodeRunState, inferredRunState, makeRequest, shownProgress, type GatherSpec, type GenerationRequest, type GenerationRunState
 } from '@engine/pipeline'
 import { auditSkill } from '@engine/pipeline'
+import { CourseLanguages } from '@engine/base/language'
 import { tr } from '@shared/ai/i18n'
 import { GENERATION_STAGES, type AgentLaneView, type CreateRequest, type GenerationStage, type RunReport, type RunState, type RunSummary, type RunView } from '@shared/generation/types'
 import { CourseIconCatalog, LESSON_LEARNING_MODES, courseHueForTitle, makePack, type LessonLearningMode, type Pack } from '@shared/schema'
@@ -35,7 +36,7 @@ export interface GenerationServiceOptions {
   maxParallel?: () => number
   /** Búsqueda en internet permitida por defecto (Ajustes → Datos). */
   webSearch?: () => boolean
-  /** Idioma de la interfaz (el del curso si la petición no dice otro). */
+  /** El idioma de los cursos nuevos cuando la petición no dice otro (Ajustes → «auto»: el del sistema). */
   language?: () => string
   /** Ejecuciones a la vez (las demás esperan turno). */
   maxRuns?: number
@@ -192,7 +193,7 @@ export class GenerationService {
     // (antes 9:00 acababa en 8:00: J2-12)
     if (req.examDate) {
       const date = req.examDate
-      try { store.updatePack((p) => { p.exam = { ...(p.exam ?? { title: language === 'en' ? 'Exam' : 'Examen' }), date } }) } catch (err) { log.warn('[generation] fecha del examen', err) }
+      try { store.updatePack((p) => { p.exam = { ...(p.exam ?? { title: CourseLanguages.examTitle(CourseLanguages.of(language)) }), date } }) } catch (err) { log.warn('[generation] fecha del examen', err) }
     }
     if (draftId && hasMaterials) {
       await this.drafts.idle(draftId)
@@ -266,8 +267,18 @@ export class GenerationService {
     const pack = store.loadPack()
     if (skill && !pack.skills.some((s) => s.id === skill)) throw new AulaError('not_found', tr('Esa habilidad no existe en el curso.', "That skill doesn't exist in the course."))
     if (this.activeOn(packId)) throw new AulaError('generation_busy', tr('Aula ya está trabajando en este curso: espera a que termine o detenlo.', 'Aula is already working on this course: wait for it to finish or stop it.'))
+    const previous = GenerationPipeline.previousRuns(store)
+    // una creación a medias (en pausa, límite, error) es la última ejecución: una ampliación pasaría a serlo y la escondería
+    // (sin «Reanudar» ni «Quedarme con lo que hay» en ninguna parte)
+    const latest = previous[0]
+    if (latest && latest.request.mode.kind === 'create' && inferredRunState(latest, false) !== 'done') {
+      throw new AulaError('generation_unfinished', tr(
+        'La creación de este curso está a medias: primero reanúdala o quédate con lo que hay (en la pantalla del curso).',
+        'This course’s creation is unfinished: first resume it or keep what’s there (on the course screen).'
+      ))
+    }
     const practice = skill ? pendingPracticeRequest(store, skill, instruction) : undefined
-    const last = GenerationPipeline.previousRuns(store).find((r) => r.request.mode.kind === 'create')
+    const last = previous.find((r) => r.request.mode.kind === 'create')
     const request = makeRequest({
       packID: packId, title: pack.title, subject: pack.subject, language: pack.language, goal: pack.exam?.title ?? '', examNotes: pack.exam?.notes ?? '',
       depth: practice ? 'quick' : last?.request.depth ?? 'standard', lessonMode: practice ? 'guided' : last?.request.lessonMode ?? 'guided',
@@ -426,7 +437,9 @@ export class GenerationService {
   private summary(v: RunView): RunSummary {
     const label = v.state === 'running' ? STAGE_LABEL[v.stage] : STATE_LABEL[v.state] ?? STAGE_LABEL[v.stage]
     const last = v.lanes.reduce((m, l) => (l.finishedAt && l.finishedAt > m ? l.finishedAt : l.startedAt > m ? l.startedAt : m), v.startedAt)
-    return { id: v.id, packId: v.packId, title: v.title, icon: v.icon, hue: v.hue, state: v.state, progress: v.progress, stageLabel: tr(label[0], label[1]), updated: v.finishedAt ?? last }
+    const out: RunSummary = { id: v.id, packId: v.packId, title: v.title, icon: v.icon, hue: v.hue, state: v.state, progress: v.progress, stageLabel: tr(label[0], label[1]), updated: v.finishedAt ?? last, mode: v.mode }
+    if (v.skill) out.skill = v.skill
+    return out
   }
 
   cancel(id: unknown): void {
@@ -530,6 +543,7 @@ export class GenerationService {
       lanes, skills: s.skills.map((k) => ({ ...k })), startedAt: s.startedAt, provider: Object.values(s.providerNames)[0] ?? a?.pipeline.currentState.providerNames.planner ?? ''
     }
     if (!view.provider && lanes.length) view.provider = lanes[lanes.length - 1].provider
+    if (s.request.mode.kind === 'extend' && s.request.mode.skill) view.skill = s.request.mode.skill
     if (question) view.question = { id: question.id, text: question.text, options: question.options, allowsOther: true }
     if (s.finishedAt) view.finishedAt = s.finishedAt
     if (s.aula2.resumeAt) view.resumeAt = s.aula2.resumeAt

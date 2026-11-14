@@ -11,6 +11,7 @@ import { keysFor, type AnswerKey } from '../keys'
 import { chemTex, insertAt, mathPreview, previewIsUseful, usesDecimalComma } from '../normalize'
 import { Tex } from '../ui'
 import { partTone, type InputProps } from './shared'
+import { answerField } from './answerField'
 
 type TextKind = Extract<Answer['kind'], 'numeric' | 'expression' | 'equation' | 'set' | 'interval' | 'point' | 'short' | 'chem' | 'unknown'>
 
@@ -134,6 +135,7 @@ export function TextAnswerInput(props: InputProps<Extract<Answer, { kind: TextKi
         )}
         <div className={cx('relative flex items-center', wide ? 'min-w-[240px] flex-1' : 'w-[260px] max-w-full')}>
           <input
+            {...answerField}
             ref={ref}
             value={text}
             readOnly={locked}

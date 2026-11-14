@@ -1,12 +1,23 @@
-// Aprender: las unidades y sus temas como tarjetas, con objetivos, minutos, contenido y el dominio en un anillo.
+// Aprender: las unidades y sus temas como tarjetas, con objetivos, minutos, contenido y el dominio en un anillo. Mientras Aula
+// crea el curso (o escribe un tema con «Escribir este tema ahora»), los temas que aún no están listos dicen «Escribiéndose…» o
+// «En cola» y no se abren (antes se abrían vacíos o a medias).
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Icon, ProgressRing, SectionTitle, Stagger, toneForHue, useTheme } from '@renderer/design'
+import { Button, Card, Chip, Icon, ProgressRing, SectionTitle, Spinner, Stagger, toneForHue, useTheme } from '@renderer/design'
 import type { Pack } from '@shared/schema/pack'
 import type { CourseOverview } from '@shared/ipc/course-view'
+import { topicAvailability, topicOpens, type CreationPhase, type TopicAvailability } from '@engine/study/topics'
 import { RichText } from '@renderer/lib/RichText'
 import { navigate } from '@renderer/app/router'
 
-export function LearnTab({ pack, ov }: { pack: Pack; ov: CourseOverview | null }) {
+/** La marca de un tema que no está listo para abrir como lección. */
+function TopicState({ state }: { state: Exclude<TopicAvailability, 'ready'> }) {
+  const { t } = useTranslation('course')
+  const icon = state === 'writing' ? <Spinner size={11} /> : <Icon name={state === 'queued' ? 'clock' : 'edit'} size={12} />
+  return <Chip icon={icon}>{t(`learn.${state}`)}</Chip>
+}
+
+/** `writing`: el tema que escribe ahora una ampliación en marcha. */
+export function LearnTab({ pack, ov, phase = 'none', writing }: { pack: Pack; ov: CourseOverview | null; phase?: CreationPhase; writing?: string }) {
   const { t } = useTranslation('course')
   const { dark } = useTheme()
   const tone = toneForHue(pack.hue)
@@ -22,8 +33,19 @@ export function LearnTab({ pack, ov }: { pack: Pack; ov: CourseOverview | null }
               const s = pack.skills.find((x) => x.id === sid)
               if (!s) return null
               const m = mastery.get(sid) ?? 0
+              const state = topicAvailability(s, phase, sid === writing)
+              // sin lección y sin creación pendiente se abre igual: allí se puede pedir que Aula lo escriba ahora
+              const opens = topicOpens(state)
               return (
-                <Card key={sid} enterAnim interactive padded="lg" onClick={() => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: sid })} className="flex flex-col">
+                <Card
+                  key={sid}
+                  enterAnim
+                  interactive={opens}
+                  padded="lg"
+                  onClick={opens ? () => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: sid }) : undefined}
+                  className="flex flex-col"
+                  data-topic-state={state}
+                >
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="t-headline">
@@ -63,9 +85,14 @@ export function LearnTab({ pack, ov }: { pack: Pack; ov: CourseOverview | null }
                         <Icon name="cards" size={13} /> {s.counts.cards}
                       </span>
                     </span>
-                    <Button size="sm" variant="secondary">
-                      {t('learnSkill')}
-                    </Button>
+                    <span className="flex items-center gap-2">
+                      {state !== 'ready' && <TopicState state={state} />}
+                      {opens && (
+                        <Button size="sm" variant="secondary">
+                          {t('learnSkill')}
+                        </Button>
+                      )}
+                    </span>
                   </div>
                 </Card>
               )

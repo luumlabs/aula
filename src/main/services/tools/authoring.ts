@@ -266,7 +266,7 @@ export function setCoursePlan(ctx: ToolContext): AgentTool {
   const unitSchema = Schema.object([['id', Schema.string()], ['title', Schema.string()], ['summary', Schema.string()], ['skills', Schema.array(skillSchema)]], { required: ['id', 'title', 'skills'] })
   return defineTool(ctx, 'set_course_plan', 'Create or update the course structure: units → skills (a skill = one coherent exam-sized topic the student must be able to do). Merges by id with what exists (use replace=true only to rebuild from scratch). Also sets course metadata, exam info and the instructor\'s conventions.',
     Schema.object([['title', Schema.string()], ['subject', Schema.string()], ['course_code', Schema.string()], ['language', Schema.string('language of the explanations: es, en…')],
-      ['exam_language', Schema.string('language of the real exam\'s wording if different')],
+      ['exam_language', Schema.string('language of the real exam\'s wording if different; in a language course, the code of the language being LEARNED (de, en, fr…)')],
       ['icon', Schema.string('pixel-art course icon: the one that best matches the subject or the kind of test (e.g. chemistry, english, driving, civil-service, language-exam); study = general', [...CourseIconCatalog.ids])],
       ['hue', Schema.number('0–1 colour hue')], ['guidance', Schema.string('standing instructions for all content (style, conventions, what the instructor said)')],
       ['exam', Schema.any('{title, date (ISO-8601 or YYYY-MM-DD), duration_minutes, total_points, aids, notes, location}')], ['units', Schema.array(unitSchema)],

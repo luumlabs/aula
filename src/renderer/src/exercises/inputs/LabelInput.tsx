@@ -12,6 +12,7 @@ import { cx, Select, spring, useTheme } from '@renderer/design'
 import { SeededShuffler } from '../model'
 import { formatPoint, parsePoint } from '../normalize'
 import { partTone, type InputProps } from './shared'
+import { answerField } from './answerField'
 
 type LabelProps = InputProps<AnswerOf<'label'>>
 
@@ -104,6 +105,7 @@ function TypeLabelInput({ answer, draft, set, locked, reveal, result, ctx, onSub
               </div>
             ) : (
               <input
+                {...answerField}
                 value={draft.labels[i] ?? ''}
                 readOnly={locked}
                 placeholder={s.hint ?? t('ex.label.name')}

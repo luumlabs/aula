@@ -573,3 +573,39 @@ describe('Plan · lecciones guiadas', () => {
   })
 })
 
+
+describe('Plan · temas que aún no se pueden estudiar', () => {
+  // mientras se crea el curso: solo dos temas escritos (10 puntos cada uno) de un examen de 100
+  const off = (s: PlanSkill): PlanSkill => ({ ...s, available: false })
+  const building = (): PlanSkill[] => [
+    skill('a', { w: 10, title: 'Ángulos de referencia' }), skill('b', { w: 10, title: 'Grados y radianes' }),
+    off(skill('c', { w: 20, prereq: ['a'], title: 'Valores exactos' })), off(skill('d', { w: 30 })), off(skill('e', { w: 30, correct: 1, wrong: 3 }))
+  ]
+
+  it('nunca se proponen (ni aprender, ni practicar, ni el diagnóstico los cuenta)', () => {
+    const r = plan(inputs(240, building()))
+    expect(ids(r).sort()).toEqual(['a', 'b'])
+    expect(r.every((x) => x.skillID === null || ['a', 'b'].includes(x.skillID))).toBe(true)
+    // un tema practicado que se está reescribiendo tampoco
+    expect(ids(plan(inputs(240, building(), { diag: true }))).includes('e')).toBe(false)
+    // el diagnóstico solo pregunta por lo escrito: 2 temas, no 5
+    const noData = building().map((s) => (s.id === 'e' ? { ...s, mastery: freshMastery() } : s))
+    expect(plan(inputs(240, noData)).find((x) => x.kind === 'diagnostic')?.minutes).toBe(10)
+    expect(plan(inputs(240, noData.map(off))).some((x) => x.kind === 'diagnostic' || x.skillID !== null)).toBe(false)
+  })
+
+  it('siguen contando para los pesos: «Vale 10 puntos», no «Pesa el 50 % del examen»', () => {
+    const r = plan(inputs(240, building(), { diag: true }))
+    expect(r.find((x) => x.skillID === 'a')?.reason).toMatch(/^Vale 10 puntos/)
+    // lo que desbloquea también cuenta: «a» es la base de «Valores exactos» aunque aún se esté escribiendo
+    expect(r.find((x) => x.skillID === 'a')?.reason).toContain('«Valores exactos» (20 puntos)')
+    // la misma razón que con el curso terminado
+    const done = plan(inputs(240, building().map((s) => ({ ...s, available: true })), { diag: true }))
+    expect(r.find((x) => x.skillID === 'a')?.reason).toBe(done.find((x) => x.skillID === 'a')?.reason)
+  })
+
+  it('un prerrequisito que aún no se puede estudiar no bloquea al tema que sí', () => {
+    const skills = [off(skill('base', { w: 50 })), skill('next', { w: 50, prereq: ['base'] })]
+    expect(ids(plan(inputs(60, skills, { diag: true })))).toEqual(['next'])
+  })
+})

@@ -1,6 +1,6 @@
 // A3-P1-3: el formulario de «Nuevo curso» es un borrador que sobrevive a la navegación y a cerrar Aula.
 import { describe, expect, it, vi } from 'vitest'
-import { EMPTY_FORM, formFromPrefill, hasDraftContent, restoreForm } from './draftStore'
+import { EMPTY_FORM, formAfterStart, formFromPrefill, hasDraftContent, keptLanguage, restoreForm } from './draftStore'
 
 describe('borrador de Nuevo curso (A3-P1-3)', () => {
   it('lo guardado se recupera campo a campo y lo roto no rompe nada', () => {
@@ -26,6 +26,17 @@ describe('borrador de Nuevo curso (A3-P1-3)', () => {
     expect(formFromPrefill({ title: 'Parcial 2', examDate: '2026-11-03T09:00:00.000Z', topics: 'Límites', eventId: 'ev1', fromPlatform: true }, 'k')).toMatchObject({
       title: 'Parcial 2', date: '2026-11-03', topics: 'Límites', more: true, gather: 'auto', eventId: 'ev1', prefillKey: 'k'
     })
+  })
+
+  it('tras crear un curso, el formulario vacío conserva el idioma elegido', () => {
+    // ya recordado en los ajustes: el formulario sigue a los ajustes (por si cambian después)
+    expect(keptLanguage('de', 'de')).toBeNull()
+    expect(keptLanguage(null, 'es')).toBeNull()
+    // los ajustes no lo guardaron (un dispositivo que no puede cambiarlos): se queda en el borrador
+    expect(keptLanguage('de', 'es')).toBe('de')
+    const f = formAfterStart('k', 'fr', 'es')
+    expect(f).toMatchObject({ title: '', topics: '', more: false, pickedLanguage: 'fr', prefillKey: 'k' })
+    expect(formAfterStart(undefined, 'es', 'es')).toMatchObject({ pickedLanguage: null, prefillKey: undefined })
   })
 
   it('el store sobrevive a «salir de la pantalla» y se guarda en este ordenador', async () => {

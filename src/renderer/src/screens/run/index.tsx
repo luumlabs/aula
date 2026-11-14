@@ -1,5 +1,7 @@
 // Monitor de una creación: el icono del curso se enciende, la ruta de etapas se va llenando y el equipo trabaja en
-// vivo (cada agente es un compañero pixel-art que parpadea mientras trabaja). Al terminar, medalla y a estudiar.
+// vivo (cada agente es un compañero pixel-art que parpadea mientras trabaja). Al terminar, medalla y a estudiar; antes, lo
+// que ya está listo se puede estudiar («Empezar con lo que está listo» y los temas listos se abren).
+// Si se para por un límite, se dice qué pasó, cuándo se renueva y dónde cambiar de proveedor.
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
@@ -14,8 +16,9 @@ import { isDemo } from '@renderer/lib/demo'
 import { useCourses } from '@renderer/lib/courses'
 import { RichText } from '@renderer/lib/RichText'
 import { percentSuffix } from '@renderer/lib/format'
+import { LimitNotice, StudyReadyButton } from '../course/StudyWhileBuilding'
 import { demoRun } from './demo'
-import { doneSummary, shownSkillStatus, type SummaryItem } from './summary'
+import { doneSummary, readySkills, shownSkillStatus, type SummaryItem } from './summary'
 
 function useRun(id: string): RunView | null | undefined {
   const [run, setRun] = useState<RunView | null | undefined>(undefined)
@@ -84,6 +87,11 @@ export default function RunScreen() {
   const eyebrow = headerLabel(run.state, run.mode)
   // una ampliación no reúne materiales, ni planifica, ni rehace el glosario: esas etapas no se enseñan vacías
   const stages = GENERATION_STAGES.filter((s) => run.stages[s] !== 'skipped' && !(run.mode === 'extend' && run.stages[s] === 'pending' && EXTEND_UNUSED.has(s)))
+  // lo que ya se puede estudiar mientras se crea (o tras pararse): al terminar lo dice la tarjeta final
+  const ready = readySkills(run.skills)
+  const stopped = run.state === 'limit' || run.state === 'failed' || run.state === 'paused'
+  const studyNow = run.mode === 'create' && ready.size > 0 && (working || stopped)
+  const quota = run.state === 'limit' && run.errorCode === 'ai_quota'
 
   return (
     <div className="@container flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-24">
@@ -114,10 +122,12 @@ export default function RunScreen() {
                 {working && <> · {t('canClose')}</>}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {run.state === 'limit' || run.state === 'failed' || run.state === 'paused' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* estudiar lo listo es lo primero que se puede hacer: mientras trabaja y tras pararse */}
+              {studyNow && <StudyReadyButton packId={run.packId} ready={ready.size} size="md" />}
+              {stopped ? (
                 <>
-                  <Button variant="primary" onClick={() => void api.invoke('generation.resume', { id: run.id })}>
+                  <Button variant={studyNow ? 'secondary' : 'primary'} onClick={() => void api.invoke('generation.resume', { id: run.id })}>
                     {t('resume')}
                   </Button>
                   {courseSkills !== 0 && (
@@ -164,9 +174,11 @@ export default function RunScreen() {
           )}
         </AnimatePresence>
         {(run.state === 'limit' || run.state === 'failed' || run.state === 'cancelled') && (
-          <Card padded="lg" className="col-span-12 bg-warning-soft!">
-            <div className="t-headline">{run.state === 'limit' ? t('limit') : run.state === 'failed' ? t('failed') : t('cancelled')}</div>
-            <div className="t-callout text-text2 mt-1">{run.state === 'limit' ? t('limitBody') : run.error}</div>
+          <Card padded="lg" className="col-span-12 bg-warning-soft!" role="status" data-run-stopped={run.state}>
+            <div className="t-headline">{quota ? t('quota') : run.state === 'limit' ? t('limit') : run.state === 'failed' ? t('failed') : t('cancelled')}</div>
+            <div className="t-callout text-text2 mt-1">{quota ? t('quotaBody') : run.state === 'limit' ? t('limitBody') : run.error}</div>
+            {/* el límite: cuándo se renueva, lo que dijo la IA (la hora o «elige otro proveedor») y dónde cambiarla */}
+            {run.state === 'limit' && <LimitNotice run={run} />}
           </Card>
         )}
         {run.question && <QuestionCard run={run} />}
@@ -210,13 +222,32 @@ export default function RunScreen() {
             <div className="mt-2 flex flex-col gap-1">
               {run.skills.map((s) => {
                 const status = shownSkillStatus(s.status, run.mode, working)
-                return (
-                  <motion.div key={s.id} layout transition={relayout} className="flex items-center gap-2.5 py-1.5">
-                    <motion.span className="w-2 h-2 rounded-[2px] shrink-0" animate={{ background: SKILL_TONE[status], scale: status === 'running' ? [1, 1.4, 1] : 1 }} transition={{ duration: 1.2, repeat: status === 'running' ? Infinity : 0 }} />
-                    <span className={cx('t-callout flex-1 truncate', status === 'unchanged' && 'text-text3')}>{s.title}</span>
+                const row = (
+                  <>
+                    <motion.span className="w-2 h-2 rounded-[2px] shrink-0" animate={{ background: SKILL_TONE[status], scale: status === 'running' && !reducedMotion ? [1, 1.4, 1] : 1 }} transition={{ duration: 1.2, repeat: status === 'running' && !reducedMotion ? Infinity : 0 }} />
+                    <span className={cx('t-callout flex-1 truncate text-left', status === 'unchanged' && 'text-text3')}>{s.title}</span>
                     <span className="t-caption" style={{ color: SKILL_TONE[status] }}>
                       {t(`skillStatus.${status}`)}
                     </span>
+                  </>
+                )
+                // un tema listo se abre (lección del tema); los demás solo informan
+                return ready.has(s.id) ? (
+                  <motion.button
+                    key={s.id}
+                    type="button"
+                    layout
+                    transition={relayout}
+                    onClick={() => navigate({ name: 'study', id: run.packId, mode: 'learn', skill: s.id })}
+                    aria-label={t('openTopic', { topic: s.title })}
+                    className="-mx-2 flex items-center gap-2.5 rounded-[10px] px-2 py-1.5 hover:bg-fill1 focus-visible:bg-fill1"
+                  >
+                    {row}
+                    <Icon name="chevron-right" size={13} className="shrink-0 text-text3" />
+                  </motion.button>
+                ) : (
+                  <motion.div key={s.id} layout transition={relayout} className="flex items-center gap-2.5 py-1.5">
+                    {row}
                   </motion.div>
                 )
               })}

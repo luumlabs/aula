@@ -23,6 +23,8 @@ import { MemoryCard } from './Memory'
 import { DevicesCard } from './Devices'
 import { UpdateButtons, UpdateStatus } from './Updates'
 import type { AppSettings } from '@shared/settings'
+import { resolveCourseLanguage } from '@shared/settings/courseLanguage'
+import { CourseLanguages } from '@engine/base/language'
 import { sourceCodeURL, type LegalDoc } from '@shared/legal'
 
 export default function SettingsScreen() {
@@ -30,12 +32,14 @@ export default function SettingsScreen() {
   useScreenTitle(t('title'))
   const settings = useSettings((s) => s.settings)
   const update = useSettings((s) => s.update)
-  // «Ajustes → Memoria» (⌘K, el chat): baja hasta esa tarjeta
+  // «Ajustes → Memoria» (⌘K, el chat): baja hasta esa tarjeta (cada sección de @shared/settings/sections lleva su
+  // `data-settings-section`); con movimiento reducido, sin deslizarse
   const route = useRoute()
   const section = route.name === 'settings' ? route.section : undefined
   useEffect(() => {
     if (!section || !settings) return
-    const timer = setTimeout(() => document.querySelector(`[data-settings-section="${CSS.escape(section)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 260)
+    const behavior = document.documentElement.classList.contains('reduce-motion') ? 'auto' : 'smooth'
+    const timer = setTimeout(() => document.querySelector(`[data-settings-section="${CSS.escape(section)}"]`)?.scrollIntoView({ behavior, block: 'start' }), 260)
     return () => clearTimeout(timer)
   }, [section, !!settings])
   if (!settings) return null
@@ -47,23 +51,24 @@ export default function SettingsScreen() {
     <div className="@container flex-1 min-h-0 overflow-y-auto px-6 max-[700px]:px-4 pt-2 pb-24">
       <PageHeader title={t('title')} subtitle={subtitle} className="mb-6" />
       <Stagger className="grid grid-cols-12 gap-4">
-        <StaggerItem className="col-span-12">
-          <SectionTitle title={t('ai.title')} detail={remote ? (api.server ? t('ai.remote.detailServer') : t('ai.remote.detail')) : t('ai.auto')} className="px-1" data-settings-section="ai" />
+        {/* el ancla va en el contenedor: SectionTitle no pasa atributos al DOM */}
+        <StaggerItem className="col-span-12" data-settings-section="ai">
+          <SectionTitle title={t('ai.title')} detail={remote ? (api.server ? t('ai.remote.detailServer') : t('ai.remote.detail')) : t('ai.auto')} className="px-1" />
           {remote ? <AIChoices /> : <AIPicker />}
         </StaggerItem>
         {/* plataformas y apariencia, una sobre otra, junto a «Aula siempre activa» (la más alta): sin huecos en las tarjetas */}
         {/* en un dispositivo no hay plataformas: apariencia cabe al lado ya en un iPad apaisado, con su altura (sin estirarse) */}
         <div className={cx('col-span-12 flex flex-col gap-4', remote ? '@3xl:col-span-7 self-start' : '@5xl:col-span-7')}>
           {!remote && (
-            <StaggerItem>
+            <StaggerItem data-settings-section="platforms">
               <PlatformsCard className="" />
             </StaggerItem>
           )}
-          <StaggerItem className="flex-1 flex flex-col">
+          <StaggerItem className="flex-1 flex flex-col" data-settings-section="appearance">
             <AppearanceCard s={settings} update={update} />
           </StaggerItem>
         </div>
-        <StaggerItem className={cx('col-span-12', remote ? '@3xl:col-span-5' : '@5xl:col-span-5')}>
+        <StaggerItem className={cx('col-span-12', remote ? '@3xl:col-span-5' : '@5xl:col-span-5')} data-settings-section="persistent">
           <AutomationsSettingsCard />
         </StaggerItem>
         {/* el resto en dos columnas que se reparten solas (cada tarjeta con su altura, sin estirarse) */}
@@ -165,8 +170,11 @@ function AppearanceCard({ s, update }: { s: AppSettings; update: Upd }) {
 }
 
 function GeneralCard({ s, update }: { s: AppSettings; update: Upd }) {
-  const { t } = useTranslation('settings')
+  const { t, i18n } = useTranslation('settings')
   const [name, setName] = useState(s.general.name)
+  // «Automático» dice qué idioma sale ahora (el primero del sistema en el que Aula escribe cursos, o el de Aula)
+  const { data: systemLanguages } = useRpc('settings.systemLanguages', undefined)
+  const autoLanguage = CourseLanguages.of(resolveCourseLanguage('auto', systemLanguages ?? [], s.general.language, i18n.language))
   return (
     <Card padded="lg" className="h-full">
       <SectionTitle title={t('general.title')} />
@@ -180,6 +188,15 @@ function GeneralCard({ s, update }: { s: AppSettings; update: Upd }) {
             { value: 'system', label: t('general.languageSystem') },
             { value: 'es', label: 'Español' },
             { value: 'en', label: 'English' }
+          ]}
+        />
+        <Select
+          label={t('general.courseLanguage')}
+          value={s.general.courseLanguage}
+          onChange={(v) => void update({ general: { courseLanguage: v } })}
+          options={[
+            { value: 'auto', label: t('general.courseLanguageAuto', { name: autoLanguage.nativeName }) },
+            ...CourseLanguages.all.map((l) => ({ value: l.id, label: l.nativeName }))
           ]}
         />
       </div>

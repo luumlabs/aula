@@ -1,5 +1,8 @@
 // El cursor-sol: el sol en lugar de la flecha (con aro sobre lo que se pulsa), la barra de escribir en los campos de texto, la
-// cola de cometa al moverse y la flecha de siempre con «Cursor: System» en Ajustes → Apariencia.
+// cola de cometa al moverse y la flecha de siempre con «Cursor: System» en Ajustes → Apariencia o desde ⌘K.
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { test, expect, type Page } from 'playwright/test'
 import { go, launch } from './helpers'
 
@@ -10,7 +13,10 @@ const cursorOf = (page: Page, sel: string): Promise<string | null> =>
 test('el cursor es el sol, deja cola al moverse y vuelve a la flecha si se pide', async () => {
   // en Windows y Linux una ventana que nunca sale a la pantalla deja de pintar fotogramas (y la cola no se dibuja): allí
   // se abre a la vista; en macOS, escondida (sigue pintando y no molesta a quien trabaja en el Mac)
-  const { app, page } = await launch({ env: process.platform === 'darwin' ? { AULA_HIDDEN: '1' } : {} })
+  // en inglés, para buscar en ⌘K por su nombre sea cual sea el idioma del equipo
+  const home = mkdtempSync(join(tmpdir(), 'aula-e2e-'))
+  writeFileSync(join(home, 'settings.json'), JSON.stringify({ version: 2, onboarded: true, general: { language: 'en' } }))
+  const { app, page } = await launch({ home, env: process.platform === 'darwin' ? { AULA_HIDDEN: '1' } : {} })
   await expect(page.locator('nav[aria-label="Aula"]')).toBeAttached()
   await expect(page.locator('html.sun-cursor')).toBeAttached()
 
@@ -43,9 +49,28 @@ test('el cursor es el sol, deja cola al moverse y vuelve a la flecha si se pide'
   await page.mouse.move(900, 420, { steps: 12 })
   await expect.poll(() => page.evaluate<number>('window.__trail'), { timeout: 4000 }).toBeGreaterThan(0)
 
-  // Ajustes → Apariencia → Cursor: System
-  await page.evaluate(`window.aula.invoke('settings.update', { general: { cursor: 'system' } })`)
+  // ⌘K «Use the system cursor» (lo mismo que Ajustes → Apariencia → Cursor: System): la flecha de siempre, al momento
+  const input = page.locator('[cmdk-input]')
+  const selected = page.locator('[cmdk-item][data-selected="true"]')
+  await page.keyboard.press('Control+k')
+  await input.fill('system cursor')
+  await expect(selected).toContainText('Use the system cursor')
+  await page.keyboard.press('Enter')
+  await expect(input).toHaveCount(0)
   await expect(page.locator('html.sun-cursor')).not.toBeAttached()
   expect(await cursorOf(page, 'body')).toBe('auto')
+
+  // y «Use the sun cursor» devuelve el sol
+  await page.keyboard.press('Control+k')
+  await input.fill('sun cursor')
+  await expect(selected).toContainText('Use the sun cursor')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('html.sun-cursor')).toBeAttached()
+
+  // «Ajustes → Apariencia» (el chat, ⌘K) baja hasta la fila del cursor; cada sección de Ajustes tiene su ancla
+  await go(page, { name: 'settings', section: 'appearance' })
+  await expect(page.locator('[data-settings-section="appearance"]').getByText('brings back the usual arrow')).toBeInViewport()
+  const anchors = await page.evaluate<string[]>(`[...document.querySelectorAll('[data-settings-section]')].map((e) => e.getAttribute('data-settings-section')).sort()`)
+  expect(anchors).toEqual(['about', 'ai', 'appearance', 'data', 'devices', 'general', 'memory', 'persistent', 'platforms'])
   await app.close()
 })

@@ -21,6 +21,7 @@ import { importSourceIntoPack } from '@main/services/ingest'
 import { log } from '@main/services/log'
 import { MEMORY_KINDS, MemoryError, isSaved, memoryService, recordView, type MemoryKind } from '@main/services/memory'
 import { getSettings, onSettingsChange } from '@main/services/settings'
+import { defaultCourseLanguage } from '@main/services/settings/courseLanguage'
 import { getLibrary } from '@main/services/store'
 import type { PackStore } from '@main/services/store'
 import { userFiles } from '@main/services/userFiles'
@@ -242,7 +243,8 @@ function appControl(): AssistantAppControl {
       return {
         platforms: s.platforms.accounts.map((a) => `${a.label} · ${host(a.baseURL)}`), computerUseEnabled: browserReady,
         platformDatesConnected: s.platforms.accounts.some((a) => !!a.calendarSecretRef || !!a.tokenSecretRef), dailyMinutes: 30,
-        courseLanguage: tr('es', 'en'), provider: '', webSearch: s.data.webSearch
+        // el mismo que usan el formulario y `create_course` sin idioma (Ajustes; con «auto», el del sistema)
+        courseLanguage: defaultCourseLanguage(), provider: '', webSearch: s.data.webSearch
       }
     },
     runs: async () => (generationService()?.runs(12) ?? []).map((r) => ({

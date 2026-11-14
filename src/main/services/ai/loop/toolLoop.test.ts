@@ -562,13 +562,34 @@ describe('límite de uso (429)', () => {
     expect(r.notices.filter((n) => n.includes('Límite de uso'))).toHaveLength(2)
     expect(r.result).toMatchObject({ text: 'ya', steps: 1 })
   })
-  it('sin Retry-After: 5, 20, 45; con uno enorme, como mucho 60', async () => {
+  it('sin Retry-After: 5, 20, 45; uno de hasta 60 s se espera entero', async () => {
     const s1: number[] = []
-    await run(model((_, i) => (i < 3 ? { fail: new AIError('rateLimited', 'límite', { status: 429 }) } : step({ text: 'ya' }))), {}, s1)
+    await run(model((_, i) => (i < 3 ? { fail: new AIError('rateLimited', 'límite', { status: 429 }) } : step({ text: 'ya' }))), { timeoutSec: 600 }, s1)
     expect(s1).toEqual([5, 20, 45])
     const s2: number[] = []
-    await run(model((_, i) => (i < 1 ? { fail: new AIError('rateLimited', 'límite', { status: 429, retryAfter: 3600 }) } : step({ text: 'ya' }))), {}, s2)
+    const r = await run(model((_, i) => (i < 1 ? { fail: new AIError('rateLimited', 'límite', { status: 429, retryAfter: 60 }) } : step({ text: 'ya' }))), { timeoutSec: 600 }, s2)
     expect(s2).toEqual([60])
+    expect(r.result?.text).toBe('ya')
+  })
+  it('una espera de más de 60 s (límite diario o por hora) no se hace: el error sale al primer intento', async () => {
+    for (const retryAfter of [61, 1152, 3600, 50_400]) {
+      const s: number[] = []
+      const m = model((_, i) => (i < 1 ? { fail: new AIError('rateLimited', 'límite', { status: 429, retryAfter }) } : step({ text: 'ya' })))
+      const r = await run(m, { timeoutSec: 0 }, s)
+      expect(r.error).toMatchObject({ kind: 'rateLimited', retryAfter })
+      expect(m.callCount).toBe(1)
+      expect(s).toEqual([])
+      expect(r.notices.filter((n) => n.includes('Límite de uso'))).toHaveLength(0)
+    }
+  })
+  it('una espera que no acabaría antes del plazo de la tarea tampoco se hace (la corrección no se agota esperando)', async () => {
+    const s: number[] = []
+    const m = model((_, i) => (i < 1 ? { fail: new AIError('rateLimited', 'límite', { status: 429, retryAfter: 45 }) } : step({ text: 'ya' })))
+    const r = await run(m, { timeoutSec: 30 }, s)
+    expect(r.error).toMatchObject({ kind: 'rateLimited', retryAfter: 45 })
+    expect(r.result).toBeUndefined()
+    expect(m.callCount).toBe(1)
+    expect(s).toEqual([])
   })
   it('se rinde tras tres reintentos; a mitad conserva lo hecho', async () => {
     const s: number[] = []

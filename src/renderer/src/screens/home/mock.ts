@@ -25,10 +25,10 @@ export function mockHome(): HomeSummary {
       { courseId: 'demo-ingles', title: L('Speaking test', 'Oral exam'), courseTitle: L('Inglés B2', 'Spanish B1'), icon: L('english', 'spanish'), hue: 0.93, date: d(16), started: true, readiness: 0.64, readinessLow: 0.55, readinessHigh: 0.72, coverage: 0.7 }
     ],
     courses: [
-      { id: 'exam-2-math112', title: L('Trigonometría', 'Exam #2 · MATH 101'), subject: L('Matemáticas', 'Mathematics'), icon: 'trigonometry', hue: 0.6, started: true, readiness: 0.78, coverage: 0.9, examDate: d(3), dueCards: 12, mistakes: 3, skillCount: 8 },
-      { id: 'demo-quimica', title: L('Química general', 'General Chemistry'), subject: L('Química', 'Chemistry'), icon: 'chemistry', hue: 0.38, started: true, readiness: 0.52, coverage: 0.55, examDate: d(9), dueCards: 4, mistakes: 1, skillCount: 11 },
-      { id: 'demo-ingles', title: L('Inglés B2', 'Spanish B1'), subject: L('Idiomas', 'Languages'), icon: L('english', 'spanish'), hue: 0.93, started: true, readiness: 0.64, coverage: 0.7, examDate: d(16), dueCards: 20, mistakes: 0, skillCount: 9 },
-      { id: 'demo-biologia', title: L('Biología celular', 'Cell Biology'), subject: L('Biología', 'Biology'), icon: 'biology', hue: 0.5, started: true, readiness: 0.2, coverage: 0.15, examDate: null, dueCards: 0, mistakes: 0, skillCount: 6, generating: true }
+      { id: 'exam-2-math112', title: L('Trigonometría', 'Exam #2 · MATH 101'), subject: L('Matemáticas', 'Mathematics'), icon: 'trigonometry', hue: 0.6, started: true, readiness: 0.78, coverage: 0.9, examDate: d(3), dueCards: 12, mistakes: 3, skillCount: 8, readyCount: 8, writtenCount: 8 },
+      { id: 'demo-quimica', title: L('Química general', 'General Chemistry'), subject: L('Química', 'Chemistry'), icon: 'chemistry', hue: 0.38, started: true, readiness: 0.52, coverage: 0.55, examDate: d(9), dueCards: 4, mistakes: 1, skillCount: 11, readyCount: 11, writtenCount: 11 },
+      { id: 'demo-ingles', title: L('Inglés B2', 'Spanish B1'), subject: L('Idiomas', 'Languages'), icon: L('english', 'spanish'), hue: 0.93, started: true, readiness: 0.64, coverage: 0.7, examDate: d(16), dueCards: 20, mistakes: 0, skillCount: 9, readyCount: 9, writtenCount: 9 },
+      { id: 'demo-biologia', title: L('Biología celular', 'Cell Biology'), subject: L('Biología', 'Biology'), icon: 'biology', hue: 0.5, started: true, readiness: 0.2, coverage: 0.15, examDate: null, dueCards: 0, mistakes: 0, skillCount: 6, readyCount: 2, writtenCount: 3, generating: true }
     ],
     upcoming: [
       { id: 'e1', title: L('Entrega: problemas 4.2', 'Due: problem set 4.2'), start: d(1, 23), kind: 'assignment', courseId: 'exam-2-math112' },

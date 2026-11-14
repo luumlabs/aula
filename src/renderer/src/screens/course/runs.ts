@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import type { RunSummary, RunView } from '@shared/generation/types'
 import { api } from '@renderer/lib/api'
+import type { TopicCounts } from '@engine/study/topics'
 import { courseRunIssue, latestByCourse, type CourseRunIssue } from './failure'
 
 interface LatestRunsState {
@@ -25,7 +26,8 @@ export const useLatestRuns = create<LatestRunsState>((set) => ({
   apply: (v) =>
     set((s) => {
       const updated = v.finishedAt ?? new Date().toISOString()
-      const summary: RunSummary = { id: v.id, packId: v.packId, title: v.title, icon: v.icon, hue: v.hue, state: v.state, progress: v.progress, stageLabel: '', updated }
+      const summary: RunSummary = { id: v.id, packId: v.packId, title: v.title, icon: v.icon, hue: v.hue, state: v.state, progress: v.progress, stageLabel: '', updated, mode: v.mode }
+      if (v.skill) summary.skill = v.skill
       return { latest: { ...s.latest, [v.packId]: summary } }
     })
 }))
@@ -58,7 +60,7 @@ export function useCourseRun(packId: string): RunSummary | undefined {
   return useLatestRuns((s) => s.latest[packId])
 }
 
-/** El problema de creación de un curso (falló, se detuvo, límite o aún en marcha) si no tiene ningún tema. */
-export function useCourseRunIssue(packId: string, skillCount: number): CourseRunIssue | undefined {
-  return courseRunIssue(useCourseRun(packId), skillCount)
+/** El problema de creación de un curso (falló, se detuvo, límite o aún en marcha) si no tiene nada que estudiar. */
+export function useCourseRunIssue(packId: string, counts: TopicCounts): CourseRunIssue | undefined {
+  return courseRunIssue(useCourseRun(packId), counts)
 }

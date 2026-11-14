@@ -24,11 +24,12 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
           // el curso de ejemplo lleva «Ejemplo» en vez de la cuenta atrás de un examen que no es del estudiante (A4-P1-1)
           const sample = showsAsSample(c.id)
           const n = c.examDate && !sample ? daysUntil(c.examDate) : null
-          // la creación falló o se detuvo sin temas: se dice en la tarjeta en vez de enseñar «0 %»
-          const issue = courseRunIssue(runs[c.id], c.skillCount)
-          const problem = issue === 'failed' || issue === 'stopped' || issue === 'limit' ? issue : coursePartial(runs[c.id], c.skillCount) ? 'partial' : undefined
-          // creándose: con temas ya escritos se puede empezar, y se dice con las mismas palabras que la barra lateral
-          const building = c.generating || courseBuilding(runs[c.id], c.skillCount)
+          // la creación falló o se detuvo sin nada escrito: se dice en la tarjeta en vez de enseñar «0 %»
+          const counts = { ready: c.readyCount, written: c.writtenCount }
+          const issue = courseRunIssue(runs[c.id], counts)
+          const problem = issue === 'failed' || issue === 'stopped' || issue === 'limit' ? issue : coursePartial(runs[c.id], counts) ? 'partial' : undefined
+          // creándose: con temas ya listos se puede empezar, y se dice con las mismas palabras que la barra lateral
+          const building = c.generating || courseBuilding(runs[c.id], counts)
           return (
             <Card key={c.id} enterAnim interactive padded={false} onClick={() => navigate({ name: 'course', id: c.id })} className="h-full border-transparent!" data-pixel-hover>
               {/* su borde, dibujado a mano (cada curso, su trazo) */}
@@ -60,7 +61,7 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
                   </div>
                 ) : building ? (
                   <div className="flex items-center gap-2 mt-4 t-ui font-medium text-accent-text">
-                    <Spinner size={12} /> {c.skillCount > 0 ? t('course:failure.marker.buildingReady') : t('generating')}
+                    <Spinner size={12} /> {c.readyCount > 0 ? t('course:failure.marker.buildingReady') : t('generating')}
                   </div>
                 ) : (
                   <>

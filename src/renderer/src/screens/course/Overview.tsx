@@ -1,4 +1,5 @@
 // Resumen del curso: nota estimada (cifra serif que cuenta), el examen (tarjeta que flota), lo que toca ahora y el mapa del curso.
+// Los píxeles de los temas y el mapa abren Aprender igual que su pestaña: lo que aún se escribe (o espera a «Reanudar») no se abre.
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
@@ -12,16 +13,35 @@ import { examStatus } from './examStatus'
 import { RichText } from '@renderer/lib/RichText'
 import { navigate } from '@renderer/app/router'
 import { startPlanItem } from '../home/actions'
+import { topicAvailability, topicOpens, type CreationPhase } from '@engine/study/topics'
 
 const KIND_ICON: Record<PlanKind, IconName> = { cards: 'cards', mistakes: 'mistakes', learn: 'learn', practice: 'practice', exam: 'exam', review: 'repeat' }
 const LABEL_COLOR = { notStarted: 'var(--text3)', early: 'var(--warning)', gettingThere: 'var(--text)', almostReady: 'var(--success)', ready: 'var(--success)' }
 
-export function Overview({ pack, ov }: { pack: Pack; ov: CourseOverview | null }) {
+/** Lo que hace falta para saber qué temas se abren: la fase de la creación y el tema que escribe ahora una ampliación. */
+interface TopicGate {
+  phase?: CreationPhase
+  writing?: string
+}
+
+/** ¿Se abre este tema en Aprender? Y, si no, por qué (para el texto de ayuda). */
+function topicGate(s: Pack['skills'][number], g: TopicGate): { opens: boolean; state: ReturnType<typeof topicAvailability> } {
+  const state = topicAvailability(s, g.phase ?? 'none', s.id === g.writing)
+  return { opens: topicOpens(state), state }
+}
+
+export function Overview({ pack, ov, phase, writing }: { pack: Pack; ov: CourseOverview | null } & TopicGate) {
   const { t } = useTranslation(['course', 'common'])
   const { dark } = useTheme()
   const tone = toneForHue(pack.hue)
   const ink = dark ? tone.inkDark : tone.inkLight
-  const planMinutes = ov?.plan.reduce((a, p) => a + p.minutes, 0) ?? 0
+  // lo que toca ahora, sin los temas que aún se están escribiendo (como Hoy y «Estudiar ahora»: no lleva a un tema a medias)
+  const refs = new Map(pack.skills.map((s) => [s.id, s]))
+  const plan = (ov?.plan ?? []).filter((p) => {
+    const ref = p.skillId ? refs.get(p.skillId) : undefined
+    return !ref || topicGate(ref, { phase, writing }).opens
+  })
+  const planMinutes = plan.reduce((a, p) => a + p.minutes, 0)
   // sin nada practicado aún, «0 %» no dice nada: se explica cuándo aparecerá la nota
   const fresh = !!ov && ov.attempts === 0 && ov.label === 'notStarted'
   return (
@@ -60,7 +80,7 @@ export function Overview({ pack, ov }: { pack: Pack; ov: CourseOverview | null }
                   </div>
                 </>
               )}
-              <TopicPixels pack={pack} ov={ov} />
+              <TopicPixels pack={pack} ov={ov} gate={{ phase, writing }} />
               <div className="mt-auto" />
               <div className="grid grid-cols-4 mt-6 pt-5 border-t-[0.5px] border-line-soft">
                 {[
@@ -89,28 +109,28 @@ export function Overview({ pack, ov }: { pack: Pack; ov: CourseOverview | null }
 
       <div className="col-span-12 @5xl:col-span-7">
         <Card enterAnim padded="lg" className="h-full flex flex-col">
-          <SectionTitle title={t('now')} detail={ov?.plan.length ? t('nowDetail', { minutes: planMinutes }) : undefined} />
-          {ov && !ov.plan.length ? (
+          <SectionTitle title={t('now')} detail={plan.length ? t('nowDetail', { minutes: planMinutes }) : undefined} />
+          {ov && !plan.length ? (
             <p className="t-callout text-text2 mt-3">{t('nowEmpty')}</p>
           ) : (
             <Group inset={56} className="mt-3 shadow-none!">
-              {(ov?.plan ?? []).map((p, i) => (
+              {plan.map((p, i) => (
                 <Row key={p.id} index={i} onClick={() => startPlanItem(p)} leading={<Icon name={KIND_ICON[p.kind]} size={18} />} title={p.title} subtitle={p.detail} trailing={t('minutes', { count: p.minutes })} chevron />
               ))}
             </Group>
           )}
           {/* al pie: empezar por lo primero, sin elegir */}
-          {ov?.plan[0] && (
+          {plan[0] && (
             <div className="mt-auto pt-5 flex items-center justify-between gap-3">
               <span className="t-footnote text-text3">{t('nowHint')}</span>
-              <Button icon={<Icon name="play" size={14} />} onClick={() => startPlanItem(ov.plan[0])}>{t('studyNow')}</Button>
+              <Button icon={<Icon name="play" size={14} />} onClick={() => startPlanItem(plan[0])}>{t('studyNow')}</Button>
             </div>
           )}
         </Card>
       </div>
 
       <div className="col-span-12 @5xl:col-span-5">
-        <CourseMap pack={pack} ov={ov} ink={ink} />
+        <CourseMap pack={pack} ov={ov} ink={ink} gate={{ phase, writing }} />
       </div>
     </Stagger>
   )
@@ -123,7 +143,7 @@ function topicLevel(s: { mastery: number; seen: boolean } | undefined): number {
 }
 
 /** Un píxel por tema, en el orden del curso: se encienden uno a uno con su nivel de dominio. */
-function TopicPixels({ pack, ov }: { pack: Pack; ov: CourseOverview }) {
+function TopicPixels({ pack, ov, gate }: { pack: Pack; ov: CourseOverview; gate: TopicGate }) {
   const { t } = useTranslation('course')
   const byId = new Map(ov.skills.map((s) => [s.id, s]))
   const ids = pack.units.length ? pack.units.flatMap((u) => u.skillIDs) : pack.skills.map((s) => s.id)
@@ -142,17 +162,20 @@ function TopicPixels({ pack, ov }: { pack: Pack; ov: CourseOverview }) {
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {topics.map((s, i) => {
           const level = topicLevel(byId.get(s.id))
+          const { opens, state } = topicGate(s, gate)
+          const label = opens ? s.title : `${s.title} · ${t(`learn.${state}`)}`
           return (
             <motion.button
               key={s.id}
-              title={s.title}
-              aria-label={`${s.title}: ${t(`pixelLevel.${level}`)}`}
+              title={label}
+              aria-label={`${label}: ${t(`pixelLevel.${level}`)}`}
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.22, delay: 0.25 + i * 0.045, ease: [0.2, 0.7, 0.2, 1] }}
-              whileHover={{ y: -2 }}
-              onClick={() => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: s.id })}
-              className="w-7 h-7 rounded-[6px] outline-offset-2"
+              whileHover={opens ? { y: -2 } : undefined}
+              disabled={!opens}
+              onClick={opens ? () => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: s.id }) : undefined}
+              className={cx('w-7 h-7 rounded-[6px] outline-offset-2', !opens && 'cursor-default opacity-60')}
             >
               {/* el color va en un toque de pincel de dentro: así el contorno del foco del botón no se recorta */}
               <span aria-hidden className={cx('dab block h-full w-full rounded-[6px]', `dab-${(i % 4) + 1}`)} style={{ background: `var(--level-${level})` }} />
@@ -271,7 +294,7 @@ function StillWrap({ children }: { children: ReactNode }) {
   return <div className="h-full">{children}</div>
 }
 
-function CourseMap({ pack, ov, ink }: { pack: Pack; ov: CourseOverview | null; ink: string }) {
+function CourseMap({ pack, ov, ink, gate }: { pack: Pack; ov: CourseOverview | null; ink: string; gate: TopicGate }) {
   const { t } = useTranslation('course')
   const mastery = new Map((ov?.skills ?? []).map((s) => [s.id, s.mastery]))
   return (
@@ -288,14 +311,17 @@ function CourseMap({ pack, ov, ink }: { pack: Pack; ov: CourseOverview | null; i
                 const s = pack.skills.find((x) => x.id === sid)
                 if (!s) return null
                 const m = mastery.get(sid) ?? 0
+                const { opens, state } = topicGate(s, gate)
                 return (
                   <motion.button
                     key={sid}
                     initial={{ opacity: 0, x: 6 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: 0.1 + (ui * 3 + i) * 0.03 }}
-                    onClick={() => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: sid })}
-                    className="group grid grid-cols-[1fr_88px] items-center gap-3 rounded-[10px] px-2 py-1.5 text-left hover:bg-fill1"
+                    disabled={!opens}
+                    title={opens ? undefined : t(`learn.${state}`)}
+                    onClick={opens ? () => navigate({ name: 'study', id: pack.id, mode: 'learn', skill: sid }) : undefined}
+                    className={cx('group grid grid-cols-[1fr_88px] items-center gap-3 rounded-[10px] px-2 py-1.5 text-left', opens ? 'hover:bg-fill1' : 'cursor-default text-text3')}
                   >
                     <span className="t-callout truncate">
                       <RichText text={s.title} inline />

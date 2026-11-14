@@ -5,7 +5,8 @@
 // 3. Diagnóstico si no hay ningún dato. 4. Simulacro si faltan 3–7 días, ya se vio ≥ 60 % y no se alcanzó el número recomendado.
 // 5. Lo que más puntos aporta por minuto (peso × (1 − dominio) / minutos), respetando prerrequisitos (los que desbloquean reciben
 //    un bonus). 6. Repaso final (faltan ≤ 2 días y hay datos): repaso, errores y hoja de fórmulas, y descanso la víspera.
-// La suma de minutos nunca supera `minutesAvailable`.
+// La suma de minutos nunca supera `minutesAvailable`. Un tema aún sin escribir (`available: false`) cuenta para los pesos y la
+// cobertura (las razones dicen lo mismo que con el curso terminado), pero no se propone.
 import { MasteryModel, freshMastery, type SkillMastery } from './mastery'
 import { compareIds, decimal, finiteOr, listJoin, resolveText, roundHalfAway, Spanish, type Lang, type TextOptions } from './support'
 import { daysBetween, localTimeZone, startOfDay } from '@engine/calendar/time'
@@ -25,6 +26,9 @@ export interface PlanSkill {
   needsTeaching?: boolean | null
   /** Progreso guiado: exige comprobaciones independientes en vez de la probabilidad global. */
   progressReady?: boolean | null
+  /** `false`: aún no se puede estudiar (se está escribiendo o se quedó sin contenido). Cuenta para los pesos, la cobertura y lo
+   * que desbloquea, pero nunca se propone (ni aprender, ni practicar, ni el diagnóstico) ni bloquea a otro tema. */
+  available?: boolean
 }
 
 /** Habilidad del plan con valores por defecto (sin intentos, sin prerrequisitos, 20 min). */
@@ -267,9 +271,16 @@ class Builder {
     this.items.push({ id: 'mistakes', kind: 'mistakes', skillID: null, title: this.tr('Repaso de errores', 'Mistake review'), minutes, reason })
   }
 
+  /** Los temas que se pueden estudiar ya (los demás solo cuentan para los pesos). */
+  private studyable(): Info[] {
+    return this.infos.filter(isAvailable)
+  }
+
   private addDiagnostic(noData: boolean): void {
-    if (!noData || this.i.hasDiagnostic || this.infos.length === 0 || this.remaining < C.minimumStudyBlock) return
-    const wanted = Math.min(Math.max(safeInt(roundHalfAway(this.infos.length * 1.5)), 10), 20)
+    // el diagnóstico solo pregunta por lo que ya está escrito
+    const n = this.studyable().length
+    if (!noData || this.i.hasDiagnostic || n === 0 || this.remaining < C.minimumStudyBlock) return
+    const wanted = Math.min(Math.max(safeInt(roundHalfAway(n * 1.5)), 10), 20)
     const minutes = this.take(wanted)
     if (!(minutes > 0)) return
     this.items.push({
@@ -322,7 +333,7 @@ class Builder {
     if (timeLimited) {
       reason = this.tr(`Con ${this.budget} min no da para un bloque útil; mañana intenta reservar al menos ${C.minimumStudyBlock * 2}.`,
         `With ${this.budget} min there's no room for a useful block; tomorrow try to reserve at least ${C.minimumStudyBlock * 2}.`)
-    } else if (this.infos.length === 0) {
+    } else if (this.studyable().length === 0) {
       reason = this.tr('Aún no hay temario ni repasos pendientes: cuando añadas material, aquí aparecerá tu plan.', 'No pending topics or reviews yet: when you add material, your plan will appear here.')
     } else {
       reason = this.tr('Estás al día: no hay repasos pendientes y tus temas están sólidos. Descansar también es estudiar.', "You're all caught up: no reviews are pending and your topics are solid. Resting is studying too.")
@@ -486,9 +497,10 @@ class Builder {
     // bloqueos y bonus por desbloquear
     const blockers = new Map<string, string[]>()
     for (const x of this.infos) {
+      // un prerrequisito que aún no se puede estudiar no bloquea: se ignora como uno desconocido
       const open = (effective.get(x.skill.id) ?? []).filter((id) => {
         const q = byID.get(id)
-        return q ? !this.satisfied(q) : false
+        return q ? isAvailable(q) && !this.satisfied(q) : false
       })
       if (open.length > 0) blockers.set(x.skill.id, open)
     }
@@ -509,7 +521,7 @@ class Builder {
     interface Candidate { info: Info; priority: number; bonus: number }
     const candidates: Candidate[] = []
     for (const x of this.infos) {
-      if (blockers.has(x.skill.id) || !this.isCandidateByMastery(x)) continue
+      if (!isAvailable(x) || blockers.has(x.skill.id) || !this.isCandidateByMastery(x)) continue
       const gain = this.learningGain(x)
       const b = bonus.get(x.skill.id) ?? 0
       if (!(gain + b > 1e-12)) continue
@@ -595,6 +607,8 @@ class Builder {
     this.items = this.items.filter((x) => !(x.minutes === 0 && x.kind !== 'rest'))
   }
 }
+
+const isAvailable = (x: Info): boolean => x.skill.available !== false
 
 function lowerFirst(s: string): string {
   return s.length > 0 ? s[0].toLowerCase() + s.slice(1) : s

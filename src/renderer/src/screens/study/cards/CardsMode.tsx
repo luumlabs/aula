@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { Flashcard, StudyProgress } from '@shared/schema'
 import { cardIntervals, clozeText, dueCards, reviewCard, type DueCard } from '@engine/study'
 import type { Rating } from '@engine/learn'
+import { isLanguageCourse } from '@engine/grading'
+import { learnedSpeechLanguage } from '@engine/pipeline/learnedLanguage'
 import { Button, cx, EmptyState, PigmentMark, Icon, IconButton, Tooltip, useTheme } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
 import { navigate } from '@renderer/app/router'
@@ -22,24 +24,6 @@ import { packAssetUrl } from '@renderer/lib/api'
 
 const RATINGS: Rating[] = [1, 2, 3, 4]
 const RATING_KEY = ['again', 'hard', 'good', 'easy'] as const
-
-/** ¿Curso de idiomas? (entonces «Escuchar» lee la tarjeta con la voz de ese idioma) */
-export function isLanguageCourse(subject: string, title: string, examLanguage?: string): boolean {
-  return !!examLanguage || /idiom|lengua|language|ingl[eé]s|english|franc[eé]s|french|alem[aá]n|german|italian|portugu|japon|japanese|chin|coreano|korean|B1|B2|C1|C2/i.test(`${subject} ${title}`)
-}
-
-/** Idioma de la voz de un curso de idiomas (por el título si no lo dice el curso). */
-export function speechLang(subject: string, title: string, examLanguage: string | undefined, fallback: string): string {
-  if (examLanguage) return examLanguage
-  const s = `${subject} ${title}`.toLowerCase()
-  if (/ingl[eé]s|english/.test(s)) return 'en'
-  if (/franc[eé]s|french/.test(s)) return 'fr'
-  if (/alem[aá]n|german/.test(s)) return 'de'
-  if (/italian/.test(s)) return 'it'
-  if (/portugu/.test(s)) return 'pt'
-  if (/japon|japanese/.test(s)) return 'ja'
-  return fallback
-}
 
 interface Tally { reviewed: number; again: number; hard: number; good: number; easy: number }
 
@@ -63,8 +47,9 @@ export function CardsMode({ data, skillId }: { data: CourseData; skillId?: strin
   const ink = useInk(data.pack)
   const progress = useStudyStore((s) => s.courses[packId]?.progress) ?? data.progress
   const lang = gradeLang(i18n.language)
-  const language = isLanguageCourse(data.pack.subject, data.pack.title, data.pack.examLanguage)
-  const voice = speechLang(data.pack.subject, data.pack.title, data.pack.examLanguage, data.pack.language)
+  // la misma detección que la corrección (la meta del curso o, en los de antes, su nombre): «Deutsch A2» también es de idiomas
+  const language = isLanguageCourse(data.pack)
+  const voice = learnedSpeechLanguage(data.pack)
   const onExit = (): void => exitTo(packId, 'cards')
   const due = queue[index]
   const done = !due && queue.length > 0
@@ -282,7 +267,7 @@ function RatingButton({ rating, interval, onClick }: { rating: Rating; interval:
 }
 
 /** La tarjeta: gira sobre su eje vertical con perspectiva; cara y reverso en serif de lectura. */
-function FlipCard({ card, flipped, onFlip, ink, assetUrl }: { card: Flashcard; flipped: boolean; onFlip: () => void; ink: string; assetUrl: (a: string) => string }) {
+export function FlipCard({ card, flipped, onFlip, ink, assetUrl }: { card: Flashcard; flipped: boolean; onFlip: () => void; ink: string; assetUrl: (a: string) => string }) {
   const { t } = useTranslation('study')
   const { reducedMotion } = useTheme()
   const front = card.kind === 'cloze' ? clozeText(card.front, false) : card.front
@@ -296,6 +281,9 @@ function FlipCard({ card, flipped, onFlip, ink, assetUrl }: { card: Flashcard; f
       ))}
     </div>
   ) : null
+  // las dos caras están siempre, una encima de la otra: la que no se ve (de espaldas) no se selecciona, ni entra en «Seleccionar
+  // todo» o en lo que se copia o se traduce (sería la respuesta), ni la lee el lector de pantalla
+  const hidden = (isHidden: boolean): { 'aria-hidden'?: true; inert?: boolean } => (isHidden ? { 'aria-hidden': true, inert: true } : {})
   return (
     <div className="w-full max-w-[640px] [perspective:1600px]">
       <motion.div
@@ -303,20 +291,25 @@ function FlipCard({ card, flipped, onFlip, ink, assetUrl }: { card: Flashcard; f
         tabIndex={0}
         aria-pressed={flipped}
         aria-label={flipped ? t('cards.back') : t('cards.front')}
-        onClick={onFlip}
+        onClick={() => {
+          // seleccionar texto de la tarjeta (para copiarlo o preguntar por él) no la gira
+          const selection = window.getSelection()
+          if (selection && !selection.isCollapsed) return
+          onFlip()
+        }}
         initial={reducedMotion ? false : { opacity: 0, y: 16, rotateX: -6 }}
         animate={{ opacity: 1, y: 0, rotateX: 0, rotateY: flipped ? 180 : 0 }}
         transition={{ rotateY: reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 160, damping: 20 }, default: { duration: 0.35, ease: [0.2, 0.7, 0.2, 1] } }}
         className="relative min-h-[340px] w-full cursor-pointer outline-none [transform-style:preserve-3d] focus-visible:ring-2 focus-visible:ring-accent-line rounded-[28px]"
         style={{ boxShadow: 'var(--e3)' }}
       >
-        <div className={face}>
+        <div className={cx(face, flipped && 'select-none')} {...hidden(flipped)}>
           <PigmentMark color={ink} seed={card.id} />
           <span className="t-eyebrow">{t('cards.front')}</span>
           {figure}
           <div className="t-reading text-[22px] leading-[32px] text-text"><RichText text={front} /></div>
         </div>
-        <div className={face} style={{ transform: 'rotateY(180deg)' }}>
+        <div className={cx(face, !flipped && 'select-none')} {...hidden(!flipped)} style={{ transform: 'rotateY(180deg)' }}>
           <PigmentMark color={ink} seed={card.id} />
           <span className="t-eyebrow">{t('cards.back')}</span>
           {card.kind === 'cloze' ? (

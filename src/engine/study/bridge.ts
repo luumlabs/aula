@@ -5,12 +5,13 @@ import {
   type ReviewState, type SkillMastery
 } from '@engine/learn'
 import { daysBetween, localTimeZone, startOfDay } from '@engine/calendar/time'
-import { ownValue, makeSkillProgress, orderedSkills, packHasExam, type CardProgress, type ItemID, type Pack, type Skill, type SkillProgress, type StudyProgress } from '@shared/schema'
+import { ownValue, makeSkillProgress, orderedSkills, packHasExam, type CardProgress, type ItemID, type Pack, type Skill, type SkillProgress, type SkillRef, type StudyProgress } from '@shared/schema'
 import type { SkillsInput, StudyLang } from './types'
 import { isoOf, skillMap, toDate } from './util'
 import { LearningController } from './learning'
 import { CardReview } from './cards'
 import { Recorder } from './recorder'
+import { topicHasContent } from './topics'
 
 const masteryModel = new MasteryModel()
 const fsrs = new FSRS()
@@ -63,15 +64,24 @@ export const LearnBridge = {
     return CardReview.queue(pack, skills, progress, { now, includeNew: false, limit: Number.MAX_SAFE_INTEGER }).length
   },
 
-  dailyPlan(pack: Pack, skillsInput: SkillsInput, progress: StudyProgress, minutes: number, now: Date, lang?: StudyLang): PlanItem[] {
+  /** El plan de hoy. `isAvailable`: qué temas se pueden proponer ya (mientras se crea el curso, los listos); los demás siguen
+   * contando para los pesos («Vale 10 puntos» igual que con el curso terminado), pero no se proponen. */
+  dailyPlan(pack: Pack, skillsInput: SkillsInput, progress: StudyProgress, minutes: number, now: Date, lang?: StudyLang, isAvailable?: (ref: SkillRef) => boolean): PlanItem[] {
     const skills = skillMap(skillsInput)
     const tz = localTimeZone()
     let precedingGuided: ItemID | undefined
     // con el examen a dos días o menos se prioriza lo que más puntos da: encadenar las lecciones guiadas lo anularía
     const examDate = toDate(pack.exam?.date)
     const examIsNear = examDate !== null && examDate.getTime() >= now.getTime() && daysBetween(startOfDay(now, tz), startOfDay(examDate, tz), tz) <= 2
+    // un tema sin lección ni ejercicios (aún sin escribir, o que falló al crearse) no se propone: «Estudiar ahora» llevaría a
+    // un vacío. Sigue en la lista: su peso cuenta (sin él, «Vale 10 puntos» pasaba a «50 % del examen»)
+    const written = (ref: SkillRef): boolean => {
+      const skill: Skill | undefined = ownValue(skills, ref.id)
+      return skill ? skill.lesson.length + skill.exercises.length + skill.templates.length > 0 : topicHasContent(ref)
+    }
     const plan = orderedSkills(pack).map((ref): PlanSkill => {
       const saved = ownValue(progress.skills, ref.id)
+      const available = written(ref) && (isAvailable?.(ref) ?? true)
       let needsTeaching: boolean | undefined, ready: boolean | undefined
       const prerequisites = [...ref.prerequisites]
       const skill: Skill | undefined = ownValue(skills, ref.id)
@@ -79,14 +89,17 @@ export const LearnBridge = {
         ready = LearningController.isMastered(skill, saved)
         // una comprobación guiada pendiente vuelve a su lección, no a la práctica normal
         needsTeaching = !ready
-        if (!examIsNear && precedingGuided !== undefined && !prerequisites.includes(precedingGuided)) prerequisites.push(precedingGuided)
-        precedingGuided = ref.id
+        // la cadena de lecciones guiadas solo pasa por lo que se puede estudiar (lo demás no puede esperar ni hacerse esperar)
+        if (available) {
+          if (!examIsNear && precedingGuided !== undefined && !prerequisites.includes(precedingGuided)) prerequisites.push(precedingGuided)
+          precedingGuided = ref.id
+        }
       } else if (skill && skill.lesson.length) {
         needsTeaching = saved?.lessonDone !== true
       }
       return {
         id: ref.id, title: ref.title, weight: LearnBridge.weight(ref.weight), mastery: LearnBridge.mastery(saved), prerequisites,
-        estimatedMinutes: Math.min(Math.max(5, ref.minutes), 600), needsTeaching, progressReady: ready
+        estimatedMinutes: Math.min(Math.max(5, ref.minutes), 600), needsTeaching, progressReady: ready, available
       }
     })
     return StudyPlanner.dailyPlan({

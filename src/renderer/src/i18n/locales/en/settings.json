@@ -174,7 +174,7 @@
     "cursor": "Cursor",
     "cursorSun": "Sun",
     "cursorSystem": "System",
-    "cursorHint": "The sun leaves a short comet tail as it moves (not with reduced animations)."
+    "cursorHint": "The sun leaves a short trail as it moves and a ripple when you click (neither with reduced animations). “System” brings back the usual arrow."
   },
   "devices": {
     "title": "Aula on your devices",
@@ -237,6 +237,8 @@
     "title": "Language and reminders",
     "language": "Aula’s language",
     "languageSystem": "System language",
+    "courseLanguage": "Language for new courses",
+    "courseLanguageAuto": "Automatic ({{name}})",
     "reminders": "Daily study reminder",
     "reminderTime": "Time",
     "name": "Your name",

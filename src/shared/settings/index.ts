@@ -23,6 +23,11 @@ export interface GeneralSettings {
   reminderTime: string // 'HH:mm'
   /** Nombre con el que Aula saluda (opcional). */
   name: string
+  /**
+   * Idioma de los cursos nuevos: 'auto' (el del sistema si Aula escribe cursos en él; si no, el de la interfaz) o el id de un
+   * idioma de curso («de», «pt-BR»…). Lo recuerda el formulario de «Nuevo curso»; ver `resolveCourseLanguage`.
+   */
+  courseLanguage: string
 }
 
 export interface PersistentSettings {
@@ -55,7 +60,7 @@ export function defaultSettings(): AppSettings {
   return {
     version: 2,
     onboarded: false,
-    general: { language: 'system', theme: 'system', motion: 'system', textScale: 1, cursor: 'sun', reminders: true, reminderTime: '18:00', name: '' },
+    general: { language: 'system', theme: 'system', motion: 'system', textScale: 1, cursor: 'sun', reminders: true, reminderTime: '18:00', name: '', courseLanguage: 'auto' },
     ai: defaultAISettings(),
     platforms: defaultPlatformSettings(),
     persistent: { enabled: false, style: 'balanced', openAtLogin: false, quietHours: { from: '22:00', to: '08:00' } },

@@ -8,6 +8,7 @@ import { platformGuide, READ_ONLY_RULES } from '@engine/platforms/guides'
 import type { PlatformKind } from '@shared/settings/platforms'
 import { authoringGuide } from './guide'
 import { goalContextBrief, goalKindOf, goalPedagogy, knownExamOf, skillDefinition } from './goal'
+import { learnedLanguage } from './learnedLanguage'
 import { DEPTHS, type CrossPart, type GatherSpec, type GenerationRequest, type PipelineRole, type SkillPart } from './model'
 
 /** Ficha de un material hecha por un lector del equipo (`digests/<id>.json`, formato de `SourceDigest` de Swift). */
@@ -65,6 +66,27 @@ export function languageName(code: string): string {
 
 const goalInput = (r: GenerationRequest) => ({ title: r.title, subject: r.subject, topics: r.topics, examDate: r.examDate, examNotes: r.examNotes, goalKind: r.goalKind })
 
+/** ¿Curso de idiomas? (la meta elegida, la que quedó en el curso o la deducida del nombre) */
+function isLanguageGoal(request: GenerationRequest, pack: Pack): boolean {
+  return (request.goalKind ?? pack.goalKind ?? goalKindOf(goalInput(request))) === 'language'
+}
+
+/** En un curso de idiomas, el idioma que se aprende (el que guardó el plan en `examLanguage` o el que dice el nombre). */
+export function learnedLanguageOf(request: GenerationRequest, pack: Pack): string | undefined {
+  if (!isLanguageGoal(request, pack)) return undefined
+  return learnedLanguage({ title: request.title, subject: request.subject, language: request.language, examLanguage: pack.examLanguage })
+}
+
+/** «German (`de`)»: el idioma que se aprende puede no ser uno de los 12 de los cursos («nb», «tr»…). */
+function learnedLanguageLabel(code: string): string {
+  let name = languageName(code)
+  try {
+    const n = new Intl.DisplayNames(['en'], { type: 'language' }).of(code)
+    if (n && n !== code) name = n
+  } catch { /* un código que Intl no entiende: el nombre de siempre */ }
+  return name === code ? `\`${code}\`` : `${name} (\`${code}\`)`
+}
+
 // MARK: Sistema
 
 export function roleText(r: PipelineRole): string {
@@ -118,6 +140,8 @@ export function courseContext(request: GenerationRequest, course: PromptCourse, 
   s += `- Title: ${request.title}` + (request.subject ? ` — subject: ${request.subject}` : '') + '\n'
   if (request.level) s += `- Student level: ${request.level}\n`
   s += `- Student-facing language: ${languageName(request.language)} (\`${request.language}\`)\n`
+  const learned = learnedLanguageOf(request, pack)
+  if (learned) s += `- Language being learned (the TARGET language of examples, texts and exercises): ${learnedLanguageLabel(learned)}\n`
   s += goalContextBrief(goalInput(request))
   if (request.goal) s += `- Student's goal: ${request.goal}\n`
   if (request.examDate) s += `- Exam date: ${examDateText(request.examDate)}\n`
@@ -196,6 +220,13 @@ export function planPrompt(request: GenerationRequest, course: PromptCourse): st
   const step2 = researchFirst
     ? 'If the known public facts above (if any) and what you found disagree, the official page wins; if you could not reach it, use the known facts and say so in `finish`.'
     : 'If the materials leave gaps about WHAT the course/exam covers and web research is allowed, do a little (`web_search`, `fetch_url`) to confirm the standard content. Never replace the instructor\'s materials with web content.'
+  // curso de idiomas: el idioma que se aprende queda en el curso (`exam_language`), aparte del de las explicaciones
+  const learned = learnedLanguageOf(request, pack)
+  // curso de inmersión («IELTS Academic» explicado en inglés): el mismo idioma, y decir «nunca el de las explicaciones» se contradecía
+  const immersion = !!learned && learned.toLowerCase().split('-')[0] === request.language.toLowerCase().split('-')[0]
+  const learnedRule = isLanguageGoal(request, pack)
+    ? `, \`exam_language\` = the code of the language being LEARNED${learned ? ` (\`${learned}\`, unless the materials clearly show another one)` : ' (BCP-47, e.g. `de` for German, `en` for English)'}${immersion ? ' — here the same as the explanation language: an immersion course' : ' — never the language of the explanations'}`
+    : ''
   const weightRule = kind === 'topic' || kind === 'practicalSkill' ? 'Weight each skill by how important it is to master the topic.' : 'Weight each skill by how much the exam emphasises it (official domain weights, review questions, instructor remarks, point splits).'
   return `# Task: PLAN the course
 
@@ -205,7 +236,7 @@ ${digests ? '## Digests of the materials (made by the reader agents)\n' + digest
 ${readStep}
 2. ${step2}
 3. Design the course: **${r.skillRange[0]}–${r.skillRange[1]} skills** (${skillDefinition(kind)}). Group them in 2–6 units${kind === 'certification' ? ' (one per official domain when the exam has domains)' : ''}. Order so prerequisites come first. ${weightRule} Cover everything on the student's topic list and nothing unrelated.
-4. Call \`set_course_plan\` ONCE with the complete plan: title, subject, \`course_code\` only if there is an official one (an exam or course code such as CLF-C02 — never invent one), language \`${request.language}\`, the closest pixel-art \`icon\` (one of: ${CourseIconCatalog.promptList}) and \`hue\` (0–1), \`exam\` {title, date, duration_minutes, total_points, aids, notes}, \`guidance\` (the conventions that every author must follow: notation, answer formats such as "write DNE if undefined", calculator rules, how the instructor wants work shown), \`units\` → \`skills\` (id, title, one-sentence summary, 3–5 objectives, prerequisites, weight, minutes).
+4. Call \`set_course_plan\` ONCE with the complete plan: title, subject, \`course_code\` only if there is an official one (an exam or course code such as CLF-C02 — never invent one), language \`${request.language}\`${learnedRule}, the closest pixel-art \`icon\` (one of: ${CourseIconCatalog.promptList}) and \`hue\` (0–1), \`exam\` {title, date, duration_minutes, total_points, aids, notes}, \`guidance\` (the conventions that every author must follow: notation, answer formats such as "write DNE if undefined", calculator rules, how the instructor wants work shown), \`units\` → \`skills\` (id, title, one-sentence summary, 3–5 objectives, prerequisites, weight, minutes).
 5. Call \`set_exam_blueprint\` with a first version that mirrors the real exam when the materials/notes/known facts describe it (sections, how many questions, which skills, point split, duration, passing score in \`instructions\`)${kind === 'topic' || kind === 'practicalSkill' ? '; with no exam, a short final self-check' : ''}.
 6. Call \`finish\` with 2–3 sentences: what the course contains and any assumption you made.
 

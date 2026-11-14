@@ -6,7 +6,7 @@ import { reasoningLevelName } from '@shared/ai/reasoning'
 import { AIError, type AIErrorKind } from '../errors'
 import { asText, canonicalJSON, obj, str, tryParseJSON } from '../core/json'
 import { scrubSecrets } from './redactor'
-import { retryAfterSeconds } from './retryAfter'
+import { durationSeconds, MAX_WAIT_SEC, retryAfterSeconds } from './retryAfter'
 
 /** Datos para redactar los mensajes de error de un proveedor. */
 export interface ErrorContext {
@@ -25,6 +25,10 @@ export interface ParsedBody {
   message?: string
   type?: string
   code?: string
+  /** Segundos que pide esperar el cuerpo (Google: `details[].retryDelay` de `google.rpc.RetryInfo`). */
+  retryDelay?: number
+  /** Google: el límite superado es el DIARIO (`google.rpc.QuotaFailure` con un `quotaId` «…PerDay…»). */
+  dailyQuota?: boolean
 }
 
 const decoder = new TextDecoder('utf-8')
@@ -66,6 +70,9 @@ export function parseErrorJSON(json: JSONValue): ParsedBody {
         const inner = obj(e.error)
         if (inner) parsed.message = str(inner.message)
       }
+      const delay = googleRetryDelay(e.details)
+      if (delay !== undefined) parsed.retryDelay = delay
+      if (googleDailyQuota(e.details)) parsed.dailyQuota = true
     } else if (typeof err === 'string') parsed.message = err
   }
   if (parsed.message === undefined && o) {
@@ -82,6 +89,69 @@ export function parseErrorJSON(json: JSONValue): ParsedBody {
   if (parsed.message === '') parsed.message = undefined
   return parsed
 }
+
+/** Google pone la espera en `details`: `{"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "39s"}`. */
+function googleRetryDelay(details: JSONValue | undefined): number | undefined {
+  if (!Array.isArray(details)) return undefined
+  for (const d of details) {
+    const o = obj(d)
+    if (!o || !(str(o['@type']) ?? '').endsWith('RetryInfo')) continue
+    const s = durationSeconds((str(o.retryDelay) ?? '').trim())
+    if (s !== null && s >= 0) return Math.min(s, MAX_WAIT_SEC)
+  }
+  return undefined
+}
+
+/**
+ * ¿Google dice que se superó un límite DIARIO? Va en `details`: `{"@type": "…google.rpc.QuotaFailure", "violations":
+ * [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier", …}]}`. Ese error trae TAMBIÉN un RetryInfo corto.
+ */
+function googleDailyQuota(details: JSONValue | undefined): boolean {
+  if (!Array.isArray(details)) return false
+  return details.some((d) => {
+    const o = obj(d)
+    if (!o || !(str(o['@type']) ?? '').endsWith('QuotaFailure') || !Array.isArray(o.violations)) return false
+    return o.violations.some((v) => {
+      const q = obj(v)
+      return !!q && /per_?day/i.test(`${str(q.quotaId) ?? ''} ${str(q.quotaMetric) ?? ''}`)
+    })
+  })
+}
+
+/** Zona horaria en la que Google renueva los límites diarios de Gemini (a medianoche). */
+export const GOOGLE_QUOTA_TIME_ZONE = 'America/Los_Angeles'
+
+/** Desfase (ms) de una zona horaria en un instante: la hora de reloj de allí leída como UTC, menos el instante. */
+function zoneOffsetMs(timeZone: string, ms: number): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric'
+  }).formatToParts(new Date(ms))
+  const part = (type: Intl.DateTimeFormatPartTypes): number => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  const wall = Date.UTC(part('year'), part('month') - 1, part('day'), part('hour') % 24, part('minute'), part('second'))
+  return wall - Math.floor(ms / 1000) * 1000
+}
+
+/** Segundos hasta la próxima medianoche en `timeZone` (con el cambio de hora: un día de 23 o 25 h cuenta bien). */
+export function secondsUntilMidnight(timeZone: string, nowMs: number = Date.now()): number {
+  const offset = zoneOffsetMs(timeZone, nowMs)
+  const wall = new Date(nowMs + offset)
+  const nextMidnight = Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate() + 1)
+  // el desfase que vale es el de la medianoche (puede cambiar de hora entre medias): se corrige con él
+  const guess = nextMidnight - offset
+  const target = nextMidnight - zoneOffsetMs(timeZone, guess)
+  return Math.max(0, (target - nowMs) / 1000)
+}
+
+/** La espera escrita en el mensaje: «Please retry in 39.58s» (Gemini), «Please try again in 20s» o «in 14m24s» (OpenAI, Groq). */
+export function retryDelayInText(text: string): number | undefined {
+  const m = /\b(?:retry|try again)\s+in\s+((?:\d+(?:\.\d+)?(?:ms|h|m|s))+)/i.exec(text)
+  if (!m) return undefined
+  const s = durationSeconds(m[1].toLowerCase())
+  return s !== null && s >= 0 ? Math.min(s, MAX_WAIT_SEC) : undefined
+}
+
+/** Un 429 con una espera de hasta esto (s) es un límite por minuto u hora (p. ej. de un nivel gratuito), no saldo agotado. */
+export const SHORT_LIMIT_SEC = 3600
 
 /** Texto legible de un cuerpo que no es JSON (quita etiquetas HTML y comprime espacios). */
 export function plainText(raw: string): string | undefined {
@@ -135,15 +205,26 @@ export interface HTTPResult {
  */
 export function fromHTTP(status: number, body: Uint8Array | string, headers: Headers | undefined, ctx: ErrorContext, nowMs = Date.now()): HTTPResult {
   const parsed = parseErrorBody(body)
-  const retryAfter = headers ? retryAfterSeconds((n) => headers.get(n), nowMs) : undefined
   const detailRaw = parsed.message ?? ''
   const detailLower = detailRaw.toLowerCase()
+  // Gemini: el límite DIARIO trae un RetryInfo corto, como si fuera por minuto; se renueva a medianoche, hora del Pacífico
+  const dailyWait = status === 429 && parsed.dailyQuota ? Math.min(secondsUntilMidnight(GOOGLE_QUOTA_TIME_ZONE, nowMs), MAX_WAIT_SEC) : undefined
+  // la espera: la de las cabeceras o, si no hay, la del cuerpo (RetryInfo de Google) o la escrita en el mensaje
+  const retryAfter = dailyWait ?? (headers ? retryAfterSeconds((n) => headers.get(n), nowMs) : undefined) ?? parsed.retryDelay ?? retryDelayInText(detailRaw)
   // OpenAI marca el saldo agotado con códigos propios (`credit_balance_exhausted`, `*_spend_limit_exceeded`, `insufficient_quota`…)
   const codes = ((parsed.code ?? '') + ' ' + (parsed.type ?? '')).toLowerCase()
-  const quotaProblem = status === 429 && (
-    ['quota', 'billing', 'credit', 'balance', 'insufficient', 'exceeded your current', 'spend limit', 'usage limit'].some((w) => detailLower.includes(w)) ||
-    ['quota', 'credit', 'spend_limit', 'usage_limit', 'billing', 'balance'].some((w) => codes.includes(w))
-  )
+  // las palabras se buscan fuera de las direcciones: Groq enlaza «…/settings/billing» en un límite por minuto
+  const words = detailLower.replace(/https?:\/\/\S+/g, ' ')
+  const quotaCode = ['quota', 'credit', 'spend_limit', 'usage_limit', 'billing', 'balance'].some((w) => codes.includes(w))
+  const quotaWords = ['quota', 'billing', 'credit', 'balance', 'insufficient', 'exceeded your current', 'spend limit', 'usage limit'].some((w) => words.includes(w))
+  // Gemini gratis dice «You exceeded your current quota» también en los límites por minuto, con una espera corta: eso se espera
+  const shortWait = retryAfter !== undefined && retryAfter <= SHORT_LIMIT_SEC
+  // el límite diario de Gemini se renueva solo: es un límite que se espera (o se reanuda), no saldo agotado
+  const quotaProblem = status === 429 && dailyWait === undefined && (quotaCode || (quotaWords && !shortWait))
+  // Anthropic contesta 400 cuando la cuenta se queda sin saldo («Your credit balance is too low…»)
+  const lowCredit = (status === 400 || status === 403) && /credit balance is too low|credit balance too low/.test(words)
+  // …y cuando llega al tope de gasto que puso la persona («You have reached your specified API usage limits. You will regain…»)
+  const spendLimit = (status === 400 || status === 403) && /reached your specified (?:[\w-]+ )?api usage limit/.test(words)
   const p = ctx.provider
   const model = ctx.model
   const code = String(status)
@@ -152,6 +233,14 @@ export function fromHTTP(status: number, body: Uint8Array | string, headers: Hea
   // Google (Gemini) contesta 400 a una clave que no vale («API key not valid. Please pass a valid API key.»), no 401
   const badKey = (status === 400 || status === 403) && (/api key not valid|pass a valid api key|invalid api key/.test(detailLower) || codes.includes('api_key_invalid') || (status === 400 && /invalid_argument/.test(codes) && detailLower.includes('api key')))
   switch (true) {
+    case spendLimit:
+      base = tr(`Has llegado al tope de gasto que pusiste en tu cuenta de ${p} (${code}). Súbelo en su consola o cambia de proveedor.`,
+        `You've reached the spend limit you set on your ${p} account (${code}). Raise it in its console or switch provider.`)
+      break
+    case lowCredit:
+      base = tr(`${p} indica que no tienes saldo suficiente (${code}). Recarga tu cuenta en su panel o cambia de proveedor.`,
+        `${p} says you don't have enough credit (${code}). Top up your account in its dashboard or switch provider.`)
+      break
     case status === 401 || badKey:
       kind = 'missingKey'
       base = tr(
@@ -190,7 +279,10 @@ export function fromHTTP(status: number, body: Uint8Array | string, headers: Hea
           `Your ${p} account has run out of quota or balance (429). Check your plan and billing in its dashboard.`)
       } else {
         kind = 'rateLimited'
-        base = retryAfter !== undefined && retryAfter > 0
+        base = dailyWait !== undefined
+          ? tr(`Has alcanzado el límite diario de ${p} (429). Se renueva a medianoche, hora del Pacífico (en unos ${waitText(dailyWait)}).`,
+            `You’ve reached the daily limit for ${p} (429). It renews at midnight Pacific time (in about ${waitText(dailyWait)}).`)
+          : retryAfter !== undefined && retryAfter > 0
           ? tr(`Has alcanzado el límite de uso de ${p} (429). Espera unos ${waitText(retryAfter)} y vuelve a intentarlo.`,
             `You’ve reached the usage limit for ${p} (429). Wait about ${waitText(retryAfter)} and try again.`)
           : tr(`Has alcanzado el límite de uso de ${p} (429). Espera un momento y vuelve a intentarlo.`,
@@ -217,7 +309,7 @@ export function fromHTTP(status: number, body: Uint8Array | string, headers: Hea
   let retryable = [408, 409, 425].includes(status) || (status >= 500 && status <= 599)
   // OpenAI y Anthropic avisan con `x-should-retry: false` cuando repetir la petición no servirá de nada
   if (headers?.get('x-should-retry')?.toLowerCase() === 'false') retryable = false
-  const error = new AIError(kind, text, { status, retryAfter, providerMessage: detail })
+  const error = new AIError(kind, text, { status, retryAfter, providerMessage: detail, code: lowCredit || spendLimit ? 'ai_quota' : undefined })
   return { error, retryable, retryAfter }
 }
 

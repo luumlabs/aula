@@ -100,7 +100,7 @@ function OrderItem({ item, index, total, locked, grabbed, tone, correctIndex, re
       aria-roledescription="sortable"
       aria-label={`${index + 1}`}
       className={cx(
-        'group relative flex items-center gap-3 rounded-[16px] border bg-surface px-3 py-3 outline-none transition-[border-color,background-color]',
+        'group relative flex select-none items-center gap-3 rounded-[16px] border bg-surface px-3 py-3 outline-none transition-[border-color,background-color]',
         'focus-visible:ring-2 focus-visible:ring-accent-line',
         grabbed && 'ring-2 ring-accent'
       )}

@@ -7,6 +7,11 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/contrib/mhchem'
 import { AULA_KATEX_MACROS } from '@engine/content/tex'
 import { cx } from '@renderer/design'
+import { useContentLang } from './contentLanguage'
+
+// copiar texto con fórmulas da su LaTeX ($…$ y $$…$$), no el texto doble de KaTeX (HTML + MathML); escucha en el documento,
+// así que sin él (las pruebas) no se carga
+if (typeof document !== 'undefined') void import('katex/contrib/copy-tex').catch(() => undefined)
 
 // las mismas macros que acepta el validador del contenido (\\SI, \\qty, \\mbox…)
 const katexOptions = { throwOnError: false, strict: false, trust: false, output: 'htmlAndMathml' as const, macros: { ...AULA_KATEX_MACROS } }
@@ -33,10 +38,14 @@ function Link({ href, children }: { href?: string; children?: React.ReactNode })
   )
 }
 
-export const RichText = memo(function RichText({ text, inline, className }: { text: string; inline?: boolean; className?: string }) {
+/** En la pantalla de estudio el texto va en el idioma del curso (`lang`, y `dir` si se escribe de derecha a izquierda); `ui`
+ *  lo deja en el de la interfaz (un aviso de Aula que se pinta con Markdown). */
+export const RichText = memo(function RichText({ text, inline, className, ui }: { text: string; inline?: boolean; className?: string; ui?: boolean }) {
+  const course = useContentLang()
+  const content = ui ? {} : course
   if (!text) return null
   return (
-    <span className={cx(inline ? 'aula-rich-inline' : 'aula-rich block', className)}>
+    <span lang={content.lang} dir={content.dir} className={cx(inline ? 'aula-rich-inline' : 'aula-rich block', content.className, className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, katexOptions]]}

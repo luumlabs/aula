@@ -1,10 +1,13 @@
 // El marco de los modos de estudio: la columna de lectura que llena la pantalla, la cápsula flotante de arriba (salir,
-// qué se estudia, progreso) y la barra flotante de abajo con las acciones. Escape sale.
+// qué se estudia, progreso) y la barra flotante de abajo con las acciones. Escape sale (si hay texto seleccionado, primero
+// lo suelta). El texto de la columna se puede seleccionar (copiar, consultar, traducir); el idioma del curso no lo declara la
+// columna (también lleva botones y avisos de la interfaz) sino el texto del curso (RichText, lib/contentLanguage.ts).
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
 import { cx, Icon, IconButton, spring, Tooltip, useTheme, type IconName } from '@renderer/design'
 import { isTypingTarget } from '@renderer/exercises/normalize'
+import { dropSelection } from './reading'
 
 export function StudyFrame({ capsule, bottom, children, onExit, wide, scrollKey, className }: {
   capsule: ReactNode
@@ -28,6 +31,7 @@ export function StudyFrame({ capsule, bottom, children, onExit, wide, scrollKey,
         ;(document.activeElement as HTMLElement).blur()
         return
       }
+      if (dropSelection(window.getSelection())) return
       exit.current()
     }
     window.addEventListener('keydown', fn)
@@ -63,7 +67,10 @@ export function StudyFrame({ capsule, bottom, children, onExit, wide, scrollKey,
       {bottom && <div aria-hidden className="paper-grain pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-paper [mask-image:linear-gradient(to_top,black_40%,transparent)]" />}
       <div className="pointer-events-none absolute inset-x-0 top-2 z-20 flex justify-center px-6">{capsule}</div>
       <div ref={scroller} onClickCapture={revealAnswer} className="@container min-h-0 flex-1 overflow-y-auto">
-        <div className={cx('mx-auto w-full px-6 pt-[76px] pb-36', wide ? 'max-w-[1080px]' : 'max-w-[800px]', className)}>{children}</div>
+        {/* se selecciona el texto, no lo que se arrastra o gira (lienzos) */}
+        <div className={cx('selectable mx-auto w-full px-6 pt-[76px] pb-36 [&_canvas]:select-none', wide ? 'max-w-[1080px]' : 'max-w-[800px]', className)}>
+          {children}
+        </div>
       </div>
       <AnimatePresence>
         {bottom && (
