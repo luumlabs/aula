@@ -94,7 +94,7 @@ window.aulaFigureRender = {
     const element = host.querySelector<HTMLElement>('[data-drawing-scene]')
     if (!element) throw new Error('Drawing scene is unavailable')
     await fontsReady(element)
-    const layoutWidth = scene.metrics.pixelWidth, layoutHeight = scene.canvas.height * layoutWidth / scene.canvas.width
+    const layoutWidth = scene.metrics.layoutWidth, layoutHeight = scene.canvas.height * layoutWidth / scene.canvas.width
     const bounds = await stableBounds(element, layoutWidth, layoutHeight)
     mounted = { scene, bounds }
     return { bounds, layoutWidth, layoutHeight }
@@ -110,7 +110,7 @@ window.aulaFigureRender = {
     if (window.innerWidth !== width || window.innerHeight !== height) throw new Error('Drawing viewport was constrained')
     const frame = element.getBoundingClientRect()
     const bounds = mounted.bounds
-    const measured = drawingExportBounds(element, { width: mounted.scene.metrics.pixelWidth, height: mounted.scene.canvas.height * mounted.scene.metrics.pixelWidth / mounted.scene.canvas.width }, scale)
+    const measured = drawingExportBounds(element, { width: mounted.scene.metrics.layoutWidth, height: mounted.scene.canvas.height * mounted.scene.metrics.layoutWidth / mounted.scene.canvas.width }, scale)
     if ((['x', 'y', 'width', 'height'] as const).some((key) => Math.abs(bounds[key] - measured[key]) > 1)) throw new Error('Drawing bounds changed while framing')
     if (Math.abs(frame.x + bounds.x * scale) > 1 || Math.abs(frame.y + bounds.y * scale) > 1 || bounds.width * scale > width + 1 || bounds.height * scale > height + 1) throw new Error('Drawing framing is inconsistent')
     return { width: window.innerWidth, height: window.innerHeight }

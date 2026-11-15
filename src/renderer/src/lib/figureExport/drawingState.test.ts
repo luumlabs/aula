@@ -14,6 +14,25 @@ function committed(items: DrawItem[], extra: Partial<DrawingCommittedState> = {}
 const freeze = (state: DrawingCommittedState) => projectDrawingScene(state, appearance, 18, resolve)
 
 describe('instantánea Drawing del render comprometido', () => {
+  it('congela el ancho CSS lógico sin recalcular etiquetas, texto ni rodeados preparados', () => {
+    const state = committed([{ kind: 'circle', cx: 100, cy: 70, r: 30, label: 'A $x_1$' }], { focus: new Set([0]) })
+    const original = freeze(state)
+    const nested = projectDrawingScene(state, appearance, 18, resolve, { bodyFont: 'serif', bodyItalic: true }, 460.5)
+    expect(original.metrics.layoutWidth).toBe(state.pixelWidth)
+    expect(nested.metrics).toMatchObject({ pixelWidth: 600, layoutWidth: 460.5, textK: 1.15, unitsPerPx: .8 })
+    expect(nested.items).toEqual(original.items)
+    expect(nested.items[0].labels[0].size).toBe(original.items[0].labels[0].size)
+    expect(nested.items[0].rings[0]).toEqual(original.items[0].rings[0])
+  })
+  it('congela la tipografía heredada sin referencias ni CSS del contexto', () => {
+    const state = committed([{ kind: 'text', x: 20, y: 30, text: 'Inherited serif typography' }])
+    const typography = { bodyFont: 'serif' as const, bodyItalic: true }
+    const scene = projectDrawingScene(state, appearance, 16, resolve, typography)
+    typography.bodyItalic = false
+    expect(scene.metrics).toMatchObject({ bodyFont: 'serif', bodyItalic: true })
+    expect(JSON.stringify(scene)).not.toMatch(/font-family|font-style|ui-serif|Newsreader/)
+    expect(freeze(state).metrics).toMatchObject({ bodyFont: 'sans', bodyItalic: false })
+  })
   it('conserva el frame interpolado al pulsar y no retiene parámetros ni objetos mutables', () => {
     const values = glideValues({ x: 0 }, { x: 100 }, 0.5)
     const frame: ItemFrame = { dx: values.x, dy: -12, deg: 30.1234, px: 10, py: 20 }

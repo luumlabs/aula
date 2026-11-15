@@ -5,6 +5,8 @@ import { writeFileSync } from 'node:fs'
 export interface LiveDrawingGeometry {
   width: number
   height: number
+  /** Escala uniforme de ancestros, observada en DOM; las diapositivas transforman el lienzo entero. */
+  scale?: number
   exclusions: Array<{ x: number; y: number; width: number; height: number }>
   labels: Array<{ text: string; x: number; y: number; width: number; height: number }>
 }
@@ -28,8 +30,26 @@ export async function compareDrawingPixels(page: Page, live: Buffer, saved: Buff
       })
       return { data, width: canvas.width, height: canvas.height, background }
     }
-    const source = await pixels(before, 1), exported = await pixels(after, 2)
-    type Raster = typeof source
+    const scale = geometry.scale ?? 1
+    if (!Number.isFinite(scale) || scale <= 0) throw new Error('Invalid live drawing scale')
+    const rawSource = await pixels(before, 1), rawExported = await pixels(after, 2 / scale)
+    type Raster = typeof rawSource
+    // Misma rejilla CSS y filtro binomial 3×3 en ambas imágenes (σ≈0,707 px). Una captura 1× y un
+    // render 2× usan antialias distinto; comparar sus tonos de borde sin normalizar penaliza glifos idénticos.
+    // No dilata máscaras ni cambia radio, colores o umbrales; conserva los resultados crudos para diagnóstico.
+    function normalize(raster: Raster): Raster {
+      const horizontal = new Uint8ClampedArray(raster.data.length), data = new Uint8ClampedArray(raster.data.length)
+      for (let y = 0; y < raster.height; y++) for (let x = 0; x < raster.width; x++) for (let c = 0; c < 4; c++) {
+        const at = (y * raster.width + x) * 4 + c
+        horizontal[at] = Math.round((raster.data[(y * raster.width + Math.max(0, x - 1)) * 4 + c] + 2 * raster.data[at] + raster.data[(y * raster.width + Math.min(raster.width - 1, x + 1)) * 4 + c]) / 4)
+      }
+      for (let y = 0; y < raster.height; y++) for (let x = 0; x < raster.width; x++) for (let c = 0; c < 4; c++) {
+        const at = (y * raster.width + x) * 4 + c
+        data[at] = Math.round((horizontal[(Math.max(0, y - 1) * raster.width + x) * 4 + c] + 2 * horizontal[at] + horizontal[(Math.min(raster.height - 1, y + 1) * raster.width + x) * 4 + c]) / 4)
+      }
+      return { ...raster, data }
+    }
+    const source = normalize(rawSource), exported = normalize(rawExported)
     const rgb = (r: Raster, x: number, y: number): number[] => Array.from(r.data.slice((y * r.width + x) * 4, (y * r.width + x) * 4 + 3))
     const distance = (a: number[], b: number[]): number => a.reduce((sum, v, i) => sum + Math.abs(v - b[i]), 0)
     const ink = (r: Raster, x: number, y: number): boolean => distance(rgb(r, x, y), r.background) > 40
@@ -41,10 +61,10 @@ export async function compareDrawingPixels(page: Page, live: Buffer, saved: Buff
       }
       return { x: xSum / count, y: ySum / count, count }
     }
-    const a = green(source), b = green(exported)
+    const a = green(rawSource), b = green(rawExported)
     if (a.count < 30 || b.count < 30) throw new Error('The independent green reference is missing')
     const dx = b.x - a.x, dy = b.y - a.y
-    function recall(box: { x: number; y: number; width: number; height: number }) {
+    function recall(box: { x: number; y: number; width: number; height: number }, source: Raster, exported: Raster) {
       let total = 0, matched = 0
       for (let y = Math.max(0, Math.floor(box.y)); y < Math.min(source.height, Math.ceil(box.y + box.height)); y++) {
         for (let x = Math.max(0, Math.floor(box.x)); x < Math.min(source.width, Math.ceil(box.x + box.width)); x++) {
@@ -66,8 +86,13 @@ export async function compareDrawingPixels(page: Page, live: Buffer, saved: Buff
       source: { width: source.width, height: source.height, background: source.background },
       exported: { width: exported.width, height: exported.height, background: exported.background },
       anchor: { source: a, exported: b, areaRatio: b.count / a.count }, offset: { dx, dy },
-      all: recall({ x: 0, y: 0, width: source.width, height: source.height }),
-      labels: geometry.labels.map(label => ({ text: label.text, ...recall(label) }))
+      normalization: 'symmetric-binomial-3x3-css-pixels',
+      raw: {
+        all: recall({ x: 0, y: 0, width: rawSource.width, height: rawSource.height }, rawSource, rawExported),
+        labels: geometry.labels.map(label => ({ text: label.text, ...recall(label, rawSource, rawExported) }))
+      },
+      all: recall({ x: 0, y: 0, width: source.width, height: source.height }, source, exported),
+      labels: geometry.labels.map(label => ({ text: label.text, ...recall(label, source, exported) }))
     }
   }, { before: live.toString('base64'), after: saved.toString('base64'), geometry })
   const report = info.outputPath(`${name}-live-comparison.json`)

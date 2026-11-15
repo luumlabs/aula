@@ -11,6 +11,7 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   drawing, independent of zoom, without controls, atom tooltips or answers hidden in an exercise prompt.
 - **Save a vector drawing as PNG** from its desktop export menu. The image keeps the visible step, highlighting,
   hand-drawn strokes, hatching, formulas and course language, including content extending outside the original canvas.
+  Drawings inside slides retain their inherited typography and proportions.
   Moving drawings capture the frame currently on screen while their clock and transitions continue. Saving does not
   include controls, annotations or content from hidden steps. Additional figure types, student annotations and sending
   a marked image to the tutor remain on the [figure roadmap](https://github.com/luumlabs/aula/issues/28).

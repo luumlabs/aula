@@ -10,9 +10,25 @@ function item(sourceIndex: number): PreparedVisibleItem {
     rings: [{ x: -30, y: -20, width: 50, height: 40, viewWidth: 52, viewHeight: 40, color: '#b4502f', strokes: [{ d: 'M0 0L50 0L50 40Z', spine: 'M0 0L50 0', dry: 'M5 0L8 0', reach: 6, dryWidth: 0.3 }] }]
   }
 }
-const scene: DrawingRenderSceneV1 = { version: 1, canvas: { width: 400, height: 300 }, metrics: { pixelWidth: 600, textK: 1.15, unitsPerPx: 0.76, rootFontPx: 15 }, appearance: { theme: 'light', language: 'ar', direction: 'rtl', palette: { paper: '#fcfaf5', text: '#201e1a', text2: '#585550', text3: '#6c6862', brick: '#b4502f', accent: '#029791', link: '#9c4527' } }, items: [item(2), item(0)], output: { scale: 2 } }
+const scene: DrawingRenderSceneV1 = { version: 1, canvas: { width: 400, height: 300 }, metrics: { pixelWidth: 600, layoutWidth: 600, textK: 1.15, unitsPerPx: 0.76, rootFontPx: 15, bodyFont: 'sans', bodyItalic: false }, appearance: { theme: 'light', language: 'ar', direction: 'rtl', palette: { paper: '#fcfaf5', text: '#201e1a', text2: '#585550', text3: '#6c6862', brick: '#b4502f', accent: '#029791', link: '#9c4527' } }, items: [item(2), item(0)], output: { scale: 2 } }
 
 describe('escena estática completa Drawing', () => {
+  it('pinta SVG y posiciones de etiqueta al ancho CSS; fuentes y rodeados conservan sus píxeles preparados', () => {
+    const nested = { ...scene, metrics: { ...scene.metrics, layoutWidth: 300 } }
+    const html = renderToStaticMarkup(<DrawingExportScene scene={nested} />)
+    expect(html).toContain('width:300px;height:225px')
+    expect(html).toContain('left:-15px;top:7.5px;font-size:18px')
+    expect(html).toContain('left:-30px;top:-20px;width:50px;height:40px')
+    expect(html).not.toContain('width:600px;height:450px')
+  })
+  it('conserva sans normal y la herencia serif/cursiva de una diapositiva', () => {
+    expect(renderToStaticMarkup(<DrawingExportScene scene={scene} />)).toContain('font-family:var(--font-sans);font-style:normal')
+    const inherited = { ...scene, metrics: { ...scene.metrics, bodyFont: 'serif' as const, bodyItalic: true } }
+    const html = renderToStaticMarkup(<DrawingExportScene scene={inherited} />)
+    expect(html).toContain('font-family:var(--font-serif);font-style:italic')
+    expect(html).toContain('katex-html')
+    expect(html).not.toContain('font-family:var(--font-sans)')
+  })
   it('conserva capas, stroke, patrón local y máscara seca sin animaciones ni controles', () => {
     const html = renderToStaticMarkup(<DrawingExportScene scene={scene} />)
     expect(html).toContain('patternTransform="rotate(45)"')

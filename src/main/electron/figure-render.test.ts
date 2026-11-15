@@ -60,17 +60,24 @@ vi.mock('electron', async () => {
   return { BrowserWindow: FakeWindow, screen, session: { fromPartition: (name: string, opts: unknown) => { expect(name).not.toMatch(/^persist:/); expect(opts).toEqual({ cache: false }); const session = new FakeSession(); state.sessions.push(session); return session }, get defaultSession() { throw new Error('Default session forbidden') } } }
 })
 class Owner extends EventEmitter { isDestroyed(): boolean { return false } }
-const scene = (): DrawingRenderSceneV1 => ({ version: 1, canvas: { width: 100, height: 80 }, metrics: { pixelWidth: 100, textK: 1, unitsPerPx: 1, rootFontPx: 16 }, appearance: { theme: 'light', language: 'es', direction: 'ltr', palette: { paper: '#ffffff', text: '#000000', text2: '#111111', text3: '#222222', brick: '#aa2211', accent: '#aa2211', link: '#aa2211' } }, items: [], output: { scale: 2 } })
+const scene = (): DrawingRenderSceneV1 => ({ version: 1, canvas: { width: 100, height: 80 }, metrics: { pixelWidth: 100, layoutWidth: 100, textK: 1, unitsPerPx: 1, rootFontPx: 16, bodyFont: 'sans', bodyItalic: false }, appearance: { theme: 'light', language: 'es', direction: 'ltr', palette: { paper: '#ffffff', text: '#000000', text2: '#111111', text3: '#222222', brick: '#aa2211', accent: '#aa2211', link: '#aa2211' } }, items: [], output: { scale: 2 } })
 beforeEach(() => { vi.resetModules(); vi.stubEnv('ELECTRON_RENDERER_URL', ''); state.windows = []; state.sessions = []; state.calls = []; state.normalized = 'good'; state.displayScale = 2; state.calibrationFailures = 0; state.cleanup.mockClear() })
 
 describe('pipeline aislado de Drawing', () => {
+  it('contrasta el layout aislado con el ancho CSS, conservando la medida original de preparación', async () => {
+    const { renderDrawingPng } = await import('./figure-render')
+    const nested = scene(); nested.metrics.pixelWidth = 200; nested.metrics.unitsPerPx = .5
+    await expect(renderDrawingPng({ jobId: 'nested', scene: nested }, new Owner())).resolves.toMatchObject({ width: 200, height: 160 })
+    const wrongLayout = scene(); wrongLayout.metrics.layoutWidth = 120
+    await expect(renderDrawingPng({ jobId: 'wrong-layout', scene: wrongLayout }, new Owner())).rejects.toMatchObject({ code: 'render_failed' })
+  })
   it('calibra antes de crecer, normaliza ICC en entry y valida PNG limpio antes de responder', async () => {
     const { renderDrawingPng } = await import('./figure-render')
     const result = await renderDrawingPng({ jobId: 'one', scene: scene() }, new Owner())
     expect(result).toMatchObject({ width: 200, height: 160 }); expect(Buffer.from(result.data).includes(Buffer.from('iCCP'))).toBe(false)
     expect(state.calls).toEqual(['load', 'render', 'capture', 'resizeWindow', 'resize', 'capture', 'normalize'])
     const win = state.windows[0] as { destroyed: boolean; options: { show: boolean; webPreferences: Record<string, unknown> }; captures: Array<{ opts: unknown }> }
-    expect(win.destroyed).toBe(true); expect(win.options.show).toBe(false)
+    expect(win.destroyed).toBe(true); expect(win.options).toMatchObject({ show: false, width: 128, height: 128, useContentSize: true, frame: false, thickFrame: false })
     expect(win.options.webPreferences).toMatchObject({ sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, devTools: false })
     expect(win.options.webPreferences).not.toHaveProperty('preload')
     expect(win.captures.every(c => JSON.stringify(c.opts) === JSON.stringify({ stayHidden: true, stayAwake: false }))).toBe(true)

@@ -10,7 +10,7 @@ import { compareDrawingPixels, type LiveDrawingGeometry } from './drawing-pixels
 
 const PACK = 'exam-2-math112'
 const SKILLS = ['reference-angles', 'degree-radian-conversion', 'arc-length-sector-area']
-interface RenderAudit { captures: Array<{ dip: number[]; native: { width: number; height: number }; png: { width: number; height: number }; chunks: string[]; stayHidden: boolean }>; id: number; shown: number; destroyed: boolean; defaultSession: boolean; calls: Array<{ method: string; args?: unknown; result?: unknown; error?: string }>; isolation?: unknown }
+interface RenderAudit { captures: Array<{ dip: number[]; windowBounds: { x: number; y: number; width: number; height: number }; contentBounds: { x: number; y: number; width: number; height: number }; viewport: { width: number; height: number; scale: number }; native: { width: number; height: number }; png: { width: number; height: number }; chunks: string[]; stayHidden: boolean }>; id: number; shown: number; destroyed: boolean; defaultSession: boolean; calls: Array<{ method: string; args?: unknown; result?: unknown; error?: string }>; isolation?: unknown }
 const STATIC: BlockOf<'drawing'> = {
   id: 'export-drawing-static', type: 'drawing', title: 'Drawing export fixture', width: 480, height: 320, style: 'hand',
   items: [
@@ -49,9 +49,9 @@ const MOVING: BlockOf<'drawing'> = {
   steps: [{ title: 'First', md: 'First position', params: { x: -20 }, highlight: ['rope'] }, { title: 'Second', md: 'Second position', params: { x: 80 }, highlight: ['bob'] }]
 }
 
-function prepare(theme: 'light' | 'dark'): string {
+function prepare(theme: 'light' | 'dark', fullMotion = false): string {
   const home = homeWithDemoCourse(), fixtures = [STATIC, OVERFLOW, MOVING]
-  writeFileSync(join(home, 'settings.json'), JSON.stringify({ version: 2, onboarded: true, general: { language: theme === 'light' ? 'en' : 'es', theme } }))
+  writeFileSync(join(home, 'settings.json'), JSON.stringify({ version: 2, onboarded: true, general: { language: theme === 'light' ? 'en' : 'es', theme, ...(fullMotion ? { motion: 'full' } : {}) } }))
   const dir = join(home, 'Packs', PACK, 'skills')
   for (const file of readdirSync(dir)) {
     const path = join(dir, file), skill = JSON.parse(readFileSync(path, 'utf8'))
@@ -82,9 +82,11 @@ async function start(home: string, dark: boolean): Promise<{ app: ElectronApplic
       wc.once('destroyed', () => { audit.destroyed = true })
       const capturePage = wc.capturePage.bind(wc)
       wc.capturePage = async (...args: Parameters<typeof wc.capturePage>) => {
+        const dip = window.getContentSize(), windowBounds = window.getBounds(), contentBounds = window.getContentBounds()
+        const viewport = await wc.executeJavaScript('({width: innerWidth, height: innerHeight, scale: devicePixelRatio})', false) as { width: number; height: number; scale: number }
         const native = await capturePage(...args), png = native.toPNG(), chunks: string[] = []
         for (let at = 8; at < png.length;) { const size = png.readUInt32BE(at); chunks.push(png.toString('ascii', at + 4, at + 8)); at += 12 + size }
-        audit.captures.push({ dip: window.getContentSize(), native: native.getSize(), png: { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }, chunks, stayHidden: args[1]?.stayHidden === true })
+        audit.captures.push({ dip, windowBounds, contentBounds, viewport, native: native.getSize(), png: { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }, chunks, stayHidden: args[1]?.stayHidden === true })
         return native
       }
       const execute = wc.executeJavaScript.bind(wc)
@@ -140,8 +142,11 @@ async function save(app: ElectronApplication, page: Page, figure: Locator, path:
   try { await expect.poll(() => existsSync(path), { timeout: 30_000 }).toBe(true) }
   catch (error) {
     const diagnostic = await page.evaluate(`({fonts: document.fonts.status, failedFonts: [...document.querySelectorAll('[data-block=\"drawing\"] .viz-label, [data-block=\"drawing\"] .viz-label *')].filter(n => !n.closest('.katex-mathml')).map(n => { const c=getComputedStyle(n); const font=c.fontStyle+' '+c.fontWeight+' '+c.fontSize+' '+c.fontFamily; return {tag:n.tagName,cls:n.className,font,text:n.textContent,ok:c.display==='none'||document.fonts.check(font,n.textContent||'Aula')}; }).filter(n=>!n.ok), alerts: document.body.innerText.slice(-1500)})`)
-    writeFileSync(`${path}.diagnostic.json`, JSON.stringify(diagnostic, null, 2))
-    throw new Error(`Drawing export failed; diagnostic: ${path}.diagnostic.json`, { cause: error })
+    const diagnosticPath = `${path}.diagnostic.json`
+    writeFileSync(diagnosticPath, JSON.stringify(diagnostic, null, 2))
+    try { await test.info().attach('drawing-export-diagnostic.json', { path: diagnosticPath, contentType: 'application/json' }) }
+    catch { /* Conserva el fallo original si el runner tampoco puede adjuntar el diagnóstico. */ }
+    throw new Error(`Drawing export failed; diagnostic: ${diagnosticPath}`, { cause: error })
   }
   await expect(action(figure)).toBeVisible()
 }
@@ -150,7 +155,7 @@ async function liveGeometry(page: Page): Promise<LiveDrawingGeometry> {
   return page.evaluate<LiveDrawingGeometry>(`(() => {
     const root=document.querySelector('[data-block="drawing"] [role="img"]'), box=root.getBoundingClientRect();
     const rect=n=>{const b=n.getBoundingClientRect();return {x:b.x-box.x,y:b.y-box.y,width:b.width,height:b.height}};
-    return {width:box.width,height:box.height,labels:[...root.querySelectorAll('.viz-label')].map(n=>({text:n.textContent,...rect(n)})),exclusions:[...document.querySelectorAll('button')].map(rect).filter(b=>b.width>0&&b.height>0&&b.x<box.width&&b.y<box.height&&b.x+b.width>0&&b.y+b.height>0)};
+    return {width:box.width,height:box.height,labels:[...root.querySelectorAll('.viz-label, .viz-label .katex-html')].map(n=>({text:(n.classList.contains('katex-html')?'[math] ':'')+n.textContent,...rect(n)})),exclusions:[...document.querySelectorAll('button')].map(rect).filter(b=>b.width>0&&b.height>0&&b.x<box.width&&b.y<box.height&&b.x+b.width>0&&b.y+b.height>0)};
   })()`)
 }
 
@@ -297,12 +302,13 @@ test('Drawing PNG: cancelar al navegar libera la captura y cancelar el diálogo 
 })
 
 test('Drawing PNG congela el frame visible durante reloj y transición sin detenerlos', async ({}, info) => {
-  const home = prepare('light'), { app, page, errors } = await start(home, false)
+  const home = prepare('light', true), { app, page, errors } = await start(home, false)
   type ClickSnapshot = { rope: string; bob: string; time: number }
   try {
     await go(page, { name: 'study', id: PACK, mode: 'learn', skill: SKILLS[2] })
     const figure = page.locator('[data-block="drawing"]').first()
     await page.waitForTimeout(1500)
+    await expect(page.locator('html')).not.toHaveClass(/(?:^|\s)reduce-motion(?:\s|$)/)
     // El observador DOM corre antes del manejador React: la referencia es el frame comprometido que ve el estudiante.
     await page.evaluate(`(() => {
       window.drawingClickSnapshots=[];
@@ -333,27 +339,54 @@ test('Drawing PNG congela el frame visible durante reloj y transición sin deten
     await inspect(page, clockFile, info, 'clock')
     await controls.getByRole('button', { name: 'Pause', exact: true }).click()
     await figure.getByRole('button', { name: 'Next step', exact: true }).click()
-    await page.waitForTimeout(650)
+    const displacement = controls.getByRole('slider', { name: 'Displacement' })
+    await expect(displacement).toHaveValue('-20')
     const glideFile = join(home, 'glide.png')
     await destination(app, glideFile); await holdCapture(app, true)
-    // Dos frames dejan empezar la transición de 550 ms; se selecciona exportar sin esperas artificiales que la terminen.
-    await page.evaluate(`(async () => {
-      const root=document.querySelector('[data-block="drawing"]');
-      root.querySelector('button[aria-label="Next step"]').click();
-      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-      root.querySelector('[data-figure-export] button').click();
-      await new Promise(resolve=>setTimeout(resolve,0));
-      [...document.querySelectorAll('[role="menuitem"]')].find(node=>node.textContent.startsWith('Save PNG')).click();
-    })()`)
-    const glideScene = await rendered(app, 1), glideClick = await page.evaluate<ClickSnapshot>('window.drawingClickSnapshots[1]')
-    sameFrame(glideScene, glideClick)
-    const dx = glideScene.items.find(item => item.sourceIndex === 1)!.transform.dx
-    expect(dx).toBeGreaterThan(-20); expect(dx).toBeLessThan(80)
-    await expect(controls.getByRole('slider', { name: 'Displacement' })).toHaveValue('80')
-    await expect(figure.getByText('Second position', { exact: true })).toBeVisible()
-    await holdCapture(app, false)
-    await expect.poll(() => existsSync(glideFile)).toBe(true)
-    await inspect(page, glideFile, info, 'glide')
+    try {
+      // Sólo el reloj de la página fuente es lógico: la entrega de RAF, sus IDs y cancelación siguen siendo nativos.
+      // Dos RAF reales de una ventana oculta pueden tardar más que los 550 ms de la transición.
+      await page.evaluate(`(() => {
+        const nowDescriptor=Object.getOwnPropertyDescriptor(performance,'now');
+        const rafDescriptor=Object.getOwnPropertyDescriptor(window,'requestAnimationFrame');
+        const nativeRaf=window.requestAnimationFrame.bind(window);
+        let now=performance.now();
+        window.drawingGlideClock={
+          advance(ms){now+=ms},
+          restore(){
+            if(nowDescriptor) Object.defineProperty(performance,'now',nowDescriptor); else delete performance.now;
+            if(rafDescriptor) Object.defineProperty(window,'requestAnimationFrame',rafDescriptor); else delete window.requestAnimationFrame;
+            delete window.drawingGlideClock;
+          }
+        };
+        Object.defineProperty(performance,'now',{configurable:true,writable:true,value:()=>now});
+        Object.defineProperty(window,'requestAnimationFrame',{configurable:true,writable:true,value:callback=>nativeRaf(()=>callback(now))});
+        document.querySelector('[data-block="drawing"] button[aria-label="Next step"]').click();
+      })()`)
+      await page.evaluate('window.drawingGlideClock.advance(160)')
+      await expect.poll(async () => Number(await displacement.inputValue())).toBeGreaterThan(-20)
+      expect(Number(await displacement.inputValue())).toBeLessThan(80)
+      // El tiempo lógico permanece fijo entre el commit observado y la selección de PNG.
+      await page.evaluate(`(async () => {
+        document.querySelector('[data-block="drawing"] [data-figure-export] button').click();
+        await new Promise(resolve=>setTimeout(resolve,0));
+        [...document.querySelectorAll('[role="menuitem"]')].find(node=>node.textContent.startsWith('Save PNG')).click();
+      })()`)
+      const glideScene = await rendered(app, 1), glideClick = await page.evaluate<ClickSnapshot>('window.drawingClickSnapshots[1]')
+      sameFrame(glideScene, glideClick)
+      const dx = glideScene.items.find(item => item.sourceIndex === 1)!.transform.dx
+      expect(dx).toBeGreaterThan(-20); expect(dx).toBeLessThan(80)
+      await expect.poll(() => app.evaluate(() => !!(globalThis as unknown as { drawingQaRelease?: () => void }).drawingQaRelease)).toBe(true)
+      await page.evaluate('window.drawingGlideClock.advance(600)')
+      await expect(displacement).toHaveValue('80')
+      await expect(figure.getByText('Second position', { exact: true })).toBeVisible()
+      await holdCapture(app, false)
+      await expect.poll(() => existsSync(glideFile)).toBe(true)
+      await inspect(page, glideFile, info, 'glide')
+    } finally {
+      try { await holdCapture(app, false) }
+      finally { await page.evaluate('window.drawingGlideClock?.restore()') }
+    }
     const captures = await audit(app, info, home, 'motion-verified')
     expect(captures).toHaveLength(2)
     expect(captures.every(c => c.destroyed && c.shown === 0)).toBe(true)

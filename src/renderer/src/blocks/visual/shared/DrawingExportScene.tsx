@@ -1,6 +1,7 @@
 // Escena estática aislada: conserva el orden global SVG → texto HTML → rodeados Ink.
 import type { DrawingRenderSceneV1, PreparedDrawingRing } from '@shared/figuresDrawing'
 import { StaticDrawingText } from '@renderer/lib/figureExport/StaticDrawingText'
+import { FIGURE_FONTS } from '@renderer/lib/figureExport/figureTypography'
 
 function StaticRing({ ring, id }: { ring: PreparedDrawingRing; id: string }) {
   return <svg viewBox={`0 0 ${ring.viewWidth} ${ring.viewHeight}`} preserveAspectRatio="none" aria-hidden
@@ -14,8 +15,8 @@ function StaticRing({ ring, id }: { ring: PreparedDrawingRing; id: string }) {
 }
 
 export function DrawingExportScene({ scene }: { scene: DrawingRenderSceneV1 }) {
-  const k = scene.metrics.pixelWidth / scene.canvas.width
-  return <div data-drawing-scene style={{ position: 'relative', width: scene.metrics.pixelWidth, height: scene.canvas.height * k, color: scene.appearance.palette.text }}>
+  const k = scene.metrics.layoutWidth / scene.canvas.width
+  return <div data-drawing-scene style={{ position: 'relative', width: scene.metrics.layoutWidth, height: scene.canvas.height * k, color: scene.appearance.palette.text, fontFamily: FIGURE_FONTS[scene.metrics.bodyFont], fontStyle: scene.metrics.bodyItalic ? 'italic' : 'normal' }}>
     <svg viewBox={`0 0 ${scene.canvas.width} ${scene.canvas.height}`} width="100%" height="100%" preserveAspectRatio="none" aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
       {scene.items.map((item) => <g key={item.sourceIndex} opacity={item.opacity} transform={`translate(${item.transform.dx} ${item.transform.dy}) rotate(${-item.transform.deg} ${item.transform.px} ${item.transform.py})`}>
         {item.paths.map((path, index) => {

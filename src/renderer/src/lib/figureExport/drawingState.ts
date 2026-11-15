@@ -1,9 +1,11 @@
 // Congelación síncrona del render comprometido; sólo la presentación visible cruza IPC.
 import type { DrawItem } from '@shared/schema/common'
 import type { DrawingRenderSceneV1, PreparedDrawingPath, PreparedVisibleItem } from '@shared/figuresDrawing'
+import type { FigureTypography } from '@shared/figuresTypography'
 import { applyFrame, type ItemFrame, type ShapeContext } from '@renderer/blocks/visual/lib/drawing'
 import { prepareDrawingRing, type PreparedDrawingLayout } from '@renderer/blocks/visual/shared/drawingPreparation'
 import { assertDrawingFontsReady } from './drawingFonts'
+import { figureTypography } from './figureTypography'
 import { PAPER, vizColor } from '@renderer/blocks/visual/shared/colors'
 
 export interface DrawingCaptureHandle { freeze(language: string, direction: 'ltr' | 'rtl'): DrawingRenderSceneV1 }
@@ -26,7 +28,7 @@ export interface DrawingCommittedState {
 
 type Palette = DrawingRenderSceneV1['appearance']['palette']
 /** Proyección explícita: ni el nombre del elemento ni una etapa oculta entran en el resultado. */
-export function projectDrawingScene(state: DrawingCommittedState, appearance: DrawingRenderSceneV1['appearance'], rootFontPx: number, resolve: (css: string) => string): DrawingRenderSceneV1 {
+export function projectDrawingScene(state: DrawingCommittedState, appearance: DrawingRenderSceneV1['appearance'], rootFontPx: number, resolve: (css: string) => string, typography: FigureTypography = { bodyFont: 'sans', bodyItalic: false }, layoutWidth = state.pixelWidth): DrawingRenderSceneV1 {
   const { W, H, pixelWidth, textK, unitsPerPx, prepared, frame, show, focus, dark, seed, measureCtx } = state
   const k = pixelWidth / W
   const visible = (i: number): boolean => show === undefined || (state.items[i].stage ?? 0) <= show
@@ -71,7 +73,7 @@ export function projectDrawingScene(state: DrawingCommittedState, appearance: Dr
       rings: ring ? [{ x: ring.x, y: ring.y, width: ring.width, height: ring.height, viewWidth: ring.drawing.w, viewHeight: ring.drawing.h, color: appearance.palette.brick, strokes: ring.drawing.strokes.map(({ d, spine, reach, dry, dryWidth }) => ({ d, spine, reach, dry, dryWidth })) }] : []
     }
   })
-  return { version: 1, canvas: { width: W, height: H }, metrics: { pixelWidth, textK, unitsPerPx, rootFontPx }, appearance: { ...appearance, palette: { ...appearance.palette } }, items, output: { scale: 2 } }
+  return { version: 1, canvas: { width: W, height: H }, metrics: { pixelWidth, layoutWidth, textK, unitsPerPx, rootFontPx, bodyFont: typography.bodyFont, bodyItalic: typography.bodyItalic }, appearance: { ...appearance, palette: { ...appearance.palette } }, items, output: { scale: 2 } }
 }
 
 export function freezeDrawingExportState(state: DrawingCommittedState, element: HTMLElement, language: string, direction: 'ltr' | 'rtl'): DrawingRenderSceneV1 {
@@ -101,7 +103,10 @@ export function freezeDrawingExportState(state: DrawingCommittedState, element: 
     return hex
   }
   try {
+    // El SVG vivo y los porcentajes HTML ocupan el ancho CSS; la preparación conserva su medida comprometida original.
+    const layoutWidth = parseFloat(getComputedStyle(element).width)
+    if (!Number.isFinite(layoutWidth) || layoutWidth <= 0) throw new Error('Drawing layout is unavailable')
     const palette: Palette = { paper: resolve(PAPER), text: resolve('var(--text)'), text2: resolve('var(--text2)'), text3: resolve('var(--text3)'), brick: resolve('var(--pigment-brick)'), accent: resolve('var(--viz-accent, var(--accent))'), link: resolve('var(--accent-text)') }
-    return projectDrawingScene(state, { theme: state.dark ? 'dark' : 'light', language, direction, palette }, parseFloat(getComputedStyle(document.documentElement).fontSize), resolve)
+    return projectDrawingScene(state, { theme: state.dark ? 'dark' : 'light', language, direction, palette }, parseFloat(getComputedStyle(document.documentElement).fontSize), resolve, figureTypography(element), layoutWidth)
   } finally { probe.remove(); canvas.width = canvas.height = 0 }
 }

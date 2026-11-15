@@ -1,4 +1,5 @@
 // Presentación cerrada del dibujo visible: no contiene el bloque, expresiones ni nombres ocultos.
+import type { FigureTypography } from './figuresTypography'
 export interface DrawingRenderBounds { x: number; y: number; width: number; height: number }
 export interface DrawingRenderTransform { dx: number; dy: number; deg: number; px: number; py: number }
 export type DrawingRenderFill = { kind: 'none' } | { kind: 'solid' | 'hatch'; color: string }
@@ -44,7 +45,8 @@ export interface PreparedVisibleItem {
 export interface DrawingRenderSceneV1 {
   version: 1
   canvas: { width: number; height: number }
-  metrics: { pixelWidth: number; textK: number; unitsPerPx: number; rootFontPx: number }
+  // pixelWidth gobierna la preparación viva; layoutWidth es el ancho CSS lógico antes de zoom/transform de ancestros.
+  metrics: { pixelWidth: number; layoutWidth: number; textK: number; unitsPerPx: number; rootFontPx: number } & FigureTypography
   appearance: {
     theme: 'light' | 'dark'
     language: string

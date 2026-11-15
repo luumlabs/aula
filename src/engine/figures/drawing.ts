@@ -170,12 +170,12 @@ class Reader {
 
 export function validateDrawingRenderScene(value: unknown): DrawingRenderSceneV1 {
   const r = new Reader(), v = r.object(value, ['version', 'canvas', 'metrics', 'appearance', 'items', 'output'])
-  const c = r.object(v.canvas, ['width', 'height']), m = r.object(v.metrics, ['pixelWidth', 'textK', 'unitsPerPx', 'rootFontPx'])
+  const c = r.object(v.canvas, ['width', 'height']), m = r.object(v.metrics, ['pixelWidth', 'layoutWidth', 'textK', 'unitsPerPx', 'rootFontPx', 'bodyFont', 'bodyItalic'])
   const a = r.object(v.appearance, ['theme', 'language', 'direction', 'palette']), p = r.object(a.palette, ['paper', 'text', 'text2', 'text3', 'brick', 'accent', 'link']), o = r.object(v.output, ['scale'])
   const canvas = { width: r.number(c.width, 1), height: r.number(c.height, 1) }
-  const metrics = { pixelWidth: r.number(m.pixelWidth, 1, DRAWING_LIMITS.maxLayoutDimension), textK: r.number(m.textK, .01, 16), unitsPerPx: r.number(m.unitsPerPx, .0001, 10_000), rootFontPx: r.number(m.rootFontPx, 8, 64) }
-  const k = metrics.pixelWidth / canvas.width, expectedUnits = Math.round(metrics.textK / k * 50) / 50
-  if (Math.abs(metrics.unitsPerPx - expectedUnits) > 1e-6 || canvas.height * k > DRAWING_LIMITS.maxLayoutDimension) fail(true)
+  const metrics = { pixelWidth: r.number(m.pixelWidth, 1, DRAWING_LIMITS.maxLayoutDimension), layoutWidth: r.number(m.layoutWidth, 1, DRAWING_LIMITS.maxLayoutDimension), textK: r.number(m.textK, .01, 16), unitsPerPx: r.number(m.unitsPerPx, .0001, 10_000), rootFontPx: r.number(m.rootFontPx, 8, 64), bodyFont: r.enum(m.bodyFont, ['sans', 'serif', 'mono', 'rounded']), bodyItalic: r.bool(m.bodyItalic) }
+  const preparedK = metrics.pixelWidth / canvas.width, k = metrics.layoutWidth / canvas.width, expectedUnits = Math.round(metrics.textK / preparedK * 50) / 50
+  if (Math.abs(metrics.unitsPerPx - expectedUnits) > 1e-6 || canvas.height * preparedK > DRAWING_LIMITS.maxLayoutDimension || canvas.height * k > DRAWING_LIMITS.maxLayoutDimension) fail(true)
   const language = r.string(a.language, 32)
   if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(language)) fail()
   const items = r.array(v.items, DRAWING_LIMITS.maxItems, value => r.item(value)), indices = new Set<number>()
