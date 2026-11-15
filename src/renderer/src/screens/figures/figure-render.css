@@ -1,0 +1,6 @@
+/* Sólo estilos y fuentes empaquetados; esta entrada no inicializa la aplicación. */
+@import '../../styles.css';
+html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+#root { contain: paint; }
+.drawing-static-text .katex, .drawing-static-text pre { direction: ltr; unicode-bidi: isolate; }
+.drawing-static-text .katex { font-size: 1em; }

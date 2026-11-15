@@ -3,20 +3,21 @@
 // Además: rellenos rayados con papel debajo, la línea a mano (objetos siempre; el dibujo entero si se pide), elementos que
 // se mueven (un transform por elemento en cada fotograma, la geometría no se recalcula), pasos (etapas que aparecen, lo
 // destacado rodeado en ladrillo y el resto atenuado) y las partes con nombre marcadas para «marcar y preguntar».
-import { memo, useEffect, useId, useMemo, useRef, type CSSProperties } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useLayoutEffect, type CSSProperties, type RefObject } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { DrawItem } from '@shared/schema/common'
 import { RichText } from '@renderer/lib/RichText'
 import { useTheme } from '@renderer/design'
 import { Ink } from '@renderer/design/paint'
-import { seedOf } from '@renderer/design/paint/random'
-import { applyFrame, boundsOf, drawingLayout, labelBox, paintOrder, type Box, type DrawPath, type DrawShape, type ItemFrame, type Pt, type ShapeContext } from '../lib/drawing'
-import { handAmplitude, handPath } from '../lib/hand'
-import { loopDrawKey, loopInk } from '../lib/loopInk'
+import { applyFrame, type DrawPath, type DrawShape, type ItemFrame, type ShapeContext } from '../lib/drawing'
+import { loopDrawKey } from '../lib/loopInk'
 import { PAPER, vizColor } from './colors'
 import { canvasMeasure, useFontsReady } from './measure'
+import { prepareDrawingLayout, prepareDrawingRing } from './drawingPreparation'
+import { freezeDrawingExportState, type DrawingCaptureHandle } from '@renderer/lib/figureExport/drawingState'
 
 export interface DrawingCanvasProps {
+  exportRef?: RefObject<DrawingCaptureHandle | null>
   items: DrawItem[]
   /** Medidas del lienzo (coordenadas de los elementos). */
   W: number
@@ -72,20 +73,6 @@ export function askLabel(it: DrawItem, onlyVisible = false): string | undefined 
   return s && s.trim() ? s.trim().slice(0, 200) : undefined
 }
 
-/** Caja que ocupa un elemento con sus etiquetas (unidades del lienzo), ya movido: lo que rodea el paso. */
-function shapeBox(s: DrawShape, fr: ItemFrame | undefined, ctx: ShapeContext): Box | undefined {
-  const pts: Pt[] = [...s.paths.flatMap((p) => p.pts ?? []), ...s.outline]
-  if (!pts.length && s.around) pts.push([s.around.x, s.around.y], [s.around.x + s.around.w, s.around.y + s.around.h])
-  const moved = fr ? pts.map((p) => applyFrame(p, fr)) : pts
-  // las etiquetas van dentro del rodeado (la línea nunca pasa por encima de un texto pequeño)
-  for (const l of s.labels) {
-    const b = labelBox(l, ctx)
-    const [dx, dy] = fr ? ((q) => [q[0] - l.x, q[1] - l.y])(applyFrame([l.x, l.y], fr)) : [0, 0]
-    moved.push([b.x + dx, b.y + dy], [b.x + b.w + dx, b.y + b.h + dy])
-  }
-  return boundsOf(moved)
-}
-
 /**
  * El papel que hay detrás del lienzo (el primer fondo con color de sus antepasados), para que el «papel» de los objetos y
  * los rayados se funda con él. Sobre el papel con grano de las pantallas se oscurece un poco, como el grano en promedio
@@ -102,7 +89,7 @@ function paperBehind(el: HTMLElement, dark: boolean): string | undefined {
 }
 
 export const DrawingCanvas = memo(function DrawingCanvas({
-  items, W, H, pixelWidth, animate, play = true, textScale = 1, className, frame, show, focus, hand = false, seed = 'drawing', askParts = false, label
+  items, W, H, pixelWidth, animate, play = true, textScale = 1, className, frame, show, focus, hand = false, seed = 'drawing', askParts = false, label, exportRef
 }: DrawingCanvasProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const fonts = useFontsReady()
@@ -113,18 +100,11 @@ export const DrawingCanvas = memo(function DrawingCanvas({
   // unidades del lienzo que ocupa un px de texto (para colocar las etiquetas automáticas); redondeado: no se recoloca a cada px
   const unitsPerPx = Math.round((textK / k) * 50) / 50
   const measureCtx = useMemo((): ShapeContext => ({ measure: (text, size) => canvasMeasure(text, size, false), unitsPerPx }), [unitsPerPx])
-  const shapes = useMemo(
-    () => drawingLayout(items, W, H, measureCtx),
-    // las letras recién cargadas cambian las medidas
-    [items, W, H, measureCtx, fonts] // eslint-disable-line react-hooks/exhaustive-deps
+  const prepared = useMemo(
+    () => prepareDrawingLayout(items, W, H, measureCtx, hand, seed),
+    [items, W, H, measureCtx, fonts, hand, seed] // eslint-disable-line react-hooks/exhaustive-deps
   )
-  const order = useMemo(() => paintOrder(items), [items])
-  const amp = handAmplitude(W, H)
-  // las formas a mano se calculan una vez (el movimiento solo cambia el transform)
-  const handD = useMemo(
-    () => shapes.map((s, i) => s.paths.map((p, j) => (p.pts && !p.crisp && !p.fillOnly && (p.hand || hand) ? handPath(p.pts, !!p.closed, seedOf(`${seed}:${i}:${j}`), amp) : undefined))),
-    [shapes, hand, seed, amp]
-  )
+  const { shapes, order, handD } = prepared
   const hatches = useMemo(() => {
     const colors = new Set<string>()
     for (const s of shapes) for (const p of s.paths) if (p.fill?.hatch) colors.add(p.fill.color ?? '')
@@ -153,7 +133,6 @@ export const DrawingCanvas = memo(function DrawingCanvas({
     const label = askLabel(items[i], askParts === 'visible')
     return label ? { 'data-ask-part': items[i].id ?? `item-${i}`, 'data-ask-label': label } : {}
   }
-  const pad = 7
   // el papel de los objetos y los rayados, el mismo que el del fondo (se mira al montar y al cambiar de tema)
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -165,6 +144,18 @@ export const DrawingCanvas = memo(function DrawingCanvas({
     })
     return () => cancelAnimationFrame(id)
   }, [dark])
+  // Sólo el render comprometido se puede congelar: un render concurrente no adelanta esta referencia.
+  useLayoutEffect(() => {
+    if (!exportRef) return
+    const handle: DrawingCaptureHandle = {
+      freeze: (language, direction) => {
+        if (!box.current?.isConnected || !fonts || document.fonts?.status === 'loading') throw new Error('Drawing fonts are not ready')
+        return freezeDrawingExportState({ items, W, H, pixelWidth, textK, unitsPerPx, prepared, frame, show, focus, seed, dark, animate, measureCtx }, box.current, language, direction)
+      }
+    }
+    exportRef.current = handle
+    return () => { if (exportRef.current === handle) exportRef.current = null }
+  })
   return (
     <div ref={box} className={className} style={{ position: 'absolute', inset: 0 }} {...(label ? { 'data-ask-canvas': '' } : {})}>
       <div role={label ? 'img' : undefined} aria-label={label} style={{ position: 'absolute', inset: 0 }}>
@@ -229,24 +220,19 @@ export const DrawingCanvas = memo(function DrawingCanvas({
         </AnimatePresence>
         {focus && focus.size > 0 && [...focus].map((i) => {
           const s = shapes[i]
-          const b = s && visible(i) ? shapeBox(s, frame?.[i], measureCtx) : undefined
-          if (!b) return null
-          // por fuera de la caja (nunca encima del texto pequeño), con su margen; algo redondeado aunque el elemento sea fino
-          let w = (b.w + pad * 2) * k, h = (b.h + pad * 2) * k
-          const bx = b.x - pad - (Math.max(w, h * 0.5) - w) / 2 / k, by = b.y - pad - (Math.max(h, w * 0.5) - h) / 2 / k
-          w = Math.max(w, h * 0.5)
-          h = Math.max(h, w * 0.5)
+          const ring = s && visible(i) ? prepareDrawingRing(s, frame?.[i], measureCtx, k, seed, i) : undefined
+          if (!ring) return null
           return (
             <Ink
               key={`loop-${i}-${seed}`}
-              drawing={loopInk(w + 8, h + 8, `${seed}:loop:${i}`)}
+              drawing={ring.drawing}
               color="var(--pigment-brick)"
               draw={animate}
               // trazado una vez por paso: si lo rodeado gira o cambia de tamaño, el rodeado nuevo sale al instante
               drawKey={loopDrawKey(uid, i, focus)}
               delay={120}
               className="ink-fixed"
-              style={{ left: `${(bx / W) * 100}%`, top: `${(by / H) * 100}%`, width: w + 8, height: h + 8, marginLeft: -4, marginTop: -4 }}
+              style={{ left: ring.x, top: ring.y, width: ring.width, height: ring.height }}
             />
           )
         })}

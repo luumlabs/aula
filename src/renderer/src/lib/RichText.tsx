@@ -8,6 +8,8 @@ import 'katex/contrib/mhchem'
 import { AULA_KATEX_MACROS } from '@engine/content/tex'
 import { cx } from '@renderer/design'
 import { useContentLang } from './contentLanguage'
+import { PAGE_ANCHOR, safeHref } from './richTextLinks'
+export { safeHref } from './richTextLinks'
 
 // copiar texto con fórmulas da su LaTeX ($…$ y $$…$$), no el texto doble de KaTeX (HTML + MathML); escucha en el documento,
 // así que sin él (las pruebas) no se carga
@@ -15,16 +17,6 @@ if (typeof document !== 'undefined') void import('katex/contrib/copy-tex').catch
 
 // las mismas macros que acepta el validador del contenido (\\SI, \\qty, \\mbox…)
 const katexOptions = { throwOnError: false, strict: false, trust: false, output: 'htmlAndMathml' as const, macros: { ...AULA_KATEX_MACROS } }
-
-/** Las citas del lector («p. 3») llevan a su página dentro de la app: `#aula-page-<n>` (las atiende el panel de Aula). */
-const PAGE_ANCHOR = /^#aula-page-\d{1,4}$/
-
-/** Solo enlaces web o de correo, y las citas de página del lector: cualquier otra dirección (relativa, file:, //host…) se
- *  queda en texto. */
-export function safeHref(url: string): string {
-  const u = url.trim()
-  return /^(https?:|mailto:)/i.test(u) || PAGE_ANCHOR.test(u) ? u : ''
-}
 
 function Link({ href, children }: { href?: string; children?: React.ReactNode }) {
   if (!href) return <span className="text-accent-text">{children}</span>

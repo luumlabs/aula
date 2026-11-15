@@ -8,8 +8,12 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 ### Added
 - **Save a chemical drawing as SVG or PNG** from its export menu in the desktop app. Molecules and reactions keep
   their drawing style, group or guided-step highlighting, and light or dark paper background. Files contain the full
-  drawing, independent of zoom, without controls, atom tooltips or answers hidden in an exercise prompt. Other figure
-  types, student annotations and sending a marked image to the tutor remain on the [figure roadmap](https://github.com/luumlabs/aula/issues/28).
+  drawing, independent of zoom, without controls, atom tooltips or answers hidden in an exercise prompt.
+- **Save a vector drawing as PNG** from its desktop export menu. The image keeps the visible step, highlighting,
+  hand-drawn strokes, hatching, formulas and course language, including content extending outside the original canvas.
+  Moving drawings capture the frame currently on screen while their clock and transitions continue. Saving does not
+  include controls, annotations or content from hidden steps. Additional figure types, student annotations and sending
+  a marked image to the tutor remain on the [figure roadmap](https://github.com/luumlabs/aula/issues/28).
 
 ### Fixed
 - **Retrying a failed question keeps its saved images and documents**, including questions containing only an image.

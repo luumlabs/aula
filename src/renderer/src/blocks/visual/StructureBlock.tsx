@@ -151,7 +151,7 @@ export default function StructureBlock({ block, ctx }: BlockProps<BlockOf<'struc
             items={view.styles.map((st) => ({ id: st, label: t(`structure.styles.${st}`) }))}
             onChange={(st) => { setStyle(st); ctx.onInteract?.(block.id, 'structure-style') }}
           />)}
-          <FigureExportAction kind="structure" capture={(signal) => {
+          <FigureExportAction kind="structure" captureSvg={(signal) => {
             const context = viewRef.current
             if (!context) return Promise.reject(new Error('Structure drawing is unavailable'))
             return captureFigure((portableMeasure) => {

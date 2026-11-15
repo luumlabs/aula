@@ -3,6 +3,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { thirdPartyLicenses } from './scripts/build/third-party-licenses'
+import { figureRenderAssets } from './scripts/build/figure-render-assets'
 
 const alias = {
   '@shared': resolve(__dirname, 'src/shared'),
@@ -45,12 +46,14 @@ export default defineConfig({
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     resolve: { alias },
-    plugins: [react(), tailwindcss(), thirdPartyLicenses('renderer', { css: ['src/renderer/src/styles.css'] })],
+    plugins: [react(), tailwindcss(), figureRenderAssets(), thirdPartyLicenses('renderer', { css: ['src/renderer/src/styles.css'] })],
     build: {
       // minificada: −4,6 MB de JavaScript (un 40 %), en el asar y en cada actualización (J4-5)
       minify: 'esbuild',
       chunkSizeWarningLimit: 4000,
-      rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html'), raster: resolve(__dirname, 'src/renderer/raster.html') } }
+      // La sesión de figuras sólo admite fuentes locales enumeradas, nunca fuentes data:.
+      assetsInlineLimit: file => /\.(?:woff2?|ttf|otf)$/i.test(file) ? false : undefined,
+      rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html'), raster: resolve(__dirname, 'src/renderer/raster.html'), 'figure-render': resolve(__dirname, 'src/renderer/figure-render.html') } }
     }
   }
 })

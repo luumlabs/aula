@@ -9,6 +9,10 @@ import { Button, Icon, useTheme } from '@renderer/design'
 import type { BlockOf } from '@shared/schema/blocks'
 import type { SimParam } from '@shared/schema/visual'
 import { RichText } from '@renderer/lib/RichText'
+import { contentLang } from '@renderer/lib/contentLanguage'
+import { FigureExportAction } from '@renderer/lib/figureExport/FigureExportAction'
+import { captureDrawingPng } from '@renderer/lib/figureExport/drawing'
+import type { DrawingCaptureHandle } from '@renderer/lib/figureExport/drawingState'
 import type { BlockProps } from '../types'
 import {
   GLIDE_MS, canvasSize, drawingEngine, drawingEnv, drawingMoves, drawingShapes, glideValues, highlightIndices, resolveFrame, saneDrawParams, stepState
@@ -28,6 +32,7 @@ export default function DrawingBlock({ block, ctx }: BlockProps<BlockOf<'drawing
   const ink = useInk(ctx.hue)
   const { reducedMotion } = useTheme()
   const { W, H } = canvasSize(block.width, block.height)
+  const exportRef = useRef<DrawingCaptureHandle | null>(null)
   const [box, size] = useSize<HTMLDivElement>()
   const seen = useInView(box, true, '-40px')
   const onScreen = useInView(box, false, '80px')
@@ -124,6 +129,15 @@ export default function DrawingBlock({ block, ctx }: BlockProps<BlockOf<'drawing
     [moves, block.items, restShapes, engine, values, block.time, clock.now]
   )
 
+  const capturePng = useCallback((signal: AbortSignal): Promise<Uint8Array> => {
+    const handle = exportRef.current
+    if (!handle) return Promise.reject(new Error('Drawing is unavailable'))
+    const language = contentLang(ctx.language || i18n.language)
+    // Congela el frame interpolado ya visible antes de la primera espera de fuentes o IPC.
+    const scene = handle.freeze(language.lang || 'es', language.dir || 'ltr')
+    return captureDrawingPng(scene, signal)
+  }, [ctx.language, i18n.language])
+
   const tm = block.time
   const hasControls = moves && (params.length > 0 || !!tm)
   return (
@@ -131,15 +145,17 @@ export default function DrawingBlock({ block, ctx }: BlockProps<BlockOf<'drawing
       {/* la imagen (role img) es lo dibujado dentro del lienzo, no la figura: así el botón «Marcar» y la zona de marcar, que
           van en el lienzo, quedan fuera de ella y los lectores de pantalla los anuncian */}
       <figure className="flex flex-col gap-2 m-0">
-        {block.title && (
-          <figcaption className="font-serif text-[19px] leading-[26px] font-medium text-text">
-            <RichText text={block.title} inline />
-          </figcaption>
+        {(block.title || !printing) && (
+          <div className="flex items-start justify-between gap-3">
+            {block.title ? <figcaption className="font-serif text-[19px] leading-[26px] font-medium text-text"><RichText text={block.title} inline /></figcaption> : <span />}
+            {!printing && <FigureExportAction kind="drawing" capturePng={capturePng} />}
+          </div>
         )}
         <div className="w-full flex justify-center">
           <div ref={box} className="relative w-full" style={{ maxWidth: maxW, aspectRatio: `${W} / ${H}` }}>
             {size.width > 0 && (
               <DrawingCanvas
+                exportRef={exportRef}
                 items={block.items}
                 W={W}
                 H={H}

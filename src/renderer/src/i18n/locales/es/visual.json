@@ -18,8 +18,8 @@
     "svg": "Guardar SVG…",
     "png": "Guardar PNG…",
     "saving": "Guardando dibujo…",
-    "saved": "Dibujo químico guardado",
-    "failed": "No se pudo guardar el dibujo químico"
+    "saved": "Dibujo guardado",
+    "failed": "No se pudo guardar el dibujo"
   },
   "diagram": {
     "label": "Diagrama",

@@ -18,8 +18,8 @@
     "svg": "Save SVG…",
     "png": "Save PNG…",
     "saving": "Saving drawing…",
-    "saved": "Chemical drawing saved",
-    "failed": "Couldn’t save the chemical drawing"
+    "saved": "Drawing saved",
+    "failed": "Could not save the drawing"
   },
   "diagram": {
     "label": "Diagram",

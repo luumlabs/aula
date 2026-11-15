@@ -240,8 +240,8 @@ test('menú por teclado, cancelación silenciosa y reintento después de un erro
     await page.keyboard.press('Enter')
     await expect(button).toBeEnabled()
     await expect(button).toBeFocused()
-    await expect(page.getByText('Chemical drawing saved', { exact: true })).toHaveCount(0)
-    await expect(page.getByText('Couldn’t save the chemical drawing', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Drawing saved', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Could not save the drawing', { exact: true })).toHaveCount(0)
 
     // Una operación pendiente no debe recuperar el foco si el usuario ya eligió otro control.
     await app.evaluate(({ dialog }) => {
@@ -270,11 +270,11 @@ test('menú por teclado, cancelación silenciosa y reintento después de un erro
     await destination(app, blocked)
     await button.click()
     await page.getByRole('menuitem', { name: 'Save SVG…' }).click()
-    await expect(page.getByText('Couldn’t save the chemical drawing', { exact: true })).toBeVisible()
+    await expect(page.getByText('Could not save the drawing', { exact: true })).toBeVisible()
     await expect(button).toBeEnabled()
     await expect(button).toBeFocused()
     await save(app, page, figure, join(home, 'retry.svg'), 'SVG')
-    await expect(page.getByText('Chemical drawing saved', { exact: true })).toBeVisible()
+    await expect(page.getByText('Drawing saved', { exact: true })).toBeVisible()
     await expect(button).toBeFocused()
     expect(errors).toEqual([])
   } finally { await app.close() }
