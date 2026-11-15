@@ -80,7 +80,7 @@ window.aulaFigureRender = {
     if (mounted) throw new Error('Drawing scene is already mounted')
     // El CSS inicial puede fallar antes de que el módulo instale su listener de recursos.
     if (![...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].every((link) => link.sheet !== null)) throw new Error('Drawing stylesheet failed')
-    preflightDrawingTexts(scene.items.flatMap((item) => item.labels.map((label) => label.text)), 2 + scene.items.reduce((total, item) => total + 1 + item.paths.length * 5 + item.labels.length * 2 + item.rings.reduce((sum, ring) => sum + 2 + ring.strokes.length * 4, 0), 0))
+    preflightDrawingTexts(scene.items.flatMap((item) => item.labels.map((label) => label.text)), 2 + (scene.metrics.cssZoom === 1 ? 0 : 1) + scene.items.reduce((total, item) => total + 1 + item.paths.length * 5 + item.labels.length * 2 + item.rings.reduce((sum, ring) => sum + 2 + ring.strokes.length * 4, 0), 0))
     const { palette, theme, language } = scene.appearance
     document.documentElement.classList.toggle('dark', theme === 'dark')
     document.documentElement.lang = language

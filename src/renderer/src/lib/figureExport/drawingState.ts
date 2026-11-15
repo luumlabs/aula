@@ -28,7 +28,7 @@ export interface DrawingCommittedState {
 
 type Palette = DrawingRenderSceneV1['appearance']['palette']
 /** Proyección explícita: ni el nombre del elemento ni una etapa oculta entran en el resultado. */
-export function projectDrawingScene(state: DrawingCommittedState, appearance: DrawingRenderSceneV1['appearance'], rootFontPx: number, resolve: (css: string) => string, typography: FigureTypography = { bodyFont: 'sans', bodyItalic: false }, layoutWidth = state.pixelWidth): DrawingRenderSceneV1 {
+export function projectDrawingScene(state: DrawingCommittedState, appearance: DrawingRenderSceneV1['appearance'], rootFontPx: number, resolve: (css: string) => string, typography: FigureTypography = { bodyFont: 'sans', bodyItalic: false, cssZoom: 1 }, layoutWidth = state.pixelWidth): DrawingRenderSceneV1 {
   const { W, H, pixelWidth, textK, unitsPerPx, prepared, frame, show, focus, dark, seed, measureCtx } = state
   const k = pixelWidth / W
   const visible = (i: number): boolean => show === undefined || (state.items[i].stage ?? 0) <= show
@@ -73,7 +73,7 @@ export function projectDrawingScene(state: DrawingCommittedState, appearance: Dr
       rings: ring ? [{ x: ring.x, y: ring.y, width: ring.width, height: ring.height, viewWidth: ring.drawing.w, viewHeight: ring.drawing.h, color: appearance.palette.brick, strokes: ring.drawing.strokes.map(({ d, spine, reach, dry, dryWidth }) => ({ d, spine, reach, dry, dryWidth })) }] : []
     }
   })
-  return { version: 1, canvas: { width: W, height: H }, metrics: { pixelWidth, layoutWidth, textK, unitsPerPx, rootFontPx, bodyFont: typography.bodyFont, bodyItalic: typography.bodyItalic }, appearance: { ...appearance, palette: { ...appearance.palette } }, items, output: { scale: 2 } }
+  return { version: 1, canvas: { width: W, height: H }, metrics: { pixelWidth, layoutWidth, textK, unitsPerPx, rootFontPx, bodyFont: typography.bodyFont, bodyItalic: typography.bodyItalic, cssZoom: typography.cssZoom }, appearance: { ...appearance, palette: { ...appearance.palette } }, items, output: { scale: 2 } }
 }
 
 export function freezeDrawingExportState(state: DrawingCommittedState, element: HTMLElement, language: string, direction: 'ltr' | 'rtl'): DrawingRenderSceneV1 {

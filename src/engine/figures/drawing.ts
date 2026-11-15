@@ -1,6 +1,7 @@
 // Frontera estricta: copia únicamente presentación conocida y cuenta recursos antes de serializar.
 import { FIGURE_LIMITS, FigureValidationError } from '@shared/figures'
 import type { DrawingRenderSceneV1, PreparedDrawingPath, PreparedDrawingLabel, PreparedDrawingRing, PreparedVisibleItem } from '@shared/figuresDrawing'
+import { FIGURE_CSS_ZOOM_LIMITS } from '@shared/figuresTypography'
 
 export const DRAWING_LIMITS = { maxBytes: 2 * 1024 * 1024, maxItems: 500, maxPrimitives: 10_000, maxTextBytes: 64 * 1024, maxLabelBytes: 8 * 1024, maxLayoutDimension: 16_384, maxSceneExtent: 32_768 } as const
 const fail = (large = false): never => { throw new FigureValidationError(large ? 'too_large' : 'invalid') }
@@ -170,12 +171,15 @@ class Reader {
 
 export function validateDrawingRenderScene(value: unknown): DrawingRenderSceneV1 {
   const r = new Reader(), v = r.object(value, ['version', 'canvas', 'metrics', 'appearance', 'items', 'output'])
-  const c = r.object(v.canvas, ['width', 'height']), m = r.object(v.metrics, ['pixelWidth', 'layoutWidth', 'textK', 'unitsPerPx', 'rootFontPx', 'bodyFont', 'bodyItalic'])
+  const c = r.object(v.canvas, ['width', 'height']), m = r.object(v.metrics, ['pixelWidth', 'layoutWidth', 'textK', 'unitsPerPx', 'rootFontPx', 'bodyFont', 'bodyItalic', 'cssZoom'])
   const a = r.object(v.appearance, ['theme', 'language', 'direction', 'palette']), p = r.object(a.palette, ['paper', 'text', 'text2', 'text3', 'brick', 'accent', 'link']), o = r.object(v.output, ['scale'])
   const canvas = { width: r.number(c.width, 1), height: r.number(c.height, 1) }
-  const metrics = { pixelWidth: r.number(m.pixelWidth, 1, DRAWING_LIMITS.maxLayoutDimension), layoutWidth: r.number(m.layoutWidth, 1, DRAWING_LIMITS.maxLayoutDimension), textK: r.number(m.textK, .01, 16), unitsPerPx: r.number(m.unitsPerPx, .0001, 10_000), rootFontPx: r.number(m.rootFontPx, 8, 64), bodyFont: r.enum(m.bodyFont, ['sans', 'serif', 'mono', 'rounded']), bodyItalic: r.bool(m.bodyItalic) }
+  const metrics = { pixelWidth: r.number(m.pixelWidth, 1, DRAWING_LIMITS.maxLayoutDimension), layoutWidth: r.number(m.layoutWidth, 1, DRAWING_LIMITS.maxLayoutDimension), textK: r.number(m.textK, .01, 16), unitsPerPx: r.number(m.unitsPerPx, .0001, 10_000), rootFontPx: r.number(m.rootFontPx, 8, 64), bodyFont: r.enum(m.bodyFont, ['sans', 'serif', 'mono', 'rounded']), bodyItalic: r.bool(m.bodyItalic), cssZoom: r.number(m.cssZoom, FIGURE_CSS_ZOOM_LIMITS.min, FIGURE_CSS_ZOOM_LIMITS.max) }
   const preparedK = metrics.pixelWidth / canvas.width, k = metrics.layoutWidth / canvas.width, expectedUnits = Math.round(metrics.textK / preparedK * 50) / 50
   if (Math.abs(metrics.unitsPerPx - expectedUnits) > 1e-6 || canvas.height * preparedK > DRAWING_LIMITS.maxLayoutDimension || canvas.height * k > DRAWING_LIMITS.maxLayoutDimension) fail(true)
+  // El transform inverso conserva geometría natural, pero el layout interno debe respetar los mismos topes.
+  const resourceZoom = Math.max(1, metrics.cssZoom)
+  if (metrics.layoutWidth * resourceZoom > DRAWING_LIMITS.maxLayoutDimension || canvas.height * k * resourceZoom > DRAWING_LIMITS.maxLayoutDimension || metrics.rootFontPx * resourceZoom > 256) fail(true)
   const language = r.string(a.language, 32)
   if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(language)) fail()
   const items = r.array(v.items, DRAWING_LIMITS.maxItems, value => r.item(value)), indices = new Set<number>()
@@ -184,17 +188,17 @@ export function validateDrawingRenderScene(value: unknown): DrawingRenderSceneV1
     indices.add(item.sourceIndex)
     // El viewport provisional recorta pintura, pero tampoco acepta coordenadas CSS arbitrariamente lejanas.
     const t = item.transform, reach = (Math.abs(t.dx) + Math.abs(t.dy) + 2 * Math.abs(t.px) + 2 * Math.abs(t.py)) * k
-    if (reach > DRAWING_LIMITS.maxSceneExtent) fail(true)
+    if (reach * resourceZoom > DRAWING_LIMITS.maxSceneExtent) fail(true)
     for (const path of item.paths) {
       const extent = ((r.pathExtent.get(path.d) ?? 0) * 2 + Math.abs(path.offset.x) + Math.abs(path.offset.y) + path.width * 2) * k + reach
-      if (extent > DRAWING_LIMITS.maxSceneExtent) fail(true)
+      if (extent * resourceZoom > DRAWING_LIMITS.maxSceneExtent) fail(true)
     }
     for (const ring of item.rings) for (const stroke of ring.strokes) {
       const extent = Math.max(r.pathExtent.get(stroke.d) ?? 0, r.pathExtent.get(stroke.spine) ?? 0, r.pathExtent.get(stroke.dry) ?? 0)
-      if ((extent + stroke.reach + stroke.dryWidth) * Math.max(ring.width / ring.viewWidth, ring.height / ring.viewHeight) > DRAWING_LIMITS.maxSceneExtent) fail(true)
+      if ((extent + stroke.reach + stroke.dryWidth) * Math.max(ring.width / ring.viewWidth, ring.height / ring.viewHeight) * resourceZoom > DRAWING_LIMITS.maxSceneExtent) fail(true)
     }
-    for (const label of item.labels) if (Math.max(Math.abs(label.x), Math.abs(label.y)) * k > DRAWING_LIMITS.maxSceneExtent) fail(true)
-    for (const ring of item.rings) if (Math.max(Math.abs(ring.x) + ring.width, Math.abs(ring.y) + ring.height) > DRAWING_LIMITS.maxSceneExtent) fail(true)
+    for (const label of item.labels) if (Math.max(Math.abs(label.x), Math.abs(label.y)) * k * resourceZoom > DRAWING_LIMITS.maxSceneExtent || label.size * resourceZoom > 256) fail(true)
+    for (const ring of item.rings) if (Math.max(Math.abs(ring.x) + ring.width, Math.abs(ring.y) + ring.height) * resourceZoom > DRAWING_LIMITS.maxSceneExtent) fail(true)
   }
   return { version: r.enum(v.version, [1]), canvas, metrics, appearance: { theme: r.enum(a.theme, ['light', 'dark']), language, direction: r.enum(a.direction, ['ltr', 'rtl']), palette: { paper: r.color(p.paper), text: r.color(p.text), text2: r.color(p.text2), text3: r.color(p.text3), brick: r.color(p.brick), accent: r.color(p.accent), link: r.color(p.link) } }, items, output: { scale: r.enum(o.scale, [1, 2]) } }
 }

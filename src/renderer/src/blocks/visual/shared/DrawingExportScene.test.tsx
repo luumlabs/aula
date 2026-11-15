@@ -10,9 +10,20 @@ function item(sourceIndex: number): PreparedVisibleItem {
     rings: [{ x: -30, y: -20, width: 50, height: 40, viewWidth: 52, viewHeight: 40, color: '#b4502f', strokes: [{ d: 'M0 0L50 0L50 40Z', spine: 'M0 0L50 0', dry: 'M5 0L8 0', reach: 6, dryWidth: 0.3 }] }]
   }
 }
-const scene: DrawingRenderSceneV1 = { version: 1, canvas: { width: 400, height: 300 }, metrics: { pixelWidth: 600, layoutWidth: 600, textK: 1.15, unitsPerPx: 0.76, rootFontPx: 15, bodyFont: 'sans', bodyItalic: false }, appearance: { theme: 'light', language: 'ar', direction: 'rtl', palette: { paper: '#fcfaf5', text: '#201e1a', text2: '#585550', text3: '#6c6862', brick: '#b4502f', accent: '#029791', link: '#9c4527' } }, items: [item(2), item(0)], output: { scale: 2 } }
+const scene: DrawingRenderSceneV1 = { version: 1, canvas: { width: 400, height: 300 }, metrics: { pixelWidth: 600, layoutWidth: 600, textK: 1.15, unitsPerPx: 0.76, rootFontPx: 15, bodyFont: 'sans', bodyItalic: false, cssZoom: 1 }, appearance: { theme: 'light', language: 'ar', direction: 'rtl', palette: { paper: '#fcfaf5', text: '#201e1a', text2: '#585550', text3: '#6c6862', brick: '#b4502f', accent: '#029791', link: '#9c4527' } }, items: [item(2), item(0)], output: { scale: 2 } }
 
 describe('escena estática completa Drawing', () => {
+  it('reproduce zoom CSS dentro del layout natural sin escalar las métricas ni cambiar el caso 1', () => {
+    const plain = renderToStaticMarkup(<DrawingExportScene scene={scene} />)
+    expect(plain).not.toContain('data-figure-css-zoom')
+    const zoomed = { ...scene, metrics: { ...scene.metrics, cssZoom: 1.75 } }
+    const html = renderToStaticMarkup(<DrawingExportScene scene={zoomed} />)
+    expect(html).toMatch(/data-drawing-scene="true" style="position:relative;width:600px;height:450px/)
+    expect(html).toContain('data-figure-css-zoom="true" style="position:absolute;left:0;top:0;width:600px;height:450px;zoom:1.75;transform-origin:0 0;transform:scale(0.5714285714285714)')
+    expect(html).toContain('left:-30px;top:15px;font-size:18px')
+    expect(html.indexOf('data-figure-css-zoom')).toBeLessThan(html.indexOf('viewBox="0 0 400 300"'))
+    expect(html.lastIndexOf('data-drawing-label')).toBeLessThan(html.indexOf('id="r-0-0-0"'))
+  })
   it('pinta SVG y posiciones de etiqueta al ancho CSS; fuentes y rodeados conservan sus píxeles preparados', () => {
     const nested = { ...scene, metrics: { ...scene.metrics, layoutWidth: 300 } }
     const html = renderToStaticMarkup(<DrawingExportScene scene={nested} />)

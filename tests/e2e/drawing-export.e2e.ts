@@ -151,11 +151,11 @@ async function save(app: ElectronApplication, page: Page, figure: Locator, path:
   await expect(action(figure)).toBeVisible()
 }
 
-async function liveGeometry(page: Page): Promise<LiveDrawingGeometry> {
+async function liveGeometry(page: Page, scaled = false): Promise<LiveDrawingGeometry> {
   return page.evaluate<LiveDrawingGeometry>(`(() => {
     const root=document.querySelector('[data-block="drawing"] [role="img"]'), box=root.getBoundingClientRect();
     const rect=n=>{const b=n.getBoundingClientRect();return {x:b.x-box.x,y:b.y-box.y,width:b.width,height:b.height}};
-    return {width:box.width,height:box.height,labels:[...root.querySelectorAll('.viz-label, .viz-label .katex-html')].map(n=>({text:(n.classList.contains('katex-html')?'[math] ':'')+n.textContent,...rect(n)})),exclusions:[...document.querySelectorAll('button')].map(rect).filter(b=>b.width>0&&b.height>0&&b.x<box.width&&b.y<box.height&&b.x+b.width>0&&b.y+b.height>0)};
+    return {width:box.width,height:box.height,...(${scaled} ? {scale:box.width/parseFloat(getComputedStyle(root).width)} : {}),labels:[...root.querySelectorAll('.viz-label, .viz-label .katex-html')].map(n=>({text:(n.classList.contains('katex-html')?'[math] ':'')+n.textContent,...rect(n)})),exclusions:[...document.querySelectorAll('button')].map(rect).filter(b=>b.width>0&&b.height>0&&b.x<box.width&&b.y<box.height&&b.x+b.width>0&&b.y+b.height>0)};
   })()`)
 }
 
@@ -392,6 +392,100 @@ test('Drawing PNG congela el frame visible durante reloj y transición sin deten
     expect(captures.every(c => c.destroyed && c.shown === 0)).toBe(true)
     expect(errors).toEqual([])
   } finally { await audit(app, info, home, 'motion'); await app.close() }
+})
+
+interface ZoomMathGeometry {
+  zoom: number
+  width: number
+  height: number
+  math: Array<{ kind: string; border: string; zoom: number; fontSize: string; x: number; y: number; width: number; height: number }>
+}
+// La referencia nace de estilos y rectángulos del DOM real, no del DTO ni de los helpers de exportación.
+const zoomMathGeometry = (selector: string): string => `(() => {
+  const root=document.querySelector(${JSON.stringify(selector)}), box=root.getBoundingClientRect(), css=getComputedStyle(root);
+  const width=parseFloat(css.width), height=parseFloat(css.height), scale=box.width/width;
+  const zoomAt=element=>{let zoom=1;for(let node=element;node;node=node.parentElement)zoom*=Number(getComputedStyle(node).zoom);return zoom;};
+  return {zoom:zoomAt(root),width,height,math:[...root.querySelectorAll('.katex-html, .frac-line, .sqrt')].map(node=>{
+    const r=node.getBoundingClientRect(),s=getComputedStyle(node);
+    return{kind:node.classList.contains('frac-line')?'fraction':node.classList.contains('sqrt')?'root':'formula',border:s.borderBottomWidth,zoom:zoomAt(node),fontSize:s.fontSize,x:(r.x-box.x)/scale,y:(r.y-box.y)/scale,width:r.width/scale,height:r.height/scale};
+  })};
+})()`
+
+for (const c of [
+  { key: 'academic', theme: 'academic', layout: 'content' as const, textScale: 1, rootFont: 15, zoom: 1.75, rootZoom: 1, italic: false },
+  { key: 'quote', theme: 'aula', layout: 'quote' as const, textScale: 1.4, rootFont: 21, zoom: 1.8, rootZoom: 1, italic: true },
+  { key: 'root-zoom', theme: 'academic', layout: 'content' as const, textScale: 1, rootFont: 15, zoom: 1.75, rootZoom: 1.25, italic: false }
+]) test(`Drawing PNG conserva CSS zoom y raíces de Slides reales: ${c.key}`, async ({}, info) => {
+  const home = prepare('light'), settingsPath = join(home, 'settings.json'), settings = JSON.parse(readFileSync(settingsPath, 'utf8'))
+  settings.general.textScale = c.textScale; settings.general.motion = 'reduced'; writeFileSync(settingsPath, JSON.stringify(settings))
+  // El fixture de zoom en html cabe entero en el viewport recortado de Slides, incluso a esa densidad.
+  const compact = c.rootZoom !== 1
+  const block: BlockOf<'drawing'> = { id: `zoom-${c.key}`, type: 'drawing', width: compact ? 200 : 360, height: compact ? 70 : 120, items: [
+    { kind: 'text', x: compact ? 50 : 90, y: compact ? 25 : 40, text: '$\\frac{a_1+b}{\\sqrt{x_2}}$', size: 22 },
+    { kind: 'text', x: compact ? 130 : 245, y: compact ? 50 : 80, text: '$\\sqrt{1+\\frac{x}{y}}$', size: 18 },
+    { kind: 'dot', cx: compact ? 175 : 320, cy: compact ? 12 : 20, r: 9, fill: 'green', stroke: 'green' }
+  ] }
+  const slide: import('../../src/shared/schema/cards').Slide = { id: `slide-${c.key}`, layout: c.layout, blocks: [block], right: [] }
+  const sourcePath = join(home, 'Packs', PACK, 'skills', `${SKILLS[0]}.json`), lesson = JSON.parse(readFileSync(sourcePath, 'utf8'))
+  lesson.lesson = [{ id: `deck-${c.key}`, type: 'slides', title: `Zoom ${c.key}`, theme: c.theme, transition: 'none', slides: [slide] }]
+  writeFileSync(sourcePath, JSON.stringify(lesson)); const sourceBytes = readFileSync(sourcePath, 'utf8')
+  const { app, page, errors } = await start(home, false)
+  try {
+    await app.evaluate(({ app: main }) => {
+      main.on('browser-window-created', (_event, window) => {
+        const wc = window.webContents, previous = wc.executeJavaScript.bind(wc)
+        wc.executeJavaScript = (async (code: string, gesture?: boolean) => {
+          const result = await previous(code, gesture)
+          if (/^window\.aulaFigureRender\.render\(/.test(code)) {
+            // Se instala desde Node sin serializar funciones transpiliadas dentro de evaluate.
+            const state = globalThis as unknown as { drawingZoomRead?: string; drawingZoomMath?: ZoomMathGeometry }
+            state.drawingZoomMath = await previous(state.drawingZoomRead!, false)
+          }
+          return result
+        }) as typeof wc.executeJavaScript
+      })
+    })
+    await app.evaluate((_electron, expression) => { (globalThis as unknown as { drawingZoomRead: string }).drawingZoomRead = expression }, zoomMathGeometry('[data-drawing-scene]'))
+    // Contexto DOM de densidad adicional: prueba que el zoom del html también participa en el producto.
+    if (c.rootZoom !== 1) await page.evaluate(`document.documentElement.style.zoom = '${c.rootZoom}'`)
+    await go(page, { name: 'study', id: PACK, mode: 'learn', skill: SKILLS[0] })
+    const figure = page.locator('[data-block="drawing"]').first()
+    await figure.scrollIntoViewIfNeeded(); await expect(figure.locator('.frac-line')).toHaveCount(2)
+    await page.waitForTimeout(700)
+    const before = await page.evaluate<ZoomMathGeometry>(zoomMathGeometry('[data-block="drawing"] [role="img"]'))
+    expect(before.zoom).toBeCloseTo(c.zoom * c.rootZoom, 5)
+    expect(before.math.filter(node => node.kind === 'root')).toHaveLength(2)
+    const progressPath = join(home, 'Packs', PACK, 'progress.json'), progress = readFileSync(progressPath, 'utf8')
+    // «Marcar» es un portal hermano de role=img. SlidePigment es decoración de la diapositiva detrás
+    // del lienzo transparente; ninguno forma parte del dibujo autónomo sobre papel. Se restauran antes de exportar.
+    await expect(figure.locator('[data-ask-layer]')).toHaveCount(1)
+    await expect(page.locator('.viz-slide > .paint')).toHaveCount(1)
+    await expect(figure.locator('.paint')).toHaveCount(0)
+    const ui = await page.addStyleTag({ content: '[data-block="drawing"] [data-ask-layer], .viz-slide > .paint { visibility: hidden !important; }' })
+    let live: Buffer, geometry: LiveDrawingGeometry
+    try { geometry = await liveGeometry(page, true); live = await figure.getByRole('img').screenshot({ scale: 'css' }) }
+    finally { await ui.evaluate(element => element.remove()) }
+    const livePath = info.outputPath(`${c.key}-live.png`); writeFileSync(livePath, live); await info.attach(`${c.key}-live.png`, { path: livePath, contentType: 'image/png' })
+    const file = join(home, `drawing-css-zoom-${c.key}.png`); await save(app, page, figure, file)
+    const input = await rendered(app, 0), after = await app.evaluate(() => (globalThis as unknown as { drawingZoomMath: ZoomMathGeometry }).drawingZoomMath)
+    const mathPath = info.outputPath(`${c.key}-math-geometry.json`); writeFileSync(mathPath, JSON.stringify({ before, after, metrics: input.metrics }, null, 2))
+    await info.attach(`${c.key}-math-geometry.json`, { path: mathPath, contentType: 'application/json' })
+    expect(input.metrics).toMatchObject({ cssZoom: before.zoom, rootFontPx: c.rootFont, bodyFont: 'serif', bodyItalic: c.italic })
+    expect(input.metrics.layoutWidth).toBeCloseTo(before.width, 3)
+    // El root sin zoom usa la rejilla de layout 1/64px; el original zoomado puede caer entre sus puntos.
+    expect(Math.abs(after.width - before.width)).toBeLessThan(1 / 64); expect(Math.abs(after.height - before.height)).toBeLessThan(1 / 64)
+    expect(after.math).toHaveLength(before.math.length)
+    for (let i = 0; i < before.math.length; i++) {
+      expect(after.math[i].kind).toBe(before.math[i].kind)
+      expect(after.math[i].border).toBe(before.math[i].border)
+      expect(after.math[i].zoom).toBe(before.math[i].zoom); expect(after.math[i].fontSize).toBe(before.math[i].fontSize)
+      for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after.math[i][key] - before.math[i][key]), `${before.math[i].kind} ${key}`).toBeLessThan(.05)
+    }
+    await inspect(page, file, info, `drawing-css-zoom-${c.key}`)
+    await compareDrawingPixels(page, live, readFileSync(file), geometry, info, `drawing-css-zoom-${c.key}`)
+    expect(readFileSync(sourcePath, 'utf8')).toBe(sourceBytes); expect(readFileSync(progressPath, 'utf8')).toBe(progress)
+    expect(errors).toEqual([])
+  } finally { try { await audit(app, info, home, `css-zoom-${c.key}`) } finally { await app.close() } }
 })
 
 test('Drawing PNG conserva prosa RTL y fórmulas LTR del idioma del curso', async ({}, info) => {

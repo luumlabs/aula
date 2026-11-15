@@ -16,7 +16,7 @@ function StaticRing({ ring, id }: { ring: PreparedDrawingRing; id: string }) {
 
 export function DrawingExportScene({ scene }: { scene: DrawingRenderSceneV1 }) {
   const k = scene.metrics.layoutWidth / scene.canvas.width
-  return <div data-drawing-scene style={{ position: 'relative', width: scene.metrics.layoutWidth, height: scene.canvas.height * k, color: scene.appearance.palette.text, fontFamily: FIGURE_FONTS[scene.metrics.bodyFont], fontStyle: scene.metrics.bodyItalic ? 'italic' : 'normal' }}>
+  const content = <>
     <svg viewBox={`0 0 ${scene.canvas.width} ${scene.canvas.height}`} width="100%" height="100%" preserveAspectRatio="none" aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
       {scene.items.map((item) => <g key={item.sourceIndex} opacity={item.opacity} transform={`translate(${item.transform.dx} ${item.transform.dy}) rotate(${-item.transform.deg} ${item.transform.px} ${item.transform.py})`}>
         {item.paths.map((path, index) => {
@@ -36,5 +36,10 @@ export function DrawingExportScene({ scene }: { scene: DrawingRenderSceneV1 }) {
       <StaticDrawingText text={label.text} language={scene.appearance.language} direction={scene.appearance.direction} />
     </div>))}
     {[...scene.items].sort((a, b) => a.sourceIndex - b.sourceIndex).flatMap((item) => item.rings.map((ring, index) => <StaticRing key={`${item.sourceIndex}-${index}`} ring={ring} id={`r-${item.sourceIndex}-${index}`} />))}
+  </>
+  return <div data-drawing-scene style={{ position: 'relative', width: scene.metrics.layoutWidth, height: scene.canvas.height * k, color: scene.appearance.palette.text, fontFamily: FIGURE_FONTS[scene.metrics.bodyFont], fontStyle: scene.metrics.bodyItalic ? 'italic' : 'normal' }}>
+    {scene.metrics.cssZoom === 1 ? content : <div data-figure-css-zoom style={{ position: 'absolute', left: 0, top: 0, width: scene.metrics.layoutWidth, height: scene.canvas.height * k, zoom: scene.metrics.cssZoom, transformOrigin: '0 0', transform: `scale(${1 / scene.metrics.cssZoom})` }}>
+      {content}
+    </div>}
   </div>
 }

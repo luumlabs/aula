@@ -60,7 +60,7 @@ vi.mock('electron', async () => {
   return { BrowserWindow: FakeWindow, screen, session: { fromPartition: (name: string, opts: unknown) => { expect(name).not.toMatch(/^persist:/); expect(opts).toEqual({ cache: false }); const session = new FakeSession(); state.sessions.push(session); return session }, get defaultSession() { throw new Error('Default session forbidden') } } }
 })
 class Owner extends EventEmitter { isDestroyed(): boolean { return false } }
-const scene = (): DrawingRenderSceneV1 => ({ version: 1, canvas: { width: 100, height: 80 }, metrics: { pixelWidth: 100, layoutWidth: 100, textK: 1, unitsPerPx: 1, rootFontPx: 16, bodyFont: 'sans', bodyItalic: false }, appearance: { theme: 'light', language: 'es', direction: 'ltr', palette: { paper: '#ffffff', text: '#000000', text2: '#111111', text3: '#222222', brick: '#aa2211', accent: '#aa2211', link: '#aa2211' } }, items: [], output: { scale: 2 } })
+const scene = (): DrawingRenderSceneV1 => ({ version: 1, canvas: { width: 100, height: 80 }, metrics: { pixelWidth: 100, layoutWidth: 100, textK: 1, unitsPerPx: 1, rootFontPx: 16, bodyFont: 'sans', bodyItalic: false, cssZoom: 1 }, appearance: { theme: 'light', language: 'es', direction: 'ltr', palette: { paper: '#ffffff', text: '#000000', text2: '#111111', text3: '#222222', brick: '#aa2211', accent: '#aa2211', link: '#aa2211' } }, items: [], output: { scale: 2 } })
 beforeEach(() => { vi.resetModules(); vi.stubEnv('ELECTRON_RENDERER_URL', ''); state.windows = []; state.sessions = []; state.calls = []; state.normalized = 'good'; state.displayScale = 2; state.calibrationFailures = 0; state.cleanup.mockClear() })
 
 describe('pipeline aislado de Drawing', () => {

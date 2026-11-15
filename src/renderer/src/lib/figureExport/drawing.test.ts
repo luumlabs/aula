@@ -4,7 +4,7 @@ import { captureDrawingPng } from './drawing'
 import { api } from '@renderer/lib/api'
 vi.mock('@renderer/lib/api', () => ({ api: { invoke: vi.fn() } }))
 afterEach(() => vi.mocked(api.invoke).mockReset())
-const scene: DrawingRenderSceneV1 = { version: 1, canvas: { width: 100, height: 100 }, metrics: { pixelWidth: 100, layoutWidth: 100, textK: 1, unitsPerPx: 1, rootFontPx: 15, bodyFont: 'sans', bodyItalic: false }, appearance: { theme: 'light', language: 'es', direction: 'ltr', palette: { paper: '#ffffff', text: '#000000', text2: '#000000', text3: '#000000', brick: '#ff0000', accent: '#ff0000', link: '#ff0000' } }, items: [], output: { scale: 2 } }
+const scene: DrawingRenderSceneV1 = { version: 1, canvas: { width: 100, height: 100 }, metrics: { pixelWidth: 100, layoutWidth: 100, textK: 1, unitsPerPx: 1, rootFontPx: 15, bodyFont: 'sans', bodyItalic: false, cssZoom: 1 }, appearance: { theme: 'light', language: 'es', direction: 'ltr', palette: { paper: '#ffffff', text: '#000000', text2: '#000000', text3: '#000000', brick: '#ff0000', accent: '#ff0000', link: '#ff0000' } }, items: [], output: { scale: 2 } }
 describe('ciclo de captura Drawing', () => {
   it('entrega PNG y retira el listener de cancelación al terminar', async () => {
     const signal = new AbortController()
