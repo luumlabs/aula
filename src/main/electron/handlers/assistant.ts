@@ -30,6 +30,7 @@ import { platformBrowser } from '../browser'
 import { emit, handle } from '../rpc'
 import { generationService } from './generation'
 import { liveBrowser } from './live'
+import { remoteAccess } from '../remote'
 
 type Obj = Record<string, unknown>
 
@@ -118,12 +119,16 @@ function studentBrowser(): StudentBrowser | undefined {
   let browser: ReturnType<typeof platformBrowser>
   try { browser = platformBrowser() } catch { return undefined }
   const live = liveBrowser()
+  // sin dispositivos vinculados, el chat del Mac sigue como siempre (ni avisos del móvil ni límites en la herramienta)
+  let screens: StudentBrowser['screens'] = 'computer'
+  try { screens = remoteAccess().liveScreens() } catch { /* sin acceso remoto */ }
   return {
+    screens,
     show: async (url, note, purpose) => {
       // con la sesión de la plataforma de esa dirección, si es una de las suyas
       const accountId = browser.accountForURL(url)?.id ?? browser.accountForSignIn(url)?.id ?? null
       const state = await live.open({ accountId, url, purpose, holder: 'student', note })
-      return { id: state.id, url: state.url || url }
+      return { id: state.id, url: state.url || url, ...(screens !== 'computer' ? { onDevices: live.deviceMaySee(state.id, url) } : {}) }
     },
     read: async () => {
       const mine = live.readable()

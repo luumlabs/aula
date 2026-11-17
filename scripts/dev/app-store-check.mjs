@@ -185,6 +185,8 @@ if (!existsSync(demo)) line(false, 'falta: sin ella la app sale sin «Try it wit
 else {
   const { size, mtime } = statSync(demo)
   line(size > 1_000_000, `${(size / 1e6).toFixed(1)} MB, grabada el ${mtime.toISOString().slice(0, 10)} (grábala otra vez si la interfaz ha cambiado desde entonces)`)
+  // la grabación lleva la interfaz dentro (sin comprimir): tiene que ser una con el aviso de la IA de terceros (guía 5.1.2(i))
+  line(readFileSync(demo).includes('data-ai-consent'), 'trae el aviso de la IA (A8; si no: npm run build && node scripts/dev/ios-demo.mjs)')
 }
 
 finish()

@@ -27,6 +27,11 @@ export interface LiveState {
   height: number
   /** Lo que Aula le dice al estudiante al pasarle el turno («Inicia sesión y dime cuando estés»). */
   note?: string
+  /** ¿Se puede ver esta página desde un dispositivo? (sus plataformas, su inicio de sesión o una página en blanco:
+   *  engine/live/reach.ts) */
+  deviceAllowed: boolean
+  /** Lo último que la ventana no abrió porque la manejaba un dispositivo (solo el host). */
+  refused?: { host: string; at: number }
 }
 
 export interface LiveFrame {

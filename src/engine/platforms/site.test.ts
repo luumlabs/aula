@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { downgradesToHttp, moodleAliasRoot, moodleRootFromWwwroot, registrableSite, sameRegistrableSite } from './site'
+import { downgradesToHttp, isSharedHosting, moodleAliasRoot, moodleRootFromWwwroot, registrableSite, sameRegistrableSite } from './site'
 
 const moodle = { kind: 'moodle' as const, baseURL: 'https://campus.uni.edu/' }
 const cfg = (root: string): string => `<script>M.cfg = {"wwwroot":"${root.replace(/\//g, '\\/')}","sesskey":"Ab12Cd34Ef"};</script>`
@@ -86,6 +86,16 @@ describe('sitio registrable', () => {
       expect(sameRegistrableSite(idp, 'campus.uni.edu'), idp).toBe(false)
     }
     expect(sameRegistrableSite('login.microsoftonline.com', 'login.microsoftonline.com')).toBe(false)
+  })
+})
+
+describe('alojamientos compartidos', () => {
+  it('un cliente de netlify.app o github.io, sí; el propio dominio o uno normal, no', () => {
+    for (const h of ['mi-sso.netlify.app', 'x.github.io', 'a.b.vercel.app', 'MI-SSO.NETLIFY.APP.', 'x.workers.dev', 'mi.neocities.org', 'a.deno.dev', 'b.replit.app', 'c.fly.dev']) {
+      expect(isSharedHosting(h), h).toBe(true)
+    }
+    expect(registrableSite('proxy.x.workers.dev')).toBe('proxy.x.workers.dev')
+    for (const h of ['netlify.app', 'sso.uni.edu', 'netlify.app.evil.com', '']) expect(isSharedHosting(h), h).toBe(false)
   })
 })
 

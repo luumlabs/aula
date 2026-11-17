@@ -10,11 +10,26 @@ import { IDs } from '@engine/base/ids'
 import { clip } from '@engine/assistant'
 import { tr } from '@shared/ai/i18n'
 import type { AgentTool } from '../../ai/model'
-import type { ToolEnv } from '../host'
+import type { StudentBrowser, ToolEnv } from '../host'
 import { newCard } from '../models'
 import { outError, outJSON, Schema, tool } from '../toolkit'
 
 const RULES = 'You cannot click, type or submit anything in this window, and you never do the assignment, a quiz or a test for the student. Your job is to look at what THEY did when they hand it over, tell them which answers have a mistake and why, teach the idea with a similar example, and give the window back so they fix it and submit it themselves.'
+
+const WHEN = "Use it when a session expired and they must sign in (purpose 'signin'), or when they are going to work on an assignment and want you beside them (purpose 'task'). "
+
+/** Lo que hace student_browser_show según dónde se ve la ventana (StudentBrowser.screens): sin dispositivos, como siempre. */
+function showDescription(screens: StudentBrowser['screens']): string {
+  if (screens === 'devices') return "Put a page of the student's study platform in THEIR browser inside Aula and show it in the chat with an «Open the browser» button. They see and drive that window from the computer and from their phone or tablet. On the phone or tablet only their study platforms (and the sign-in pages the platform itself leads to) can be shown; any other page you open is visible only on the computer, so prefer platform URLs (to sign in, the platform's own home or login page, not the identity provider's). " + WHEN + RULES
+  if (screens === 'server') return "Put a page of the student's study platform in THEIR browser inside Aula and show it in the chat with an «Open the browser» button. Aula runs here as a server: the student sees and drives that window only from their phone, tablet or other devices, which show only their study platforms (and the sign-in pages the platform itself leads to), so use platform URLs (to sign in, the platform's own home or login page, not the identity provider's). " + WHEN + RULES
+  return "Put a page of the student's study platform (or any web page) in THEIR browser inside Aula and show it in the chat with an «Open the browser» button. They see and drive that window from the Mac, the iPad or the iPhone. " + WHEN + RULES
+}
+
+/** Lo que se dice a la IA de una página que sus dispositivos no enseñan. */
+const DEVICE_NOTE = {
+  devices: 'This page is not one of the student’s study platforms: on their phone or tablet it is not shown, only on the computer. Tell them, or open the platform’s own page instead.',
+  server: 'This page is not one of the student’s study platforms: Aula runs here as a server and the student’s devices do not show it. Tell them, and open the platform’s own page instead.'
+} as const
 
 export function studentBrowserTools(env: ToolEnv): AgentTool[] {
   const live = env.student
@@ -27,7 +42,7 @@ export function studentBrowserTools(env: ToolEnv): AgentTool[] {
   }
   return [
     tool('student_browser_show',
-      "Put a page of the student's study platform (or any web page) in THEIR browser inside Aula and show it in the chat with an «Open the browser» button. They see and drive that window from the Mac, the iPad or the iPhone. Use it when a session expired and they must sign in (purpose 'signin'), or when they are going to work on an assignment and want you beside them (purpose 'task'). " + RULES,
+      showDescription(live.screens),
       Schema.object([
         ['url', Schema.string('https URL of the page to put in front of the student (the assignment, the platform home or its sign-in page)')],
         ['note', Schema.string('one short sentence for the student, in their language, saying what to do there («Inicia sesión y dime cuando estés», «Haz el ejercicio 1; cuando termines pulsa “Que Aula lo revise”»)')],
@@ -43,6 +58,8 @@ export function studentBrowserTools(env: ToolEnv): AgentTool[] {
           card(purpose === 'signin' ? tr('Inicia sesión en el navegador de Aula', 'Sign in using Aula’s browser') : tr('Tu tarea, en el navegador de Aula', 'Your assignment, in Aula’s browser'), note, shown.id)
           return outJSON({
             ok: true, shown: true, holder: 'student',
+            // con dispositivos, lo que no está en sus plataformas no se ve en ellos: que la IA lo diga
+            ...(shown.onDevices === false && (live.screens === 'devices' || live.screens === 'server') ? { on_phone_or_tablet: false, device_note: DEVICE_NOTE[live.screens] } : {}),
             note: purpose === 'signin'
               ? 'The page is in front of the student. They sign in themselves (you never see or type the password). Wait for them to tell you they are in; do not call this again for the same page.'
               : 'The page is in front of the student and it is THEIR turn. Stop here and wait: when they finish a part they press «Que Aula lo revise» and write to you; then call student_browser_review. ' + RULES

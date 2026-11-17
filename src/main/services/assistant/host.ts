@@ -92,8 +92,13 @@ export interface PlatformReader {
  * la capa de Electron.
  */
 export interface StudentBrowser {
-  /** Abre la página en la ventana en vivo y deja el turno al estudiante. */
-  show(url: string, note: string, purpose: 'task' | 'signin'): Promise<{ id: string; url: string }>
+  /** Dónde se ve la ventana: solo en el ordenador ('computer', lo de siempre: no hay dispositivos vinculados), también en
+   *  sus dispositivos ('devices') o solo en ellos ('server': Aula como servidor). Los dispositivos solo enseñan sus
+   *  plataformas y su inicio de sesión. Sin decirlo, 'computer'. */
+  screens?: 'computer' | 'devices' | 'server'
+  /** Abre la página en la ventana en vivo y deja el turno al estudiante. `onDevices` (solo con dispositivos): si se ve en
+   *  ellos. */
+  show(url: string, note: string, purpose: 'task' | 'signin'): Promise<{ id: string; url: string; onDevices?: boolean }>
   /** Lo que hay en la ventana (texto y respuestas, sin lo privado); null si el estudiante no le ha pasado el turno. */
   read(): Promise<LiveReading | null>
   /** Devuelve el turno al estudiante con una nota. Devuelve el id de la ventana, o null si no hay ninguna. */

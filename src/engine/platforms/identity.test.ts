@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entraErrorKind, isIdentityHost } from './identity'
+import { entraErrorKind, isIdentityHost, isListedIdentityHost } from './identity'
 import { isIdentityHost as fromLogin } from './login'
 
 describe('proveedores de identidad', () => {
@@ -7,6 +7,16 @@ describe('proveedores de identidad', () => {
     expect(fromLogin).toBe(isIdentityHost)
     expect(isIdentityHost('login.microsoftonline.com')).toBe(true)
     expect(isIdentityHost('campus.uni.edu')).toBe(false)
+  })
+})
+
+describe('proveedores de la lista (sin mirar el nombre)', () => {
+  it('los hosts exactos siempre; los inquilinos (*.okta.com…) solo sin `exact`; lo que solo lo parece, nunca', () => {
+    expect(isListedIdentityHost('login.microsoftonline.com', true)).toBe(true)
+    expect(isListedIdentityHost('accounts.google.com', true)).toBe(true)
+    expect(isListedIdentityHost('uni.okta.com')).toBe(true)
+    expect(isListedIdentityHost('uni.okta.com', true)).toBe(false)
+    for (const h of ['sso.uni.edu', 'login.example.com', 'mi-sso.netlify.app', '']) expect(isListedIdentityHost(h), h).toBe(false)
   })
 })
 

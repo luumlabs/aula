@@ -23,7 +23,7 @@ where Apple counts bytes), the version, both privacy manifests, the license noti
 | Privacy policy URL | https://github.com/luumlabs/aula/blob/main/docs/PRIVACY.md |
 | Availability | Every country and region **except China mainland** (it needs an ICP filing and approval for AI chat) and **France** (it needs the French encryption declaration; add it later). Not available on Apple silicon Macs nor on Apple Vision Pro: untick both in *Pricing and Availability* (the project also says so: `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD` and `SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD` are `NO`) |
 | EU Digital Services Act | Not a trader |
-| Version | **0.2.7** (App Store Connect creates "1.0": change it), build 1. See [Version and build](#version-and-build) |
+| Version | **0.2.7** (App Store Connect creates "1.0": change it), build 6 (the next one is 7). See [Version and build](#version-and-build) |
 | Release | *Manually release this version*: publish it once the notarized Mac 0.2.7 is the latest release, where *Aula for Mac* sends people |
 
 **App privacy** (the questionnaire): *Do you or your third-party partners collect data from this app?* **Yes**. Types
@@ -52,7 +52,7 @@ documents, or `YES` plus the code Apple gives) so it stops asking.
 | Question | Answer |
 | --- | --- |
 | Parental controls, age assurance | No |
-| Unrestricted web access | No, provided the Mac version the app ships with limits the live study-platform browser to the student's platforms when a device drives it; otherwise Yes, and the rating becomes 16+ |
+| Unrestricted web access | No. From a device, Aula's browser only opens the student's own study platforms and their sign-in pages (`src/engine/live/reach.ts`); other pages are not opened or shown on the device (what a platform page embeds itself, such as a video or a course tool, shows inside that page) |
 | User-generated content, social media, messaging and chat, advertising | No (what the student creates is private to them; the chat is with the AI tutor) |
 | Shared location, dating and relationships | No |
 | Medical or treatment information | **Infrequent** |
@@ -69,7 +69,8 @@ The three *Infrequent* answers are there because the AI tutor answers about what
 Aula: Study with Your Mac
 <!-- /name -->
 
-If the name is taken, use:
+If the name is taken, or App Review objects to *Mac* in the name (guideline 5.2.5), use this one (it is metadata only:
+no new build):
 
 <!-- name-alt:en -->
 Aula Study Companion
@@ -201,14 +202,15 @@ On the first screen, tap "Try it with an example course". The full interface ope
 Creating a course and adding files need the student's computer, so in the demo they answer "This isn't part of the demo". The attached video shows the app connected to a real Mac.
 
 THE REAL CONNECTION
-"Sign in to Tailscale" shows Tailscale's own sign-in page in a Safari view inside the app. Tailscale is a third-party service the student signs in to with their own account (Apple, Google, Microsoft, GitHub or a passkey). Tailscale accounts are created and managed at tailscale.com, not in this app. The app embeds Tailscale's open-source client library only to reach the student's own computer: it does not install a VPN configuration, does not use Network Extension and does not route any other traffic of the device. The app then finds the student's Aula and asks for the 6-digit code that Aula shows on that computer. "Sign out of Tailscale" removes this device from the network and deletes its state.
+"Sign in to Tailscale" shows Tailscale's own sign-in page in a Safari view inside the app. Tailscale is a third-party service the student signs in to with their own account (Apple, Google, Microsoft, GitHub or a passkey). Tailscale accounts are created and managed at tailscale.com, not in this app. The app embeds Tailscale's open-source client library only to reach the student's own computer: it does not install a VPN configuration, does not use Network Extension and does not route any other traffic of the device. The app then finds the student's Aula and asks for the 6-digit code that Aula shows on that computer. "Sign out of Tailscale" removes this device from the network and deletes its state; its confirmation also links to Tailscale's instructions to delete the account.
 
 ACCOUNTS, DATA AND AI
 - There is no Aula account and no Aula server. The developer receives no data. No ads, analytics or tracking.
 - The tutor's answers are produced by Aula on the student's own computer, with the AI provider the student chose and set up there (or a local model). This app never contacts an AI provider.
+- Before the first question, answer or course material sent from the device to the AI, the app names the AI provider the student's computer will send it to (for example Anthropic or OpenAI) with Continue and Cancel; nothing is sent until they continue, and it asks again if the provider changes. The demo shows a demo version of the notice: it says the demo sends nothing, names example providers (Anthropic, OpenAI or Google) and has the same privacy policy link.
 - Everything the student creates is private to them. There is no sharing between users and no social feature.
 - Camera and microphone: requested only when the student picks "Take Photo or Video" in the system file picker to add their notes or a class to a course. The file goes to their own computer. Local network: to reach that computer directly when both are on the same network.
-- The privacy policy is linked on the first screen and at https://github.com/luumlabs/aula/blob/main/docs/PRIVACY.md
+- The privacy policy is linked at the foot of every connection screen and in Settings → About Aula, and is at https://github.com/luumlabs/aula/blob/main/docs/PRIVACY.md
 - Links to outside pages open in Safari.
 <!-- /reviewnotes -->
 

@@ -20,6 +20,8 @@
     <string name="failed_title">La red privada no arranca</string>
     <string name="retry">Reintentar</string>
     <string name="sign_out">Cerrar sesión de Tailscale</string>
+    <string name="delete_tailscale">Cómo borrar tu cuenta de Tailscale</string>
+    <string name="delete_tailscale_url" formatted="false">https://tailscale.com/docs/account/delete-tailnet</string>
     <string name="sign_out_confirm">Este dispositivo dejará de estar en tu red privada. Tus cursos siguen donde está tu Aula.</string>
     <string name="cancel">Cancelar</string>
     <string name="get_aula">¿Aún no tienes Aula?</string>

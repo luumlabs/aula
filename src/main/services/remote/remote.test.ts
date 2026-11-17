@@ -82,6 +82,39 @@ describe('emparejar un dispositivo', () => {
   })
 })
 
+describe('el aviso de la IA aceptado en cada dispositivo', () => {
+  const linked = (reg: DeviceRegistry): string => reg.completePairing(reg.startPairing().code, 'iPhone', 'iphone').device.id
+  it('se guarda, se une a lo de antes y sobrevive a un reinicio; no sale en la lista', () => {
+    const file = join(tmp(), 'devices.json')
+    const reg = new DeviceRegistry(file)
+    const id = linked(reg)
+    const other = linked(reg)
+    expect(reg.aiConsent(id)).toEqual([])
+    expect(reg.acceptAI(id, ['anthropic'])).toBe(true)
+    expect(reg.acceptAI(id, ['openai', 'anthropic'])).toBe(true)
+    expect(reg.aiConsent(id)).toEqual(['openai', 'anthropic'])
+    expect(reg.aiConsent(other)).toEqual([])
+    expect(new DeviceRegistry(file).aiConsent(id)).toEqual(['openai', 'anthropic'])
+    for (const d of reg.list()) expect(d).not.toHaveProperty('aiConsent')
+    expect(reg.acceptAI('nadie', ['anthropic'])).toBe(false)
+    // (lo último aceptado, al final: el tope se queda con lo más reciente) y retirar el dispositivo lo olvida
+    reg.revoke(id)
+    expect(reg.aiConsent(id)).toEqual([])
+  })
+  it('un aiConsent mal escrito en devices.json se ignora', () => {
+    const file = join(tmp(), 'devices.json')
+    const reg = new DeviceRegistry(file)
+    const id = linked(reg)
+    reg.acceptAI(id, ['anthropic'])
+    const raw = JSON.parse(readFileSync(file, 'utf8')) as { devices: { aiConsent?: unknown }[] }
+    for (const bad of [{ ids: 'anthropic', at: 'x' }, { ids: [3], at: 'x' }, { ids: ['a'] }, { ids: Array.from({ length: 21 }, (_, i) => `a${i}`), at: 'x' }]) {
+      raw.devices[0].aiConsent = bad
+      writeFileSync(file, JSON.stringify(raw))
+      expect(new DeviceRegistry(file).aiConsent(id), JSON.stringify(bad)).toEqual([])
+    }
+  })
+})
+
 describe('propietario (Aula como servidor)', () => {
   const reg = (): DeviceRegistry => new DeviceRegistry(join(mkdtempSync(join(tmpdir(), 'aula-owner-')), 'devices.json'))
   it('solo es propietario quien usa un código de propietario; queda guardado y se ve', () => {
@@ -216,6 +249,12 @@ describe('qué puede pedir un dispositivo', () => {
   it('lo de Ajustes que se usa a diario: ver las IA listas y sus modelos, y añadir, corregir o pausar la memoria', () => {
     for (const m of ['ai.status', 'ai.choices', 'ai.models', 'memory.list', 'memory.status', 'memory.add', 'memory.edit', 'memory.pause', 'app.info', 'automations.snapshot'])
       expect(remoteVerdict(m), m).toBe('allow')
+  })
+  it('el aviso de la IA de terceros: verlo y aceptarlo (también un propietario)', () => {
+    for (const m of ['ai.consent', 'ai.acceptConsent']) {
+      expect(remoteVerdict(m), m).toBe('allow')
+      expect(ownerVerdict(m), m).toBe('allow')
+    }
   })
   it('claves, ajustes, diálogos del Mac, exportar o borrar todo, actualizaciones y el propio acceso remoto: no', () => {
     for (const m of ['ai.setKey', 'ai.removeKey', 'ai.configure', 'ai.providers', 'ai.test', 'ai.chatStream', 'secrets.get', 'settings.update', 'settings.reset', 'data.exportAll', 'data.deleteAll',

@@ -82,6 +82,21 @@
     "more_one": "And {{count}} more request waiting",
     "more_other": "And {{count}} more requests waiting"
   },
+  "aiConsent": {
+    "title": "Before using the AI",
+    "lead": "To answer you, grade your answers and build your courses, Aula on your Mac sends data to a third-party AI:",
+    "leadServer": "To answer you, grade your answers and build your courses, your Aula server sends data to a third-party AI:",
+    "usesAnswers": "what you type and add here, and what’s needed from your courses, your progress and what Aula remembers about you",
+    "usesRecordings": "the recordings you add, to transcribe them",
+    "policy": "Each service handles that data under its own privacy policy. Luum Labs receives nothing.",
+    "change": "You can pick another AI in Settings → Your AI or, on the Mac, a model that runs on the Mac itself.",
+    "changeServer": "You can pick another AI in Settings → Your AI or a model that runs on the server itself.",
+    "privacy": "Privacy policy",
+    "accept": "Continue",
+    "cancel": "Cancel",
+    "declined": "Nothing was sent to the AI.",
+    "demo": "In this demo nothing is sent anywhere: the answers are already recorded. With your Mac, Aula sends what you type and what’s needed from your courses to the AI you choose there (for example Anthropic, OpenAI or Google), and asks you here first, like now."
+  },
   "sample": {
     "tag": "Example",
     "hint": "It comes with Aula so you can see how it works. Delete it whenever you like."
@@ -103,6 +118,12 @@
     "aulaLookingHint": "It only reads: it doesn’t click, type or submit anything. It will tell you in the chat.",
     "typeHere": "Type here",
     "openHere": "Sign in here",
-    "gone": "That browser window has closed. Ask Aula to open it again."
+    "gone": "That browser window has closed. Ask Aula to open it again.",
+    "offLimits": "This page doesn’t open here",
+    "offLimitsHint": "From a phone or tablet, Aula’s browser only opens your study platforms and their sign-in pages, and {{host}} isn’t one of them.",
+    "offLimitsMac": "You can open it on the computer Aula runs on. If it’s a step to sign in to your university, sign in there: Settings → Your platforms.",
+    "home": "Go to my platform",
+    "refused": "Aula didn’t open {{host}}: from here it only opens your platforms and their sign-in pages.",
+    "refusedMac": "Aula didn’t open {{host}}: it was last driven from a phone or tablet, which only open your platforms. Click the page to carry on from here."
   }
 }

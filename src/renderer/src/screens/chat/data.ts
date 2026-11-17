@@ -6,6 +6,7 @@ import type { AssistantAttachment, AssistantMessage, AssistantRef, AssistantThre
 import type { AssistantThreadView } from '@shared/ipc/assistant'
 import { api } from '@renderer/lib/api'
 import { isDemo } from '@renderer/lib/demo'
+import { askAIConsent, isConsentDeclined } from '@renderer/lib/aiConsent'
 import { toast } from '@renderer/design'
 import { demoThreads } from './demo'
 import { flushDeletes, setDeleteCommitter, usePendingDeletes } from './deletion'
@@ -185,6 +186,13 @@ export function useConversation(id: string | null): Conversation {
 
   /** Envía (o deja en cola). `false` si no se pudo: quien llama devuelve el texto a la caja (A3-P2-7: no se pierde). */
   const send = useCallback(async (threadId: string, draft: Draft, context?: TutorContext): Promise<boolean> => {
+    // en un dispositivo, el aviso de la IA va antes que el mensaje: si se cancela, el texto vuelve a la caja sin parpadeos
+    try {
+      await askAIConsent('chat.send')
+    } catch (e) {
+      if (!isConsentDeclined(e)) toast.error((e as Error).message)
+      return false
+    }
     context = draftContext(draft, context)
     const optimistic = { ...userMessage(draft), ...(context ? { context } : {}) }
     revision.current++

@@ -3,6 +3,7 @@
 import type { DocumentAIAction, DocumentAIUpdate } from '@shared/documents'
 import i18n from '@renderer/i18n'
 import { api } from '@renderer/lib/api'
+import { isConsentDeclined } from '@renderer/lib/aiConsent'
 import { openEntryPdf, pageJPEG } from '../pdf'
 import { shortId, useReader } from './store'
 
@@ -80,7 +81,9 @@ export async function askAula(action: DocumentAIAction): Promise<void> {
       apply(first)
     }
   } catch (e) {
-    useReader.getState().updateItem(id, { done: true, error: e instanceof Error ? e.message : String(e) })
+    // si el estudiante canceló el aviso de la IA no se pidió nada: la petición se quita sin enseñar un fallo
+    if (isConsentDeclined(e)) useReader.getState().set({ items: useReader.getState().items.filter((i) => i.id !== id) })
+    else useReader.getState().updateItem(id, { done: true, error: e instanceof Error ? e.message : String(e) })
   }
 }
 

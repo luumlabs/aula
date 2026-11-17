@@ -82,6 +82,21 @@
     "more_one": "Y {{count}} petición más esperando",
     "more_other": "Y {{count}} peticiones más esperando"
   },
+  "aiConsent": {
+    "title": "Antes de usar la IA",
+    "lead": "Para responderte, corregir tus respuestas y crear tus cursos, Aula en tu Mac envía datos a una IA de terceros:",
+    "leadServer": "Para responderte, corregir tus respuestas y crear tus cursos, tu servidor de Aula envía datos a una IA de terceros:",
+    "usesAnswers": "lo que escribes y añades desde aquí, y lo que haga falta de tus cursos, tu progreso y lo que Aula recuerda de ti",
+    "usesRecordings": "las grabaciones que añadas, para transcribirlas",
+    "policy": "Cada servicio trata esos datos según su propia política de privacidad. Luum Labs no recibe nada.",
+    "change": "Puedes elegir otra IA en Ajustes → Tu IA o, en el Mac, un modelo que funciona en el propio Mac.",
+    "changeServer": "Puedes elegir otra IA en Ajustes → Tu IA o un modelo que funciona en el propio servidor.",
+    "privacy": "Política de privacidad",
+    "accept": "Continuar",
+    "cancel": "Cancelar",
+    "declined": "No se ha enviado nada a la IA.",
+    "demo": "En esta demostración no se envía nada: las respuestas ya vienen grabadas. Con tu Mac, Aula enviará lo que escribas y lo que haga falta de tus cursos a la IA que elijas allí (por ejemplo, Anthropic, OpenAI o Google), y antes te lo preguntará aquí, como ahora."
+  },
   "sample": {
     "tag": "Ejemplo",
     "hint": "Viene con Aula para que veas cómo funciona. Puedes borrarlo cuando quieras."
@@ -103,6 +118,12 @@
     "aulaLookingHint": "Solo la lee: no pulsa, no escribe y no envía nada. Te lo cuenta en el chat.",
     "typeHere": "Escribe aquí",
     "openHere": "Iniciar sesión aquí",
-    "gone": "Esa ventana del navegador ya se cerró. Pídele a Aula que te la vuelva a abrir."
+    "gone": "Esa ventana del navegador ya se cerró. Pídele a Aula que te la vuelva a abrir.",
+    "offLimits": "Esta página no se abre desde aquí",
+    "offLimitsHint": "Desde un móvil o una tableta, el navegador de Aula solo abre tus plataformas de estudio y sus páginas de inicio de sesión, y {{host}} no es una de ellas.",
+    "offLimitsMac": "Puedes abrirla en el ordenador donde está Aula. Si es un paso para iniciar sesión en tu universidad, entra desde allí: Ajustes → Tus plataformas.",
+    "home": "Ir a mi plataforma",
+    "refused": "Aula no ha abierto {{host}}: desde aquí solo abre tus plataformas y su inicio de sesión.",
+    "refusedMac": "Aula no ha abierto {{host}}: la última vez se manejó desde un móvil o una tableta, que solo abren tus plataformas. Haz clic en la página para seguir desde aquí."
   }
 }

@@ -7,11 +7,12 @@ import { studentBrowserTools } from './student'
 
 const ctx = { signal: new AbortController().signal, callId: '1' } as never
 
-function setup(reading: LiveReading | null = null) {
+function setup(reading: LiveReading | null = null, onDevices?: boolean, screens?: StudentBrowser['screens']) {
   const cards: AssistantCard[] = []
   const calls: string[] = []
   const student: StudentBrowser = {
-    show: async (url, note, purpose) => { calls.push(`show ${purpose} ${url} · ${note}`); return { id: 'live-c1', url } },
+    ...(screens ? { screens } : {}),
+    show: async (url, note, purpose) => { calls.push(`show ${purpose} ${url} · ${note}`); return { id: 'live-c1', url, ...(onDevices === undefined ? {} : { onDevices }) } },
     read: async () => { calls.push('read'); return reading },
     handBack: (note) => { calls.push(`back · ${note}`); return 'live-c1' }
   }
@@ -41,6 +42,31 @@ describe('el navegador del estudiante en el chat', () => {
     expect(cards).toHaveLength(1)
     expect(cards[0].actions[0]).toMatchObject({ kind: 'openLive', value: 'live-c1', prominent: true })
     expect(cards[0].detail).toContain('ejercicio 1')
+  })
+  it('con dispositivos, una página que no se ve en ellos: se le dice a la IA para que lo cuente', async () => {
+    const off = await setup(null, false, 'devices').run('student_browser_show', { url: 'https://sso-proxy.example.com/login', note: 'Mira esto.' })
+    expect(off).toMatchObject({ ok: true, on_phone_or_tablet: false })
+    expect(String(off.device_note)).toMatch(/only on the computer/)
+    const on = await setup(null, true, 'devices').run('student_browser_show', { url: 'https://uni.instructure.com/courses/1', note: 'Haz la 1.' })
+    expect(on.on_phone_or_tablet).toBeUndefined()
+    expect(setup(null, true, 'devices').tools.student_browser_show.description).toMatch(/visible only on the computer/)
+    // como servidor no hay ordenador que la vea
+    const server = setup(null, false, 'server')
+    expect(server.tools.student_browser_show.description).not.toMatch(/any web page|only on the computer/)
+    const r = await server.run('student_browser_show', { url: 'https://sso-proxy.example.com/login', note: 'Mira esto.' })
+    expect(r).toMatchObject({ on_phone_or_tablet: false })
+    expect(String(r.device_note)).not.toMatch(/computer/)
+  })
+  it('sin dispositivos vinculados, como siempre: ni el aviso del móvil ni límites en la herramienta', async () => {
+    for (const screens of [undefined, 'computer'] as const) {
+      const { tools, run } = setup(null, false, screens)
+      expect(tools.student_browser_show.description).toMatch(/\(or any web page\)/)
+      expect(tools.student_browser_show.description).not.toMatch(/phone or tablet/)
+      const r = await run('student_browser_show', { url: 'https://www.uni.edu/inscripcion', note: 'Mira esto.' })
+      expect(r).toMatchObject({ ok: true, holder: 'student' })
+      expect(r.on_phone_or_tablet).toBeUndefined()
+      expect(r.device_note).toBeUndefined()
+    }
   })
   it('para iniciar sesión, la tarjeta lo dice y nunca se pide la contraseña', async () => {
     const { cards, calls, run } = setup()

@@ -31,6 +31,7 @@ enum Texts {
     static var failedTitle: String { t("La red privada no arranca", "The private network won’t start") }
     static var retry: String { t("Reintentar", "Try again") }
     static var signOut: String { t("Cerrar sesión de Tailscale", "Sign out of Tailscale") }
+    static var deleteTailscale: String { t("Cómo borrar tu cuenta de Tailscale", "How to delete your Tailscale account") }
     static var signOutConfirm: String { t("Este dispositivo dejará de estar en tu red privada. Tus cursos siguen en tu Mac.", "This device will leave your private network. Your courses stay on your Mac.") }
     static var cancel: String { t("Cancelar", "Cancel") }
 

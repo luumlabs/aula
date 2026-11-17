@@ -7,6 +7,8 @@
 //  · `/events`: los eventos de la app, uno por línea. `/asset/…`: imágenes, materiales y grabaciones (con rangos).
 //  · Aula como servidor (sin ventana): un dispositivo propietario hace de ventana (remote/policy.ts) y `/admin/…` es la
 //    consola del propio servidor (`aula-server link`): solo desde este ordenador y con la clave de `Remote/admin.json`.
+//  · El aviso de la IA de terceros (guía 5.1.2(i)): un dispositivo no manda nada a la IA sin haber aceptado a quién se
+//    manda (remote/ai-consent.ts); `ai.consent` y `ai.acceptConsent` los contesta este servidor.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createReadStream, readFileSync, statSync } from 'node:fs'
@@ -15,7 +17,10 @@ import { PairingError, type DeviceRegistry, type RemoteDeviceView } from '@main/
 import { noopValue, remoteCall, rewriteAssets } from '@main/services/remote/policy'
 import { DEVICE_VIEWPORT, pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from '@main/services/remote/bridge'
 import { UploadError, type UploadStore } from '@main/services/remote/uploads'
+import { acceptConsent, consentRefusal, consentState, type AIConsentDeps } from '@main/services/remote/ai-consent'
+import { toErrorInfo } from '@main/services/errors'
 import { log } from '@main/services/log'
+import type { AIRecipient } from '@shared/ai/recipient'
 import { tr } from '@shared/ai/i18n'
 import { APP_CSP, mimeFor, resolveAppUrl, resolveAssetUrl } from '../protocol'
 import { dispatchRemote, onEmit } from '../rpc'
@@ -51,6 +56,8 @@ export interface RemoteServerOptions {
   host?: 'mac' | 'server'
   /** La consola del servidor (`/admin/…`), solo en Aula como servidor. */
   admin?: { token: string; status: () => unknown; link: (owner: boolean) => unknown }
+  /** A quién mandaría Aula ahora los datos (ai/recipients.ts). Sin esto no hay aviso de la IA (las pruebas de siempre). */
+  aiRecipients?: () => Promise<AIRecipient[]>
 }
 
 export class RemoteServer {
@@ -64,6 +71,15 @@ export class RemoteServer {
   constructor(private readonly o: RemoteServerOptions) {}
 
   get running(): boolean { return this.server !== null }
+
+  /** El aviso de la IA de terceros: a quién se mandaría y lo que aceptó cada dispositivo (devices.json). */
+  private get consent(): AIConsentDeps {
+    return {
+      recipients: this.o.aiRecipients ?? (async () => []),
+      accepted: (id) => this.o.devices.aiConsent(id),
+      accept: (id, ids) => this.o.devices.acceptAI(id, ids)
+    }
+  }
 
   async start(): Promise<number> {
     if (this.server) return this.port
@@ -253,6 +269,17 @@ export class RemoteServer {
       return this.json(res, 200, { ok: false, error: { message, code: 'forbidden' } })
     }
     if (verdict === 'noop') return this.json(res, 200, { ok: true, value: noopValue(method) })
+    // el aviso de la IA de terceros (guía 5.1.2(i)): un dispositivo no manda nada a la IA sin haberlo aceptado
+    if (method === 'ai.consent' || method === 'ai.acceptConsent') {
+      try {
+        const value = method === 'ai.consent' ? await consentState(this.consent, device.id) : await acceptConsent(this.consent, device.id, args)
+        return this.json(res, 200, { ok: true, value })
+      } catch (err) {
+        return this.json(res, 200, { ok: false, error: toErrorInfo(err) })
+      }
+    }
+    const refusal = await consentRefusal(this.consent, device.id, method, args)
+    if (refusal) return this.json(res, 200, { ok: false, error: refusal })
     const envelope = await dispatchRemote(method, this.o.uploads.resolve(device.id, args), device.id)
     this.send(res, 200, 'application/json; charset=utf-8', rewriteAssets(JSON.stringify(envelope) ?? '{"ok":true}'), { 'cache-control': 'no-store' })
   }

@@ -13,9 +13,9 @@ export const TRANSCRIPTION_PROVIDERS: ReadonlyArray<{ id: string; model: string 
   { id: 'mistral', model: 'voxtral-mini-latest' }
 ]
 
-/** El primer proveedor conectado que transcribe, o undefined. */
-export function pickTranscriptionEngine(deps: ProviderDeps = {}): TranscriptionEngine | undefined {
-  const { secrets, http } = resolveDeps(deps)
+/** El primer proveedor conectado que transcribe (con su clave), o undefined. */
+function pickTranscriptionCandidate(deps: ProviderDeps = {}): { id: string; model: string; entry: NonNullable<ReturnType<typeof providerEntry>>; baseURL: string; key: string } | undefined {
+  const { secrets } = resolveDeps(deps)
   for (const candidate of TRANSCRIPTION_PROVIDERS) {
     let entry
     try { entry = providerEntry(candidate.id) } catch { continue }
@@ -24,15 +24,28 @@ export function pickTranscriptionEngine(deps: ProviderDeps = {}): TranscriptionE
     let key: string | null = null
     try { key = resolveKey(entry.provider, secrets) } catch { key = null }
     if (!key) continue
-    return openAITranscription({
-      baseURL, apiKey: key, model: candidate.model, label: `${entry.label} · ${candidate.model}`,
-      fetch: ((input: string | URL, init?: RequestInit) => http.fetch(String(input), { ...init, ...consentFetchInitSafe() })) as typeof fetch
-    })
+    return { id: candidate.id, model: candidate.model, entry, baseURL, key }
   }
   return undefined
 }
 
+/** El primer proveedor conectado que transcribe, o undefined. */
+export function pickTranscriptionEngine(deps: ProviderDeps = {}): TranscriptionEngine | undefined {
+  const c = pickTranscriptionCandidate(deps)
+  if (!c) return undefined
+  const { http } = resolveDeps(deps)
+  return openAITranscription({
+    baseURL: c.baseURL, apiKey: c.key, model: c.model, label: `${c.entry.label} · ${c.model}`,
+    fetch: ((input: string | URL, init?: RequestInit) => http.fetch(String(input), { ...init, ...consentFetchInitSafe() })) as typeof fetch
+  })
+}
+
 /** ¿Hay con qué transcribir ahora mismo? (para decirlo en la interfaz antes de que el estudiante suelte una grabación). */
 export function canTranscribe(deps: ProviderDeps = {}): boolean {
-  return pickTranscriptionEngine(deps) !== undefined
+  return pickTranscriptionCandidate(deps) !== undefined
+}
+
+/** El id del proveedor que transcribiría ahora (para el aviso de la IA de terceros en los dispositivos), o undefined. */
+export function transcriptionProviderId(deps: ProviderDeps = {}): string | undefined {
+  return pickTranscriptionCandidate(deps)?.id
 }

@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { publicDocURL } from '@shared/legal'
 
 const ROOT = join(__dirname, '../..')
 const read = (p: string): string => readFileSync(join(ROOT, p), 'utf8')
@@ -158,5 +159,22 @@ describe('la .deb de Linux y el código de cada versión (A6-P1-3, A6-P2-14)', (
     const md = read(`docs/release-notes/${version}.md`)
     expect(md).toMatch(new RegExp(`\\*\\*Source code:\\*\\* the \\*Source code\\* archives of this release \\(tag \`v${version.replace(/\./g, '\\.')}\`\\)`))
     expect(md).toMatch(/\*\*Código fuente:\*\* los archivos \*Source code\* de esta versión/)
+  })
+})
+
+describe('política de privacidad y soporte (App Store 5.1.1(i))', () => {
+  it('las dos páginas tienen su mitad en español, a la que lleva el ancla #español', () => {
+    for (const f of ['docs/PRIVACY.md', 'docs/SUPPORT.md']) expect(read(f), f).toMatch(/^## Español$/m)
+  })
+
+  it('la misma dirección en la app, las apps nativas y la ficha del App Store', () => {
+    const listing = read('docs/app-store/listing.md')
+    expect(listing).toContain(`| Privacy policy URL | ${publicDocURL('privacy', 'en')} |`)
+    expect(listing).toContain(`| Support URL | ${publicDocURL('support', 'en')} |`)
+    expect(read('native/android/res/values/strings.xml')).toContain(`>${publicDocURL('privacy', 'en')}<`)
+    expect(read('native/android/res/values-es/strings.xml')).toContain(`>${publicDocURL('privacy', 'es')}<`)
+    const ios = read('native/ios/Aula/LicensesView.swift')
+    expect(ios).toContain(`"${publicDocURL('privacy', 'en')}"`)
+    expect(ios).toContain('#espa%C3%B1ol')
   })
 })

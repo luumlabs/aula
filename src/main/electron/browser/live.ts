@@ -5,17 +5,24 @@
 //    con la ventana oculta, y la página cree que tiene el foco (el cursor de texto parpadea).
 //  · El turno: `student` maneja; `aula` solo lee (texto y respuestas, nunca contraseñas ni datos de pago). Aula aquí no
 //    pulsa ni escribe: nunca hace la tarea ni la envía.
-import { BrowserWindow, type WebContents } from 'electron'
+//  · Desde un dispositivo, solo las plataformas del estudiante y su inicio de sesión (engine/live/reach.ts): mientras el último
+//    que la manejó es un dispositivo, la ventana no abre otra cosa (una página que pone Aula se la devuelve al ordenador), y a
+//    un dispositivo nunca se le enseña (ni se le deja tocar) una página fuera de ese alcance, la abra quien la abra. Lo que
+//    solo vale si lleva a ello la propia página (un inquilino, un SSO que lo parece) se le enseña solo si se llegó así desde
+//    algo que ya podía ver; lo que abre Aula o el ordenador, solo si lo podría pedir él. Desde la ventana del ordenador no
+//    cambia nada.
+import { BrowserWindow, type WebContents, type WebFrameMain } from 'electron'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { LiveFields, LiveFocus, LiveFrame, LiveInput, LivePurpose, LiveReading, LiveState } from '@shared/live/types'
 import type { PlatformAccount } from '@shared/settings/platforms'
 import { DEFAULT_VIEWPORT, KEY_CODES, clampViewport, fieldKind, frameSize, sanitizeLiveInput, toPoint } from '@engine/live/input'
-import { normalizeBrowserURL } from '@engine/platforms'
+import { deviceFrameMayGo, deviceMayOpen, deviceMayShow, deviceReach, frameKey, ltiToolSite, originKey, withToolSites, type DeviceReach, type ReachSource } from '@engine/live/reach'
+import { hostOf, normalizeBrowserURL } from '@engine/platforms'
 import { tr } from '@shared/ai/i18n'
 import { AulaError } from '@main/services/errors'
 import { log } from '@main/services/log'
-import { getAccount } from '@main/services/platforms/accounts'
+import { getAccount, listAccounts } from '@main/services/platforms/accounts'
 import { AULA_WORLD } from './scripts'
 import { forgetWebContents, partitionFor, platformSession, safeOrigin } from './sessions'
 
@@ -36,6 +43,35 @@ export interface LiveHooks {
 
 /** Solo páginas web. (Este equipo y la red local ya los corta la sesión de plataformas en cada petición: sessions.ts.) */
 const blocked = (url: string): boolean => !/^https?:\/\//i.test(url)
+
+/** Quién manejó la ventana por última vez: la del ordenador o un dispositivo (entonces solo abre lo de engine/live/reach). */
+export type LiveDriver = 'window' | 'device'
+
+const offLimits = (url: string): AulaError =>
+  new AulaError('off_limits', tr('Desde un móvil o una tableta, el navegador de Aula solo abre tus plataformas de estudio y sus páginas de inicio de sesión.', 'From a phone or tablet, Aula’s browser only opens your study platforms and their sign-in pages.'), { host: hostOf(url) ?? '' })
+
+type Shot = { hash: string; jpeg: Buffer; w: number; h: number; showable: boolean }
+
+/** La dirección de un marco ('' si ya no está). */
+const urlOf = (frame: WebFrameMain | null | undefined): string => {
+  try { return frame?.url ?? '' } catch { return '' }
+}
+
+/** El nodo de un marco en el árbol (el mismo para el marco cargado y el «especulativo» de un salto), o undefined. */
+const nodeOf = (frame: WebFrameMain | null | undefined): number | undefined => {
+  try { return frame?.frameTreeNodeId } catch { return undefined }
+}
+
+/** La dirección web del marco que contiene a este más cercano que tenga una ('' si ninguno). */
+const webParentOf = (frame: WebFrameMain | null | undefined): string => {
+  try {
+    for (let f = frame?.parent; f; f = f.parent) {
+      const u = urlOf(f)
+      if (/^https?:\/\//i.test(u)) return u
+    }
+  } catch { /* el marco ya no está */ }
+  return ''
+}
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
@@ -93,12 +129,23 @@ class LiveView {
   private size = { ...DEFAULT_VIEWPORT }
   private seq = 0
   private lastHash = ''
-  private capturing: Promise<{ hash: string; jpeg: Buffer; w: number; h: number } | null> | null = null
-  private last: { jpeg: Buffer; w: number; h: number; maxWidth: number } | null = null
+  private capturing: Promise<Shot | null> | null = null
+  private last: { jpeg: Buffer; w: number; h: number; maxWidth: number; showable: boolean } | null = null
   private attached = false
   private fieldsTimer: ReturnType<typeof setTimeout> | null = null
+  /** Quién la manejó por última vez (cambia con cada orden del estudiante: abrir, tocar, ir, tomar el turno). */
+  driver: LiveDriver = 'window'
+  private refused: { host: string; at: number } | undefined
+  /** Orígenes a los que llevó la propia página desde algo que el dispositivo podía ver (un SSO, un inquilino): se le enseñan. */
+  private reached = new Set<string>()
+  /** Sitios a los que llegaron los marcos de la página de ahora por un paso permitido (se borra con cada página nueva). */
+  private frameSites = new Set<string>()
+  /** Sitios de las herramientas (LTI) que lanzó la plataforma en la ventana entera: la propia página sigue por ellos. */
+  private toolSites = new Set<string>()
+  /** La dirección por la que va la navegación del marco principal (para saber de dónde sale cada redirección). */
+  private hop = ''
 
-  constructor(readonly id: string, readonly accountId: string | null, purpose: LivePurpose, private readonly hooks: LiveHooks) {
+  constructor(readonly id: string, readonly accountId: string | null, purpose: LivePurpose, private readonly hooks: LiveHooks, private readonly reach: () => DeviceReach) {
     this.purpose = purpose
     platformSession(accountId)
     this.win = new BrowserWindow({
@@ -131,22 +178,48 @@ class LiveView {
     this.wc = this.win.webContents
     this.wc.setAudioMuted(true)
     const bump = (): void => { if (!this.closed) this.hooks.changed(this.state()) }
-    this.wc.on('did-navigate', bump)
+    // una página nueva borra el aviso de lo que no se abrió (y lo que alcanzaron los marcos de la anterior)
+    this.wc.on('did-navigate', () => { this.refused = undefined; this.frameSites.clear(); bump() })
     this.wc.on('did-navigate-in-page', bump)
     this.wc.on('page-title-updated', bump)
     this.wc.on('did-start-loading', bump)
     this.wc.on('did-stop-loading', bump)
     this.wc.on('did-stop-loading', () => this.scheduleFields())
     this.wc.on('did-navigate-in-page', () => this.scheduleFields())
-    this.wc.on('will-navigate', (e) => { if (blocked(e.url)) e.preventDefault() })
-    this.wc.on('will-redirect', (e) => { if (blocked(e.url)) e.preventDefault() })
+    // de dónde sale cada redirección del marco principal: la dirección que se empezó a cargar (también con loadURL)
+    this.wc.on('did-start-navigation', (e) => { if (e.isMainFrame && !e.isSameDocument) this.hop = e.url })
+    this.wc.on('will-navigate', (e) => {
+      if (blocked(e.url)) return void e.preventDefault()
+      const from = this.wc.getURL()
+      this.toolStep(from, e.url)
+      if (this.driver === 'device' && !this.mayOpen(e.url, 'page')) { e.preventDefault(); this.refuse(e.url); return }
+      this.pageStep(from, e.url)
+    })
+    this.wc.on('will-redirect', (e) => {
+      if (blocked(e.url)) return void e.preventDefault()
+      if (!e.isMainFrame) return this.frameStep(e, e.url)
+      this.toolStep(this.hop, e.url)
+      if (this.driver === 'device' && !this.mayOpen(e.url, 'page')) { e.preventDefault(); this.refuse(e.url); return }
+      this.pageStep(this.hop, e.url)
+      this.hop = e.url
+    })
+    // los marcos de dentro: su primera carga y lo que empieza la plataforma (vídeos, el lanzamiento LTI con formularios entre
+    // el marco, la plataforma y la herramienta) siguen; saltar desde un marco ajeno a otro sitio, no (engine/live/reach.ts)
+    this.wc.on('will-frame-navigate', (e) => { if (!e.isMainFrame) this.frameStep(e, e.url) })
     this.wc.on('will-prevent-unload', (e) => e.preventDefault())
     // autenticación HTTP (Basic/NTLM): no hay dónde pedirla en la imagen; se cancela
     this.wc.on('login', (e, _d, _a, callback) => { e.preventDefault(); callback() })
     // ventanas emergentes (el «Continuar con Google» de un acceso): en esta misma ventana, que es la que se ve
     this.wc.setWindowOpenHandler(({ url }) => {
       const n = normalizeBrowserURL(url)
-      if (n.ok && !blocked(n.url)) setImmediate(() => { if (!this.closed && !this.wc.isDestroyed()) void this.wc.loadURL(n.url).catch(() => undefined) })
+      if (n.ok && !blocked(n.url)) {
+        this.toolStep(this.wc.getURL(), n.url)
+        if (this.driver === 'device' && !this.mayOpen(n.url, 'page')) this.refuse(n.url)
+        else {
+          this.pageStep(this.wc.getURL(), n.url)
+          setImmediate(() => { if (!this.closed && !this.wc.isDestroyed()) void this.wc.loadURL(n.url).catch(() => undefined) })
+        }
+      }
       return { action: 'deny' }
     })
     const wcId = this.wc.id
@@ -162,11 +235,92 @@ class LiveView {
     return {
       id: this.id, accountId: this.accountId, url: dead ? '' : this.wc.getURL(), title: dead ? '' : this.wc.getTitle(), holder: this.holder, controlId: this.controlId,
       purpose: this.purpose, loading: dead ? false : this.wc.isLoading(), canGoBack: dead ? false : this.wc.navigationHistory.canGoBack(), canGoForward: dead ? false : this.wc.navigationHistory.canGoForward(),
-      width: this.size.width, height: this.size.height, ...(this.note ? { note: this.note } : {})
+      width: this.size.width, height: this.size.height, ...(this.note ? { note: this.note } : {}),
+      deviceAllowed: dead ? true : this.mayShow(this.wc.getURL()), ...(this.refused ? { refused: this.refused } : {})
     }
   }
 
   private touch(): void { this.lastUsed = Date.now() }
+
+  /** Lo que abre un dispositivo en esta ventana: sus plataformas y las herramientas que lanzaron. */
+  private reachNow(): DeviceReach { return withToolSites(this.reach(), this.toolSites) }
+  mayOpen(url: string, source: ReachSource): boolean { return deviceMayOpen(url, this.reachNow(), source) }
+  mayShow(url: string): boolean { return deviceMayShow(url, this.reachNow(), this.reached) }
+
+  /** La plataforma lanza una herramienta (LTI) en la ventana entera: se apunta su sitio (como hace frameSites en un marco). */
+  private toolStep(from: string, to: string): void {
+    const site = ltiToolSite(from, to, this.reach())
+    if (site) this.toolSites.add(site)
+  }
+
+  /** La propia página va de `from` a `to` (enlace, formulario, redirección, emergente): si el dispositivo podía ver `from` y
+   *  `to` es un paso permitido, también se le enseña `to` (su origen). Lo que abre Aula o el ordenador no pasa por aquí. */
+  private pageStep(from: string, to: string): void {
+    if (!/^https?:\/\//i.test(from) || !this.mayShow(from) || !this.mayOpen(to, 'page')) return
+    const o = originKey(to)
+    if (o) this.reached.add(o)
+  }
+
+  /** Un marco de dentro quiere ir a otra dirección (un enlace o una redirección dentro del marco). Mientras maneja un
+   *  dispositivo, lo que no deja engine/live/reach.ts (deviceFrameMayGo) no se abre; lo permitido se apunta siempre. */
+  private frameStep(e: { preventDefault(): void; frame?: WebFrameMain | null; initiator?: WebFrameMain | null }, url: string): void {
+    // about:blank, data:, blob:… los escribe la propia página: no traen nada de fuera
+    if (!/^https?:\/\//i.test(url)) return
+    const frame = this.loaded(e.frame)
+    const node = nodeOf(e.frame)
+    const self = node !== undefined && node === nodeOf(e.initiator)
+    const ok = deviceFrameMayGo(url, {
+      current: urlOf(frame), initiator: urlOf(e.initiator), self, parent: webParentOf(frame), shown: (u) => this.mayShow(u), reached: this.frameSites
+    }, this.reachNow())
+    if (ok) {
+      const key = frameKey(url)
+      if (key) this.frameSites.add(key)
+    } else if (this.driver === 'device') {
+      e.preventDefault()
+      this.refuse(url)
+    }
+  }
+
+  /** El marco tal como está cargado, por su nodo del árbol: en un salto a otro sitio Electron da el marco «especulativo»,
+   *  aún sin nada (y parecería un marco nuevo). */
+  private loaded(frame: WebFrameMain | null | undefined): WebFrameMain | null {
+    const node = nodeOf(frame)
+    if (node === undefined) return frame ?? null
+    try {
+      return this.wc.mainFrame.framesInSubtree.find((f) => nodeOf(f) === node) ?? frame ?? null
+    } catch {
+      return frame ?? null
+    }
+  }
+
+  /** ¿Un dispositivo puede ver la página de ahora? */
+  deviceMayShowNow(): boolean { return this.closed || this.wc.isDestroyed() || this.mayShow(this.wc.getURL()) }
+
+  /** No se abrió algo porque lo manejaba un dispositivo: se apunta (solo el host, también en el registro) y se avisa. */
+  refuse(url: string): void {
+    const host = hostOf(url) ?? ''
+    this.refused = { host, at: Date.now() }
+    log.info(`[en vivo] desde un dispositivo no se abre ${host || 'esa dirección'}`)
+    if (!this.closed) this.hooks.changed(this.state())
+  }
+
+  /** Atrás, adelante o recargar desde un dispositivo: si todas las entradas a las que podría llevar Chromium se le pueden
+   *  enseñar, como siempre (goBack y goForward se saltan las que la página añadió sola: redirecciones por JS, formularios
+   *  que se envían solos); si no, justo a la más cercana que sí (`index`); si ninguna, `refuse` (la más cercana). */
+  devicePlan(action: 'back' | 'forward' | 'reload'): { index?: number; refuse?: string } {
+    if (action === 'reload') {
+      const url = this.wc.getURL()
+      return this.mayShow(url) ? {} : { refuse: url }
+    }
+    const h = this.wc.navigationHistory
+    const active = h.getActiveIndex()
+    const candidates: { index: number; url: string }[] = []
+    if (action === 'back') for (let i = active - 1; i >= 0; i--) candidates.push({ index: i, url: h.getEntryAtIndex(i)?.url ?? '' })
+    else for (let i = active + 1; i < h.length(); i++) candidates.push({ index: i, url: h.getEntryAtIndex(i)?.url ?? '' })
+    const showable = candidates.filter((c) => this.mayShow(c.url))
+    if (showable.length === candidates.length) return {}
+    return showable[0] ? { index: showable[0].index } : { refuse: candidates[0].url }
+  }
 
   /** El protocolo de depuración: entrada que funciona con la ventana oculta, y la página cree que tiene el foco. */
   private async cdp(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
@@ -206,32 +360,38 @@ class LiveView {
     this.scheduleFields()
   }
 
-  private capture(maxWidth: number): Promise<{ hash: string; jpeg: Buffer; w: number; h: number } | null> {
+  private capture(maxWidth: number): Promise<Shot | null> {
     // una sola captura a la vez, aunque miren dos dispositivos
     this.capturing ??= (async () => {
       try {
+        const before = this.wc.getURL()
         const image = await this.wc.capturePage(undefined, { stayHidden: true, stayAwake: false })
         if (image.isEmpty()) return null
         const { w, h } = frameSize(this.size, maxWidth)
         const jpeg = image.resize({ width: w, height: h, quality: 'good' }).toJPEG(JPEG_QUALITY)
-        return { hash: createHash('sha1').update(jpeg).digest('base64'), jpeg, w, h }
+        // ¿la puede ver un dispositivo? (las dos direcciones, por si navegó durante la captura)
+        const showable = this.mayShow(before) && (this.wc.isDestroyed() || this.mayShow(this.wc.getURL()))
+        return { hash: createHash('sha1').update(jpeg).digest('base64'), jpeg, w, h, showable }
       } catch { return null } finally { this.capturing = null }
     })()
     return this.capturing
   }
 
-  /** La siguiente imagen distinta de la número `after` (o null si en un rato la página no cambió). */
-  async frame(after: number, maxWidth: number): Promise<LiveFrame | null> {
+  /** La siguiente imagen distinta de la número `after` (o null si en un rato la página no cambió). A un dispositivo
+   *  (`device`) solo se le dan imágenes de páginas a su alcance. */
+  async frame(after: number, maxWidth: number, device = false): Promise<LiveFrame | null> {
     this.touch()
+    const visible = (s: { showable: boolean }): boolean => !device || s.showable
     // quien llega ahora (o cambió de tamaño) recibe la última sin esperar
-    if (this.last && after < this.seq && this.last.maxWidth === maxWidth) return { seq: this.seq, mime: 'image/jpeg', data: this.last.jpeg.toString('base64'), w: this.last.w, h: this.last.h }
+    if (this.last && after < this.seq && this.last.maxWidth === maxWidth && visible(this.last)) return { seq: this.seq, mime: 'image/jpeg', data: this.last.jpeg.toString('base64'), w: this.last.w, h: this.last.h }
     const deadline = Date.now() + FRAME_WAIT_MS
     for (;;) {
       if (this.closed) return null
-      const shot = await this.capture(maxWidth)
-      if (shot && (shot.hash !== this.lastHash || after < 0)) {
+      // a un dispositivo no se le captura una página fuera de su alcance (espera como si no cambiara: sin bucle apretado)
+      const shot = device && !this.deviceMayShowNow() ? null : await this.capture(maxWidth)
+      if (shot && visible(shot) && (shot.hash !== this.lastHash || after < 0)) {
         if (shot.hash !== this.lastHash) { this.lastHash = shot.hash; this.seq++ }
-        this.last = { jpeg: shot.jpeg, w: shot.w, h: shot.h, maxWidth }
+        this.last = { jpeg: shot.jpeg, w: shot.w, h: shot.h, maxWidth, showable: shot.showable }
         return { seq: this.seq, mime: 'image/jpeg', data: shot.jpeg.toString('base64'), w: shot.w, h: shot.h }
       }
       if (Date.now() >= deadline) return null
@@ -326,10 +486,12 @@ class LiveView {
     }, 280)
   }
 
-  navigate(action: 'back' | 'forward' | 'reload'): void {
+  /** Atrás, adelante o recargar. Con `index`, a esa entrada exacta (la que se comprobó con devicePlan). */
+  navigate(action: 'back' | 'forward' | 'reload', index?: number): void {
     this.touch()
     const h = this.wc.navigationHistory
-    if (action === 'back' && h.canGoBack()) h.goBack()
+    if (index !== undefined && action !== 'reload') { if (index >= 0 && index < h.length()) h.goToIndex(index) }
+    else if (action === 'back' && h.canGoBack()) h.goBack()
     else if (action === 'forward' && h.canGoForward()) h.goForward()
     else if (action === 'reload') this.wc.reload()
   }
@@ -369,8 +531,17 @@ const SHORTCUT_COMMANDS: Readonly<Record<string, string>> = { a: 'selectAll', c:
 export class LiveBrowser {
   private views = new Map<string, LiveView>()
   private sweep: ReturnType<typeof setInterval> | null = null
+  private reachCache: { key: string; reach: DeviceReach } | null = null
 
   constructor(private readonly hooks: LiveHooks) {}
+
+  /** Lo que abre un dispositivo, con caché (las cuentas casi nunca cambian; state() y will-navigate lo piden a menudo). */
+  private readonly reach = (): DeviceReach => {
+    const accounts = listAccounts()
+    const key = accounts.map((a) => `${a.kind} ${a.baseURL}`).join('\n')
+    if (this.reachCache?.key !== key) this.reachCache = { key, reach: deviceReach(accounts) }
+    return this.reachCache.reach
+  }
 
   private idFor(accountId: string | null): string { return accountId ? `live-${accountId}` : 'live-web' }
 
@@ -380,8 +551,8 @@ export class LiveBrowser {
     return v
   }
 
-  /** Abre (o trae) la ventana de una cuenta; con dirección, va a ella. */
-  async open(opts: { accountId?: string | null; url?: string; purpose?: LivePurpose; holder?: LiveState['holder']; note?: string }): Promise<LiveState> {
+  /** Abre (o trae) la ventana de una cuenta; con dirección, va a ella. `via`: quién lo pide (la IA no lo dice: no maneja). */
+  async open(opts: { accountId?: string | null; url?: string; purpose?: LivePurpose; holder?: LiveState['holder']; note?: string; via?: LiveDriver }): Promise<LiveState> {
     const account = opts.accountId ? getAccount(opts.accountId) : null
     if (opts.accountId && !account) throw new AulaError('not_found', tr('Esa plataforma ya no está en Aula.', 'That platform is no longer in Aula.'))
     const id = this.idFor(account?.id ?? null)
@@ -390,6 +561,7 @@ export class LiveBrowser {
     if (opts.url) {
       const n = normalizeBrowserURL(opts.url)
       if (!n.ok || blocked(n.url)) throw new AulaError('invalid_args', tr('Esa dirección no se puede abrir.', 'That address can’t be opened.'))
+      if (opts.via === 'device' && !deviceMayOpen(n.url, this.reach(), 'typed')) throw offLimits(n.url)
       target = n.url
     }
     if (!view || view.closed) {
@@ -398,11 +570,18 @@ export class LiveBrowser {
         focus: (f) => this.hooks.focus(f),
         fields: (f) => this.hooks.fields(f),
         closed: (closedId) => { this.views.delete(closedId); this.hooks.closed(closedId) }
-      })
+      }, this.reach)
       this.views.set(id, view)
       this.sweep ??= setInterval(() => this.closeIdle(), 60_000)
       target ??= startURLFor(account)
+    } else if (!target && opts.via === 'device' && !view.deviceMayShowNow()) {
+      // el dispositivo pidió esta plataforma y la ventana está fuera de su alcance: vuelve a ella (y no a la tarjeta de bloqueo)
+      target = startURLFor(account)
     }
+    // sin `via` la abre Aula (una tarjeta del chat): no la maneja un dispositivo, así que el ordenador la sigue como siempre.
+    // Al dispositivo le sigue protegiendo deviceMayShowNow (solo ve y toca lo que podría pedir él o adonde le llevó la propia
+    // página: una dirección que pone Aula no cuenta como un paso de la página), y su siguiente toque vuelve a mandar
+    view.driver = opts.via ?? 'window'
     if (opts.purpose) view.purpose = opts.purpose
     if (opts.holder) view.setHolder(opts.holder, opts.note)
     if (target && target !== 'about:blank') void view.goto(target)
@@ -415,14 +594,23 @@ export class LiveBrowser {
     return v && !v.closed ? v.state() : null
   }
 
+  /** ¿Un dispositivo vería esta dirección en esa ventana si la abre Aula? (lo que podría pedir él, o adonde ya le llevó la
+   *  página) */
+  deviceMaySee(id: string, url: string): boolean {
+    const v = this.views.get(id)
+    const n = normalizeBrowserURL(url)
+    if (!n.ok) return false
+    return v && !v.closed ? v.mayShow(n.url) : deviceMayShow(n.url, this.reach())
+  }
+
   list(): LiveState[] {
     return [...this.views.values()].filter((v) => !v.closed).map((v) => v.state())
   }
 
-  frame(id: string, after: unknown, maxWidth: unknown): Promise<LiveFrame | null> {
+  frame(id: string, after: unknown, maxWidth: unknown, via?: LiveDriver): Promise<LiveFrame | null> {
     const v = this.view(id)
     const { w } = frameSize({ width: v.state().width, height: v.state().height }, maxWidth)
-    return v.frame(typeof after === 'number' && Number.isFinite(after) ? after : -1, w)
+    return v.frame(typeof after === 'number' && Number.isFinite(after) ? after : -1, w, via === 'device')
   }
 
   /** El estudiante: solo con su turno y con el `controlId` de ese turno (una orden de antes ya no vale). */
@@ -433,17 +621,31 @@ export class LiveBrowser {
     return v
   }
 
-  async input(id: string, controlId: unknown, events: unknown): Promise<{ applied: number }> {
-    return { applied: await this.student(id, controlId).input(sanitizeLiveInput(events)) }
+  async input(id: string, controlId: unknown, events: unknown, via?: LiveDriver): Promise<{ applied: number }> {
+    const v = this.student(id, controlId)
+    // un dispositivo no toca una página que no puede ver
+    if (via === 'device' && !v.deviceMayShowNow()) throw offLimits(v.state().url)
+    if (via) v.driver = via
+    return { applied: await v.input(sanitizeLiveInput(events)) }
   }
 
-  async navigate(id: string, controlId: unknown, action: unknown, url: unknown): Promise<LiveState> {
+  async navigate(id: string, controlId: unknown, action: unknown, url: unknown, via?: LiveDriver): Promise<LiveState> {
     const v = this.student(id, controlId)
+    if (via) v.driver = via
     if (typeof url === 'string' && url.trim()) {
       const n = normalizeBrowserURL(url)
       if (!n.ok || blocked(n.url)) throw new AulaError('invalid_args', tr('Esa dirección no se puede abrir.', 'That address can’t be opened.'))
+      if (via === 'device' && !deviceMayOpen(n.url, this.reach(), 'typed')) throw offLimits(n.url)
       void v.goto(n.url)
-    } else if (action === 'back' || action === 'forward' || action === 'reload') v.navigate(action)
+    } else if (action === 'home') {
+      const start = startURLFor(v.accountId ? getAccount(v.accountId) : null)
+      if (start !== 'about:blank') void v.goto(start)
+    } else if (action === 'back' || action === 'forward' || action === 'reload') {
+      // el historial no pasa por will-navigate: desde un dispositivo se mira antes a dónde puede llevar
+      const plan = via === 'device' ? v.devicePlan(action) : {}
+      if (plan.refuse !== undefined) v.refuse(plan.refuse)
+      else v.navigate(action, plan.index)
+    }
     return v.state()
   }
 
@@ -453,9 +655,10 @@ export class LiveBrowser {
     return v.state()
   }
 
-  /** El estudiante toma el turno, o se lo pasa a Aula. */
-  hold(id: string, holder: LiveState['holder'], note?: string): LiveState {
+  /** El estudiante toma el turno, o se lo pasa a Aula. `via`: quién toma el turno (la IA no lo dice). */
+  hold(id: string, holder: LiveState['holder'], note?: string, via?: LiveDriver): LiveState {
     const v = this.view(id)
+    if (via && holder === 'student') v.driver = via
     v.setHolder(holder, note)
     return v.state()
   }

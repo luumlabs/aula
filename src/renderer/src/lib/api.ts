@@ -8,6 +8,23 @@ export interface AulaClientError extends Error {
   details?: unknown
 }
 
+/**
+ * Quien vigila las llamadas antes de mandarlas (solo en un dispositivo: el aviso de la IA de terceros, aiConsent.ts):
+ * `before` puede esperar a que el estudiante acepte o lanzar si cancela; `recover`, ante un error, decide si se reintenta
+ * (una vez) tras arreglarlo.
+ */
+export interface InvokeGuard {
+  before(method: string, args: unknown): Promise<void>
+  recover(method: string, args: unknown, err: AulaClientError): Promise<boolean>
+}
+
+let guard: InvokeGuard | null = null
+
+/** Pone (o quita, con null) el vigilante de las llamadas. */
+export function installInvokeGuard(g: InvokeGuard | null): void {
+  guard = g
+}
+
 function bridge() {
   if (typeof window === 'undefined' || !window.aula) throw new Error(tr('El puente de Aula no está disponible', 'Aula’s bridge isn’t available'))
   return window.aula
@@ -15,7 +32,16 @@ function bridge() {
 
 export const api = {
   async invoke<M extends RpcMethod>(method: M, ...args: RpcArgs<M> extends void ? [] : [RpcArgs<M>]): Promise<RpcResult<M>> {
-    return unwrap((await bridge().invoke(method, args[0])) as RpcEnvelope<RpcResult<M>>)
+    const arg = args[0]
+    const g = guard
+    if (g) await g.before(method, arg)
+    const send = async (): Promise<RpcResult<M>> => unwrap((await bridge().invoke(method, arg)) as RpcEnvelope<RpcResult<M>>)
+    try {
+      return await send()
+    } catch (err) {
+      if (g && isAulaError(err) && (await g.recover(method, arg, err))) return send()
+      throw err
+    }
   },
   on<E extends RpcEvent>(event: E, fn: (payload: RpcPayload<E>) => void): () => void {
     return bridge().on(event, fn as (p: unknown) => void)

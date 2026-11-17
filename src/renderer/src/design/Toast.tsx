@@ -55,11 +55,18 @@ export const useToasts = create<ToastState>((set, get) => {
   }
 })
 
+/** ¿Es el «no se ha enviado nada» de cancelar el aviso de la IA (lib/aiConsent.ts)? Lo eligió el estudiante: no es un fallo
+ *  y no se enseña como error (llega como título o como cuerpo de cualquier `toast.error(…, e.message)`). */
+function consentDeclined(title: ReactNode, body?: ReactNode): boolean {
+  const declined = i18n.t('common:aiConsent.declined')
+  return title === declined || body === declined
+}
+
 export const toast = {
   success: (title: ReactNode, body?: ReactNode) => useToasts.getState().push({ kind: 'success', title, body }),
   info: (title: ReactNode, body?: ReactNode) => useToasts.getState().push({ kind: 'info', title, body }),
   warning: (title: ReactNode, body?: ReactNode) => useToasts.getState().push({ kind: 'warning', title, body }),
-  error: (title: ReactNode, body?: ReactNode) => useToasts.getState().push({ kind: 'error', title, body }),
+  error: (title: ReactNode, body?: ReactNode) => (consentDeclined(title, body) ? 0 : useToasts.getState().push({ kind: 'error', title, body })),
   action: (title: ReactNode, action: { label: string; run: () => void }, body?: ReactNode) => useToasts.getState().push({ kind: 'info', title, body, action, duration: 8000 })
 }
 
