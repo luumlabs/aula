@@ -116,12 +116,17 @@ async function openPage() {
   }
 }
 
-/** Tamaño y alfa según sips (lo mismo que mira App Store Connect). */
+/** Tamaño, alfa y perfil de color según sips (lo mismo que mira App Store Connect). */
 function sipsInfo(file) {
-  const out = execFileSync('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', '-g', 'hasAlpha', file], { encoding: 'utf8' })
-  const get = (k) => out.match(new RegExp(`${k}: (\\S+)`))?.[1]
-  return { w: Number(get('pixelWidth')), h: Number(get('pixelHeight')), alpha: get('hasAlpha') === 'yes' }
+  const out = execFileSync('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', '-g', 'hasAlpha', '-g', 'profile', file], { encoding: 'utf8' })
+  const get = (k) => out.match(new RegExp(`${k}: (.+)`))?.[1].trim()
+  return { w: Number(get('pixelWidth')), h: Number(get('pixelHeight')), alpha: get('hasAlpha') === 'yes', profile: get('profile') }
 }
+
+// Chromium etiqueta sus PNG con un perfil propio (Skia) que no es sRGB: los JPEG se convierten al sRGB estándar, así los
+// colores guardados son los de styles.css (#f3f0e9, #b4502f) aunque quien los lea ignore el perfil
+const SRGB_ICC = '/System/Library/ColorSync/Profiles/sRGB Profile.icc'
+const SRGB_NAME = 'sRGB IEC61966-2.1'
 
 function expectSize(file, w, h, alpha) {
   const i = sipsInfo(file)
@@ -131,6 +136,8 @@ function expectSize(file, w, h, alpha) {
 }
 
 const fileUrl = (p) => pathToFileURL(p).href
+/** Segundos redondeados al milisegundo (el EDL se lee y se edita a mano). */
+const ms = (s) => Math.round(s * 1000) / 1000
 /** Ruta para los mensajes: relativa al repo si está dentro, entera si no. */
 const show = (p) => (p.startsWith(ROOT + '/') ? relative(ROOT, p) : p)
 
@@ -166,8 +173,9 @@ async function shots() {
           const spec = { kind: 'shot', n: s.n, page: slot.page, card: slot.card, device: slot.device, source: SOURCES[slot.device], type: SHOT_TYPE[slot.device], title: t.title, sub: t.sub, ink: t.ink ?? null, image: fileUrl(src), fit: stand ? { x: stand.x ?? 0.5, y: stand.y ?? 0, zoom: stand.zoom ?? 1 } : null, stamp }
           const res = await page.render(spec, W, H, slot.scale, png)
           mkdirSync(dirname(jpg), { recursive: true })
-          execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '92', png, '--out', jpg], { stdio: 'ignore' })
-          expectSize(jpg, W * slot.scale, H * slot.scale, false)
+          execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '92', '-m', SRGB_ICC, png, '--out', jpg], { stdio: 'ignore' })
+          const info = expectSize(jpg, W * slot.scale, H * slot.scale, false)
+          if (info.profile !== SRGB_NAME) throw new Error(`${jpg}: perfil «${info.profile}», hacía falta ${SRGB_NAME}`)
           items.push({ image: fileUrl(jpg), label: `${base} · ${t.title}${res.subSize !== SHOT_TYPE[slot.device].sub[0] ? ` (sublínea a ${res.subSize})` : ''}` })
           made.push(jpg)
           console.log(`✓ ${show(jpg)} · ${W * slot.scale}×${H * slot.scale} · sin alfa`)
@@ -241,7 +249,7 @@ async function video() {
           if (!at) continue
           const [x, y] = tapToCss(device, at)
           await draw(`tap-${tp.name}.png`, { kind: 'tap', x, y, seed: tp.name })
-          overlays.push({ png: rel(`tap-${tp.name}.png`), start: tp.t - 0.1, end: tp.t + 0.43, fade: 0.1 })
+          overlays.push({ png: rel(`tap-${tp.name}.png`), start: ms(tp.t - 0.1), end: ms(tp.t + 0.43), fade: 0.1 })
         }
         if (!where) console.warn(`  · sin toques para ${device}/${lang} (--taps)`)
         await draw('end.png', { kind: 'end', icon, ...END_CARD[lang] }, false)
