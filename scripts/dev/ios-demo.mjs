@@ -18,7 +18,9 @@
 //     tutor (sin el cuestionario del chat). --fake-ai usa la simulada, para ensayar; --check-ai solo dice qué IA usaría;
 //   - al final, lo que sale en el marketing (la lección del arco hasta su gráfica, el «27» en boli rojo, «Explicar mi
 //     error» y la respuesta del tutor, una tarjeta girada y puntuada): cada llamada nueva queda como la última de su
-//     método, que es lo que la demostración contesta en el simulador.
+//     método, que es lo que la demostración contesta en el simulador. Antes del recorrido, una vuelta de práctica del
+//     arco «esta mañana» (arcMorning) deja als-e1 como el primero de la práctica del tema, aquí y en el simulador
+//     (ruta {"name":"study","id":"exam-2-math112","mode":"practice","skill":"arc-length-sector-area"}).
 import { _electron as electron } from 'playwright'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
@@ -101,6 +103,15 @@ await page.waitForLoadState('domcontentloaded')
 await page.setViewportSize(VIEWS.wide)
 const paired = await page.evaluate(async (code) => (await fetch('/pair/complete', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: 'Demo', platform: 'ipad' }) })).json(), code)
 if (!paired.ok) throw new Error('no se pudo vincular el dispositivo de la grabación')
+// Con la IA de verdad, el Mac no deja que un dispositivo le mande nada sin haber aceptado el aviso de la IA de terceros
+// (remote/ai-consent.ts), y la demostración del dispositivo solo enseña el suyo (no lo acepta en el Mac): se acepta aquí, con
+// el token del dispositivo y fuera de su ventana, así que no queda grabado
+if (realAI) {
+  const asDevice = async (method, args) => (await fetch(base + '/rpc', { method: 'POST', headers: { authorization: `Bearer ${paired.token}`, 'content-type': 'application/json' }, body: JSON.stringify({ method, args }) })).json()
+  const consent = await asDevice('ai.consent', {})
+  const accepted = consent.ok && consent.value.needed ? await asDevice('ai.acceptConsent', { ids: consent.value.recipients.map((r) => r.id) }) : consent
+  if (!accepted.ok || accepted.value.needed) throw new Error(`no se pudo aceptar el aviso de la IA en el Mac: ${JSON.stringify(accepted.error ?? accepted.value)}`)
+}
 
 // ── Lo que se graba ───────────────────────────────────────────────────────────────────────────────────────────────────
 const files = new Map(legalFiles) // ruta → { type, data }
@@ -292,19 +303,21 @@ async function marketing() {
     log('  aviso: la lección del arco no llegó a la gráfica «A sector with central angle θ»')
   }
 
-  // la práctica: el ejercicio del arco (π/3 en radio 9) con «27», el boli rojo, «Explicar mi error» y la respuesta
-  // el orden de la práctica sale del segundo en que se abre: se vuelve a abrir hasta que empieza por als-e1 (primero la
-  // mezclada, la de la toma; si no, la del tema del arco, con menos ejercicios)
-  const arc = page.getByText('Find the length of the arc cut off').filter({ visible: true }).first()
-  const tries = [...Array(4).fill(study('practice')), ...Array(16).fill(study('practice', { skill: 'arc-length-sector-area' }))]
+  // la práctica del tema del arco: als-e1 (π/3 en radio 9) con «27», el boli rojo, «Explicar mi error» y la respuesta.
+  // Empieza por als-e1 gracias a la mañana (arcMorning); la mezclada no sirve: en ella el arco ya no tiene nada sin hacer
+  const arc = page.getByText(ARC_PROMPT).filter({ visible: true }).first()
   let opened = -1
-  for (const [i, route] of tries.entries()) {
+  for (let i = 0; i < 3 && opened < 0; i++) {
     if (i) await go({ name: 'home' }, 1100)
-    await go(route, 2600)
-    if (await visible(arc)) { opened = i; break }
+    await go(study('practice', { skill: ARC }), 2600)
+    if (await visible(arc)) opened = i
   }
-  if (opened < 0) throw new Error('la práctica no empezó por el ejercicio als-e1 (arco de π/3 en radio 9)')
-  log(`  la práctica ${tries[opened].skill ? 'del tema del arco' : 'mezclada'} empieza por als-e1 (intento ${opened + 1}: el orden cambia con el segundo en que se abre)`)
+  if (opened < 0) {
+    await snap('fallo-practica')
+    const seen = (await page.locator('main').first().innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400)
+    throw new Error(`la práctica del arco no empezó por ${ARC_FIRST} (arco de π/3 en radio 9). En pantalla: ${seen}`)
+  }
+  log(`  la práctica del tema del arco empieza por ${ARC_FIRST}${opened ? ` (intento ${opened + 1})` : ''}`)
   const input = page.locator('main input:visible').first()
   await input.click()
   await page.keyboard.type('27', { delay: 120 })
@@ -315,6 +328,9 @@ async function marketing() {
   await page.waitForTimeout(1500)
   await snap('preview-red-pen')
   await explain.click()
+  // el aviso de la IA de terceros (en la demostración, el suyo): aquí nadie lo ha aceptado todavía (en esta grabación no
+  // hay cuestionario en el chat) y sin aceptarlo no se manda nada. En el simulador de las capturas cuenta como visto
+  await page.locator('[data-ai-consent="accept"]').click({ timeout: 6000 }).catch(() => undefined)
   // hasta que la respuesta está entera y quieta (la IA de verdad tarda: hasta dos minutos)
   const until = Date.now() + 120000
   let last = ''
@@ -325,7 +341,10 @@ async function marketing() {
     still = s.answers > 0 && !s.streaming && s.text === last && s.text.trim() ? still + 1 : 0
     last = s.text
     if (still >= 3) break
-    if (Date.now() > until) throw new Error('el tutor no terminó de contestar en dos minutos')
+    if (Date.now() > until) {
+      await snap('fallo-tutor')
+      throw new Error(`el tutor no terminó de contestar en dos minutos (${s.answers} respuestas, ${s.streaming} escribiéndose)`)
+    }
   }
   await page.waitForTimeout(2000)
   await snap('preview-tutor')
@@ -350,9 +369,56 @@ async function marketing() {
   await go({ name: 'home' }, 2500)
 }
 
+// ── Antes del recorrido (solo --preview): una vuelta de práctica del arco «esta mañana» ───────────────────────────────
+// La práctica es adaptativa: el nivel sale del dominio del tema (el que deja el acierto cerca del 75 %) y no repite lo hecho
+// en los últimos 60 intentos; si todo el tema es reciente, elige entre la mitad más antigua. El progreso sembrado
+// (AULA_SEED=demo) cambia con el día de la semana en que se graba: unos días el arco va flojo y als-e1 puede salir, otros
+// (p. ej. un martes) va al 88 % y als-e1 es el último intento sembrado, así que no sale nunca, se abra en el segundo que
+// se abra. Aquí el estudiante hace cada ejercicio del tema menos als-e1: acierta los difíciles (nivel 3) y falla el resto,
+// los de nivel 1 al final. Así als-e1 queda como el más antiguo (o el único sin hacer), el único de nivel 1 a mano y, con
+// el dominio por debajo del 65 %, el nivel que toca: la práctica del tema empieza siempre por als-e1, también en el
+// simulador (que la arma con el progreso grabado). Va por la API del Mac antes de que el dispositivo cargue nada, así que
+// el progreso grabado ya lo trae.
+const ARC = 'arc-length-sector-area'
+const ARC_FIRST = 'als-e1'
+const ARC_PROMPT = 'Find the length of the arc cut off'
+async function arcMorning() {
+  const arc = (await call('courses.getSkills', { id: ID })).find((s) => s.id === ARC)
+  if (!arc?.exercises?.some((e) => e.id === ARC_FIRST)) throw new Error(`el curso de ejemplo ya no tiene ${ARC_FIRST} en ${ARC}`)
+  const refs = [
+    ...arc.exercises.filter((e) => e.id !== ARC_FIRST && e.review?.state !== 'flagged').map((e) => ({ id: e.id, level: e.level ?? 2 })),
+    ...(arc.templates ?? []).slice(0, 40).map((t) => ({ id: `${t.id}#7`, level: t.level ?? 2 }))
+  ].sort((a, b) => b.level - a.level)
+  const attempt = (r, credit) => call('study.recordAttempt', {
+    packId: ID, skillId: ARC, exerciseId: r.id, result: { credit, status: credit ? 'correct' : 'incorrect' }, seconds: 50 + (r.id.length * 13) % 60, mode: 'practice'
+  })
+  let summary = null
+  for (const r of refs) summary = await attempt(r, r.level >= 3 ? 1 : 0)
+  // comprobación en la ventana del Mac (no se graba): la práctica del tema tiene que empezar por als-e1. Si no, otro fallo en
+  // uno de nivel 2 (baja el dominio y lo saca de la mitad antigua) y se vuelve a mirar
+  const route = (r) => main.evaluate((r) => window.__aula?.navigate?.(r), r)
+  const startsWithE1 = async () => {
+    await route({ name: 'home' })
+    await main.waitForTimeout(1200)
+    await route({ name: 'study', id: ID, mode: 'practice', skill: ARC })
+    await main.waitForTimeout(2500)
+    return (await main.locator('main').first().innerText().catch(() => '')).includes(ARC_PROMPT)
+  }
+  const middle = refs.filter((r) => r.level === 2)
+  for (let i = 0; ; i++) {
+    if (await startsWithE1()) break
+    if (i >= middle.length) throw new Error(`la práctica del arco no empieza por ${ARC_FIRST} ni después de ${refs.length + i} intentos de la mañana`)
+    summary = await attempt(middle[i], 0)
+    await main.waitForTimeout(800)
+  }
+  await route({ name: 'home' })
+  log(`· la mañana: ${summary?.skillAttempts ?? '?'} intentos del arco (dominio ${Math.round((summary?.mastery ?? 0) * 100)} %); su práctica empieza por ${ARC_FIRST}`)
+}
+
 // lo que aún se está leyendo de las respuestas (con tope: una respuesta que no acaba de llegar no para la grabación)
 const settle = () => Promise.race([Promise.allSettled(pending), sleep(30000)])
 
+if (preview) await arcMorning()
 await tour('wide')
 await page.setViewportSize(VIEWS.narrow)
 await tour('narrow')
