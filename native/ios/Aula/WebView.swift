@@ -104,6 +104,10 @@ struct WebView: PlatformViewRepresentable {
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         view.allowsBackForwardNavigationGestures = false
+        #if DEBUG
+        // depuración (y ensayos de las capturas del App Store): la página se revisa desde Safari → Desarrollo
+        view.isInspectable = true
+        #endif
         #if canImport(UIKit)
         view.isOpaque = false
         view.backgroundColor = .clear
@@ -211,9 +215,10 @@ struct WebView: PlatformViewRepresentable {
             // la página nueva dirá si tiene adónde volver
             (view as? AulaWebView)?.pageCanGoBack = false
             #endif
-            // la consulta de la dirección se conserva («?demo=1» en la demostración)
+            // la consulta de la dirección se conserva («?demo=1» en la demostración); el fragmento es el de la pantalla en
+            // la que estaba, y en la primera carga, el de `base` (solo lo trae la demostración de las capturas)
             parts.path = "/"
-            parts.percentEncodedFragment = view.url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false)?.percentEncodedFragment }
+            if let now = view.url { parts.percentEncodedFragment = URLComponents(url: now, resolvingAgainstBaseURL: false)?.percentEncodedFragment }
             if let url = parts.url { view.load(URLRequest(url: url)) }
         }
 
