@@ -337,9 +337,12 @@ final class AppModel {
         // capturas: una pregunta que no es la grabada recibe el texto grabado (la respuesta del tutor), no el aviso
         let chatReply = StoreShots.on ? "" : Texts.demoChatReply
         let route = StoreShots.routeFragment
+        // capturas: el aviso de la IA de la demostración ya visto (el material del App Store no lo enseña)
+        let query = StoreShots.on ? "?demo=1&storeshots=1" : "?demo=1"
         #else
         let chatReply = Texts.demoChatReply
         let route: String? = nil
+        let query = "?demo=1"
         #endif
         let server = DemoServer(archive: demoArchive, unavailable: Texts.demoUnavailable, chatReply: chatReply)
         do {
@@ -350,7 +353,7 @@ final class AppModel {
             supersede()
             // «demo=1»: la interfaz usa sus datos de ejemplo donde el Mac daría los del estudiante; el fragmento, la
             // pantalla en la que arranca (solo las capturas lo ponen)
-            var address = URLComponents(string: "http://127.0.0.1:\(port)/?demo=1")!
+            var address = URLComponents(string: "http://127.0.0.1:\(port)/\(query)")!
             address.percentEncodedFragment = route
             stage = .ready(address.url!)
         } catch {
