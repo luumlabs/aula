@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Readable } from 'node:stream'
 import { DeviceRegistry, MAX_ATTEMPTS, PAIRING_MINUTES, PairingError, TOKEN_DAYS } from './devices'
-import { noopValue, ownerVerdict, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
+import { noopValue, ownerVerdict, reachesDevices, remoteAIChoice, remoteCall, remoteForget, remoteSettingsPatch, remoteVerdict, rewriteAssets } from './policy'
 import { hostLabel, installServerCrashHandlers, isAulaHostname, isDeviceHostname, isServerMode, serverHostname } from './server-mode'
 import { safeUploadName, UploadError, UploadStore } from './uploads'
 import { pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from './bridge'
@@ -393,6 +393,10 @@ describe('qué puede pedir un dispositivo', () => {
   })
   it('las direcciones de la ventana pasan a ser rutas del servidor', () => {
     expect(rewriteAssets('{"src":"aula-asset://pack/c/assets/f.png"}')).toBe('{"src":"/asset/pack/c/assets/f.png"}')
+  })
+  it('las órdenes del menú, la bandeja y las notificaciones del Mac no llegan a los dispositivos; lo demás, sí', () => {
+    expect(reachesDevices('app.command')).toBe(false)
+    for (const e of ['calendar.changed', 'automations.inboxChanged', 'remote.changed']) expect(reachesDevices(e), e).toBe(true)
   })
 })
 

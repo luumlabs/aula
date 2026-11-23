@@ -41,25 +41,37 @@ struct WebView: PlatformViewRepresentable {
     /// El túnel de ahora: http://127.0.0.1:<puerto>. Si cambia (al volver de segundo plano), se recarga en el nuevo.
     let base: URL
     var events = WebEvents()
+    /// window.aulaApp.supportLink(): Ajustes → Acerca de puede enseñar «Apoya a Aula» (AppModel.supportLink).
+    var supportLink = false
 
-    func makeCoordinator() -> Coordinator { Coordinator(events: events) }
+    func makeCoordinator() -> Coordinator { Coordinator(events: events, supportLink: supportLink) }
 
     /// Lo que la interfaz puede pedir a la app (`window.aulaApp`). Lo mismo que en Android (MainActivity.AppBridge):
     /// page(json) cómo se ve (lo manda Shell.js), switchAula(), setCanGoBack(bool) (deslizar desde el borde izquierdo tiene
-    /// algo que hacer aunque el historial no lo diga), showLicenses(), exitDemo() y demoNotice(bool).
-    private static let appBridge = """
-    (() => {
-      const post = (m) => window.webkit.messageHandlers.aulaApp.postMessage(m);
-      window.aulaApp = {
-        page: (json) => post('page:' + json),
-        switchAula: () => post('switch'),
-        setCanGoBack: (can) => post(can ? 'back:1' : 'back:0'),
-        showLicenses: () => post('licenses'),
-        exitDemo: () => post('exitDemo'),
-        demoNotice: (on) => post(on ? 'notice:1' : 'notice:0')
-      };
-    })();
-    """
+    /// algo que hacer aunque el historial no lo diga), showLicenses(), exitDemo(), demoNotice(bool) y supportLink() (si
+    /// Acerca de puede enseñar «Apoya a Aula»: solo con la tienda de EE. UU., SupportLink.swift).
+    private static func appBridge(supportLink: Bool) -> String {
+        """
+        (() => {
+          const post = (m) => window.webkit.messageHandlers.aulaApp.postMessage(m);
+          window.aulaApp = {
+            page: (json) => post('page:' + json),
+            switchAula: () => post('switch'),
+            setCanGoBack: (can) => post(can ? 'back:1' : 'back:0'),
+            showLicenses: () => post('licenses'),
+            exitDemo: () => post('exitDemo'),
+            demoNotice: (on) => post(on ? 'notice:1' : 'notice:0'),
+            supportLink: () => \(supportLink)
+          };
+        })();
+        """
+    }
+
+    /// La tienda cambió con la página abierta: su supportLink() nuevo y el aviso 'aula:app', para que la interfaz vuelva a
+    /// mirar (src/renderer/src/lib/supportLink.ts).
+    static func supportScript(_ on: Bool) -> String {
+        "(() => { if (window.aulaApp) window.aulaApp.supportLink = () => \(on); window.dispatchEvent(new Event('aula:app')) })(); void 0"
+    }
 
     /// Shell.js: que se sienta una app y no una página, y decirle a la app cómo se ve (la misma que en Android).
     private static let shell: String = {
@@ -68,9 +80,9 @@ struct WebView: PlatformViewRepresentable {
     }()
 
     /// Lo que se pone en cada página: el puente, el tamaño del texto del sistema (antes de que se pinte) y Shell.js.
-    private static func install(on controller: WKUserContentController, textScale: Double) {
+    private static func install(on controller: WKUserContentController, textScale: Double, supportLink: Bool) {
         controller.removeAllUserScripts()
-        controller.addUserScript(WKUserScript(source: appBridge, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        controller.addUserScript(WKUserScript(source: appBridge(supportLink: supportLink), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         #if canImport(UIKit)
         controller.addUserScript(WKUserScript(source: TextScale.script(textScale), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         if !shell.isEmpty {
@@ -87,18 +99,21 @@ struct WebView: PlatformViewRepresentable {
         config.allowsInlineMediaPlayback = true
         #endif
         config.userContentController.add(WeakMessageHandler(context.coordinator), name: "aulaApp")
-        #if canImport(UIKit)
         let controller = config.userContentController
-        Self.install(on: controller, textScale: TextScale.current())
+        context.coordinator.scripts = controller
+        #if canImport(UIKit)
+        context.coordinator.textScale = TextScale.current()
+        Self.install(on: controller, textScale: context.coordinator.textScale, supportLink: context.coordinator.supportLink)
         let view = AulaWebView(frame: .zero, configuration: config)
         view.onSystemStyle = { [weak coordinator = context.coordinator] dark in coordinator?.systemChanged(dark) }
         // el tamaño del texto del sistema cambió (Ajustes → Pantalla y brillo): a la página de ahora y a las que se carguen
-        view.onTextScale = { [weak view] scale in
-            Self.install(on: controller, textScale: scale)
+        view.onTextScale = { [weak view, weak coordinator = context.coordinator] scale in
+            coordinator?.textScale = scale
+            Self.install(on: controller, textScale: scale, supportLink: coordinator?.supportLink ?? false)
             view?.evaluateJavaScript(TextScale.script(scale), completionHandler: nil)
         }
         #else
-        Self.install(on: config.userContentController, textScale: 1)
+        Self.install(on: controller, textScale: 1, supportLink: context.coordinator.supportLink)
         let view = WKWebView(frame: .zero, configuration: config)
         #endif
         view.navigationDelegate = context.coordinator
@@ -131,12 +146,14 @@ struct WebView: PlatformViewRepresentable {
     func makeUIView(context: Context) -> WKWebView { makeView(context) }
     func updateUIView(_ view: WKWebView, context: Context) {
         context.coordinator.events = events
+        context.coordinator.setSupportLink(supportLink, in: view)
         context.coordinator.show(base, in: view)
     }
     #else
     func makeNSView(context: Context) -> WKWebView { makeView(context) }
     func updateNSView(_ view: WKWebView, context: Context) {
         context.coordinator.events = events
+        context.coordinator.setSupportLink(supportLink, in: view)
         context.coordinator.show(base, in: view)
     }
     #endif
@@ -148,9 +165,24 @@ struct WebView: PlatformViewRepresentable {
         private var look: PageLook?
         /// La interfaz de Aula está a la vista: la página entera no se mueve (cada pantalla se desplaza por dentro).
         fileprivate var lockScroll = false
+        /// Lo que dice window.aulaApp.supportLink() (AppModel.supportLink).
+        private(set) var supportLink: Bool
+        /// Lo que se pone en cada página y el tamaño del texto que lleva: se vuelve a poner si cambia la tienda.
+        fileprivate weak var scripts: WKUserContentController?
+        fileprivate var textScale = 1.0
 
-        init(events: WebEvents) {
+        init(events: WebEvents, supportLink: Bool) {
             self.events = events
+            self.supportLink = supportLink
+        }
+
+        /// La tienda cambió (o StoreKit contestó tarde): para las páginas que se carguen (el puente, al empezar) y para la de
+        /// ahora (el aviso 'aula:app'). Al empezar es false: el botón nunca aparece para desaparecer después.
+        func setSupportLink(_ on: Bool, in view: WKWebView) {
+            guard on != supportLink else { return }
+            supportLink = on
+            if let scripts { WebView.install(on: scripts, textScale: textScale, supportLink: on) }
+            view.evaluateJavaScript(WebView.supportScript(on), completionHandler: nil)
         }
 
         /// Un mensaje de la interfaz, solo de la página de Aula por el túnel (el marco principal de 127.0.0.1).
@@ -239,6 +271,8 @@ struct WebView: PlatformViewRepresentable {
         }
 
         private func openOutside(_ url: URL) {
+            // GitHub Sponsors, solo con la tienda de EE. UU. (guía 3.1.1(a)): aunque la interfaz del Mac lo enseñara por error
+            if !supportLink, SupportLink.isDonation(url) { return }
             #if canImport(UIKit)
             UIApplication.shared.open(url)
             #else

@@ -2,6 +2,7 @@
 import { useEffect } from 'react'
 import { useTheme, toast } from '@renderer/design'
 import { api } from '@renderer/lib/api'
+import { SUPPORT_AGAIN_EVENT } from '@renderer/lib/supportLink'
 import type { AppCommand } from '@shared/ipc/contract'
 import type { AssistantNavigateTarget } from '@shared/assistant/types'
 import { navigate, useNav } from '../router'
@@ -65,6 +66,14 @@ function run(command: AppCommand): void {
     case 'toggleSidebar':
       window.dispatchEvent(new Event(TOGGLE_SIDEBAR_EVENT))
       return
+    case 'support': {
+      // a «Apoya a Aula», en Ajustes → Acerca de (allí se explica antes de donar): no abre la web directamente. Si ya es la
+      // ruta de ahora, navigate no haría nada: la pantalla vuelve a bajar con el aviso
+      const { route } = useNav.getState()
+      if (route.name === 'settings' && route.section === 'support') window.dispatchEvent(new Event(SUPPORT_AGAIN_EVENT))
+      else navigate({ name: 'settings', section: 'support' })
+      return
+    }
   }
 }
 

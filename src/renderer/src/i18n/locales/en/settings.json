@@ -266,11 +266,14 @@
     "source": "Source code",
     "noKeyring": "This system has no keyring: your keys and sessions are stored with file permissions only, unencrypted. Install GNOME Keyring or KWallet to protect them.",
     "licenses": "Third-party licenses",
-    "support": "Support Aula ♡",
     "noKeyringServer": "On this server, keys are stored unencrypted in its data folder, which only Aula can read: protect it as you would protect the server.",
     "switchAula": "Open another Aula",
     "privacy": "Privacy policy",
-    "help": "Help and support"
+    "help": "Help and support",
+    "supportTitle": "Support Aula",
+    "supportBody": "Aula is free, open source and made for students. It has no ads and no tracking, and nothing you study reaches us. If it’s been useful and you’d like to give us a hand, any contribution helps us keep improving it. And if you can’t, that’s fine: it stays free for everyone.",
+    "supportDonate": "Donate on GitHub Sponsors",
+    "supportFree": "You can also help without spending anything: <star>star it on GitHub</star> or recommend it to your classmates."
   },
   "memory": {
     "title": "What Aula remembers",

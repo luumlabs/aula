@@ -35,6 +35,14 @@ const looks: Record<Variant, string> = {
   danger: 'bg-danger-fill text-white hover:brightness-110 font-semibold'
 }
 
+const base = 'relative touch-target inline-flex select-none items-center justify-center whitespace-nowrap outline-none transition-colors duration-150 disabled:opacity-45 disabled:pointer-events-none no-drag'
+
+/** Las clases de un botón, para un enlace <a> que tiene que verse como uno (en un dispositivo, una página de fuera se abre
+ *  con un enlace de verdad: Ajustes → Acerca de). */
+export function buttonClass(variant: Variant = 'secondary', size: Size = 'md'): string {
+  return cx(base, sizes[size], looks[variant])
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = 'secondary', size = 'md', icon, iconRight, loading, full, className, children, disabled, ...rest },
   ref
@@ -48,13 +56,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       data-variant={variant}
       whileTap={{ scale: 0.97 }}
       transition={spring.snappy}
-      className={cx(
-        'relative touch-target inline-flex select-none items-center justify-center whitespace-nowrap outline-none transition-colors duration-150 disabled:opacity-45 disabled:pointer-events-none no-drag',
-        sizes[size],
-        looks[variant],
-        full && 'w-full',
-        className
-      )}
+      className={cx(buttonClass(variant, size), full && 'w-full', className)}
       {...rest}
     >
       {loading ? <Spinner size={size === 'sm' ? 12 : 14} /> : icon}

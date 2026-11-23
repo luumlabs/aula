@@ -1649,7 +1649,8 @@ public final class MainActivity extends Activity {
      * Lo que la interfaz puede pedir a la app (`window.aulaApp`), lo mismo que en el iPhone (WebView.swift): page(json)
      * cómo se ve (lo manda Shell.js), switchAula() y aulaCount(), setCanGoBack(bool) («atrás» tiene algo que hacer
      * aunque el historial no lo diga), showLicenses(), exitDemo(), demoNotice(bool), edgeToEdge(bool) (la interfaz llega
-     * bajo las barras y deja sitio con --aula-safe-*) y fontScale().
+     * bajo las barras y deja sitio con --aula-safe-*), fontScale() y supportLink() (si Acerca de puede enseñar «Apoya a
+     * Aula»).
      */
     private final class AppBridge {
         @JavascriptInterface
@@ -1709,6 +1710,13 @@ public final class MainActivity extends Activity {
         @JavascriptInterface
         public float fontScale() {
             return MainActivity.this.fontScale();
+        }
+
+        /** Ajustes → Acerca de puede enseñar «Apoya a Aula» y su botón a GitHub Sponsors: esta app se reparte por GitHub,
+         *  no por una tienda (en el iPhone, solo con la tienda de EE. UU.: SupportLink.swift). */
+        @JavascriptInterface
+        public boolean supportLink() {
+            return true;
         }
     }
 }

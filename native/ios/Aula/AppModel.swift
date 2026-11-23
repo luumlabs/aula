@@ -73,6 +73,10 @@ final class AppModel {
     }
     /// El color de arriba de la página («#rrggbb»): la franja de la demostración se pinta igual.
     private(set) var pageTop: String?
+    /// Ajustes → Acerca de puede enseñar «Apoya a Aula» (con su botón para donar): solo con la tienda de Estados Unidos
+    /// (SupportLink.swift). Mientras StoreKit no contesta, no.
+    private(set) var supportLink = false
+    private var storefront: Task<Void, Never>?
     private static let themeKey = "aula.theme"
     private static var savedPageDark: Bool? {
         switch UserDefaults.standard.string(forKey: themeKey) {
@@ -109,6 +113,11 @@ final class AppModel {
     func start() async {
         guard !started else { return }
         started = true
+        // la tienda se mira ya, mientras la red arranca: casi siempre se sabe antes de abrir la interfaz
+        storefront = SupportLink.follow { [weak self] on in
+            guard let self, self.supportLink != on else { return }
+            self.supportLink = on
+        }
         TailnetEvents.shared.set { [weak self] event in
             Task { @MainActor in self?.handle(event) }
         }

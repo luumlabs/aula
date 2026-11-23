@@ -14,6 +14,11 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   device that hasn't accepted can't start a chat, a course or an AI routine. It asks again if you switch to another
   company, and a model that runs on your own computer needs no notice.
 - **Settings → About links to the privacy policy and to help**, on the computer and on your devices.
+- **Settings → About ends with a small *Support Aula* section.** Aula is free and open source, with no ads or
+  tracking, and nothing you study reaches us; if you'd like to help, a button opens GitHub Sponsors, and a star on
+  GitHub or telling your classmates helps too. On the computer, *Help → Support Aula…* leads there. In the iPhone and
+  iPad app it appears only with the United States App Store. It replaces the old *Support Aula ♡* link; nothing else
+  in Aula asks for donations.
 
 ### Changed
 - **From a phone or tablet, Aula's live browser opens only your study platforms and their sign-in pages.** Other
@@ -25,6 +30,8 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 ### Fixed
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
 - **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
+- **Using the computer's menu, tray or notifications no longer moves your phone or tablet to another screen.** Going
+  to Today or Settings, Back and Forward, or opening a notification there now changes only the computer's window.
 
 ### Mac signing
 - **The Mac `.dmg` download is now signed and notarized by Apple too**, not just the app inside it, so macOS can check

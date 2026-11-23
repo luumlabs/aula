@@ -1,5 +1,6 @@
 // Menú nativo de la app: lo de siempre en cada sistema (Edición para copiar y pegar, Ventana, Ayuda) y los atajos de Aula
-// (ir a cada pantalla, nuevo curso, ajustes, preguntar a Aula). Los comandos llegan a la interfaz como 'app.command'.
+// (ir a cada pantalla, nuevo curso, ajustes, preguntar a Aula y, al final de Ayuda, «Apoyar a Aula…»). Los comandos llegan a
+// la interfaz como 'app.command'.
 import { app, Menu, shell, type MenuItemConstructorOptions } from 'electron'
 import type { AppCommand } from '@shared/ipc/contract'
 import { getSettings, onSettingsChange } from '@main/services/settings'
@@ -19,7 +20,7 @@ const TEXT = {
     view: 'Ver', sidebar: 'Mostrar u ocultar la barra lateral', zoomIn: 'Aumentar', zoomOut: 'Reducir', zoomReset: 'Tamaño real', fullscreen: 'Pantalla completa', reload: 'Recargar', devtools: 'Herramientas de desarrollo',
     go: 'Ir', home: 'Hoy', chat: 'Aula', calendar: 'Calendario', tools: 'Herramientas', documents: 'Documentos', inbox: 'Novedades', stats: 'Estadísticas', back: 'Atrás', forward: 'Adelante', ask: 'Preguntar a Aula',
     window: 'Ventana', minimize: 'Minimizar', zoom: 'Zoom', front: 'Traer todo al frente',
-    help: 'Ayuda', report: 'Informar de un problema…', logs: 'Mostrar los registros', data: 'Mostrar la carpeta de datos',
+    help: 'Ayuda', report: 'Informar de un problema…', logs: 'Mostrar los registros', data: 'Mostrar la carpeta de datos', support: 'Apoyar a Aula…',
     legal: 'Software libre con la licencia GNU AGPL v3 · Sin ninguna garantía'
   },
   en: {
@@ -29,7 +30,7 @@ const TEXT = {
     view: 'View', sidebar: 'Show or Hide Sidebar', zoomIn: 'Zoom In', zoomOut: 'Zoom Out', zoomReset: 'Actual Size', fullscreen: 'Full Screen', reload: 'Reload', devtools: 'Developer Tools',
     go: 'Go', home: 'Today', chat: 'Aula', calendar: 'Calendar', tools: 'Tools', documents: 'Documents', inbox: 'Inbox', stats: 'Statistics', back: 'Back', forward: 'Forward', ask: 'Ask Aula',
     window: 'Window', minimize: 'Minimize', zoom: 'Zoom', front: 'Bring All to Front',
-    help: 'Help', report: 'Report a Problem…', logs: 'Show Logs', data: 'Show Data Folder',
+    help: 'Help', report: 'Report a Problem…', logs: 'Show Logs', data: 'Show Data Folder', support: 'Support Aula…',
     legal: 'Free software under the GNU AGPL v3 · No warranty'
   }
 } as const
@@ -138,7 +139,10 @@ export function buildMenuTemplate(lang: Lang, platform: NodeJS.Platform, dev: bo
       { label: t.report, click: () => void shell.openExternal(ISSUES_URL) },
       { type: 'separator' },
       { label: t.logs, click: () => void shell.openPath(paths.logs()) },
-      { label: t.data, click: () => void shell.openPath(paths.root()) }
+      { label: t.data, click: () => void shell.openPath(paths.root()) },
+      { type: 'separator' },
+      // a Ajustes → Acerca de, a «Apoya a Aula»: no abre la web (allí se explica antes de donar). Lo último del menú
+      cmd(t.support, 'support')
     ]
   }
   return [...(mac ? [appMenu] : []), file, edit, view, go, windowMenu, help]

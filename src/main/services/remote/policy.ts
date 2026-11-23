@@ -185,6 +185,15 @@ export function remoteCall(method: string, args: unknown, opts: { owner?: boolea
   return clean === null ? { verdict: 'deny', args: undefined } : { verdict: 'allow', args: clean }
 }
 
+/** Eventos de la ventana de este equipo que no van a los dispositivos: las órdenes del menú, de la bandeja y de las
+ *  notificaciones ('app.command': Ir → Hoy, Ayuda → «Apoyar a Aula…»…). Un dispositivo no cambia de pantalla por ellas. */
+const EVENTS_WINDOW_ONLY: ReadonlySet<string> = new Set(['app.command'])
+
+/** ¿Llega este evento a los dispositivos (por /events)? */
+export function reachesDevices(event: string): boolean {
+  return !EVENTS_WINDOW_ONLY.has(event)
+}
+
 /** Las direcciones `aula-asset://…` de una respuesta pasan a ser rutas del servidor (`/asset/…`). */
 export function rewriteAssets(json: string): string {
   return json.replace(/aula-asset:\/\//g, '/asset/')

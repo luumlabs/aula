@@ -211,12 +211,24 @@ ACCOUNTS, DATA AND AI
 - Everything the student creates is private to them. There is no sharing between users and no social feature.
 - Camera and microphone: requested only when the student picks "Take Photo or Video" in the system file picker to add their notes or a class to a course. The file goes to their own computer. Local network: to reach that computer directly when both are on the same network.
 - The privacy policy is linked at the foot of every connection screen and in Settings → About Aula, and is at https://github.com/luumlabs/aula/blob/main/docs/PRIVACY.md
+- On the United States storefront only, Settings → About Aula ends with a "Support Aula" section: a short note and a "Donate on GitHub Sponsors" button that opens in Safari; nothing in the app is unlocked or paid. Other storefronts don't show it.
 - Links to outside pages open in Safari.
 <!-- /reviewnotes -->
 
 The notes are true only if, in the build sent for review: the demo was recorded again with the current interface, the
 camera and microphone were tried on a real device, and the video is attached. Don't call Tailscale a "VPN" anywhere
 (guideline 5.4).
+
+**Donations.** *Support Aula* (Settings → About Aula, a button to GitHub Sponsors) shows in the iPhone and iPad app
+only when StoreKit says the device's App Store is the United States one (`native/ios/Aula/SupportLink.swift`, read by
+the page as `window.aulaApp.supportLink()`): outside it, guideline 3.1.1(a) allows no buttons or links to other ways of
+paying. The interface comes from the student's Mac, which updates without App Review, so the app itself also refuses
+to open GitHub Sponsors outside the United States storefront (`SupportLink.isDonation`). If App Review objects, make
+`SupportLink.allowed` return `false` and ship an update; the interface needs no change. App Store metadata is the same
+on every storefront, so **never mention donations or GitHub Sponsors in it** (description, What's New, promotional
+text, screenshots). **GitHub Sponsors tiers must never unlock or promise anything in Aula** (early access, features,
+priority support): the review note above and guideline 3.1.1 would stop being true. Check the tiers before each
+submission.
 
 ## Version and build
 
