@@ -10,6 +10,8 @@ enum Legal {
     }
     /// El código de Aula (AGPL).
     static let source = URL(string: "https://github.com/luumlabs/aula")!
+    /// Cómo borrar la cuenta de Tailscale (la única cuenta que se crea al usar la app; App Store 5.1.1(v)).
+    static let deleteTailscale = URL(string: "https://tailscale.com/docs/account/delete-tailnet")!
 }
 
 /// Un componente con su licencia y el texto entero de sus avisos.

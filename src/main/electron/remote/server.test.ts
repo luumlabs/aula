@@ -21,6 +21,8 @@ let token = ''
 let server: import('./server').RemoteServer
 let devices: import('@main/services/remote/devices').DeviceRegistry
 let seen: { method: string; args: unknown; device?: string }[] = []
+/** A quién mandaría Aula ahora los datos (el aviso de la IA de terceros); vacío: a nadie, como en las pruebas de siempre. */
+let recipients: { id: string; name: string; product?: string; uses: ('answers' | 'recordings')[] }[] = []
 
 const get = (path: string, headers: Record<string, string> = {}): Promise<Response> => fetch(url + path, { headers, redirect: 'manual' })
 /** Lee un flujo de eventos hasta que aparece `word`. */
@@ -55,14 +57,14 @@ beforeAll(async () => {
 
   const { handle } = await import('../rpc')
   const note = (method: string) => (args: unknown, ctx: { remote?: { deviceId: string } }) => { seen.push({ method, args, device: ctx.remote?.deviceId }); return { src: 'aula-asset://pack/curso/assets/fig.png' } }
-  for (const m of ['courses.list', 'create.addFiles', 'settings.update', 'ai.setKey', 'ai.configure', 'ai.choose', 'ai.choices', 'memory.add', 'memory.forget', 'memory.clear', 'memory.export', 'data.deleteAll', 'data.exportAll']) handle(m as never, note(m) as never)
+  for (const m of ['courses.list', 'chat.send', 'create.addFiles', 'documents.import', 'settings.update', 'ai.setKey', 'ai.configure', 'ai.choose', 'ai.choices', 'memory.add', 'memory.forget', 'memory.clear', 'memory.export', 'data.deleteAll', 'data.exportAll']) handle(m as never, note(m) as never)
 
   const { DeviceRegistry } = await import('@main/services/remote/devices')
   const { UploadStore } = await import('@main/services/remote/uploads')
   const { userFiles } = await import('@main/services/userFiles')
   const { RemoteServer } = await import('./server')
   devices = new DeviceRegistry(join(base, 'devices.json'))
-  server = new RemoteServer({ devices, uploads: new UploadStore(join(base, 'uploads'), { grant: (p) => userFiles.grant(p) }), rendererRoot: renderer, language: () => 'es', version: '9.9.9', proxyKey: KEY })
+  server = new RemoteServer({ devices, uploads: new UploadStore(join(base, 'uploads'), { grant: (p) => userFiles.grant(p) }), rendererRoot: renderer, language: () => 'es', version: '9.9.9', proxyKey: KEY, aiRecipients: async () => recipients })
   url = `http://127.0.0.1:${await server.start()}`
 })
 afterAll(async () => { await server.stop() })
@@ -206,6 +208,35 @@ describe('servidor remoto', () => {
     expect(path).toMatch(/uploads[\\/][0-9a-f]{12}[\\/]e{32}[\\/]apuntes fotosíntesis\.md$/)
     const { userFiles } = await import('@main/services/userFiles')
     expect(() => userFiles.check([path])).not.toThrow()
+  })
+  it('el aviso de la IA de terceros: sin aceptarlo no llega nada a la IA; si la IA cambia, se vuelve a pedir', async () => {
+    seen = []
+    recipients = [{ id: 'anthropic', name: 'Anthropic', product: 'Claude', uses: ['answers'] }]
+    const refused = await rpc('chat.send', { threadId: 't', text: 'hola' }) as { ok: boolean; error?: { code: string; details?: { needed: boolean; recipients: { id: string }[] } } }
+    expect(refused.ok).toBe(false)
+    expect(refused.error?.code).toBe('ai_consent')
+    expect(refused.error?.details).toMatchObject({ needed: true, recipients: [{ id: 'anthropic' }] })
+    expect((await rpc('settings.update', { persistent: { enabled: true } })).error?.code).toBe('ai_consent')
+    // importar a Documentos puede transcribir una grabación con un tercero: también lo pide
+    expect((await rpc('documents.import', { paths: [] })).error?.code).toBe('ai_consent')
+    // reanudar «Aula siempre activa» o encender una de sus rutinas con IA, también (antes de llegar a las automatizaciones)
+    expect((await rpc('automations.pause', { until: null })).error?.code).toBe('ai_consent')
+    expect((await rpc('automations.setProactive', { patch: { morningBrief: true } })).error?.code).toBe('ai_consent')
+    // lo que no va a la IA nunca se para
+    expect((await rpc('courses.list')).ok).toBe(true)
+    expect(await rpc('ai.consent')).toMatchObject({ ok: true, value: { needed: true } })
+    // aceptar a otra empresa no vale
+    expect((await rpc('ai.acceptConsent', { ids: ['openai'] })).error?.code).toBe('ai_consent')
+    expect((await rpc('ai.acceptConsent', { ids: ['anthropic'], extra: 1 })).error?.code).toBe('invalid_args')
+    expect(await rpc('ai.acceptConsent', { ids: ['anthropic'] })).toMatchObject({ ok: true, value: { needed: false } })
+    expect((await rpc('chat.send', { threadId: 't', text: 'hola' })).ok).toBe(true)
+    // otra IA: se vuelve a pedir
+    recipients = [{ id: 'deepseek', name: 'DeepSeek', uses: ['answers'] }]
+    expect((await rpc('chat.send', { threadId: 't', text: 'otra' })).error?.code).toBe('ai_consent')
+    expect(seen.map((x) => x.method)).toEqual(['courses.list', 'chat.send'])
+    // sin nadie a quien mandar (un modelo en el propio Mac), pasa
+    recipients = []
+    expect((await rpc('create.addFiles', { paths: [] })).ok).toBe(true)
   })
   it('al retirar el dispositivo, su cookie deja de valer', async () => {
     devices.revoke(devices.list()[0].id)

@@ -2,6 +2,8 @@
 // manejada desde aquí con el ratón, el teclado o el dedo (también desde su iPad o su iPhone). Arriba, atrás y recargar;
 // abajo, de quién es el turno: «Que Aula lo revise» le pasa la página a Aula (que solo la lee) y «Tomar el control» la
 // recupera. Para iniciar sesión, «Ya he iniciado sesión» lo comprueba y cierra.
+// En un dispositivo, el navegador solo llega a las plataformas del estudiante y su inicio de sesión (engine/live/reach.ts): lo
+// que no se abrió se avisa, y una página fuera de ese alcance (abierta desde el ordenador o por Aula) se tapa con una tarjeta.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
@@ -35,6 +37,8 @@ function Panel() {
   const typing = useRef<HTMLInputElement>(null)
   const id = state.id
   const mine = state.holder === 'student'
+  const device = api.remote
+  const offLimits = device && state.deviceAllowed === false
   // el `controlId` de ahora, sin volver a montar los manejadores cada vez que cambia
   const control = useRef(state.controlId)
   control.current = state.controlId
@@ -188,11 +192,24 @@ function Panel() {
       }
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)) } finally { setBusy(null) }
   }
-  const nav = (action: 'back' | 'reload'): void => { void api.invoke('live.navigate', { id, controlId: control.current, action }).catch(() => {}) }
+  const nav = (action: 'back' | 'reload' | 'home'): void => { void api.invoke('live.navigate', { id, controlId: control.current, action }).catch(() => {}) }
+
+  // lo que no se abrió porque lo manejaba un dispositivo (sin avisar de uno viejo al abrir el panel); en el ordenador, que
+  // lo manejó un móvil o una tableta por última vez y cómo seguir desde aquí
+  const seenRefusal = useRef(state.refused?.at)
+  useEffect(() => {
+    const r = state.refused
+    if (!r || r.at === seenRefusal.current) return
+    seenRefusal.current = r.at
+    toast.info(t(device ? 'live.refused' : 'live.refusedMac', { host: r.host }))
+  }, [device, state.refused, t])
+
+  // una página fuera del alcance de este dispositivo tampoco recibe lo que se escribe: se cierra el teclado
+  useEffect(() => { if (offLimits) typing.current?.blur() }, [offLimits])
 
   let host = ''
   try { host = state.url ? new URL(state.url).host : '' } catch { /* aún sin dirección */ }
-  const showTyping = touch && mine && focus?.editable === true
+  const showTyping = touch && mine && !offLimits && focus?.editable === true
 
   return (
     <motion.div className="fixed inset-0 z-[70] flex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} role="dialog" aria-modal="true" aria-label={t('live.title')}>
@@ -236,8 +253,27 @@ function Panel() {
           ) : (
             <div className="grid h-full place-items-center text-text3"><Spinner size={20} /></div>
           )}
+          {/* en un dispositivo, una página fuera de sus plataformas no se ve ni se toca */}
+          {offLimits && (
+            // (los toques en la tarjeta no llegan a la página)
+            <div className="absolute inset-0 grid place-items-center bg-paper/80" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()}>
+              <div className="mx-6 flex max-w-sm flex-col items-center gap-3 rounded-[18px] bg-raised px-6 py-5 text-center shadow-[var(--e2)]">
+                <Icon name="globe" size={28} className="text-accent" />
+                <p className="t-callout font-medium">{t('live.offLimits')}</p>
+                <p className="t-ui text-text2">{t('live.offLimitsHint', { host })}</p>
+                {api.role === 'macDevice' && <p className="t-ui text-text2">{t('live.offLimitsMac')}</p>}
+                {mine && (state.accountId || state.canGoBack) && (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {/* una sola acción principal: al iniciar sesión ya lo es «Ya he iniciado sesión» */}
+                    {state.accountId && <Button variant={state.purpose === 'signin' ? 'secondary' : 'primary'} onClick={() => nav('home')}>{t('live.home')}</Button>}
+                    {state.canGoBack && <Button variant="secondary" onClick={() => nav('back')}>{t('nav.back')}</Button>}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {/* con el turno de Aula, la página se ve pero no se toca */}
-          {!mine && (
+          {!offLimits && !mine && (
             <div className="absolute inset-0 grid place-items-center bg-paper/55">
               <div className="mx-6 flex max-w-sm flex-col items-center gap-3 rounded-[18px] bg-raised px-6 py-5 text-center shadow-[var(--e2)]">
                 <AulaMark size={34} state="thinking" />
@@ -270,7 +306,8 @@ function Panel() {
           <span className="t-ui text-text2">{mine ? t(state.purpose === 'signin' ? 'live.signInHint' : 'live.yourTurn') : t('live.aulaTurn')}</span>
           <div className="flex items-center gap-2">
             {mine && state.purpose === 'signin' && <Button variant="primary" loading={busy === 'confirm'} onClick={() => void act('confirm')}>{t('live.confirmSignIn')}</Button>}
-            {mine && state.purpose !== 'signin' && <Button variant="primary" loading={busy === 'give'} icon={<Icon name="eye" size={14} />} onClick={() => void act('give')}>{t('live.give')}</Button>}
+            {/* (una página que este dispositivo no puede ver tampoco se le pasa a Aula desde aquí) */}
+            {mine && !offLimits && state.purpose !== 'signin' && <Button variant="primary" loading={busy === 'give'} icon={<Icon name="eye" size={14} />} onClick={() => void act('give')}>{t('live.give')}</Button>}
             {!mine && <Button variant="primary" loading={busy === 'take'} icon={<Icon name="hand" size={14} />} onClick={() => void act('take')}>{t('live.take')}</Button>}
           </div>
         </div>

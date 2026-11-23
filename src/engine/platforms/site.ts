@@ -33,8 +33,15 @@ const US_LOCALITY = new Set(['k12', 'cc', 'lib', 'tec', 'gen', 'state', 'dst', '
 const SHARED_HOSTING = new Set([
   'moodlecloud.com', 'gnomio.com', 'mrooms.net', 'mrooms3.net', 'github.io', 'gitlab.io', 'herokuapp.com', 'azurewebsites.net',
   'cloudfront.net', 'amazonaws.com', 'appspot.com', 'web.app', 'firebaseapp.com', 'netlify.app', 'vercel.app', 'pages.dev',
-  'onrender.com', 'ngrok.io', 'ngrok-free.app', 'trycloudflare.com', 'blogspot.com', 'wordpress.com', 'wixsite.com'
+  'onrender.com', 'ngrok.io', 'ngrok-free.app', 'trycloudflare.com', 'blogspot.com', 'wordpress.com', 'wixsite.com',
+  'workers.dev', 'neocities.org', 'glitch.me', 'surge.sh', 'deno.dev', 'replit.app', 'replit.dev', 'fly.dev'
 ])
+
+/** ¿El host está en un alojamiento compartido (netlify.app, github.io…), donde cualquiera elige su nombre? */
+export function isSharedHosting(host: string): boolean {
+  const labels = (host ?? '').trim().toLowerCase().replace(/\.$/, '').split('.')
+  return labels.length > 2 && SHARED_HOSTING.has(labels.slice(-2).join('.'))
+}
 
 function isIPHost(h: string): boolean {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.includes(':') || h.startsWith('[')

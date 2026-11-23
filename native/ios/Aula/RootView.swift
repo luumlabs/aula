@@ -125,6 +125,8 @@ struct ConnectView: View {
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: art)
         .confirmationDialog(Texts.signOut, isPresented: Binding(get: { model.askingSignOut }, set: { model.askingSignOut = $0 }), titleVisibility: .visible) {
             Button(Texts.signOut, role: .destructive) { Task { await model.signOut() } }
+            // la cuenta la crea Tailscale al iniciar sesión: cómo borrarla del todo (App Store 5.1.1(v))
+            Button(Texts.deleteTailscale) { openURL(Legal.deleteTailscale) }
             Button(Texts.cancel, role: .cancel) {}
         } message: {
             Text(Texts.signOutConfirm)

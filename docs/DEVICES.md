@@ -35,7 +35,8 @@ On the Mac (`src/main/electron/remote/`, `src/main/services/remote/`):
 - **What a device may ask for** (`policy.ts`): a closed allowlist. Studying, chat, calendar, inbox, documents,
   creating courses and the daily-use settings (below) are open; API keys and secrets, the rest of the settings,
   anything that opens a dialog or window on the Mac, export/delete-everything, updates and the remote access itself
-  are refused before reaching any handler. A method that is added later stays closed until it is listed.
+  are refused before reaching any handler. A method that is added later stays closed until it is listed. `ai.consent`
+  and `ai.acceptConsent` (the AI notice, below) are open and answered by the remote server itself.
 - **Uploads** (`uploads.ts`): the device has no Mac paths. The bridge uploads the picked file and hands the app an
   `aula-upload://<id>/<name>` reference; the server swaps it for the path of the copy (in the system temp folder,
   swept after 7 days) and registers it as a file the student gave, exactly like a file dropped on the Mac window.
@@ -59,7 +60,7 @@ its interface shows.
 | **Language and reminders** | Name, language, daily reminder and its time | `general.name` (up to 80 characters), `general.language`, `general.reminders`, `general.reminderTime` (HH:mm) |
 | **Aula always on** | The switch and quiet hours | `persistent.enabled`, `persistent.quietHours` (`null` or `{ from, to }` in HH:mm) |
 | **What Aula remembers** | See, add, correct, forget one, pause | `memory.list`, `memory.status`, `memory.add`, `memory.edit`, `memory.pause`, and `memory.forget` with exactly one id |
-| **About** | The version, the legal notices and the link to the source code | `app.info` |
+| **About** | The version, the legal notices, and links to the source code, the privacy policy and the support page (they open in the device's browser) | `app.info` |
 
 A `settings.update` from a device is checked field by field against that list, each with its type and range, and
 is refused **whole** if it carries anything else (another section, another field, a wrong type): the good fields
@@ -70,6 +71,29 @@ or Claude, downloading local models, the daily spending cap, a custom AI service
 platforms**, **Aula on your devices**, **Privacy and data** (its switches, the data folder, export and delete
 everything), exporting or clearing the memory, forgetting several memories in one call, updates and automatic
 updates, "open at login" and the cursor (a touch device has none).
+
+## The AI notice (App Store guideline 5.1.2(i))
+
+Before the first call from a device that sends something to the AI (a chat message, an answer to grade, course
+material, a document request, importing a document, since a recording is transcribed, handing the live browser to
+Aula, running or turning on an automation, *Aula always on* or one of its routines that use the AI, or resuming it after
+a pause), the device shows a sheet that names who will receive it
+and why: the AI provider active on the Mac (answers) and, if it is another company, the one that transcribes recordings
+(`src/main/services/ai/recipients.ts`, names in `src/shared/ai/recipient.ts`: a preset is its company, a custom address
+is its host, OpenCode is the provider of its `provider/model`, and a model on the Mac itself names nobody). *Continue*
+sends; *Cancel* sends nothing (the chat puts the text back in the box).
+
+- **Where it is kept.** On the Mac, per device, in `Remote/devices.json` (`aiConsent`: the accepted ids). Not in the
+  device's browser storage: the app's page lives on `http://127.0.0.1:<port>` and the port changes after each
+  suspension, so `localStorage` would be lost. Removing the device in Settings forgets it. If the AI changes to a
+  company not accepted yet, the device asks again (`ai.changed` makes it look again).
+- **Who enforces it.** The Mac: the remote server refuses any AI-bound call from a device that has not accepted the
+  current recipients with the error `ai_consent` (with the recipients in its details) before any handler runs
+  (`src/main/services/remote/ai-consent.ts`); the interface catches it, shows the sheet and retries once. The list of
+  methods is one, shared by both sides: `src/shared/ai/consent.ts`. The Mac's own window never shows it.
+- **In the demo** there is no Mac: the sheet says that the demo sends nothing and that, with a Mac, Aula asks here
+  first, with the same privacy policy link. Its answer lives only in memory.
+- **Cancel is not a failure.** Nothing was sent, so no screen shows it as an error (`toast.error` skips that message).
 
 ## Aula's browser, live
 
@@ -89,6 +113,35 @@ it: a hidden window on the Mac is shown picture by picture and taps, scrolling a
   (`controlId`) is refused too.
 - The page takes the size of whoever is looking (a phone gets the phone layout). Pictures are produced only while
   somebody watches; the window closes by itself after 20 idle minutes and the session stays saved.
+- **From a device, only the student's platforms.** While a device drives the window (opens it, taps, types, goes back
+  or forward) it only opens the student's platforms (their host, the platform's cloud and file hosts, and the other hosts
+  of a self-hosted platform's own site, such as the university's SSO) and sign-in pages (Microsoft, Google, Apple, Okta,
+  Shibboleth, CAS, ADFS, academic federations). Asked for by the device itself, only the account's own host, the
+  platform's fixed hosts (`classroom.google.com`, `teams.microsoft.com`…), a self-hosted platform's site and the listed
+  providers; another tenant of the platform's cloud or its file hosts (`*.instructure.com`, `*.sharepoint.com`,
+  `*.googleusercontent.com`; a self-hosted Moodle never gets MoodleCloud), a provider's tenant (`x.okta.com`) or what
+  only looks like a sign-in step by its host or its path (`sso.uni.edu`, `/idp/…`, Keycloak's `/realms/…/login-actions/`,
+  never on shared hosting such as `netlify.app` or `workers.dev`, nor by the path on a general portal) only when the page
+  itself leads there; so do the Microsoft Forms and Google Forms links Teams and Classroom post, and the site of a course
+  tool the platform launches in the whole window (an LTI launch from Moodle's `mod/lti/launch.php`, Canvas's
+  `external_tools`, Brightspace or Blackboard: the tool's sign-in, its return through the platform and its own site).
+  edX is one organisation, so an `edx.org` account opens all of `edx.org`. Anything else is not opened: the page stays
+  where it was and the device says why (back and forward work as usual when every entry they could land on may be
+  shown; otherwise they go to exactly the nearest entry that may). What the device sees follows the same rule: a page it could ask for itself, or one of those
+  "only when the page leads there" steps reached by a link, form, redirect or pop-up from a page it could already see
+  (its origin is remembered for that window). A page opened from the computer or by Aula (the chat's
+  `student_browser_show`) that the device could not ask for itself is not shown on the device (no pictures, no input),
+  even if it looks like a sign-in page, and a page Aula puts in front of the student hands the window back to the
+  computer until the device touches it again; the tool tells the AI when that happens (only when there are linked
+  devices: without them the Mac's chat is unchanged). Frames inside the page: their
+  first load (a video, a course tool the page embeds), what a page the device can see starts in them (an LTI launch,
+  with forms between the frame, the platform and the tool), navigation within the frame's own site, going back to a
+  site a frame of that page already reached (the tool after its sign-in) and sign-in steps all work; a link or redirect
+  from someone else's frame to another site is not opened, also from a blank or `srcdoc` document that frame writes
+  (it is judged as the frame that holds it), and a frame is judged by what it has loaded, never by the empty frame
+  Chromium prepares for a jump (`tests/e2e/device-live-frames.e2e.ts`). (A frame's first load is not checked, so a page that embeds
+  an arbitrary site shows that one site.) On the computer nothing changes (if the last one to drive was a device, the
+  computer says what was not opened and a click on the page takes over). Rule: `src/engine/live/reach.ts`.
 - This computer and the local network are not reachable from the live window (the platform session blocks them on every
   request), except a platform that itself lives on the local network.
 
@@ -248,6 +301,8 @@ Ready in the project:
   them. They name the folders the framework was built in, but only reach Apple inside the archive: the framework in
   the app is stripped.
 - Tailscale's sign-in inside the app, and *Privacy policy · Licenses* on every waiting screen.
+- The AI notice before the first thing a device sends to the AI (above), also in the demo, which must be recorded
+  again after it changes (`Demo.aulademo` carries the interface; `app-store-check.mjs` looks for it).
 - Permission texts in English and Spanish (camera, microphone, local network), the app icon without transparency, a
   launch screen, all orientations on iPad.
 

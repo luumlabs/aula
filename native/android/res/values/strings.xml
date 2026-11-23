@@ -20,6 +20,8 @@
     <string name="failed_title">The private network won’t start</string>
     <string name="retry">Try again</string>
     <string name="sign_out">Sign out of Tailscale</string>
+    <string name="delete_tailscale">How to delete your Tailscale account</string>
+    <string name="delete_tailscale_url" formatted="false">https://tailscale.com/docs/account/delete-tailnet</string>
     <string name="sign_out_confirm">This device will leave your private network. Your courses stay where your Aula is.</string>
     <string name="cancel">Cancel</string>
     <string name="get_aula">Don’t have Aula yet?</string>

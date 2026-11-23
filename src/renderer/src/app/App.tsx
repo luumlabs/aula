@@ -28,6 +28,7 @@ import { useBuiltinCommands } from './shell/commands'
 import { AppCommands } from './shell/AppCommands'
 import { AchievementToast } from './shell/AchievementToast'
 import { Approvals } from './shell/Approvals'
+import { AIConsentDialog } from './shell/AIConsent'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FloatingTools } from '@renderer/tools/floating'
 import { Onboarding } from '@renderer/screens/onboarding'
@@ -119,6 +120,8 @@ export function App() {
       <CommandPalette />
       <LivePanel />
       <Approvals />
+      {/* el aviso de la IA de terceros: solo en un dispositivo (lib/aiConsent.ts) */}
+      {remote && <AIConsentDialog />}
       <AchievementToast />
       <Toaster />
       {!remote && <AppCursor />}

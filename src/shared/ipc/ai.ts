@@ -3,6 +3,7 @@
 import type { RpcErrorInfo } from './contract'
 import type { AIChatDone, AICostsView, AIProviderView, AIStatus, AITestResult, ModelCatalogView } from '../ai/views'
 import type { ChatMessage } from '../ai/types'
+import type { AIRecipient } from '../ai/recipient'
 
 /** Para qué se usa (atribución del coste). */
 export type AIChatPurpose = 'chat' | 'tutor' | 'course' | 'automation' | 'grading' | 'memory' | 'documents' | 'other'
@@ -61,6 +62,13 @@ export interface AIErrorEvent {
   error: RpcErrorInfo
 }
 
+/** El aviso de la IA de terceros de un dispositivo (shared/ai/consent.ts). `recipients` vacío: no sale nada (un modelo en el
+ *  propio Mac, la IA simulada o ninguna lista). */
+export interface AIConsentState {
+  needed: boolean
+  recipients: AIRecipient[]
+}
+
 declare module './contract' {
   interface RpcMethods {
     /** Proveedor y modelo que se usan ahora, y si hay alguna IA lista. */
@@ -86,6 +94,11 @@ declare module './contract' {
     'ai.chatStream': { args: AIChatStreamArgs; result: { requestId: string } }
     /** Cancela una respuesta en curso (llega 'ai.done' con `cancelled: true`). */
     'ai.cancel': { args: { requestId: string }; result: { cancelled: boolean } }
+    // solo desde un dispositivo: lo contesta el servidor remoto (remote/ai-consent.ts); la ventana no lo usa
+    /** A quién mandaría Aula los datos ahora y si este dispositivo ya lo aceptó. */
+    'ai.consent': { args: void; result: AIConsentState }
+    /** El estudiante acepta el aviso con esos destinatarios (los de ahora, o rechaza con 'ai_consent'). */
+    'ai.acceptConsent': { args: { ids: string[] }; result: AIConsentState }
   }
   interface RpcEvents {
     'ai.delta': AIDeltaEvent

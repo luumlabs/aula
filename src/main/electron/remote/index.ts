@@ -16,6 +16,7 @@ import { userFiles } from '@main/services/userFiles'
 import { writeFileAtomic } from '@main/services/fs'
 import { paths } from '@main/services/paths'
 import { log } from '@main/services/log'
+import { currentAIRecipients } from '@main/services/ai/recipients'
 import { rendererRoot } from '../protocol'
 import { emit } from '../rpc'
 import { RemoteServer } from './server'
@@ -54,6 +55,8 @@ class RemoteAccess {
     devices: this.devices, uploads: this.uploads, rendererRoot: rendererRoot(), icon: join(__dirname, '../../resources/icon.png'), language: () => aiLocale(), version: app.getVersion(), proxyKey: this.proxyKey,
     cookieName: `aula_device_${installId(this.dir)}`,
     host: this.headless ? 'server' : 'mac',
+    // el aviso de la IA de terceros en los dispositivos (guía 5.1.2(i))
+    aiRecipients: () => currentAIRecipients(),
     ...(this.headless ? { admin: { token: this.adminToken, status: () => this.status(), link: (owner: boolean) => this.consoleLink(owner) } } : {}),
     onChange: () => { if (!this.devices.pairingOpen()) this.pairing = undefined; this.changed() }
   })
@@ -147,6 +150,13 @@ class RemoteAccess {
   tailnetLogout(): RemoteStatus {
     this.tailnet.logout()
     return this.status()
+  }
+
+  /** Dónde se ve el navegador en vivo de Aula: solo en el ordenador (sin dispositivos vinculados), también en sus
+   *  dispositivos, o solo en ellos (Aula como servidor). */
+  liveScreens(): 'computer' | 'devices' | 'server' {
+    if (this.headless) return 'server'
+    return this.devices.list().length ? 'devices' : 'computer'
   }
 
   status(): RemoteStatus {

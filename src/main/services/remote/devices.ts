@@ -12,6 +12,7 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { writeFileAtomic } from '../fs'
+import { mergeAccepted } from '@shared/ai/consent'
 
 export interface RemoteDevice {
   id: string
@@ -25,9 +26,19 @@ export interface RemoteDevice {
   tokenHash: string
   created: string
   lastSeen: string
+  /** IA de terceros que el estudiante aceptó desde este dispositivo (aviso de la guía 5.1.2(i): remote/ai-consent.ts). */
+  aiConsent?: { ids: string[]; at: string }
 }
 
-export type RemoteDeviceView = Omit<RemoteDevice, 'tokenHash'>
+export type RemoteDeviceView = Omit<RemoteDevice, 'tokenHash' | 'aiConsent'>
+
+/** Lo aceptado tal como se guardó (de devices.json: se comprueba la forma), o undefined. */
+function readConsent(v: unknown): RemoteDevice['aiConsent'] {
+  const o = v as { ids?: unknown; at?: unknown } | null | undefined
+  if (!o || typeof o.at !== 'string' || !Array.isArray(o.ids) || o.ids.length > 20) return undefined
+  if (!o.ids.every((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 120)) return undefined
+  return { ids: [...o.ids], at: o.at }
+}
 
 export const PAIRING_MINUTES = 10
 export const TOKEN_DAYS = 90
@@ -65,8 +76,9 @@ export class DeviceRegistry {
       if (!Array.isArray(raw.devices)) return
       this.devices = raw.devices.flatMap((d): RemoteDevice[] => {
         const o = d as Partial<RemoteDevice>
+        const consent = readConsent(o?.aiConsent)
         return typeof o?.id === 'string' && typeof o.tokenHash === 'string' && typeof o.name === 'string'
-          ? [{ id: o.id, name: o.name, platform: typeof o.platform === 'string' ? o.platform : 'web', tokenHash: o.tokenHash, created: o.created ?? new Date(0).toISOString(), lastSeen: o.lastSeen ?? new Date(0).toISOString(), ...(o.owner === true ? { owner: true } : {}) }]
+          ? [{ id: o.id, name: o.name, platform: typeof o.platform === 'string' ? o.platform : 'web', tokenHash: o.tokenHash, created: o.created ?? new Date(0).toISOString(), lastSeen: o.lastSeen ?? new Date(0).toISOString(), ...(o.owner === true ? { owner: true } : {}), ...(consent ? { aiConsent: consent } : {}) }]
           : []
       })
     } catch { this.devices = [] }
@@ -174,6 +186,22 @@ export class DeviceRegistry {
 
   list(): RemoteDeviceView[] {
     return this.devices.map(view)
+  }
+
+  /** Las IA de terceros que se aceptaron desde este dispositivo ([] si ninguna, o si ya no vale). */
+  aiConsent(id: string): string[] {
+    const device = this.devices.find((d) => d.id === id)
+    return device && !this.expired(device) ? [...(device.aiConsent?.ids ?? [])] : []
+  }
+
+  /** El estudiante aceptó el aviso con estas IA: se suman a las de antes. False si el dispositivo ya no está. */
+  acceptAI(id: string, ids: readonly string[], now = this.now()): boolean {
+    const device = this.devices.find((d) => d.id === id)
+    if (!device) return false
+    device.aiConsent = { ids: mergeAccepted(device.aiConsent?.ids ?? [], ids), at: new Date(now).toISOString() }
+    // si no se puede guardar, vale lo de memoria mientras Aula siga en marcha
+    try { this.save() } catch { /* sin disco */ }
+    return true
   }
 
   revoke(id: string): boolean {

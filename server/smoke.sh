@@ -88,8 +88,10 @@ rpc '{"method":"data.deleteAll"}' | grep -q '"code":"forbidden"' || fail "borrar
 inside curl -fsS -b /tmp/jar "http://127.0.0.1:$port/" | grep -q '<meta name="aula-device" content="owner">' || fail "la interfaz no sabe que es propietario"
 ok "el propietario guarda una clave, da códigos y se le niega lo del servidor"
 
-# 5. las ventanas escondidas funcionan en la pantalla virtual: el navegador de Aula en vivo pinta una página
-live=$(rpc '{"method":"live.open","args":{"url":"https://example.com","purpose":"browse"}}')
+# 5. las ventanas escondidas funcionan en la pantalla virtual: el navegador de Aula en vivo pinta una página. Desde un
+#    dispositivo solo abre las plataformas y sus inicios de sesión (App Store): una web cualquiera se niega
+rpc '{"method":"live.open","args":{"url":"https://example.com","purpose":"browse"}}' | grep -q '"code":"off_limits"' || fail "el navegador en vivo abrió una web cualquiera desde un dispositivo"
+live=$(rpc '{"method":"live.open","args":{"url":"https://accounts.google.com/signin","purpose":"browse"}}')
 id=$(printf '%s' "$live" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
 [ -n "$id" ] || fail "no se abrió el navegador en vivo: $live"
 frame=''
@@ -101,7 +103,7 @@ done
 printf '%s' "$frame" | grep -q '"mime":"image/jpeg","data":"/9j/' || fail "el navegador en vivo no dio ninguna imagen"
 [ "${#frame}" -gt 4000 ] || fail "la imagen del navegador en vivo es demasiado pequeña"
 rpc "{\"method\":\"live.close\",\"args\":{\"id\":\"$id\"}}" >/dev/null
-ok "el navegador de Aula en vivo pinta páginas en la pantalla virtual (${#frame} bytes)"
+ok "el navegador de Aula en vivo pinta páginas en la pantalla virtual (${#frame} bytes) y niega las webs ajenas desde un dispositivo"
 
 # 6. sigue sano y se para en orden
 [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = true ] || fail "el contenedor se paró"

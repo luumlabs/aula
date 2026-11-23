@@ -660,6 +660,8 @@ public final class MainActivity extends Activity {
             .setTitle(R.string.sign_out)
             .setMessage(R.string.sign_out_confirm)
             .setNegativeButton(R.string.cancel, null)
+            // la cuenta la crea Tailscale al iniciar sesión: cómo borrarla del todo
+            .setNeutralButton(R.string.delete_tailscale, (d, w) -> openOutside(Uri.parse(getString(R.string.delete_tailscale_url))))
             .setPositiveButton(R.string.sign_out, (d, w) -> {
                 tailnet.logout();
                 lostTunnel();

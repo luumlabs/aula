@@ -9,9 +9,22 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 - **Save a chart as PNG** from its desktop export menu. Bar, line, area, pie, scatter and histogram charts keep
   their current layout, axes, values, legends and hover readout, including painted overflow. Entrance animations
   appear complete in the image while the live chart continues normally.
+- **On a phone or tablet, Aula asks once before sending anything to a third-party AI**, naming the company that will
+  receive it (for example Anthropic for answers and OpenAI for transcribing recordings). Your Mac enforces it too: a
+  device that hasn't accepted can't start a chat, a course or an AI routine. It asks again if you switch to another
+  company, and a model that runs on your own computer needs no notice.
+- **Settings → About links to the privacy policy and to help**, on the computer and on your devices.
+
+### Changed
+- **From a phone or tablet, Aula's live browser opens only your study platforms and their sign-in pages.** Other
+  websites, and pages the assistant opens elsewhere, stay on the computer; the device explains why and offers to go
+  back to your platform. Embedded tools (LTI) and single sign-on keep working. On the computer nothing changes.
+- **The iPhone, iPad and Android apps link to Tailscale's instructions for deleting your Tailscale account** from
+  *Sign out of Tailscale*.
 
 ### Fixed
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
+- **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
 
 ### Mac signing
 - **The Mac `.dmg` download is now signed and notarized by Apple too**, not just the app inside it, so macOS can check

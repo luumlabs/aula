@@ -169,6 +169,8 @@ async function tour(tag) {
   if (tag === 'wide' && (await box.count())) {
     await box.fill('Give me a quick quiz')
     await box.press('Enter')
+    // el aviso de la IA de terceros (en la demostración, el suyo): se continúa, como haría quien la prueba
+    await page.locator('[data-ai-consent="accept"]').click({ timeout: 4000 }).catch(() => undefined)
     await page.waitForSelector('[data-studyset="quiz"]', { timeout: 30000 }).catch(() => undefined)
     await page.waitForTimeout(3000)
     await snap(`${tag}-chat`)

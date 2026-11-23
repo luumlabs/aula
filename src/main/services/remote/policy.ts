@@ -13,8 +13,9 @@ import { COURSE_LANGUAGE_CHOICES } from '@shared/settings/courseLanguage'
 // («live»: el navegador de Aula en vivo, para iniciar sesión o hacer una tarea desde el dispositivo)
 const DOMAINS_OPEN: ReadonlySet<string> = new Set(['achievements', 'automations', 'chat', 'course', 'generation', 'history', 'home', 'live', 'progress', 'search', 'stats', 'study'])
 
+// («ai.consent», «ai.acceptConsent»: el aviso de la IA de terceros; los contesta el propio servidor remoto: remote/ai-consent.ts)
 const METHODS_OPEN: ReadonlySet<string> = new Set([
-  'ai.status', 'ai.costs', 'ai.cancel', 'ai.choices', 'ai.models',
+  'ai.status', 'ai.costs', 'ai.cancel', 'ai.choices', 'ai.models', 'ai.consent', 'ai.acceptConsent',
   'app.info',
   'calendar.add', 'calendar.delete', 'calendar.get', 'calendar.link', 'calendar.list', 'calendar.quickAdd', 'calendar.refreshFeeds', 'calendar.reminders',
   'calendar.search', 'calendar.snapshot', 'calendar.subscriptions', 'calendar.toggleTask', 'calendar.upcomingExams', 'calendar.update',

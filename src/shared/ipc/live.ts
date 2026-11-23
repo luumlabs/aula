@@ -12,7 +12,8 @@ declare module './contract' {
     'live.frame': { args: { id: string; after?: number; maxWidth?: number }; result: LiveFrame | null }
     /** Toques, rueda, texto y teclas del estudiante (solo con su turno y su `controlId`). */
     'live.input': { args: { id: string; controlId: string; events: LiveInput[] }; result: { applied: number } }
-    'live.navigate': { args: { id: string; controlId: string; action?: 'back' | 'forward' | 'reload'; url?: string }; result: LiveState }
+    /** Atrás, adelante, recargar o 'home' (el inicio de la plataforma de la ventana); o ir a `url`. */
+    'live.navigate': { args: { id: string; controlId: string; action?: 'back' | 'forward' | 'reload' | 'home'; url?: string }; result: LiveState }
     /** Ajusta la página al tamaño de quien la mira (un teléfono, una tableta). */
     'live.viewport': { args: { id: string; width: number; height: number }; result: LiveState }
     /** El estudiante toma el turno. */

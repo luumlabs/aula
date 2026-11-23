@@ -1,5 +1,6 @@
 // A6-P1-4: Ajustes → Acerca de enseña los avisos legales de la AGPL (copyright, que es software libre sin garantía, cómo
-// ver la licencia y dónde está el código de esta versión), en inglés y en español. No se pulsan los enlaces: abrirían
+// ver la licencia y dónde está el código de esta versión) y, por la guía 5.1.1(i) del App Store, la política de privacidad
+// y la ayuda, en inglés y en español. No se pulsan los enlaces: abrirían
 // programas del sistema; el proceso principal sí rechaza cualquier documento que no sea uno de los dos.
 import { test, expect } from 'playwright/test'
 import { mkdtempSync, writeFileSync } from 'node:fs'
@@ -14,8 +15,8 @@ function homeIn(language: 'en' | 'es'): string {
 }
 
 const TEXTS = {
-  en: { license: /Free software: you can share and change it under the GNU AGPL v3\. It comes with absolutely no warranty\./, links: ['License', 'Source code', 'Third-party licenses'] },
-  es: { license: /Software libre: puedes compartirlo y modificarlo con la licencia GNU AGPL v3\. No tiene ninguna garantía\./, links: ['Licencia', 'Código fuente', 'Licencias de terceros'] }
+  en: { license: /Free software: you can share and change it under the GNU AGPL v3\. It comes with absolutely no warranty\./, links: ['License', 'Source code', 'Third-party licenses', 'Privacy policy', 'Help and support'] },
+  es: { license: /Software libre: puedes compartirlo y modificarlo con la licencia GNU AGPL v3\. No tiene ninguna garantía\./, links: ['Licencia', 'Código fuente', 'Licencias de terceros', 'Política de privacidad', 'Ayuda y soporte'] }
 } as const
 
 for (const lang of ['en', 'es'] as const) {
@@ -32,6 +33,10 @@ for (const lang of ['en', 'es'] as const) {
       const refused = (await page.evaluate(`window.aula.invoke('app.openLicenses', { which: '../../etc/passwd' })`)) as { ok: boolean; error?: { message: string } }
       expect(refused.ok).toBe(false)
       expect(refused.error?.message).toMatch(/Aviso legal no válido/)
+      // y fuera solo se abren enlaces web
+      const script = (await page.evaluate(`window.aula.invoke('app.openExternal', { url: 'javascript:alert(1)' })`)) as { ok: boolean; error?: { message: string } }
+      expect(script.ok).toBe(false)
+      expect(script.error?.message).toMatch(/Solo se abren enlaces web/)
     } finally {
       await app.close()
     }

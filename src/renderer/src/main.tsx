@@ -6,11 +6,14 @@ import { App } from './app/App'
 import { setIconResolver } from './design/pixel/resolve'
 import { CourseIconCatalog } from '@shared/schema/courseIcons'
 import { installPowerPolicy } from './lib/power'
+import { installAIConsent } from './lib/aiConsent'
 
 // Iconos de cursos antiguos o inventados por la IA → el pixel-art del catálogo (por asignatura y título)
 setIconResolver((icon, hint) => CourseIconCatalog.resolve(icon, hint))
 // lo ambiental se queda quieto cuando la ventana no se ve o nadie la usa (J4-1)
 installPowerPolicy()
+// en un dispositivo, nada va a la IA sin el aviso de la IA de terceros (antes de pintar ninguna pantalla)
+installAIConsent()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

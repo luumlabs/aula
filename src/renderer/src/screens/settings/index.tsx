@@ -18,6 +18,7 @@ import { useSettings } from '@renderer/lib/settings'
 import { useRpc } from '@renderer/lib/useRpc'
 import { useUpdateState } from '@renderer/lib/updates'
 import { api } from '@renderer/lib/api'
+import { isDemo } from '@renderer/lib/demo'
 import { AIPicker } from './AIPicker'
 import { AIChoices } from './AIChoices'
 import { PlatformsSection } from './Platforms'
@@ -29,7 +30,7 @@ import type { AppSettings } from '@shared/settings'
 import type { SettingsSection } from '@shared/settings/sections'
 import { resolveCourseLanguage } from '@shared/settings/courseLanguage'
 import { CourseLanguages } from '@engine/base/language'
-import { sourceCodeURL, type LegalDoc } from '@shared/legal'
+import { publicDocURL, sourceCodeURL, type LegalDoc } from '@shared/legal'
 
 type Upd = ReturnType<typeof useSettings.getState>['update']
 
@@ -396,7 +397,7 @@ const appBridge = (): { switchAula?: () => void } | undefined => (window as { au
 const openLegal = (which: LegalDoc) => void api.invoke('app.openLicenses', { which }).catch(() => undefined)
 const openURL = (url: string) => void api.invoke('app.openExternal', { url }).catch(() => undefined)
 
-function AboutLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+function AboutLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" className="relative touch-target t-ui text-accent-text hover:underline" onClick={onClick}>
       {children}
@@ -404,8 +405,21 @@ function AboutLink({ onClick, children }: { onClick: () => void; children: React
   )
 }
 
+/** Una página web: en un dispositivo, un enlace de verdad que abre su navegador (iOS: WebView.swift createWebViewWith;
+ *  Android: shouldOverrideUrlLoading); en el Mac, shell.openExternal (solo http(s)). */
+function AboutWebLink({ url, children }: { url: string; children: ReactNode }) {
+  if (api.remote) {
+    return (
+      <a className="relative touch-target t-ui text-accent-text hover:underline" href={url} target="_blank" rel="noreferrer">
+        {children}
+      </a>
+    )
+  }
+  return <AboutLink onClick={() => openURL(url)}>{children}</AboutLink>
+}
+
 function AboutSection({ s, update }: { s: AppSettings; update: Upd }) {
-  const { t } = useTranslation('settings')
+  const { t, i18n } = useTranslation('settings')
   const { data: info } = useRpc('app.info', undefined)
   const upd = useUpdateState()
   const [asked, setAsked] = useState(false)
@@ -413,6 +427,8 @@ function AboutSection({ s, update }: { s: AppSettings; update: Upd }) {
   // desde un dispositivo: la versión y los avisos legales; las actualizaciones (y lo que abre ventanas) son del Mac (o del
   // servidor, que se actualiza con su imagen)
   const remote = api.remote
+  const privacyURL = publicDocURL('privacy', i18n.language)
+  const supportURL = publicDocURL('support', i18n.language)
   return (
     <Section title={t('about.title')} rule={false}>
       <div className="flex items-center justify-between gap-4">
@@ -433,25 +449,28 @@ function AboutSection({ s, update }: { s: AppSettings; update: Upd }) {
         </>
       )}
       {api.owner && info?.secretProtection === 'basic' && <div className="t-footnote text-text3 mt-3">{t('about.noKeyringServer')}</div>}
-      {/* avisos legales de la AGPL (§0, §5(d)): copyright, sin garantía, la licencia y el código de esta versión */}
+      {/* avisos legales de la AGPL (§0, §5(d)) y, para todos (App Store 5.1.1(i)), la política de privacidad y la ayuda */}
       <div className="mt-4 flex flex-col items-start gap-0.5 min-w-0" data-testid="about-legal">
         <span className="t-footnote text-text3">{t('about.copyright')}</span>
         <span className="t-footnote text-text3">{t('about.license')}</span>
         {remote ? (
           <span className="flex flex-wrap items-center gap-x-3">
-            {/* un enlace de verdad: se abre en el dispositivo, no en el Mac */}
-            <a className="relative touch-target t-ui text-accent-text hover:underline" href={sourceCodeURL(current)} target="_blank" rel="noreferrer">
-              {t('about.source')}
-            </a>
-            {/* la app del iPhone, el iPad o Android: con más de una Aula en la red (un Mac y un servidor), abrir otra */}
-            {appBridge()?.switchAula && <AboutLink onClick={() => appBridge()?.switchAula?.()}>{t('about.switchAula')}</AboutLink>}
+            {/* enlaces de verdad: se abren en el dispositivo, no en el Mac */}
+            <AboutWebLink url={sourceCodeURL(current)}>{t('about.source')}</AboutWebLink>
+            <AboutWebLink url={privacyURL}>{t('about.privacy')}</AboutWebLink>
+            <AboutWebLink url={supportURL}>{t('about.help')}</AboutWebLink>
+            {/* la app del iPhone, el iPad o Android: con más de una Aula en la red (un Mac y un servidor), abrir otra; en la
+                demostración no hay otra (la app no hace nada) */}
+            {appBridge()?.switchAula && !isDemo() && <AboutLink onClick={() => appBridge()?.switchAula?.()}>{t('about.switchAula')}</AboutLink>}
           </span>
         ) : (
           <span className="flex flex-wrap items-center gap-x-3">
             <AboutLink onClick={() => openLegal('aula')}>{t('about.licenseText')}</AboutLink>
-            <AboutLink onClick={() => openURL(sourceCodeURL(current))}>{t('about.source')}</AboutLink>
+            <AboutWebLink url={sourceCodeURL(current)}>{t('about.source')}</AboutWebLink>
             <AboutLink onClick={() => openLegal('third-party')}>{t('about.licenses')}</AboutLink>
-            <AboutLink onClick={() => openURL(SPONSORS_URL)}>{t('about.support')}</AboutLink>
+            <AboutWebLink url={privacyURL}>{t('about.privacy')}</AboutWebLink>
+            <AboutWebLink url={supportURL}>{t('about.help')}</AboutWebLink>
+            <AboutWebLink url={SPONSORS_URL}>{t('about.support')}</AboutWebLink>
           </span>
         )}
       </div>

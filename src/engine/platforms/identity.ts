@@ -12,16 +12,28 @@ const IDENTITY_HOSTS = [
 /** Primeras etiquetas del host típicas de un servidor de identidad propio (sso.uni.edu, idp.uni.edu, cas.uni.edu…). */
 const IDENTITY_PREFIXES = ['sso', 'idp', 'cas', 'shibboleth', 'shib', 'adfs', 'fs', 'sts', 'login', 'auth', 'weblogin', 'websso', 'wayf', 'signin', 'secure-login', 'identity', 'iam', 'accounts', 'passport']
 
-/** ¿Es el host de un proveedor de inicio de sesión único (Microsoft, Google, Okta, Shibboleth, CAS, ADFS…)? */
-export function isIdentityHost(host: string): boolean {
+/**
+ * ¿Es uno de los proveedores de identidad de la lista, sin mirar el nombre del host? Con `exact`, solo los hosts exactos (no
+ * los dominios de inquilinos como `*.okta.com`, donde cualquiera puede abrir uno).
+ */
+export function isListedIdentityHost(host: string, exact = false): boolean {
   const h = host.toLowerCase()
   if (!h) return false
   for (const p of IDENTITY_HOSTS) {
     if (p.startsWith('*.')) {
+      if (exact) continue
       const base = p.slice(2)
       if (h === base || h.endsWith('.' + base)) return true
     } else if (h === p) return true
   }
+  return false
+}
+
+/** ¿Es el host de un proveedor de inicio de sesión único (Microsoft, Google, Okta, Shibboleth, CAS, ADFS…)? */
+export function isIdentityHost(host: string): boolean {
+  const h = host.toLowerCase()
+  if (!h) return false
+  if (isListedIdentityHost(h)) return true
   const first = h.split('.')[0] ?? ''
   if (h.split('.').length >= 3 && IDENTITY_PREFIXES.includes(first)) return true
   return h.includes('shibboleth') || /(^|[.-])(sso|idp|adfs)([.-]|$)/.test(h)

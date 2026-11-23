@@ -268,7 +268,9 @@
     "licenses": "Third-party licenses",
     "support": "Support Aula ♡",
     "noKeyringServer": "On this server, keys are stored unencrypted in its data folder, which only Aula can read: protect it as you would protect the server.",
-    "switchAula": "Open another Aula"
+    "switchAula": "Open another Aula",
+    "privacy": "Privacy policy",
+    "help": "Help and support"
   },
   "memory": {
     "title": "What Aula remembers",

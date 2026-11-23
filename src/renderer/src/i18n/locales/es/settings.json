@@ -268,7 +268,9 @@
     "licenses": "Licencias de terceros",
     "support": "Apoya a Aula ♡",
     "noKeyringServer": "En este servidor las claves se guardan sin cifrar en su carpeta de datos, que solo puede leer Aula: protégela como protegerías el servidor.",
-    "switchAula": "Abrir otra Aula"
+    "switchAula": "Abrir otra Aula",
+    "privacy": "Política de privacidad",
+    "help": "Ayuda y soporte"
   },
   "memory": {
     "title": "Lo que Aula recuerda",

@@ -49,12 +49,15 @@ The app is a window to the Aula on your own Mac. It has no content of its own ex
   set up: Tailscale, to connect this device to your Mac (above), and the AI provider you chose in Aula on your Mac,
   which gets what the AI needs for each task **from your Mac**, never from this app (the questions and materials you
   send from the device go to your Mac first). Each one handles that data under its own privacy policy, with the same
-  or equal protection as this policy.
+  or equal protection as this policy. Before the first question, answer or material sent from this device, the app
+  shows which AI provider your Mac will send it to and sends nothing unless you continue; your Mac remembers it for this
+  device and asks again if the provider changes (removing the device in *Settings → Aula on your devices* forgets it).
 - **Removing it, or changing your mind.** *Sign out of Tailscale*, on the app's connect screens (on a connected
   device, *Settings → Open another Aula* takes you there), signs this device out of your network and deletes its
   Tailscale state and what the interface saved on the device; deleting the app deletes everything it stored. To remove
   the device from your network for good, delete it in Tailscale's admin console (*Machines*); to delete your Tailscale
-  account, follow Tailscale's instructions. You can turn off the camera, microphone or local network at any time in
+  account, follow [Tailscale's instructions](https://tailscale.com/docs/account/delete-tailnet), also linked from
+  *Sign out of Tailscale* in the app. You can turn off the camera, microphone or local network at any time in
   the system's *Settings → Aula*, and change or remove your AI provider in Aula on your Mac (or use a model that runs
   on the Mac itself).
 - **Permissions, only when you use them.** The camera, to photograph your notes or the whiteboard as course material;
@@ -124,12 +127,16 @@ demostración.
   configuraste: Tailscale, para conectar este dispositivo con tu Mac (arriba), y el proveedor de IA que elegiste en
   Aula en tu Mac, que recibe lo que la IA necesita para cada tarea **desde tu Mac**, nunca desde esta app (las
   preguntas y los materiales que mandas desde el dispositivo van primero a tu Mac). Cada uno trata esos datos con su
-  propia política de privacidad, con una protección igual o equivalente a la de esta política.
+  propia política de privacidad, con una protección igual o equivalente a la de esta política. Antes de la primera
+  pregunta, respuesta o material que mandes desde este dispositivo, la app te dice a qué proveedor de IA lo mandará tu
+  Mac y no manda nada si no continúas; tu Mac lo recuerda para este dispositivo y te lo vuelve a preguntar si cambia el
+  proveedor (al quitar el dispositivo en *Ajustes → Aula en tus dispositivos* se olvida).
 - **Quitarlo, o cambiar de opinión.** *Cerrar sesión de Tailscale*, en las pantallas de conexión de la app (con el
   dispositivo conectado, *Ajustes → Abrir otra Aula* te lleva a ellas), saca este dispositivo de tu red y borra su
   estado de Tailscale y lo que la interfaz guardó en el dispositivo; al borrar la app se borra todo lo que guardó. Para
   quitar el dispositivo de tu red del todo, bórralo en el panel de administración de Tailscale (*Machines*); para
-  borrar tu cuenta de Tailscale, sigue las instrucciones de Tailscale. Puedes apagar la cámara, el micrófono o la red
+  borrar tu cuenta de Tailscale, sigue [las instrucciones de Tailscale](https://tailscale.com/docs/account/delete-tailnet),
+  que también enlaza *Cerrar sesión de Tailscale* en la app. Puedes apagar la cámara, el micrófono o la red
   local cuando quieras en *Ajustes → Aula* del sistema, y cambiar o quitar tu proveedor de IA en Aula en tu Mac (o
   usar un modelo que funciona en el propio Mac).
 - **Permisos, solo cuando los usas.** La cámara, para fotografiar tus apuntes o la pizarra como material del curso; el
