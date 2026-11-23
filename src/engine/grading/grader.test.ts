@@ -100,6 +100,21 @@ describe('ExerciseGrader', () => {
     expect(open.needsAI).toBe(true)
   })
 
+  it('respuesta corta de varias líneas: un salto de línea cuenta como un espacio', () => {
+    const a = '{"kind":"short","accepted":["does not exist","undefined"]}'
+    for (const ok of ['does not\nexist', 'does not\r\nexist', 'does\nnot\n\nexist', '\nundefined\n', '  undefined \n ']) expect(g(a, Input.text(ok)).status, JSON.stringify(ok)).toBe('correct')
+    expect(g(a, Input.text('does not\nexit')).status).toBe('partial') // la errata se sigue viendo
+    expect(g(a, Input.text('\n\n')).status).toBe('invalid')
+    // las ideas clave, en una lista de varias líneas
+    const keys = '{"kind":"short","accepted":[],"keywords":["osmosis","diffusion|difusión"]}'
+    expect(g(keys, Input.text('1. osmosis\n2. diffusion')).status).toBe('correct')
+    expect(g(keys, Input.text('1. osmosis\n2. nothing else')).status).toBe('partial')
+    // el error típico del autor se reconoce aunque se partiera en dos líneas
+    expect(g(a, Input.text('is\nzero'), '[{"input":"is zero","why":"Ese es el seno."}]').matchedWrong?.why).toBe('Ese es el seno.')
+    // corrección exacta (cursos de idiomas): el salto tampoco es una falta
+    expect(grade(ex('{"kind":"short","accepted":["murió ayer"]}'), Input.text('murió\nayer'), { exactText: true }).status).toBe('correct')
+  })
+
   it('el crédito de un ejercicio por apartados se pondera', () => {
     const a = '{"kind":"multi","parts":[{"label":"a","prompt":"p","answer":{"kind":"numeric","value":"2"},"points":1},{"label":"b","prompt":"q","answer":{"kind":"numeric","value":"3"},"points":3}]}'
     expect(g(a, Input.parts([Input.text('2'), Input.text('3')])).status).toBe('correct')

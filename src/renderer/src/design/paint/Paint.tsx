@@ -167,12 +167,13 @@ export function CoverBand({ seed, fill, ink, inkAlpha = 0.8 }: { seed: string | 
   )
 }
 
-/** Tachado a mano sobre algo hecho (una tarea del plan): se dibuja una vez, al quedar hecho. */
-export function InkStrike({ seed, color = 'var(--pigment-brick)', alpha = 0.85, className, children }: { seed: string | number; color?: string; alpha?: number; className?: string; children: ReactNode }) {
+/** Tachado a mano sobre algo hecho (una tarea del plan) o mal (una respuesta): se dibuja una vez, al quedar hecho.
+ *  `delay` (ms): para tachar renglón a renglón, uno detrás de otro. */
+export function InkStrike({ seed, color = 'var(--pigment-brick)', alpha = 0.85, delay = 150, className, children }: { seed: string | number; color?: string; alpha?: number; delay?: number; className?: string; children: ReactNode }) {
   return (
     <span className={cx('ink-strike', className)}>
       {children}
-      <InkBox make={(b) => strikeInk(b.w, b.h, seed)} deps={[seed]} color={color} alpha={alpha} drawKey={`strike:${seed}`} delay={150} className="ink-strike__line" />
+      <InkBox make={(b) => strikeInk(b.w, b.h, seed)} deps={[seed]} color={color} alpha={alpha} drawKey={`strike:${seed}`} delay={delay} className="ink-strike__line" />
     </span>
   )
 }
