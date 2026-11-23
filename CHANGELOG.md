@@ -25,6 +25,7 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 ### Fixed
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
 - **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
+- **A worked example no longer says "Step 0 of 3" before you open it**: it says how many steps it has.
 
 ### Mac signing
 - **The Mac `.dmg` download is now signed and notarized by Apple too**, not just the app inside it, so macOS can check
