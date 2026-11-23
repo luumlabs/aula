@@ -24,7 +24,8 @@
 
   /* ── Capturas: titular, sublínea y la interfaz real como tarjeta ── */
   .head { position: absolute; display: flex; flex-direction: column; justify-content: center; }
-  .title { margin: 0; font-family: var(--serif); font-weight: 500; color: var(--text); text-wrap: balance; }
+  /* pre-line: un «\n» del titular (partido a mano en store-copy.mjs) es un salto de línea */
+  .title { margin: 0; font-family: var(--serif); font-weight: 500; color: var(--text); text-wrap: balance; white-space: pre-line; }
   .sub { margin: 0; font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--text2); white-space: nowrap; }
   .ink-word { white-space: nowrap; position: relative; }
   .bl { display: inline-block; width: 0; height: 0; vertical-align: baseline; }
@@ -158,20 +159,27 @@
     card.appendChild(img)
     root.append(head, card)
     await ready()
+    let upscale = null
     if (s.fit) {
       // de pie (prueba en seco): la imagen cubre la tarjeta y se encuadra con `fit` (fracciones del sobrante)
       const k = Math.max(c.w / img.naturalWidth, c.h / img.naturalHeight) * (s.fit.zoom || 1)
       const w = img.naturalWidth * k, h = img.naturalHeight * k
       Object.assign(img.style, { width: px(w), height: px(h), left: px(-(w - c.w) * s.fit.x), top: px(-(h - c.h) * s.fit.y) })
     } else {
-      // del simulador: a todo el ancho, sin la barra de estado
-      const k = c.w / img.naturalWidth
+      // del simulador: la pantalla a todo el ancho sin la barra de estado, o la zona `frame` (en puntos) a todo el ancho
       const pt = img.naturalWidth / s.source.pt[0]
-      Object.assign(img.style, { width: px(c.w), top: px(-s.source.statusBar * pt * k) })
       const ratio = img.naturalHeight / img.naturalWidth, want = s.source.pt[1] / s.source.pt[0]
       if (Math.abs(ratio - want) > 0.01) warnings.push(`la captura mide ${img.naturalWidth}×${img.naturalHeight}: no es del ${s.device}`)
-      const left = img.naturalHeight * k - s.source.statusBar * pt * k
-      if (left < c.h - 0.5) warnings.push('la captura no llena la tarjeta')
+      const f = s.frame || { x: 0, y: s.source.statusBar, w: s.source.pt[0] }
+      const k = c.w / (f.w * pt)
+      Object.assign(img.style, { width: px(img.naturalWidth * k), left: px(-f.x * pt * k), top: px(-f.y * pt * k) })
+      // el borde de abajo de la tarjeta, en puntos de la pantalla
+      const bottom = f.y + c.h / (k * pt)
+      if (bottom > img.naturalHeight / pt + 0.5) warnings.push('la captura no llena la tarjeta')
+      if (s.frame && (f.x < 0 || f.x + f.w > s.source.pt[0] || f.y < s.source.statusBar)) warnings.push(`el encuadre (${f.x}, ${f.y}, ${f.w}) se sale de la pantalla o entra en la barra de estado`)
+      // cuánto se amplía cada píxel de la captura en el archivo final (más de ~1,5 empieza a verse blando)
+      upscale = k * window.devicePixelRatio
+      if (upscale > 1.5) warnings.push(`el encuadre amplía la captura ×${upscale.toFixed(2).replace('.', ',')}: puede verse blanda`)
     }
     // la sublínea en una línea: baja de medio en medio punto hasta `subMin`
     for (let f = s.type.sub[0]; sub.scrollWidth > c.w + 0.5 && f > s.type.subMin; ) { f = Math.max(s.type.subMin, f - 0.5); sub.style.fontSize = px(f) }
@@ -185,7 +193,7 @@
       Object.assign(st.style, { right: px(W - c.x - c.w + 10), bottom: px(H - c.y - c.h + 10) })
       root.appendChild(st)
     }
-    return { subSize: parseFloat(sub.style.fontSize), titleLines: n }
+    return { subSize: parseFloat(sub.style.fontSize), titleLines: n, upscale }
   }
 
   function videoRoot(v) {

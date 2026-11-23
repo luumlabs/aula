@@ -9,7 +9,7 @@ Todo lo que producen va a `docs/app-store/media/`, que git ignora.
 
 | Archivo | Qué hace |
 |---|---|
-| `store-copy.mjs` | Los textos (en y es) y las medidas: titulares de las 7 capturas, ranuras, rótulos y tiempos del guion de 27 s |
+| `store-copy.mjs` | Los textos (en y es) y las medidas: titulares de las 7 capturas (y dónde se parten a mano), el encuadre de cada captura que no va entera, ranuras, rótulos y tiempos del guion de 27 s |
 | `store-art.mjs` + `store-art.html` | `shots`: las capturas compuestas (1320×2868, 1206×2622, 2752×2064, JPEG sin alfa). `video`: la franja, los rótulos, «Sequence shortened», los toques y la cartela en PNG a tamaño de fotograma, y el EDL |
 | `preview-music.mjs` | `render`: el piano original de 27 s a −18 LUFS y ≤ −1,5 dBTP. `measure`: sonoridad y picos de un WAV o del AAC de un MP4 |
 | `app-preview.swift` | EDL → MP4: tomas colocadas con `at`, fundidos (`dissolveIn`), rótulos, 30 fps constantes, H.264 High 4.0 + AAC 256 kb/s, moov delante |

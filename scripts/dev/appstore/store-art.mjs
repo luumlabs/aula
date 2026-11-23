@@ -8,7 +8,8 @@
 //     Las 7 capturas por ranura e idioma: titular serif + sublínea en cursiva sobre papel y la interfaz real en una
 //     tarjeta. Lee <raw>/<iphone|ipad>/<lang>/0N-<nombre>.png (del simulador, con la barra de estado, que se quita) y
 //     escribe <out>/<ranura>/<lang>/0N-<nombre>.jpg (JPEG al 92 %, sin alfa, comprobado con sips) y una hoja de contacto
-//     en <out>/sheets/. Por defecto raw = docs/app-store/media/raw y out = docs/app-store/media/screenshots.
+//     en <out>/sheets/. Por defecto raw = docs/app-store/media/raw y out = docs/app-store/media/screenshots. El encuadre
+//     de cada captura (`frame`) y los titulares partidos a mano (`lines`) están en store-copy.mjs.
 //     --standins: prueba en seco con otras imágenes (p. ej. capturas de escritorio), encuadradas a mano:
 //       { "iphone": { "today": { "src": "/ruta.jpg", "x": 0.2, "y": 0, "zoom": 1 }, … }, "ipad": { … } }
 //
@@ -168,9 +169,11 @@ async function shots() {
             continue
           }
           const t = s[lang]
+          const lines = t.lines?.[slot.device]
+          if (lines && lines.join(' ') !== t.title) throw new Error(`${base}/${lang}: el titular partido (${lines.join(' | ')}) no dice lo mismo que «${t.title}»`)
           const png = join(out, '.tmp', `${slotName}-${lang}-${base}.png`)
           const jpg = join(out, slotName, lang, `${base}.jpg`)
-          const spec = { kind: 'shot', n: s.n, page: slot.page, card: slot.card, device: slot.device, source: SOURCES[slot.device], type: SHOT_TYPE[slot.device], title: t.title, sub: t.sub, ink: t.ink ?? null, image: fileUrl(src), fit: stand ? { x: stand.x ?? 0.5, y: stand.y ?? 0, zoom: stand.zoom ?? 1 } : null, stamp }
+          const spec = { kind: 'shot', n: s.n, page: slot.page, card: slot.card, device: slot.device, source: SOURCES[slot.device], type: SHOT_TYPE[slot.device], title: lines ? lines.join('\n') : t.title, sub: t.sub, ink: t.ink ?? null, image: fileUrl(src), fit: stand ? { x: stand.x ?? 0.5, y: stand.y ?? 0, zoom: stand.zoom ?? 1 } : null, frame: stand ? null : (s.frame?.[slot.device] ?? null), stamp }
           const res = await page.render(spec, W, H, slot.scale, png)
           mkdirSync(dirname(jpg), { recursive: true })
           execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '92', '-m', SRGB_ICC, png, '--out', jpg], { stdio: 'ignore' })
@@ -178,7 +181,8 @@ async function shots() {
           if (info.profile !== SRGB_NAME) throw new Error(`${jpg}: perfil «${info.profile}», hacía falta ${SRGB_NAME}`)
           items.push({ image: fileUrl(jpg), label: `${base} · ${t.title}${res.subSize !== SHOT_TYPE[slot.device].sub[0] ? ` (sublínea a ${res.subSize})` : ''}` })
           made.push(jpg)
-          console.log(`✓ ${show(jpg)} · ${W * slot.scale}×${H * slot.scale} · sin alfa`)
+          const framed = spec.frame ? ` · encuadre ×${res.upscale.toFixed(2).replace('.', ',')} sobre los píxeles de la captura` : ''
+          console.log(`✓ ${show(jpg)} · ${W * slot.scale}×${H * slot.scale} · sin alfa${framed}`)
         }
         if (items.length) {
           const sheet = join(out, 'sheets', `${slotName}-${lang}.png`)

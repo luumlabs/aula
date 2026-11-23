@@ -3,17 +3,27 @@
 // palabras, sin exclamaciones, sin mayúsculas enteras, sin «AI», «free» ni «gratis», sin precios ni fechas.
 
 /** Las 7 capturas, en el mismo orden en todos los tamaños. `ink`: la palabra que lleva el subrayado a pincel (el
- *  ladrillo sale una sola vez por imagen: en las dos primeras ya está en la interfaz). `dark`: captura en oscuro. */
+ *  ladrillo sale una sola vez por imagen: en las dos primeras ya está en la interfaz). `dark`: captura en oscuro.
+ *  `lines` (por dispositivo): el titular partido a mano, con las mismas palabras. `frame` (por dispositivo): la zona de
+ *  la captura que llena la tarjeta, en puntos de la pantalla (con la barra de estado) — `x`, `y` y el ancho `w`; el
+ *  alto sale de la proporción de la tarjeta. Sin `frame`, la pantalla entera a todo el ancho, sin la barra de estado. */
 export const SHOTS = [
   {
     n: 1,
     name: 'today',
-    en: { title: 'Your notes, turned into a course.', sub: 'Aula builds it on your Mac or server. You study it here.' },
+    en: {
+      title: 'Your notes, turned into a course.',
+      sub: 'Aula builds it on your Mac or server. You study it here.',
+      // en el iPhone, «turned into» no se separa
+      lines: { iphone: ['Your notes,', 'turned into a course.'] }
+    },
     es: { title: 'Tus apuntes, ahora un curso.', sub: 'Aula lo crea en tu Mac o servidor. Tú lo estudias aquí.' }
   },
   {
     n: 2,
     name: 'red-pen',
+    // en el iPad, de la píldora a la botonera, sin la barra lateral ni el título de la ventana (×1,31)
+    frame: { ipad: { x: 280, y: 72, w: 880 } },
     en: { title: 'Mistakes, marked in red pen.', sub: 'And a note in the margin on what to fix.' },
     es: { title: 'Los fallos, en boli rojo.', sub: 'Y al margen, qué cambiar.' }
   },
@@ -32,6 +42,8 @@ export const SHOTS = [
   {
     n: 5,
     name: 'cards',
+    // en el iPad, la píldora, el mazo, la tarjeta y la botonera con sus intervalos (×1,31)
+    frame: { ipad: { x: 280, y: 72, w: 880 } },
     en: { title: 'Cards return just before you forget.', sub: 'Flashcards and mistakes, in one queue.', ink: 'forget' },
     es: { title: 'Repasa justo antes de olvidar.', sub: 'Tarjetas y fallos, en una sola cola.', ink: 'olvidar' }
   },
