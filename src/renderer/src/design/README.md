@@ -66,6 +66,10 @@ texto» cambia la raíz y todo crece con él; lo nuevo, también en `rem`.
   thinking (el sol respira y la puerta se ilumina), working (el atardecer: un sol cruza el arco y se pone en ladrillo), done
   (salta y suelta un anillo de luz: «listo»), waiting, paused, offline. `useMarkPhase(busy)` da working → done → idle. Para
   vacíos, bienvenida y TODO lo que muestre a Aula trabajando (fuera del chat: `useAulaMarkState()` de `screens/chat/liveStatus`).
+- Código (`lib/code/CodeSurface`): la tarjeta única del código, la del bloque `code` y la de cualquier ``` de un texto
+  (`RichText`): el nombre del lenguaje, «Copiar», los colores sobrios de highlight.js (que se carga aparte y colorea al
+  acercarse a la vista), números desde 3 líneas y las líneas largas que se desplazan dentro. En un control (una opción) va
+  sin botones; el `código en línea` es una pastilla del texto.
 - Chat (`screens/chat`): `Conversation` (mensajes, «pensando» al enviar, desplazamiento que no pelea), `Activity` (una fila por
   herramienta con su icono y animación; al terminar, resumen «Consultó 3 materiales · creó 5 tarjetas»). Vista previa de todo en
   la galería (`navigate({ name: 'gallery' })`).

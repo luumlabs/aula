@@ -120,7 +120,8 @@ function arrange(b: Bus, m: Music, duration: number, rand: () => number): void {
         const pattern = [0, 1, 2, 3, 2, 1, 2, 3]
         for (let k = 0; k < 8; k++) {
           const n = notes[pattern[k] % notes.length] + (k >= 4 && i % 2 ? 12 : 0)
-          piano(b, t0 + k * (beat / 2) + (rand() - 0.5) * 0.008, n, (k % 2 ? 0.48 : 0.62) * energy + rand() * 0.05, beat * 0.9, (pattern[k] - 1.5) * 0.25)
+          // (el adelanto humano no puede caer antes del 0 si la pieza empieza con el piano)
+          piano(b, Math.max(0, t0 + k * (beat / 2) + (rand() - 0.5) * 0.008), n, (k % 2 ? 0.48 : 0.62) * energy + rand() * 0.05, beat * 0.9, (pattern[k] - 1.5) * 0.25)
         }
         piano(b, t0, notes[0] - 12, 0.55 * energy, bar * 0.95, -0.2)
         break

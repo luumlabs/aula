@@ -22,7 +22,7 @@ export const BLOCK_CATALOG = `## 5. Block catalog (JSON; \`id\` optional)
 - \`{"type":"spot","intro":"md","lines":["md line 1","md line 2","md line 3","md line 4"],"wrongIndex":2,"explanation":"md"}\` (\`wrongIndex\` starts at 0)
 - \`{"type":"tryit","title":"Try it","exerciseIDs":["skill-e1","skill-e2"]}\`
 - \`{"type":"recap","title":"optional","points":["md","md"]}\`
-- \`{"type":"code","language":"python","code":"…","output":"…","caption":"…"}\`
+- \`{"type":"code","language":"python","code":"…","output":"…","caption":"…"}\` — a program listing: highlighted by language, line numbers, copy button and the exact \`output\` in its own pane. A fenced block with its language (\`\`\`python … \`\`\`) in your text gets the same card; use the block when the code has an output. Languages and aliases: block_reference("code").
 - \`{"type":"quote","md":"…","source":{"source":"id","page":12},"author":"optional"}\`
 - Credits: every picture or model from the web carries its author and license (\`credit\`); \`add_image\` fills it for Wikimedia Commons.
 `

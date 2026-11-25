@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { AulaMark, Button, Icon, Spinner, cx, spring, useMarkPhase, useTheme } from '@renderer/design'
 import type { AssistantMessage } from '@shared/assistant/types'
 import { RichText } from '@renderer/lib/RichText'
+import { CompactCode } from '@renderer/lib/code/CodeSurface'
 import { openCourseSource } from '@renderer/screens/documents/lib'
 import { fmtTime } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -35,8 +36,12 @@ export interface MessageProps {
 }
 
 export function Message({ m, threadId, streaming, label, language, onRetry }: MessageProps) {
-  if (m.role === 'user') return <UserMessage m={m} />
-  return <AssistantReply m={m} threadId={threadId} streaming={streaming} label={label} language={language} onRetry={onRetry} />
+  // el código de los textos del chat, en tarjetas compactas (como sus bloques `code`)
+  return (
+    <CompactCode.Provider value>
+      {m.role === 'user' ? <UserMessage m={m} /> : <AssistantReply m={m} threadId={threadId} streaming={streaming} label={label} language={language} onRetry={onRetry} />}
+    </CompactCode.Provider>
+  )
 }
 
 function UserMessage({ m }: { m: AssistantMessage }) {
@@ -225,9 +230,10 @@ const StreamText = memo(function StreamText({ text, live, packId, language }: { 
     <div className={cx(revealing && 'chat-live', revealing && !pendingBlock && segs.at(-1)?.kind === 'text' && 'chat-caret')}>
       {segs.map((s, i) =>
         s.kind === 'text' ? (
-          splitParagraphs(s.text).map((p, k) => (
+          splitParagraphs(s.text).map((p, k, paras) => (
             <div key={`${i}-${k}`} className="chat-para">
-              <RichText text={p} />
+              {/* solo el último párrafo se está escribiendo: su bloque de código sin cerrar colorea las líneas que terminan */}
+              <RichText text={p} live={revealing && i === segs.length - 1 && k === paras.length - 1} />
             </div>
           ))
         ) : (
@@ -270,7 +276,9 @@ export function QueuedMessage({ m, onCancel }: { m: AssistantMessage; onCancel: 
       aria-label={t('queue.label', { text })}
     >
       <div className="max-w-[78%] rounded-[20px] rounded-br-[8px] border-[0.5px] border-dashed border-line bg-bubble/60 px-4 py-2.5 t-body text-text2">
-        <RichText text={text} own />
+        <CompactCode.Provider value>
+          <RichText text={text} own />
+        </CompactCode.Provider>
         {m.mentions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5 opacity-80">
             {m.mentions.map((r) => (

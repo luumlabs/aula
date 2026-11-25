@@ -17,6 +17,8 @@ export function ExampleBlockView({ block, ctx }: BlockProps<BlockOf<'example'>>)
   const [stored, setShown] = useBlockMemory(ctx, block.id, 'example', 0)
   const shown = print ? total : Math.min(stored, total)
   const done = shown >= total
+  // antes del primer paso no se enseña «Paso 0 de 3», sino cuántos pasos tiene
+  const progress = shown === 0 ? t('example.steps', { count: total }) : t('example.progress', { shown, total })
   const ink = inkColor(ctx.hue, dark)
   const show = (n: number) => {
     setShown(n)
@@ -27,13 +29,13 @@ export function ExampleBlockView({ block, ctx }: BlockProps<BlockOf<'example'>>)
       <div className="flex items-center gap-3 text-text2">
         <Eyebrow icon="checklist" label={t('example.eyebrow')} />
         {!print && total > 0 && (
-          <div className="ml-auto flex items-center gap-2" aria-label={t('example.progress', { shown, total })}>
+          <div className="ml-auto flex items-center gap-2" aria-label={progress}>
             <span className="flex gap-[3px]" aria-hidden>
               {block.steps.map((_, i) => (
                 <motion.span key={i} className="block h-[7px] w-[7px] rounded-[1.5px]" initial={false} animate={{ backgroundColor: i < shown ? ink : 'var(--fill3)', scale: i === shown - 1 && animate ? [1, 1.35, 1] : 1 }} transition={{ duration: 0.35 }} />
               ))}
             </span>
-            <span className="t-caption tabular text-text3">{t('example.progress', { shown, total })}</span>
+            <span className="t-caption tabular text-text3">{progress}</span>
           </div>
         )}
       </div>

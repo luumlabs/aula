@@ -4,6 +4,7 @@
 import katex from 'katex'
 import 'katex/contrib/mhchem'
 import { parseRichText, type ContentIssue, type Inline, type RichBlock } from '@shared/schema'
+import { withoutCode } from './codeFences'
 
 /** Todos los fragmentos matemáticos ($…$, $$…$$, \(…\), \[…\]) de un texto. */
 export function mathSpans(md: string): string[] {
@@ -90,10 +91,10 @@ export function texProblems(t: string, path: string): ContentIssue[] {
   return []
 }
 
-/** Problemas de LaTeX de un texto con Markdown. */
+/** Problemas de LaTeX de un texto con Markdown. Los «$» del código (```…``` y `…`: `$HOME`, `$x = 1;`) no son fórmulas. */
 export function latexIssues(md: string, path: string): ContentIssue[] {
   const issues: ContentIssue[] = []
-  const dollars = Array.from(md.split('\\$').join('')).filter((c) => c === '$').length
+  const dollars = Array.from(withoutCode(md).split('\\$').join('')).filter((c) => c === '$').length
   if (dollars % 2 === 1 && !md.includes('US$')) issues.push({ severity: 'warning', path, message: 'Cantidad impar de «$»: ¿falta cerrar una fórmula? Usa «\\$» para un signo de dinero.' })
   for (const span of mathSpans(md)) {
     const t = span.trim()

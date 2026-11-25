@@ -249,7 +249,7 @@ function FlashcardsCard({ set, ...ref }: CardRef & { set: AssistantStudySet }) {
     setIndex((i) => Math.max(0, Math.min(total - 1, i + d)))
     setFlipped(false)
   }
-  const face = 'col-start-1 row-start-1 flex min-h-[132px] flex-col gap-2 rounded-[16px] bg-sunken px-5 py-4 [backface-visibility:hidden]'
+  const face = 'col-start-1 row-start-1 flex min-h-[132px] min-w-0 flex-col gap-2 rounded-[16px] bg-sunken px-5 py-4 [backface-visibility:hidden]'
   return (
     <Card padded="sm" data-studyset="flashcards" className="pl-4" aria-label={t('flashcards.label', { title: set.title })}>
       <SetHeader

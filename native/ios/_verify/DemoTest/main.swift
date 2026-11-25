@@ -17,6 +17,14 @@ var cal = Calendar(identifier: .gregorian)
 cal.timeZone = TimeZone(identifier: "UTC")!
 check(DemoDates.days(since: "2026-11-11", now: cal.date(from: DateComponents(year: 2026, month: 12, day: 1, hour: 15))!, calendar: cal) == 20, "cuenta los días desde la grabación")
 
+// una respuesta grabada del chat como respuesta a otra pregunta: con el texto de la demostración o, con el texto vacío
+// (las capturas del App Store), con lo que contestó al grabar; siempre con otro id
+let recordedLine = #"{"event":"chat.message","payload":{"threadId":"t1","message":{"id":"m-grabado","role":"assistant","text":"Con s = rθ, el ángulo va en radianes."}}}"#
+let kept = DemoServer.asNewReply(recordedLine, id: "demo-nuevo", text: "")
+check(kept.contains("Con s = rθ, el ángulo va en radianes.") && kept.contains("\"id\":\"demo-nuevo\"") && !kept.contains("m-grabado"), "con el texto vacío se queda la respuesta grabada, con otro id")
+let replaced = DemoServer.asNewReply(recordedLine, id: "demo-nuevo", text: "Solo la demostración")
+check(replaced.contains("Solo la demostración") && !replaced.contains("radianes") && replaced.contains("\"id\":\"demo-nuevo\""), "con texto, dice el de la demostración")
+
 guard CommandLine.arguments.count > 1, let archive = DemoArchive(url: URL(fileURLWithPath: CommandLine.arguments[1])) else {
     print("FAIL  no se pudo leer el archivo de la demostración")
     exit(1)

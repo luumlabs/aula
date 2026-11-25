@@ -11,6 +11,13 @@ describe('fórmulas en el texto', () => {
     expect(normalizeMath('a \\(x^2\\) b')).toBe('a $x^2$ b')
     expect(normalizeMath('\\[ y = 2 \\]')).toBe('\n$$\ny = 2\n$$\n')
   })
+  it('no toca el código: ni un bloque ``` ni el código en línea', () => {
+    const regex = 'Con regex:\n\n```python\nre.compile(r"\\(\\d+\\)")\n```'
+    expect(normalizeMath(regex)).toBe(regex)
+    const tex = '```latex\n\\[ E = mc^2 \\]\n$$x$$\n```'
+    expect(normalizeMath(tex)).toBe(tex)
+    expect(normalizeMath('Escribe `\\(x\\)` para obtener \\(x\\).')).toBe('Escribe `\\(x\\)` para obtener $x$.')
+  })
   it('no toca el texto sin fórmulas ni los saltos \\\\[2pt]', () => {
     expect(normalizeMath('Hola, $x$.')).toBe('Hola, $x$.')
     const m = '$$\n\\begin{aligned} a \\\\[2pt] b \\end{aligned}\n$$'

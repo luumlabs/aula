@@ -224,8 +224,8 @@ export function blockReferenceFor(raw: string): { type: string; schema: string[]
 /** El detalle de un tipo de bloque (lo que dicen de él el catálogo y la guía de las lecciones), bajo demanda. */
 export function blockReferenceTool(): AgentTool {
   return tool('block_reference',
-    'The exact JSON shape of one Aula block type (as in the lessons): its schema line from the catalog and, for the visual blocks, the full reference with rules and examples. Call it before writing a block you are not sure about: labeled, model3d, structure, simulation, map (countries, values per country, journeys), timeline, process (animated diagram steps and the ready-made diagram shapes: pyramid, funnel, venn, mindmap), drawing (pictures that move or build up step by step)…',
-    Schema.object([['type', Schema.string('block type, e.g. plot, table, diagram, process, venn, timeline, labeled, model3d, simulation, map, drawing, structure')]], ['type']),
+    'The exact JSON shape of one Aula block type (as in the lessons): its schema line from the catalog and, for the visual blocks and code, the full reference with rules and examples. Call it before writing a block you are not sure about: labeled, model3d, structure, simulation, map (countries, values per country, journeys), timeline, process (animated diagram steps and the ready-made diagram shapes: pyramid, funnel, venn, mindmap), drawing (pictures that move or build up step by step), code (program listings: the languages and aliases Aula highlights, the output pane)…',
+    Schema.object([['type', Schema.string('block type, e.g. plot, table, diagram, process, venn, timeline, labeled, model3d, simulation, map, drawing, structure, code')]], ['type']),
     (a) => {
       const type = (a.string('type') ?? '').trim()
       if (!type) return outError("Missing 'type'.")

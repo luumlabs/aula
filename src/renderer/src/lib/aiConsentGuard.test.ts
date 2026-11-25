@@ -126,6 +126,19 @@ describe('el vigilante de las llamadas', () => {
     expect(await g.recover('chat.send', {}, aulaError('ai_consent'))).toBe(false)
   })
 
+  it('en la demostración de las capturas del App Store: el aviso ya visto, sin hoja', async () => {
+    const d = deps({ demo: vi.fn(() => true), demoSeen: vi.fn(() => true) })
+    await createAIConsentGuard(d).before('chat.send', {})
+    expect(d.ask).not.toHaveBeenCalled()
+    expect(d.fetch).not.toHaveBeenCalled()
+  })
+
+  it('«ya visto» no vale fuera de la demostración: con el Mac se pregunta igual', async () => {
+    const d = deps({ demoSeen: vi.fn(() => true) })
+    await createAIConsentGuard(d).before('chat.send', {})
+    expect(d.ask).toHaveBeenCalledTimes(1)
+  })
+
   it('si el Mac no contesta, deja pasar (decide su guardia)', async () => {
     const d = deps({ fetch: vi.fn(async () => { throw new Error('sin red') }) })
     await createAIConsentGuard(d).before('chat.send', {})

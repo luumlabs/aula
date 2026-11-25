@@ -69,7 +69,7 @@ identify their services.
 |---|---|---|
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` (pinned official release, checked against its SHA-256; stored in Aula's data folder) | When you choose *Free on this computer* | MIT |
 | Local AI models from Hugging Face (checked against their SHA-256) | When you choose one | Each model's own license, shown in the app before downloading |
-| [OpenAI Codex CLI](https://github.com/openai/codex) (official binary from a pinned GitHub release, checked against its SHA-256) | When you press *Connect with ChatGPT* and no Codex is installed | Apache-2.0 — NOTICE: «OpenAI Codex, Copyright 2025 OpenAI» |
+| [OpenAI Codex CLI](https://github.com/openai/codex) (OpenAI's complete official package from a pinned GitHub release, `codex-package-<system>.tar.gz`, checked against its SHA-256: Codex and the helpers it runs beside it, such as its Code Mode host and ripgrep) | When you press *Connect with ChatGPT* and no Codex is installed (or to complete one Aula installed earlier) | Apache-2.0 — NOTICE: «OpenAI Codex, Copyright 2025 OpenAI» (the helpers inside the package keep their own licenses) |
 | Tesseract language data ([tessdata](https://github.com/tesseract-ocr/tessdata)) | The first time Aula reads a photo or a scanned page | Apache-2.0 |
 | Images from [Wikimedia Commons](https://commons.wikimedia.org) | When a lesson or an answer needs one | Each file's own license (e.g. CC BY-SA 4.0); Aula shows the author and license under every image |
 

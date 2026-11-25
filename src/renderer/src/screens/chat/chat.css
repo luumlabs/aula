@@ -40,9 +40,11 @@
   to { opacity: 1; transform: none; }
 }
 
-/* El cursor de Aula mientras escribe: un punto de sol al final del texto */
-.chat-caret .chat-para:last-child .aula-rich > :is(p, h1, h2, h3, h4, blockquote):last-child::after,
-.chat-caret .chat-para:last-child .aula-rich > :is(ul, ol):last-child > li:last-child::after {
+/* El cursor de Aula mientras escribe: un punto de sol al final del texto (o de la línea de código que está escribiendo) */
+.chat-caret .chat-para:last-child .aula-rich > :is(p, h1, h2, h3, h4):last-child::after,
+.chat-caret .chat-para:last-child .aula-rich > blockquote:last-child:not(:has(.aula-code-live))::after,
+.chat-caret .chat-para:last-child .aula-rich > :is(ul, ol):last-child > li:last-child:not(:has(.aula-code-live))::after,
+.chat-caret .chat-para:last-child .aula-code-live .aula-code-text::after {
   content: '';
   display: inline-block;
   width: 0.5em;

@@ -1,15 +1,17 @@
 // Texto de los bloques (lógica pura): delimitadores de fórmulas que el Markdown no entiende y cifras en las celdas.
+import { mapOutsideCode } from '@engine/content/codeFences'
 
 /**
  * Delimitadores que escribe la IA y el Markdown no entiende como fórmula en pantalla: `$$…$$` en una sola línea y `\[…\]`
- * pasan a un bloque `$$` propio; `\(…\)` a `$…$`. No toca `\\[2pt]` (salto de línea con espacio dentro de una fórmula).
+ * pasan a un bloque `$$` propio; `\(…\)` a `$…$`. No toca `\\[2pt]` (salto de línea con espacio dentro de una fórmula) ni el
+ * código (```…``` y `…`): un `\(\d+\)` de una expresión regular o un `\[ x \]` de una lección de LaTeX se quedan tal cual.
  */
 export function normalizeMath(md: string): string {
   if (!md.includes('$$') && !md.includes('\\[') && !md.includes('\\(')) return md
-  return md
+  return mapOutsideCode(md, (prose) => prose
     .replace(/(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]/g, (_, tex: string) => `\n$$\n${tex.trim()}\n$$\n`)
     .replace(/(?<!\\)\\\(([\s\S]+?)(?<!\\)\\\)/g, (_, tex: string) => `$${tex.trim()}$`)
-    .replace(/^[ \t]*\$\$([^\n]+?)\$\$[ \t]*$/gm, (_, tex: string) => `$$\n${tex.trim()}\n$$`)
+    .replace(/^[ \t]*\$\$([^\n]+?)\$\$[ \t]*$/gm, (_, tex: string) => `$$\n${tex.trim()}\n$$`))
 }
 
 /** ¿La celda es una cifra? («3,5», «−12 %», «1 200», «4.50 €», «0.25»). */

@@ -25,6 +25,8 @@
   "example": {
     "eyebrow": "Worked example",
     "progress": "Step {{shown}} of {{total}}",
+    "steps_one": "{{count}} step",
+    "steps_other": "{{count}} steps",
     "result": "Result",
     "first": "Show the first step",
     "next": "Next step",
@@ -40,7 +42,9 @@
     "copied": "Copied",
     "copyFailed": "Couldn’t copy",
     "code": "Code",
-    "output": "Output"
+    "output": "Output",
+    "text": "Text",
+    "pseudocode": "Pseudocode"
   },
   "predict": {
     "eyebrow": "Think before you read on",

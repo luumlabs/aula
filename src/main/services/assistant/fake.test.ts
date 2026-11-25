@@ -11,7 +11,7 @@ import type { AssistantCard, AssistantMessage } from '@shared/assistant/types'
 import { createFakeModel } from '../ai/fake'
 import { Library } from '../store/library'
 import { streamingFake } from './fake'
-import { fakeCourseTitle, fakeEvent, fakeIntent, fakeMistake, isTrig } from './fakeScripts'
+import { fakeCodeAnswer, fakeCourseTitle, fakeEvent, fakeIntent, fakeMistake, isTrig } from './fakeScripts'
 import type { AssistantCourseSpec, CourseTeam } from './host'
 import { AssistantService, type AssistantSink } from './service'
 
@@ -91,10 +91,20 @@ describe('guiones de la IA simulada', () => {
     expect(fakeIntent('Explícame por qué mi respuesta no es correcta.')).toBe('mistake')
     expect(fakeIntent('Explain my mistake')).toBe('mistake')
     expect(fakeIntent('Why is cos 210° negative?')).toBe('answer')
+    expect(fakeIntent('Show me some Python code')).toBe('code')
+    expect(fakeIntent('Enséñame código de ejemplo')).toBe('code')
     expect(isTrig('Why is cos 210° negative?')).toBe(true)
     expect(isTrig('Quiz me on exact values')).toBe(true)
     expect(isTrig('Hazlo sin prisa, tan fácil como puedas')).toBe(false)
     expect(fakeCourseTitle('Make me a course on organic chemistry')).toBe('Organic chemistry')
+  })
+
+  it('la respuesta con código trae vallas con su lenguaje, su salida y una orden con «$»', () => {
+    const text = fakeCodeAnswer()
+    expect(text).toContain('```python\n')
+    expect(text).toContain('```output\n')
+    expect(text).toContain('"$HOME/')
+    expect((text.match(/^```/gm) ?? []).length).toBe(6)
   })
 
   it('lee el examen: título, el próximo lunes (no hoy) y la hora', () => {

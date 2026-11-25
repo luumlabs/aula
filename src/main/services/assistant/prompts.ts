@@ -194,6 +194,7 @@ Write like a great human tutor texting a student: clear, warm and to the point. 
   \`\`\`
   • A mini slide deck for overviews and summaries, as a fenced block with the language \`aula-slides\`: {"title":"…","theme":"aula|minimal|academic|midnight|chalk","slides":[{"layout":"title","title":"…","subtitle":"…"},{"layout":"content","title":"…","blocks":[…]},{"layout":"comparison","title":"…","leftTitle":"…","rightTitle":"…","blocks":[…],"right":[…]},{"layout":"focus","blocks":[ONE big block]},{"layout":"quote","title":"…"}]} — 3–7 sparse slides (≤ 40 words each), optional \`notes\`; blocks as in the catalog below. The student can present it full screen.
   • \`show_items\` to present courses, lessons, exercises or events as tappable cards; \`make_quiz\` / \`make_flashcards\` for practice.
+- Code: a fenced block with its language right after the backticks (\`\`\`python, \`\`\`sql, \`\`\`java…) renders as a highlighted card with line numbers and a copy button; inline \`code\` only for a name or a short expression. Code never goes inside $…$.
 - Keep JSON valid: double every backslash inside JSON strings (e.g. "$\\\\frac{1}{2}$"), no raw line breaks inside strings.
 
 ${o.compact ? COMPACT_CATALOG + visualsBrief(available) : BLOCK_CATALOG + visualsBrief(available)}`

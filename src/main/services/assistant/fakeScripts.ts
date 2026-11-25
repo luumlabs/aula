@@ -3,8 +3,8 @@
 import { foldPlain } from '@engine/assistant'
 import { tr } from '@shared/ai/i18n'
 
-/** Lo que se pide: apuntar un examen, crear un curso, un test, unas tarjetas, una pista, que explique un error o una respuesta normal. */
-export type FakeIntent = 'event' | 'course' | 'quiz' | 'flashcards' | 'hint' | 'mistake' | 'answer'
+/** Lo que se pide: apuntar un examen, crear un curso, un test, unas tarjetas, una pista, que explique un error, código o una respuesta normal. */
+export type FakeIntent = 'event' | 'course' | 'quiz' | 'flashcards' | 'hint' | 'mistake' | 'code' | 'answer'
 
 const WEEKDAYS: Array<[RegExp, number]> = [
   [/\b(sunday|domingo)\b/, 0], [/\b(monday|lunes)\b/, 1], [/\b(tuesday|martes)\b/, 2], [/\b(wednesday|miercoles)\b/, 3],
@@ -13,6 +13,8 @@ const WEEKDAYS: Array<[RegExp, number]> = [
 const EXAM_WORDS = /\b(test|exam|quiz|midterm|final|examen|prueba|parcial|control)\b/
 // «Explícame mi error» (práctica) y «explícame este concepto de otra forma» (lección), tras fallar un ejercicio
 const MISTAKE = /\b(my mistake|my error|why my answer|where did i go wrong|concept another way|mi error|por que mi respuesta|en que me equivoque|concepto de otra forma)\b/
+// «enséñame código», «a Python function»: la respuesta lleva bloques de código (así se ve cómo se escriben en vivo)
+const CODE_ASK = /\b(code|codigo|python|javascript|typescript|snippet|script)\b/
 const COURSE_ASK = /\b(make|create|build|prepare|set up)\b.*\bcourse\b|\b(crea|creame|haz|hazme|prepara|preparame|monta|montame)\b.*\bcurso\b/
 // «sin» y «tan» también son palabras españolas: solo cuentan seguidas de un ángulo o una variable
 const TRIG = /\b(trig\w*|sine|cosine|tangent|(?:sin|cos|tan)\s*(?:\d|\(|θ|[xt]\b)|cos|unit circle|reference angles?|exact values?|radians?|quadrants?|seno|coseno|tangente|circulo unidad|circunferencia unidad|angulos? de referencia|valores exactos|radianes|cuadrantes?)\b|°/
@@ -44,6 +46,7 @@ export function fakeIntent(message: string): FakeIntent {
   if (/\b(quiz|test|cuestionario)\b/.test(m)) return 'quiz'
   if (/\b(hint|clue|pista)\b/.test(m)) return 'hint'
   if (MISTAKE.test(m)) return 'mistake'
+  if (CODE_ASK.test(m)) return 'code'
   return 'answer'
 }
 
@@ -215,6 +218,19 @@ export function fakeAnswer(message: string, courses: number | undefined, mention
   return tr(
     `${seen}${about}Sobre «${asked}»: te lo explico con un ejemplo sencillo.\n\nUna función cuadrática como $f(x) = x^2 - 4$ corta el eje $x$ donde $f(x) = 0$, es decir, en $x = \\pm 2$:\n\n\`\`\`aula-block\n${plot}\n\`\`\`\n\n**Idea clave:** el vértice está en $(0, -4)$ y la parábola se abre hacia arriba porque el coeficiente de $x^2$ es positivo.\n\n¿Quieres que te ponga un test rápido para comprobarlo?`,
     `${seen}${about}About “${asked}”: let me explain it with a simple example.\n\nA quadratic function such as $f(x) = x^2 - 4$ crosses the $x$ axis where $f(x) = 0$, that is, at $x = \\pm 2$:\n\n\`\`\`aula-block\n${plot}\n\`\`\`\n\n**Key idea:** the vertex is at $(0, -4)$ and the parabola opens upwards because the coefficient of $x^2$ is positive.\n\nWould you like a quick quiz to check it?`
+  )
+}
+
+/** Una respuesta con código: un bloque de Python (con una línea larga, una línea en blanco y `**`), su salida y una orden de
+ *  terminal con `$` (lo que la cola del texto en vivo no debe tocar). */
+export function fakeCodeAnswer(): string {
+  const F = '```'
+  const code = `${F}python\ndef squares(n: int) -> list[int]:\n    """${tr('Los n primeros cuadrados', 'The first n squares')}: 0, 1, 4, 9…"""\n    return [i ** 2 for i in range(n)]\n\n\nprint(squares(5))  # ${tr('un comentario tan largo que la línea se desplaza de lado en lugar de salirse de la columna del chat', 'a comment long enough to scroll sideways instead of spilling out of the chat column')}\n${F}`
+  const output = `${F}output\n[0, 1, 4, 9, 16]\n${F}`
+  const shell = `${F}bash\npython3 squares.py > "$HOME/squares.txt"\n${F}`
+  return tr(
+    `Aquí tienes una función de Python: \`squares(n)\` devuelve los $n$ primeros cuadrados con una lista por comprensión.\n\n${code}\n\nImprime:\n\n${output}\n\nPara guardarlo en un archivo desde la terminal:\n\n${shell}\n\n¿Probamos una versión con un generador?`,
+    `Here's a small Python function: \`squares(n)\` returns the first $n$ squares with a list comprehension.\n\n${code}\n\nIt prints:\n\n${output}\n\nTo save it to a file from a terminal:\n\n${shell}\n\nShall we try a version with a generator?`
   )
 }
 

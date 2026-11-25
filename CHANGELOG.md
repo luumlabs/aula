@@ -32,8 +32,19 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   *Sign out of Tailscale*.
 
 ### Fixed
+- **Creating a course with ChatGPT no longer stops at "Course plan" with "Code Mode is unavailable"**
+  ([#66](https://github.com/luumlabs/aula/issues/66)). Codex needs a companion program next to it
+  (`codex-code-mode-host`), and the Codex that Aula downloaded didn't have it. Aula now installs OpenAI's complete,
+  verified package, and completes an earlier installation by itself the next time it's used, without asking anything.
+  If that piece is ever missing anyway, Aula explains what happened instead of showing Codex's raw error.
+- **Code written inside a text gets the same card as a code block** ([#67](https://github.com/luumlabs/aula/issues/67)):
+  chat and tutor replies, mock-exam questions and options, flashcards, solutions and lessons now show syntax
+  highlighting, a copy button, line numbers from three lines, and long lines scroll inside the card instead of spilling
+  out. In an exercise you haven't solved yet, a code block hides its output when it would reveal the answer, while
+  keeping errors and tracebacks that are part of the question.
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
 - **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
+- **A worked example no longer says "Step 0 of 3" before you open it**: it says how many steps it has.
 - **Using the computer's menu, tray or notifications no longer moves your phone or tablet to another screen.** Going
   to Today or Settings, Back and Forward, or opening a notification there now changes only the computer's window.
 

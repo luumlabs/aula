@@ -256,15 +256,26 @@ English, after recording the demo with the current interface:
 | 5 | The chat with Aula, with a quiz | The chat with Aula, with a quiz |
 
 To take them again (after recording the demo, see `docs/DEVICES.md`): build the app for the simulator in Debug, install
-it on *iPhone 18 Pro Max*, *iPhone 18 Pro* and *iPad Pro 13-inch (M5)*, and launch it with the argument
-`-AulaStoreShots`, which shows the demo without its bar, as Aula looks when connected to the Mac (Debug builds only):
+it on *iPhone 18 Pro Max*, *iPhone 18 Pro* and *iPad Pro 13-inch (M5)*, and launch it with the Debug-only arguments of
+`native/ios/Aula/StoreShots.swift` (a Release build has none of them). They always go in pairs, flag and value:
+
+- `-AulaStoreShots YES` opens the demo by itself, without its bar and without starting Tailscale, as Aula looks when
+  connected to the Mac. A chat question that isn't the recorded one gets the recorded answer, not the demo notice.
+- `-AulaRoute '<json>'` opens it on that screen: a route of the interface, as `routeHash.ts` reads it
+  (`{"name":"study","id":"exam-2-math112","mode":"practice"}`).
+- `-AulaDemo <file>` plays another recording from the app's `Documents/` (or an absolute path) instead of the one in
+  the app: the capture-only `Preview-<lang>.aulademo` (see `docs/DEVICES.md`).
 
 ```bash
-xcrun simctl status_bar <device> override --time "9:41" --batteryState charged --batteryLevel 100
-xcrun simctl launch <device> com.luumlabs.aula.ios -AulaStoreShots
-xcrun simctl io <device> screenshot shot.png
+xcrun simctl status_bar <device> override --time "9:41" --batteryState discharging --batteryLevel 100
+cp docs/app-store/media/archives/Preview-en.aulademo "$(xcrun simctl get_app_container <device> com.luumlabs.aula.ios data)/Documents/"
+xcrun simctl launch --terminate-running-process <device> com.luumlabs.aula.ios -AulaStoreShots YES \
+  -AulaDemo Preview-en.aulademo -AulaRoute '{"name":"home"}'
+xcrun simctl io <device> screenshot --type=png --mask=ignored shot.png
 sips -s format jpeg -s formatOptions 92 shot.png --out shot.jpg     # Apple refuses images with transparency
 ```
+
+In Debug the web view is inspectable from Safari (*Develop → Simulator*).
 
 ## What only the account owner can do
 

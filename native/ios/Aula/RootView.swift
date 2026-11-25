@@ -25,8 +25,10 @@ struct RootView: View {
                     }
                     .transition(.opacity)
                 default:
-                    ConnectView(model: model)
-                        .transition(.opacity)
+                    if model.showsConnectScreen {
+                        ConnectView(model: model)
+                            .transition(.opacity)
+                    }
                 }
             }
         }

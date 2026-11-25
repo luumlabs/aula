@@ -1,8 +1,12 @@
 // Port de `Tests/AgentKitTests/CodexTests.swift`: analizador de `codex exec --json` y `CodexRunner` contra una CLI falsa.
-import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { FakeServer, reply } from '../local-ai/__fixtures__/fake-server'
+import { DownloadError, Downloader } from '../local-ai/downloader'
 import { CodexEventParser, CodexRunner, type CodexOptions } from './codex'
+import { ManagedCodex, setAppManagedCodex } from './codex-installer'
+import { fakeCodexPackage, sha256 } from './__fixtures__/codex-package'
 import type { CLIConclusion } from './engine'
 import { AgentError, CLIErrorClassifier } from './errors'
 import { locatorOverrides } from './locator'
@@ -343,6 +347,73 @@ describe('CodexRunner', () => {
     expect(agentError(r.error)?.kind).toBe('rateLimited')
     expect(Math.abs((agentError(r.error)?.retryAfter ?? 0) - (4 * 86_400 + 2 * 3_600 + 9 * 60))).toBeLessThan(5)
     expect(agentError(r.error)?.message).toContain('4 días 2 h')
+  })
+
+  it('el Codex de Aula a medias se completa antes de lanzarlo; el monitor ve el avance', async () => {
+    const old = new FakeCLI(makeTempDir(), { stdout: C.turnFailed('no debería ejecutarse') + '\n', exitCode: 1 })
+    const good = new FakeCLI(makeTempDir(), { stdout: successOutput() })
+    const asked: string[] = []
+    const prepareExecutable: CodexOptions['prepareExecutable'] = async (found, progress) => {
+      asked.push(found)
+      for (const done of [0, 40, 45, 100]) progress({ bytesDone: done, bytesTotal: 100 })
+      return good.executable
+    }
+    const r = await collect(runner(old, { prepareExecutable }).run(task()))
+    expect(r.error).toBeUndefined()
+    expect(asked).toEqual([old.executable])
+    expect(good.arguments[0]).toBe('exec') // se lanzó el completo
+    expect(old.arguments).toEqual([])
+    expect(r.notices.filter((n) => n.startsWith('Completando Codex'))).toEqual([
+      'Completando Codex: descargando lo que le falta (0 %)…',
+      'Completando Codex: descargando lo que le falta (40 %)…',
+      'Completando Codex: descargando lo que le falta (100 %)…'
+    ])
+  })
+
+  it('si no se puede completar el Codex de Aula, se dice por qué (sin red: «network»)', async () => {
+    const cli = new FakeCLI(makeTempDir(), { stdout: successOutput() })
+    const offline = await collect(runner(cli, { prepareExecutable: async () => Promise.reject(DownloadError.network('getaddrinfo ENOTFOUND github.com')) }).run(task()))
+    expect(agentError(offline.error)?.kind).toBe('network')
+    expect(agentError(offline.error)?.message).toContain('No pude completar el Codex de Aula')
+    const broken = await collect(runner(cli, { prepareExecutable: async () => Promise.reject(new Error('El paquete de Codex no trae lo que necesita')) }).run(task()))
+    expect(agentError(broken.error)?.kind).toBe('notInstalled')
+    expect(cli.arguments).toEqual([]) // no se lanzó
+  })
+
+  posixIt('issue #66 de punta a punta: el Codex de antes (sin host) se completa solo y se lanza el completo', async () => {
+    const dir = makeTempDir()
+    const output = [C.threadStarted, C.completed(C.agentMessage('item_0', 'Hecho con el Codex completo')), C.turnCompleted()].join('\n')
+    const data = fakeCodexPackage({ codex: `#!/bin/sh\ncat > /dev/null\ncat <<'EOF'\n${output}\nEOF\n` })
+    const server = new FakeServer((r) => (r.path === '/paquete.tar.gz' ? reply.file(data, r) : reply.notFound()))
+    const origin = await server.start()
+    const codex = new ManagedCodex({
+      root: dir,
+      asset: { name: 'paquete.tar.gz', url: `${origin}/paquete.tar.gz`, bytes: data.length, sha256: sha256(data) },
+      downloader: new Downloader({ attempts: 1, retryDelayMs: 0, diskMargin: 0, freeSpace: () => 2 ** 40 })
+    })
+    mkdirSync(codex.installFolder, { recursive: true })
+    const legacy = join(codex.installFolder, 'codex')
+    writeFileSync(legacy, `#!/bin/sh\necho '${C.turnFailed('Code Mode is unavailable because failed to spawn code-mode host')}'\nexit 1\n`, { mode: 0o755 })
+    writeFileSync(join(codex.installFolder, '.installed'), codex.version)
+    setAppManagedCodex(codex)
+    try {
+      const r = await collect(runner(undefined, {}, config(undefined, { path: legacy })).run(task()))
+      expect(r.error).toBeUndefined()
+      expect(r.finished?.text).toBe('Hecho con el Codex completo')
+      expect(r.notices.some((n) => n.startsWith('Completando Codex'))).toBe(true)
+      expect(codex.binary).toBe(join(codex.binFolder, 'codex'))
+    } finally {
+      setAppManagedCodex(undefined)
+      await server.stop()
+    }
+  })
+
+  it('sin el host de Code Mode (issue #66): un error claro que para la creación', async () => {
+    const message = 'Code Mode is unavailable because failed to spawn code-mode host C:\\Aula\\tools\\codex\\0.162.1\\codex-code-mode-host.exe: host executable was not found. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`.'
+    const cli = new FakeCLI(makeTempDir(), { stdout: [C.threadStarted, C.error(message), C.turnFailed(message)].join('\n') + '\n', exitCode: 1 })
+    const r = await collect(runner(cli).run(task()))
+    expect(agentError(r.error)?.kind).toBe('notInstalled')
+    expect(agentError(r.error)?.message).toContain('`codex-code-mode-host`')
   })
 
   it('turn.failed con un mensaje genérico', async () => {
