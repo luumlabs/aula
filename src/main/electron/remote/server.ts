@@ -14,7 +14,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createReadStream, readFileSync, statSync } from 'node:fs'
 import type { AddressInfo } from 'node:net'
 import { PairingError, type DeviceRegistry, type RemoteDeviceView } from '@main/services/remote/devices'
-import { noopValue, remoteCall, rewriteAssets } from '@main/services/remote/policy'
+import { noopValue, reachesDevices, remoteCall, rewriteAssets } from '@main/services/remote/policy'
 import { DEVICE_VIEWPORT, pairingPage, REMOTE_BRIDGE_JS, REMOTE_MANIFEST } from '@main/services/remote/bridge'
 import { UploadError, type UploadStore } from '@main/services/remote/uploads'
 import { acceptConsent, consentRefusal, consentState, type AIConsentDeps } from '@main/services/remote/ai-consent'
@@ -124,7 +124,8 @@ export class RemoteServer {
   }
 
   private broadcast(event: string, payload: unknown): void {
-    if (!this.streams.size) return
+    // las órdenes del menú, la bandeja y las notificaciones son de la ventana de este equipo (remote/policy.ts)
+    if (!this.streams.size || !reachesDevices(event)) return
     let line: string
     try { line = rewriteAssets(JSON.stringify({ event, payload })) + '\n' } catch { return }
     // los dispositivos vinculados y sus códigos son cosa de la ventana o de un propietario

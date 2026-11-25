@@ -1,8 +1,8 @@
 #!/bin/bash
 # Comprueba la app de Aula para iPhone y iPad hasta donde llega esta máquina:
 #   1. El túnel local (LoopbackForwarder.swift) de verdad, en macOS, con una red privada de pega; qué equipos de la red
-#      son una Aula de esta persona (AulaHosts.swift); y el servidor de la demostración (DemoServer.swift) contra el
-#      archivo grabado, si está.
+#      son una Aula de esta persona (AulaHosts.swift); el servidor de la demostración (DemoServer.swift) contra el
+#      archivo grabado, si está; y cuándo se enseña «Apoya a Aula» (SupportLink.swift).
 #   2. El nodo de Tailscale de la app (TailnetController + TailscaleKit + libtailscale sin registros) compilado para
 #      macOS desde las fuentes oficiales y arrancado: debe llegar a pedir el inicio de sesión (o a conectarse).
 #      De paso compila toda la app (SwiftUI incluida) para macOS, en modo Swift 6.
@@ -37,6 +37,11 @@ if [ -f Aula/Demo.aulademo ]; then
 else
   echo "(sin Aula/Demo.aulademo: grábala con «npm run build && node scripts/dev/ios-demo.mjs»; la app sale sin demostración)"
 fi
+
+echo "=== 1d. «Apoya a Aula»: solo con la tienda de EE. UU., y qué es una página para donar ==="
+"${SWIFT[@]}" Aula/SupportLink.swift _verify/SupportLinkTest/main.swift -o "$OUT/support-link-test"
+"$OUT/support-link-test" | grep -v '^PASS' || true
+"$OUT/support-link-test" >/dev/null
 
 echo "=== 2. El nodo de Tailscale de la app, en macOS ==="
 if [ ! -x "$TC/go/bin/go" ]; then

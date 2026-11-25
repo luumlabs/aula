@@ -20,7 +20,7 @@ struct RootView: View {
                         }
                         // solo la zona del sistema (muesca, barra de inicio), no la del teclado: con el teclado abierto la
                         // vista web acaba encima de él y la página no tiene que moverse para enseñar el campo
-                        WebView(base: base, events: events)
+                        WebView(base: base, events: events, supportLink: model.supportLink)
                             .ignoresSafeArea(.container, edges: model.showsDemoBar ? [.horizontal, .bottom] : .all)
                     }
                     .transition(.opacity)

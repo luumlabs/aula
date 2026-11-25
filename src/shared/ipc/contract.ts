@@ -43,6 +43,8 @@ export type AppCommand =
   | 'back'
   | 'forward'
   | 'toggleSidebar'
+  // Ayuda → «Apoyar a Aula…»
+  | 'support'
 
 export type RpcMethod = keyof RpcMethods
 export type RpcArgs<M extends RpcMethod> = RpcMethods[M]['args']

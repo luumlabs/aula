@@ -1,6 +1,6 @@
 # Privacy policy · Política de privacidad
 
-*Aula, by Luum Labs. Last updated: 16 November 2026.*
+*Aula, by Luum Labs. Last updated: 23 November 2026.*
 
 **English** · [Español](#español)
 
@@ -44,7 +44,9 @@ The app is a window to the Aula on your own Mac. It has no content of its own ex
   encrypted end to end (WireGuard) and is not readable by Tailscale or by Luum Labs. The component's log uploads to
   Tailscale are turned off.
 - **What is stored on the device.** The Tailscale sign-in of this app, which Aula it opens and the link with your Mac
-  (made once with a 6-digit code). Your courses stay on the Mac.
+  (made once with a 6-digit code). Your courses stay on the Mac. To decide whether *Settings → About* shows the
+  optional link to donate, the app asks the App Store on the device which country's store it uses; that answer is not
+  saved or sent anywhere.
 - **Third parties.** Luum Labs shares no data with anyone. Only two third parties receive data, and only for what you
   set up: Tailscale, to connect this device to your Mac (above), and the AI provider you chose in Aula on your Mac,
   which gets what the AI needs for each task **from your Mac**, never from this app (the questions and materials you
@@ -122,7 +124,9 @@ demostración.
   estudias viaja entre tu dispositivo y tu Mac cifrado de extremo a extremo (WireGuard) y no lo pueden leer ni
   Tailscale ni Luum Labs. El envío de registros del componente a Tailscale está desactivado.
 - **Qué se guarda en el dispositivo.** El inicio de sesión de Tailscale de esta app, qué Aula abre y el vínculo con tu
-  Mac (hecho una vez con un código de 6 cifras). Tus cursos se quedan en el Mac.
+  Mac (hecho una vez con un código de 6 cifras). Tus cursos se quedan en el Mac. Para saber si *Ajustes → Acerca de*
+  enseña el enlace opcional para donar, la app pregunta en el dispositivo al App Store de qué país es su tienda; esa
+  respuesta no se guarda ni se envía a ninguna parte.
 - **Terceros.** Luum Labs no comparte datos con nadie. Solo dos terceros reciben datos, y solo para lo que tú
   configuraste: Tailscale, para conectar este dispositivo con tu Mac (arriba), y el proveedor de IA que elegiste en
   Aula en tu Mac, que recibe lo que la IA necesita para cada tarea **desde tu Mac**, nunca desde esta app (las

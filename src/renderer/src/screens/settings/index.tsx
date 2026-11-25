@@ -6,12 +6,12 @@
 // src/main/services/remote/policy.ts).
 // Con Aula como servidor (sin Mac), el dispositivo PROPIETARIO hace de ventana: ve también la IA con sus claves, las
 // plataformas y los dispositivos (no los datos ni las actualizaciones, que se llevan en el servidor).
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { Brain, Cpu, GraduationCap, Info, Languages, MonitorSmartphone, Palette, Power, Shield, type LucideIcon } from 'lucide-react'
 import { fmtPercent } from '@renderer/lib/format'
-import { Button, ConfirmDialog, Icon, Rule, Section, SegmentedTabs, Select, Slider, Stagger, Switch, TextField, AulaMark, cx, toast } from '@renderer/design'
+import { Button, ConfirmDialog, Icon, Rule, Section, SegmentedTabs, Select, Slider, Stagger, Switch, TextField, AulaMark, buttonClass, cx, toast } from '@renderer/design'
 import { useScreenTitle } from '@renderer/app/title'
 import { navigate, useRoute } from '@renderer/app/router'
 import { useSettings } from '@renderer/lib/settings'
@@ -19,6 +19,7 @@ import { useRpc } from '@renderer/lib/useRpc'
 import { useUpdateState } from '@renderer/lib/updates'
 import { api } from '@renderer/lib/api'
 import { isDemo } from '@renderer/lib/demo'
+import { SPONSORS_URL, SUPPORT_AGAIN_EVENT, useSupportLink } from '@renderer/lib/supportLink'
 import { AIPicker } from './AIPicker'
 import { AIChoices } from './AIChoices'
 import { PlatformsSection } from './Platforms'
@@ -30,7 +31,7 @@ import type { AppSettings } from '@shared/settings'
 import type { SettingsSection } from '@shared/settings/sections'
 import { resolveCourseLanguage } from '@shared/settings/courseLanguage'
 import { CourseLanguages } from '@engine/base/language'
-import { publicDocURL, sourceCodeURL, type LegalDoc } from '@shared/legal'
+import { AULA_REPO_URL, publicDocURL, sourceCodeURL, type LegalDoc } from '@shared/legal'
 
 type Upd = ReturnType<typeof useSettings.getState>['update']
 
@@ -58,7 +59,15 @@ export default function SettingsScreen() {
   const route = useRoute()
   const section = route.name === 'settings' ? route.section : undefined
   const scroller = useRef<HTMLDivElement>(null)
-  useScrollToSection(scroller, section, !!settings)
+  // Ayuda → «Apoyar a Aula…» otra vez con la ruta ya en 'support' (AppCommands): la ruta no cambia, así que se cuenta aquí y
+  // se vuelve a bajar como al llegar (lo de encima puede seguir cargando y crecer)
+  const [again, setAgain] = useState(0)
+  useEffect(() => {
+    const bump = (): void => setAgain((n) => n + 1)
+    window.addEventListener(SUPPORT_AGAIN_EVENT, bump)
+    return () => window.removeEventListener(SUPPORT_AGAIN_EVENT, bump)
+  }, [])
+  useScrollToSection(scroller, section, !!settings, again)
   // `remote`: un dispositivo con solo lo de uso diario; un propietario ve como la ventana (salvo datos y actualizaciones)
   const owner = api.owner
   const remote = api.remote && !owner
@@ -136,10 +145,24 @@ function SettingsIndex({ sections, active, onPick }: { sections: readonly Settin
   )
 }
 
-/** Baja hasta una sección; con movimiento reducido (o `instant`), sin deslizarse. */
-function scrollToSection(id: string, instant = false): void {
+/** Anclas dentro de una sección (`data-settings-anchor`: Ayuda → «Apoyar a Aula…» lleva a 'support') y la sección que
+ *  las lleva, por si no se pintan (en la app del iPhone fuera de la tienda de EE. UU., «Apoya a Aula» no está). */
+const ANCHORS: Readonly<Record<string, SettingsSection>> = { support: 'about' }
+
+/** Baja hasta una sección (o un ancla de dentro); con movimiento reducido (o `instant`), sin deslizarse. Con `focus`, un ancla
+ *  además se lleva el foco (su `[data-settings-focus]`, sin volver a desplazar) y devuelve true: con el teclado o un lector
+ *  de pantalla se sigue desde ahí y no desde donde se estaba. A un ancla solo lleva un comando (Ayuda → «Apoyar a Aula…»);
+ *  el índice, ⌘K, el chat y los avisos llevan a secciones, y con ellas el foco se queda donde estaba. */
+function scrollToSection(id: string, instant = false, focus = false): boolean {
   const behavior = instant || document.documentElement.classList.contains('reduce-motion') ? 'auto' : 'smooth'
-  document.querySelector(`[data-settings-section="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior, block: 'start' })
+  const find = (attr: string, v: string): Element | null => document.querySelector(`[${attr}="${CSS.escape(v)}"]`)
+  const parent = Object.hasOwn(ANCHORS, id) ? ANCHORS[id] : undefined
+  const anchor = find('data-settings-anchor', id)
+  const target = find('data-settings-section', id) ?? anchor ?? (parent ? find('data-settings-section', parent) : null)
+  target?.scrollIntoView({ behavior, block: 'start' })
+  const heading = focus && target && target === anchor ? target.querySelector<HTMLElement>('[data-settings-focus]') : null
+  heading?.focus({ preventScroll: true })
+  return !!heading
 }
 
 /** Lo que dura vigilar que la sección pedida se quede arriba mientras termina de cargar lo de encima. */
@@ -147,8 +170,9 @@ const SETTLE_MS = 2000
 
 /** «Ajustes → Memoria» (⌘K, el chat, el índice): baja hasta esa sección. Al abrir la pantalla, de golpe; después, deslizándose.
  *  Mientras lo de encima termina de cargar (la IA, las plataformas, los recuerdos…) y cambia de alto, la sección se queda
- *  arriba, hasta que la persona se mueva por su cuenta. */
-function useScrollToSection(scroller: React.RefObject<HTMLDivElement | null>, section: string | undefined, ready: boolean): void {
+ *  arriba, hasta que la persona se mueva por su cuenta. `again` sube para volver a hacerlo con la misma sección. A un ancla,
+ *  el foco va una sola vez por llegada: después se queda donde lo lleve la persona (también a otro panel, sin tocar este). */
+function useScrollToSection(scroller: React.RefObject<HTMLDivElement | null>, section: string | undefined, ready: boolean, again = 0): void {
   const mounted = useRef(false)
   useEffect(() => {
     if (!ready) return
@@ -163,15 +187,21 @@ function useScrollToSection(scroller: React.RefObject<HTMLDivElement | null>, se
     }
     const userEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
     for (const e of userEvents) box.addEventListener(e, stop, { passive: true })
+    // ni el primer desplazamiento ni los de después si ya se movió; el foco, hasta que llega una vez al ancla
+    let focused = false
+    const settle = (instant: boolean): void => {
+      if (moved) return
+      if (scrollToSection(section, instant, !focused)) focused = true
+    }
     let height = content.getBoundingClientRect().height
     const ro = new ResizeObserver(() => {
       const h = content.getBoundingClientRect().height
       if (h === height) return
       height = h
-      if (!moved) scrollToSection(section, true)
+      settle(true)
     })
     ro.observe(content)
-    const timer = setTimeout(() => scrollToSection(section, first), first ? 120 : 0)
+    const timer = setTimeout(() => settle(first), first ? 120 : 0)
     const done = setTimeout(() => ro.disconnect(), SETTLE_MS)
     return () => {
       clearTimeout(timer)
@@ -179,7 +209,7 @@ function useScrollToSection(scroller: React.RefObject<HTMLDivElement | null>, se
       ro.disconnect()
       for (const e of userEvents) box.removeEventListener(e, stop)
     }
-  }, [section, ready, scroller])
+  }, [section, ready, scroller, again])
 }
 
 /** La sección que se está leyendo: la última cuyo principio ya ha pasado por arriba (o la última, al llegar al final). Se mira
@@ -388,18 +418,23 @@ function DataSection({ s, update }: { s: AppSettings; update: Upd }) {
   )
 }
 
-// Apoyar el desarrollo de Aula (opcional; todo sigue siendo gratis)
-const SPONSORS_URL = 'https://github.com/sponsors/luumlabs'
-
 /** Lo que ofrece la app nativa que abre la interfaz en un dispositivo (native/ios, native/android). */
 const appBridge = (): { switchAula?: () => void } | undefined => (window as { aulaApp?: { switchAula?: () => void } }).aulaApp
 
 const openLegal = (which: LegalDoc) => void api.invoke('app.openLicenses', { which }).catch(() => undefined)
 const openURL = (url: string) => void api.invoke('app.openExternal', { url }).catch(() => undefined)
 
-function AboutLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+type AboutLinkLook = { children?: ReactNode; className?: string; inline?: boolean }
+
+/** Las clases de un enlace de Acerca de: suelto, con su zona para el dedo; dentro de una frase (`inline`), subrayado siempre
+ *  (que no se distinga solo por el color: WCAG 1.4.1) y sin agrandar la zona sobre las líneas de al lado. */
+const aboutLinkClass = ({ className = 't-ui', inline = false }: AboutLinkLook): string =>
+  cx('text-accent-text', inline ? 'underline underline-offset-2 hover:no-underline' : 'relative touch-target hover:underline', className)
+
+/** Un enlace de Acerca de. `children` opcional: dentro de <Trans> el texto lo pone la traducción. */
+function AboutLink({ onClick, children, ...look }: AboutLinkLook & { onClick: () => void }) {
   return (
-    <button type="button" className="relative touch-target t-ui text-accent-text hover:underline" onClick={onClick}>
+    <button type="button" className={aboutLinkClass(look)} onClick={onClick}>
       {children}
     </button>
   )
@@ -407,15 +442,61 @@ function AboutLink({ onClick, children }: { onClick: () => void; children: React
 
 /** Una página web: en un dispositivo, un enlace de verdad que abre su navegador (iOS: WebView.swift createWebViewWith;
  *  Android: shouldOverrideUrlLoading); en el Mac, shell.openExternal (solo http(s)). */
-function AboutWebLink({ url, children }: { url: string; children: ReactNode }) {
+function AboutWebLink({ url, children, ...look }: AboutLinkLook & { url: string }) {
   if (api.remote) {
     return (
-      <a className="relative touch-target t-ui text-accent-text hover:underline" href={url} target="_blank" rel="noreferrer">
+      <a className={aboutLinkClass(look)} href={url} target="_blank" rel="noreferrer">
         {children}
       </a>
     )
   }
-  return <AboutLink onClick={() => openURL(url)}>{children}</AboutLink>
+  return <AboutLink onClick={() => openURL(url)} {...look}>{children}</AboutLink>
+}
+
+/** Un botón que abre una página web. En un dispositivo, un enlace de verdad con aspecto de botón (como AboutWebLink: lo
+ *  abre su navegador; con api.invoke('app.openExternal') el window.open llegaría tras una espera y iOS podría bloquearlo);
+ *  en el ordenador, shell.openExternal. */
+function WebButton({ url, children }: { url: string; children: ReactNode }) {
+  const out = <Icon name="external" size={14} />
+  if (api.remote) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" data-variant="secondary" className={buttonClass('secondary', 'md')}>
+        <span>{children}</span>
+        {out}
+      </a>
+    )
+  }
+  return (
+    <Button variant="secondary" size="md" iconRight={out} onClick={() => openURL(url)}>
+      {children}
+    </Button>
+  )
+}
+
+/** «Apoya a Aula»: qué es Aula y, para quien quiera, dónde donar. Al final de Acerca de, tras un filete y con un botón neutro
+ *  (el ladrillo es para estudiar); nada más en la app lo pide: ni avisos, ni ventanas, ni recordatorios. En la app del
+ *  iPhone y el iPad, solo con la tienda de EE. UU. (lib/supportLink.ts). */
+function SupportAula() {
+  const { t } = useTranslation('settings')
+  const head = useId()
+  const shown = useSupportLink()
+  if (!shown) return null
+  return (
+    <section aria-labelledby={head} data-testid="about-support" data-settings-anchor="support" className="mt-6 scroll-mt-2 border-t border-rule pt-5">
+      {/* Ayuda → «Apoyar a Aula…» deja aquí el foco (scrollToSection): el siguiente Tab va al botón. Sin anillo (`!`: el de
+          :focus-visible no va en capa): es un título, no se pulsa */}
+      <h3 id={head} tabIndex={-1} data-settings-focus className="font-serif text-[calc(17rem/15)] leading-[calc(22rem/15)] font-medium tracking-[-0.1px] text-text outline-none!">
+        {t('about.supportTitle')}
+      </h3>
+      <p className="t-callout text-text2 mt-1.5 max-w-[64ch]">{t('about.supportBody')}</p>
+      <div className="mt-3">
+        <WebButton url={SPONSORS_URL}>{t('about.supportDonate')}</WebButton>
+      </div>
+      <p className="t-footnote text-text3 mt-3">
+        <Trans t={t} i18nKey="about.supportFree" components={{ star: <AboutWebLink url={AULA_REPO_URL} className="t-footnote" inline /> }} />
+      </p>
+    </section>
+  )
 }
 
 function AboutSection({ s, update }: { s: AppSettings; update: Upd }) {
@@ -470,10 +551,10 @@ function AboutSection({ s, update }: { s: AppSettings; update: Upd }) {
             <AboutLink onClick={() => openLegal('third-party')}>{t('about.licenses')}</AboutLink>
             <AboutWebLink url={privacyURL}>{t('about.privacy')}</AboutWebLink>
             <AboutWebLink url={supportURL}>{t('about.help')}</AboutWebLink>
-            <AboutWebLink url={SPONSORS_URL}>{t('about.support')}</AboutWebLink>
           </span>
         )}
       </div>
+      <SupportAula />
     </Section>
   )
 }

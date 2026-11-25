@@ -188,6 +188,15 @@ describe('servidor remoto', () => {
     expect(server.listeners).toBe(1)
     await reader.cancel()
   })
+  it('eventos: los comandos del menú del Mac (Ayuda → «Apoyar a Aula…», Ir → Hoy…) no llegan a los dispositivos', async () => {
+    const reader = (await get('/events', { cookie })).body!.getReader()
+    const { emit } = await import('../rpc')
+    emit('app.command', { command: 'support' })
+    emit('app.command', { command: 'goHome' })
+    emit('calendar.changed' as never, {} as never)
+    expect(await until(reader, 'calendar.changed')).not.toContain('app.command')
+    await reader.cancel()
+  })
   it('recursos: los del curso (con rangos) sí; salir de su carpeta, no', async () => {
     const whole = await get('/asset/pack/curso/assets/fig.png', { cookie })
     expect([whole.status, whole.headers.get('content-type'), await whole.text()]).toEqual([200, 'image/png', '0123456789'])
