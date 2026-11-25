@@ -27,6 +27,11 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   *Sign out of Tailscale*.
 
 ### Fixed
+- **Code written inside a text gets the same card as a code block** ([#67](https://github.com/luumlabs/aula/issues/67)):
+  chat and tutor replies, mock-exam questions and options, flashcards, solutions and lessons now show syntax
+  highlighting, a copy button, line numbers from three lines, and long lines scroll inside the card instead of spilling
+  out. In an exercise you haven't solved yet, a code block hides its output when it would reveal the answer, while
+  keeping errors and tracebacks that are part of the question.
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
 - **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
 

@@ -8,6 +8,8 @@ import type { DocumentAIAction, DocumentCardTarget } from '@shared/documents'
 import { citedPages } from '@shared/documents'
 import { AulaMark, Button, EmptyState, Icon, IconButton, Menu, Spinner, cx, focusWithinRing, toast, type MenuItem } from '@renderer/design'
 import { RichText } from '@renderer/lib/RichText'
+import { CompactCode } from '@renderer/lib/code/CodeSurface'
+import { tidyStreamingTail } from '@renderer/screens/chat/smoothText'
 import { api } from '@renderer/lib/api'
 import { navigate } from '@renderer/app/router'
 import { PixelCheck } from '@renderer/design'
@@ -137,7 +139,9 @@ function Answer({ item }: { item: AulaItem }) {
               if (m) { e.preventDefault(); e.stopPropagation(); goTo(Number(m[1])) }
             }}
           >
-            <RichText text={text} />
+            <CompactCode.Provider value={true}>
+              <RichText text={item.done ? text : tidyStreamingTail(text).text} live={!item.done} />
+            </CompactCode.Provider>
             {!item.done && <span className="inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-[1px] bg-accent/70" />}
           </div>
           {item.done && cited.length > 0 && (

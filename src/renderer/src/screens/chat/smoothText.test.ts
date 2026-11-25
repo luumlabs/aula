@@ -8,6 +8,9 @@ describe('splitParagraphs', () => {
   it('no parte código, fórmulas grandes ni lo sangrado', () => {
     const code = '```py\na = 1\n\nb = 2\n```'
     expect(splitParagraphs(`Antes\n\n${code}\n\nDespués`)).toEqual(['Antes', code, 'Después'])
+    // una valla de cuatro con ``` dentro (Markdown que enseña Markdown) no se cierra antes de tiempo
+    const md = '````md\n```py\nx\n\ny\n```\n````'
+    expect(splitParagraphs(`${md}\n\nFin`)).toEqual([md, 'Fin'])
     const math = '$$\na = b\n\nc = d\n$$'
     expect(splitParagraphs(`x\n\n${math}`)).toEqual(['x', math])
     expect(splitParagraphs('1. uno\n\n   sigue el uno\n\n2. dos')).toEqual(['1. uno\n\n   sigue el uno', '2. dos'])
@@ -33,6 +36,34 @@ describe('tidyStreamingTail', () => {
   })
   it('dentro de un bloque de código abierto no toca nada', () => {
     expect(tidyStreamingTail('```js\nconst a = "$x').text).toBe('```js\nconst a = "$x')
+    expect(tidyStreamingTail('```py\nx = a ** 2 and `b').text).toBe('```py\nx = a ** 2 and `b')
+  })
+  it('un bloque de código no aparece hasta que su primera línea (el lenguaje) termina: la cabecera no cambia de nombre', () => {
+    expect(tidyStreamingTail('Mira:\n```pyt').text).toBe('Mira:\n')
+    expect(tidyStreamingTail('Mira:\n```').text).toBe('Mira:\n')
+    expect(tidyStreamingTail('Mira:\n``').text).toBe('Mira:\n')
+    expect(tidyStreamingTail('Mira:\n```python\n').text).toBe('Mira:\n```python\n')
+    // un cierre a medio escribir no se ve como código
+    expect(tidyStreamingTail('```python\nx = 1\n``').text).toBe('```python\nx = 1\n')
+    expect(tidyStreamingTail('```python\nx = 1\n```').text).toBe('```python\nx = 1\n```')
+  })
+  it('un bloque ya cerrado no se toca: sus «$», «**» y «`» son del código', () => {
+    const bash = 'Guárdalo:\n```bash\necho "$HOME" > out.txt\n```'
+    expect(tidyStreamingTail(bash).text).toBe(bash)
+    const py = 'Así:\n```py\na = 1\n\nb = a ** 2\n```'
+    expect(tidyStreamingTail(py).text).toBe(py)
+    const js = '```js\nconst s = `x`\nlet t = 1 // `\n```'
+    expect(tidyStreamingTail(js).text).toBe(js)
+    // la prosa de después sí: su negrita a medias se cierra
+    expect(tidyStreamingTail(bash + '\nY **luego').text).toBe(bash + '\nY **luego**')
+    // y el código en línea con «$» tampoco es una fórmula a medias
+    expect(tidyStreamingTail('Usa `$HOME` y sigue').text).toBe('Usa `$HOME` y sigue')
+  })
+  it('no toca el código dentro de una cita ni de una lista', () => {
+    const q = '> ```bash\n> echo "$HOME"\n> ls'
+    expect(tidyStreamingTail(q).text).toBe(q)
+    const l = '- ```bash\n  echo "$HOME"\n  **bold'
+    expect(tidyStreamingTail(l).text).toBe(l)
   })
 })
 

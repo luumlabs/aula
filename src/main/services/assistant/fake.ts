@@ -5,6 +5,7 @@
 // - un test o unas tarjetas («quiz», «test», «tarjetas»…): `make_quiz` / `make_flashcards`, de trigonometría si se habla de ella;
 // - una pista en el tutor: lee el ejercicio y da su primera pista, sin la respuesta;
 // - una pregunta de trigonometría: busca en los materiales del curso y responde citándolos, con una gráfica;
+// - código («a Python function», «enséñame código»): responde con bloques de código, su salida y una orden de terminal;
 // - lo demás: mira tus cursos, busca en tu Aula, comprueba una cuenta y explica con un ejemplo y una gráfica.
 // Los textos salen en el idioma de la interfaz (`tr`). Lo que no es el chat (aprender de la conversación, JSON) recibe lo mínimo.
 import type { ChatEvent, ChatRequest, ChatResponse } from '@shared/ai/types'
@@ -15,8 +16,8 @@ import { cancelledError } from '../ai/errors'
 import { FAKE_PROVIDER_ID } from '../ai/fake'
 import type { ChatModel, CompleteOptions } from '../ai/model'
 import {
-  fakeAnswer, fakeCitedAnswer, fakeCourseTitle, fakeCourseWrapUp, fakeEvent, fakeEventWrapUp, fakeFlashcardsArgs, fakeHint, fakeIntent, fakeIntro, fakeMistake,
-  fakeQuizArgs, isTrig, type FakePassage
+  fakeAnswer, fakeCitedAnswer, fakeCodeAnswer, fakeCourseTitle, fakeCourseWrapUp, fakeEvent, fakeEventWrapUp, fakeFlashcardsArgs, fakeHint, fakeIntent, fakeIntro,
+  fakeMistake, fakeQuizArgs, isTrig, type FakePassage
 } from './fakeScripts'
 
 export { fakeAnswer, fakeFlashcardsArgs, fakeIntent, fakeIntro, fakeQuizArgs, type FakeIntent } from './fakeScripts'
@@ -206,6 +207,9 @@ export function streamingFake(base: ChatModel, delayMs = 35): ChatModel {
         const why = /^- Result: \w+: (.+)$/m.exec(turn)?.[1]?.trim()
         return say(fakeMistake(isObj(ex) ? ex : {}, input, why))
       }
+
+      // código: la respuesta con sus bloques (se ven escribirse en vivo)
+      if (intent === 'code') return say(fakeCodeAnswer())
 
       // trigonometría: busca en los materiales del curso y responde citándolos
       if (intent === 'answer' && trig && has('search_course_materials')) {

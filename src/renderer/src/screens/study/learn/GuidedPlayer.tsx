@@ -235,6 +235,7 @@ export function GuidedPlayer({ data, skill, ctx, ink, modeMenu, onExit, onFinish
     const fn = (e: KeyboardEvent): void => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
       if (isTypingTarget(document.activeElement as HTMLElement | null)) return
+      if ((e.target as HTMLElement | null)?.closest('button, a[href], [role="button"], .aula-code-scroll')) return
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return
       if (e.key === 'ArrowLeft') {
         e.preventDefault()

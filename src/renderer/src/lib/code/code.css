@@ -1,0 +1,184 @@
+/* La tarjeta del código (CodeSurface): un pozo del papel con su cabecera (lenguaje y «Copiar»), el código con los tonos
+   sobrios de los cursos, los números de línea y la salida del programa. La misma en el bloque `code` y en un ``` de cualquier
+   texto: por eso fija su letra, su alineación y su interlineado (dentro de una lección en serif, de una tarjeta centrada o de
+   una opción, el código se ve igual). Medidas en rem: crecen con «Tamaño del texto». */
+
+:root {
+  /* código: tonos de los cursos, sobrios (≥ 4,5:1 sobre el pozo) */
+  --code-keyword: #9c4527;
+  --code-string: #5d6825;
+  --code-number: #395d88;
+  --code-title: #1f6a6e;
+  --code-builtin: #7d613c;
+  --code-comment: #706c66;
+}
+.dark {
+  --code-keyword: #ef9c7b;
+  --code-string: #b7c46e;
+  --code-number: #93b5e0;
+  --code-title: #74c6c6;
+  --code-builtin: #d4b88e;
+  --code-comment: #8a857f;
+}
+
+.aula-code {
+  --code-size: calc(13rem / 15);
+  --code-line: calc(21rem / 15);
+  --code-pad-x: calc(16rem / 15);
+  --code-pad-y: calc(14rem / 15);
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 0.5px solid var(--line);
+  border-radius: 16px;
+  background: var(--sunken);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-align: left;
+  text-indent: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.aula-code-compact {
+  --code-size: calc(12.5rem / 15);
+  --code-line: calc(19rem / 15);
+  --code-pad-x: calc(12rem / 15);
+  --code-pad-y: calc(10rem / 15);
+  border-radius: 12px;
+}
+
+/* Entre los párrafos de un texto, con el aire de un párrafo */
+:is(.aula-rich, .aula-rich-inline) .aula-code { margin: 0.75em 0; }
+:is(.aula-rich, .aula-rich-inline) .aula-code:first-child { margin-top: 0; }
+:is(.aula-rich, .aula-rich-inline) .aula-code:last-child { margin-bottom: 0; }
+/* En una opción (un control): un poco de aire con su texto */
+.aula-rich-inline .aula-code-embedded { margin: 0.35em 0; }
+
+.aula-code-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: calc(36rem / 15);
+  padding-inline: var(--code-pad-x) 6px;
+  border-bottom: 0.5px solid var(--line-soft);
+}
+.aula-code-embedded .aula-code-head { min-height: calc(30rem / 15); }
+.aula-code-icon { color: var(--text3); }
+.aula-code-label {
+  font-size: calc(12rem / 15);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text3);
+  overflow-wrap: anywhere;
+}
+.aula-code-copy { margin-inline-start: auto; }
+
+.aula-code-body { display: flex; align-items: flex-start; }
+/* Los números: fuera de lo que se desplaza (siguen a la vista) y fuera del texto (no se copian, ni se buscan, ni se leen) */
+.aula-code-gutter {
+  flex: none;
+  min-width: calc(2ch + var(--code-pad-x));
+  padding: var(--code-pad-y) 0 var(--code-pad-y) var(--code-pad-x);
+  font-family: var(--font-mono);
+  font-size: var(--code-size);
+  line-height: var(--code-line);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text3);
+  user-select: none;
+}
+.aula-code-gutter::before { content: attr(data-lines); white-space: pre; }
+
+/* Las líneas largas se desplazan de lado dentro de la tarjeta (nunca se salen de ella) */
+.aula-code-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+.aula-code-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 8px; }
+.aula-code-pre {
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  padding: var(--code-pad-y) var(--code-pad-x);
+  font-family: var(--font-mono);
+  font-size: var(--code-size);
+  line-height: var(--code-line);
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 2;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+  color: var(--text);
+}
+.aula-code .aula-code-text {
+  display: block;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+/* La salida del programa: su propio panel, sin colores */
+.aula-code-output {
+  padding: calc(12rem / 15) var(--code-pad-x);
+  border-top: 0.5px solid var(--line-soft);
+  background: color-mix(in oklab, var(--surface) 60%, transparent);
+}
+.aula-code-output-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: calc(12rem / 15);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.aula-code-output pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: calc(12.5rem / 15);
+  line-height: calc(19rem / 15);
+  color: var(--text2);
+}
+
+/* Un trozo suelto de un bloque ``` (un hueco de completar lo partió): el código en su letra, sin tarjeta a medias */
+.aula-code-loose { font-family: var(--font-mono); font-size: 0.92em; white-space: pre-wrap; }
+
+/* Colores de highlight.js con los tonos del curso (sin violeta: decisión del dueño) */
+.aula-code .hljs-keyword, .aula-code .hljs-selector-tag, .aula-code .hljs-literal, .aula-code .hljs-meta .hljs-keyword { color: var(--code-keyword); font-weight: 500; }
+.aula-code .hljs-string, .aula-code .hljs-regexp, .aula-code .hljs-template-string, .aula-code .hljs-attr-value, .aula-code .hljs-symbol, .aula-code .hljs-char { color: var(--code-string); }
+.aula-code .hljs-number, .aula-code .hljs-variable.constant_ { color: var(--code-number); }
+.aula-code .hljs-title, .aula-code .hljs-title.function_, .aula-code .hljs-title.class_, .aula-code .hljs-section, .aula-code .hljs-selector-class, .aula-code .hljs-selector-id { color: var(--code-title); }
+.aula-code .hljs-built_in, .aula-code .hljs-type, .aula-code .hljs-attr, .aula-code .hljs-attribute, .aula-code .hljs-tag .hljs-name, .aula-code .hljs-name { color: var(--code-builtin); }
+.aula-code .hljs-comment, .aula-code .hljs-quote { color: var(--code-comment); font-style: italic; }
+.aula-code .hljs-meta, .aula-code .hljs-params, .aula-code .hljs-subst { color: var(--text2); }
+.aula-code .hljs-meta .hljs-string { color: var(--code-string); }
+.aula-code .hljs-deletion { color: var(--danger); }
+.aula-code .hljs-addition { color: var(--success); }
+.aula-code .hljs-emphasis { font-style: italic; }
+.aula-code .hljs-strong { font-weight: 600; }
+
+/* En papel: sin «Copiar», las líneas largas se parten (en A4 o en dos columnas de chuleta se descuadran los números) */
+@media print {
+  .aula-code { break-inside: avoid; }
+  .aula-code-copy { display: none; }
+  .aula-code-scroll { overflow: visible; }
+  .aula-code-pre { width: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .aula-code-gutter { display: none; }
+}
+.aula-printing .aula-code-copy { display: none; }
+.aula-printing .aula-code-scroll { overflow: visible; }
+.aula-printing .aula-code-pre { width: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.aula-printing .aula-code-gutter { display: none; }
