@@ -27,6 +27,11 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   *Sign out of Tailscale*.
 
 ### Fixed
+- **Creating a course with ChatGPT no longer stops at "Course plan" with "Code Mode is unavailable"**
+  ([#66](https://github.com/luumlabs/aula/issues/66)). Codex needs a companion program next to it
+  (`codex-code-mode-host`), and the Codex that Aula downloaded didn't have it. Aula now installs OpenAI's complete,
+  verified package, and completes an earlier installation by itself the next time it's used, without asking anything.
+  If that piece is ever missing anyway, Aula explains what happened instead of showing Codex's raw error.
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
 - **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
 

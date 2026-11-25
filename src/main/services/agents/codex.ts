@@ -6,7 +6,9 @@
 // `--ephemeral` y solo los servidores MCP de la tarea. Si en el flujo aparece un comando o un cambio de archivos, se detiene.
 // El prompt de sistema va con `-c developer_instructions=…`; el prompt, por stdin (`-`); las imágenes, con `--image`.
 import { tr } from '@shared/ai/i18n'
-import { AgentError, AgentL10n, CLIErrorClassifier, droppableFlag } from './errors'
+import { DownloadError, progressFraction, type TransferProgress } from '../local-ai/downloader'
+import { appCodexIdle, prepareCodexExecutable } from './codex-installer'
+import { AgentError, AgentL10n, CancelledError, CLIErrorClassifier, droppableFlag, isCancellation } from './errors'
 import {
   eventStream,
   prefixChars,
@@ -257,6 +259,8 @@ export interface CodexOptions {
   /** Argumentos extra, antes del `-` final. */
   extraArguments?: string[]
   extraEnvironment?: Record<string, string>
+  /** Antes de lanzarlo (por defecto `prepareCodexExecutable`: el Codex de Aula a medias se completa). Devuelve el ejecutable. */
+  prepareExecutable?: (executable: string, progress: (p: TransferProgress) => void, signal: AbortSignal) => Promise<string>
 }
 
 export const CODEX_OPTIONAL_FLAGS = new Set(['--ignore-user-config', '--ignore-rules', '--ephemeral', '--color'])
@@ -315,9 +319,10 @@ export class CodexRunner implements AgentRunner {
   private async execute(task: AgentTask, emit: (e: AgentEvent) => void, signal: AbortSignal): Promise<void> {
     const classifier = CLIErrorClassifier.codex
     await prepareLocator()
-    const executable = findExecutable('codex', this.config.executablePath)
-    if (!executable) throw classifier.notInstalled
+    const found = await this.locate(signal)
+    if (!found) throw classifier.notInstalled
     if (!fullPrompt(task).trim() && !task.images?.length) throw new AgentError('other', AgentL10n.emptyPrompt(classifier.cliName))
+    const executable = await this.ready(found, emit, signal)
     if ((task.inProcessToolCount ?? 0) > 0 && !task.mcpServers?.length) emit({ type: 'notice', text: AgentL10n.inProcessToolsUnsupported(classifier.cliName) })
     const sandbox = new AgentSandbox(task.workingDirectory)
     try {
@@ -350,6 +355,38 @@ export class CodexRunner implements AgentRunner {
       throw new AgentError('unsupported', AgentL10n.tooOld(classifier))
     } finally {
       sandbox.cleanup()
+    }
+  }
+
+  /**
+   * Dónde está Codex. Si no aparece, quizá el de Aula se está colocando en su sitio en este momento (otra tarea lo instala o lo
+   * completa): se espera a que acabe y se busca otra vez, en vez de dar «no instalado».
+   */
+  private async locate(signal: AbortSignal): Promise<string | undefined> {
+    const found = findExecutable('codex', this.config.executablePath)
+    if (found) return found
+    await appCodexIdle(signal)
+    return findExecutable('codex', this.config.executablePath)
+  }
+
+  /** El ejecutable listo para lanzar: al Codex de Aula a medias se le descarga antes lo que falta (el monitor ve el avance). */
+  private async ready(found: string, emit: (e: AgentEvent) => void, signal: AbortSignal): Promise<string> {
+    const prepare = this.options.prepareExecutable ?? prepareCodexExecutable
+    let shown = -1
+    const progress = (p: TransferProgress): void => {
+      const tenth = Math.floor(progressFraction(p) * 10)
+      if (tenth === shown) return
+      shown = tenth
+      emit({ type: 'notice', text: AgentL10n.completingCodex(tenth * 10) })
+    }
+    try {
+      return await prepare(found, progress, signal)
+    } catch (err) {
+      if (signal.aborted || isCancellation(err)) throw new CancelledError()
+      const reason = err instanceof Error ? err.message : String(err)
+      // sin red o con un fallo pasajero de la descarga se puede reintentar; lo demás (sin sitio, paquete raro…) para la creación
+      const kind = err instanceof DownloadError && (err.kind === 'network' || err.transient) ? 'network' : 'notInstalled'
+      throw new AgentError(kind, tr(`No pude completar el Codex de Aula: ${reason}`, `I couldn’t complete Aula’s Codex: ${reason}`))
     }
   }
 }

@@ -293,8 +293,11 @@ export async function extractArchive(archive: string, destination: string): Prom
     let tar: Buffer
     try {
       tar = await promisify(gunzip)(raw)
-    } catch {
-      throw new ArchiveError(tr('gzip ilegible', 'unreadable gzip'))
+    } catch (err) {
+      // solo los errores de datos de zlib son un archivo ilegible; un fallo de memoria (p. ej. Z_MEM_ERROR/RangeError) sube tal cual
+      const code = (err as NodeJS.ErrnoException | undefined)?.code
+      if (code === 'Z_DATA_ERROR' || code === 'Z_BUF_ERROR') throw new ArchiveError(tr('gzip ilegible', 'unreadable gzip'))
+      throw err
     }
     entries = parseTar(tar)
   } else if (lower.endsWith('.tar')) entries = parseTar(raw)

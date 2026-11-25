@@ -70,10 +70,13 @@ test('A3-P1-2: «Conectar con ChatGPT» dice en qué va, deja abrir otra vez la 
   test.skip(process.platform === 'win32', 'necesita un codex.exe falso')
   test.setTimeout(90_000)
   const home = englishHome(mkdtempSync(join(tmpdir(), 'aula-e2e-')))
-  // un Codex «ya instalado por Aula» que espera al navegador (nunca abre nada ni toca la red)
+  // un Codex «ya instalado por Aula» que espera al navegador (nunca abre nada ni toca la red), con la estructura del paquete
+  // oficial: `bin/codex` y, a su lado, el host de Code Mode (sin él, Aula lo daría por incompleto y bajaría el de verdad)
   const dir = join(home, 'tools', 'codex', '0.162.1')
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'codex'), [
+  mkdirSync(join(dir, 'bin'), { recursive: true })
+  writeFileSync(join(dir, 'codex-package.json'), JSON.stringify({ layoutVersion: 1, version: '0.162.1', entrypoint: 'bin/codex' }))
+  writeFileSync(join(dir, 'bin', 'codex-code-mode-host'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+  writeFileSync(join(dir, 'bin', 'codex'), [
     '#!/bin/sh',
     'case "$*" in',
     '  *"--version"*) echo "codex-cli 0.162.1"; exit 0 ;;',
@@ -83,7 +86,7 @@ test('A3-P1-2: «Conectar con ChatGPT» dice en qué va, deja abrir otra vez la 
     '  *) exit 2 ;;',
     'esac', ''
   ].join('\n'))
-  chmodSync(join(dir, 'codex'), 0o755)
+  chmodSync(join(dir, 'bin', 'codex'), 0o755)
   writeFileSync(join(dir, '.installed'), '0.162.1')
   const { app, page } = await launch({ home, env: { ...isolated(), AULA_HIDDEN: '1' } })
   await go(page, { name: 'settings', section: 'ai' })
