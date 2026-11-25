@@ -5,7 +5,7 @@ import i18n from '@renderer/i18n'
 import type { AIConsentState } from '@shared/ipc/ai'
 import { AI_CONSENT_DECLINED } from '@shared/ai/consent'
 import { api, installInvokeGuard } from './api'
-import { isDeviceDemo } from './demo'
+import { isDeviceDemo, isStoreShots } from './demo'
 import { createAIConsentGuard } from './aiConsentGuard'
 
 interface AIConsentSheet {
@@ -46,6 +46,7 @@ export function installAIConsent(): void {
   if (!api.remote || installed) return
   const g = createAIConsentGuard({
     demo: () => isDeviceDemo(api.remote),
+    demoSeen: isStoreShots,
     fetch: () => api.invoke('ai.consent'),
     accept: (ids) => api.invoke('ai.acceptConsent', { ids }),
     ask,

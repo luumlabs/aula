@@ -222,6 +222,21 @@ files and the answer to each call. `DemoServer.swift` plays that back:
 - Anything else (creating a course, uploading a file) answers "not available in the demo".
 - In the chat, any question gets a short reply saying it is the demo, with the sample quiz.
 
+The App Store video and screenshots use a second recording that is **never** put in the app:
+
+```bash
+npm run build && node scripts/dev/ios-demo.mjs --preview --lang en   # docs/app-store/media/archives/Preview-en.aulademo
+node scripts/dev/ios-demo.mjs --preview --lang es --check-ai         # only says which AI it would use
+```
+
+It records at the sizes of the screenshot devices (iPad 13″ in landscape, iPhone 18 Pro Max), in that interface
+language, with the real AI of the Claude Code CLI (its signed-in subscription, never an API key) for exactly one call:
+the tutor's answer to "Explain my mistake". At the end it does what the marketing shows (the arc lesson up to its
+figure, `27` in the arc exercise and the red pen, the tutor, a flashcard flipped and rated), keeping the first answer of
+every call from then on, so the progress plays back untouched and each new call is the last of its method. It prints
+the tutor's answer for review. `--fake-ai` rehearses it with the simulated AI. The simulator loads it with
+`-AulaDemo` (Debug builds only, see `docs/app-store/listing.md`).
+
 The recording also includes `LICENSE.md`, `NOTICE.md`, `THIRD_PARTY_NOTICES.md` (including Sketchy's MIT notice)
 and the build's `THIRD_PARTY_LICENSES.txt`. They travel inside the archive with the renderer and fonts, and the demo
 server serves their full text at the matching root paths. Recording fails before launching the app if any notice is

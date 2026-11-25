@@ -12,6 +12,15 @@ export function demoText(es: string, en: string): string {
 // Nuevo curso, «?demo=1» se perdía y la demostración cambiaba a medias (otro «Hoy», el curso marcado como ejemplo)
 const DEMO = typeof location !== 'undefined' && new URLSearchParams(location.search).has('demo')
 
+// las capturas y el vídeo del App Store (la app de depuración abre la demostración con «storeshots=1»): el aviso de la IA de
+// la demostración se da por visto, porque el material de la tienda no puede nombrar a los proveedores
+const STORE_SHOTS = DEMO && new URLSearchParams(location.search).has('storeshots')
+
+/** ¿La demostración de las capturas del App Store? */
+export function isStoreShots(): boolean {
+  return STORE_SHOTS
+}
+
 export function isDemo(): boolean {
   return DEMO
 }

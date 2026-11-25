@@ -25,6 +25,8 @@
   "example": {
     "eyebrow": "Worked example",
     "progress": "Step {{shown}} of {{total}}",
+    "steps_one": "{{count}} step",
+    "steps_other": "{{count}} steps",
     "result": "Result",
     "first": "Show the first step",
     "next": "Next step",

@@ -1,0 +1,315 @@
+<!doctype html>
+<!-- Página de store-art.mjs: pinta UNA pieza del App Store por llamada (renderArt), en CSS a tamaño de puntos; el driver
+     la captura a escala entera (×3 o ×2), así cada PNG sale con los píxeles exactos. «Papel y luz»: papel liso, letra
+     Newsreader, el ladrillo una sola vez y sin degradados de color. La letra y el pincel los inyecta store-art.mjs. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --canvas: #f3f0e9;
+    --paper: #fcfaf5;
+    --text: #201e1a;
+    --text2: #585550;
+    --text3: #6c6862;
+    --accent: #b4502f;
+    --line: rgba(32, 30, 26, 0.11);
+    --e2: 0 1px 2px rgba(56, 40, 22, 0.05), 0 22px 44px -26px rgba(56, 40, 22, 0.44);
+    --serif: 'Newsreader Variable', 'Newsreader', ui-serif, Georgia, serif;
+  }
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  body { -webkit-font-smoothing: antialiased; font-kerning: normal; font-optical-sizing: auto; text-rendering: geometricPrecision; }
+  #root { position: relative; overflow: hidden; }
+  .paper { background: var(--canvas); }
+
+  /* ── Capturas: titular, sublínea y la interfaz real como tarjeta ── */
+  .head { position: absolute; display: flex; flex-direction: column; justify-content: center; }
+  /* pre-line: un «\n» del titular (partido a mano en store-copy.mjs) es un salto de línea */
+  .title { margin: 0; font-family: var(--serif); font-weight: 500; color: var(--text); text-wrap: balance; white-space: pre-line; }
+  .sub { margin: 0; font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--text2); white-space: nowrap; }
+  .ink-word { white-space: nowrap; position: relative; }
+  .bl { display: inline-block; width: 0; height: 0; vertical-align: baseline; }
+  .card { position: absolute; overflow: hidden; background: var(--paper); box-shadow: var(--e2); }
+  .card img { position: absolute; left: 0; display: block; }
+  .card::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 0.75px var(--line); pointer-events: none; }
+  .ink { position: absolute; overflow: visible; color: var(--accent); }
+  .stamp { position: absolute; font: 600 9px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.4px; color: #fff; background: rgba(32, 30, 26, 0.72); padding: 4px 6px; border-radius: 4px; }
+
+  /* ── Vista previa: franja de papel, rótulos, «secuencia acortada», toques y cartela ── */
+  .band { position: absolute; left: 0; right: 0; top: 0; background: var(--canvas); }
+  /* el velo es el MISMO papel perdiendo opacidad (como la botonera de la app), no un degradado de color */
+  .veil { position: absolute; left: 0; right: 0; background: linear-gradient(to bottom, rgba(243, 240, 233, 1), rgba(243, 240, 233, 0)); }
+  .caption { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: center; }
+  .caption p { margin: 0; font-family: var(--serif); font-weight: 500; color: var(--text); text-align: center; text-wrap: balance; }
+  .short { position: absolute; margin: 0; font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--text3); white-space: nowrap; }
+  .tap { position: absolute; overflow: visible; color: var(--accent); opacity: 0.55; }
+  .end { position: absolute; inset: 0; background: var(--canvas); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .end img { display: block; border-radius: 22.37%; box-shadow: 0 1px 2px rgba(56, 40, 22, 0.08), 0 18px 36px -20px rgba(56, 40, 22, 0.4); }
+  .end .name { margin: 0; font-family: var(--serif); font-weight: 500; color: var(--text); letter-spacing: -0.4px; }
+  .end .l1 { margin: 0; font-family: var(--serif); font-weight: 400; color: var(--text); }
+  .end .l2 { margin: 0; font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--text2); }
+
+  /* ── Hoja de contacto (solo para revisar) ── */
+  .sheet { box-sizing: border-box; background: #fff; padding: 16px; display: grid; gap: 12px; font: 12px/1.3 -apple-system, system-ui, sans-serif; color: #333; }
+  .sheet h1 { grid-column: 1 / -1; margin: 0 0 4px; font-size: 15px; }
+  .sheet figure { margin: 0; }
+  .sheet figure img { display: block; width: 100%; outline: 1px solid #ddd; }
+  .sheet figcaption { margin-top: 4px; }
+  .sheet .checker img { background: repeating-conic-gradient(#e7e7e7 0% 25%, #fff 0% 50%) 50% / 16px 16px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  'use strict'
+  const root = document.getElementById('root')
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e }
+  const px = (v) => v + 'px'
+  const warnings = []
+
+  /** Un dibujo a tinta de design/paint como SVG quieto (ya dibujado): la silueta, descubierta por su eje, menos las hebras secas. */
+  function inkSvg(drawing, cls) {
+    const NS = 'http://www.w3.org/2000/svg'
+    const svg = document.createElementNS(NS, 'svg')
+    svg.setAttribute('class', cls)
+    svg.setAttribute('viewBox', `0 0 ${drawing.w} ${drawing.h}`)
+    svg.setAttribute('width', drawing.w)
+    svg.setAttribute('height', drawing.h)
+    const defs = document.createElementNS(NS, 'defs')
+    svg.appendChild(defs)
+    drawing.strokes.forEach((s, i) => {
+      const id = `m${Math.random().toString(36).slice(2)}${i}`
+      const mask = document.createElementNS(NS, 'mask')
+      mask.setAttribute('id', id)
+      mask.setAttribute('maskUnits', 'userSpaceOnUse')
+      for (const [k, v] of Object.entries({ x: -20, y: -20, width: drawing.w + 40, height: drawing.h + 40 })) mask.setAttribute(k, v)
+      const spine = document.createElementNS(NS, 'path')
+      for (const [k, v] of Object.entries({ d: s.spine, fill: 'none', stroke: '#fff', 'stroke-width': s.reach, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) spine.setAttribute(k, v)
+      mask.appendChild(spine)
+      if (s.dry) {
+        const dry = document.createElementNS(NS, 'path')
+        for (const [k, v] of Object.entries({ d: s.dry, fill: 'none', stroke: '#000', 'stroke-width': s.dryWidth, 'stroke-linecap': 'round' })) dry.setAttribute(k, v)
+        mask.appendChild(dry)
+      }
+      defs.appendChild(mask)
+      const body = document.createElementNS(NS, 'path')
+      body.setAttribute('d', s.d)
+      body.setAttribute('fill', 'currentColor')
+      body.setAttribute('mask', `url(#${id})`)
+      svg.appendChild(body)
+    })
+    return svg
+  }
+
+  /** Pone la palabra `ink` del texto dentro de un span medible (con un marcador en su línea base). */
+  function withInk(p, text, ink) {
+    const i = ink ? text.indexOf(ink) : -1
+    if (i < 0) { p.textContent = text; if (ink) warnings.push(`no encuentro «${ink}» en «${text}»`); return null }
+    p.append(text.slice(0, i))
+    const span = el('span', 'ink-word', ink)
+    span.appendChild(el('i', 'bl'))
+    p.append(span, text.slice(i + ink.length))
+    return span
+  }
+
+  /** El subrayado a pincel bajo la palabra: underlineInk(ancho, 9, semilla), 2 CSS bajo la línea base. */
+  function underline(span, seed, height) {
+    const box = root.getBoundingClientRect()
+    const r = span.getBoundingClientRect()
+    const base = span.querySelector('.bl').getBoundingClientRect().top
+    const w = Math.round(r.width + height * 0.4)
+    const svg = inkSvg(window.AulaInk.underlineInk(w, height, seed), 'ink')
+    svg.style.left = px(r.left - box.left - height * 0.25)
+    // el borde de arriba del trazo (más grueso donde se posa el pincel) queda unos 2 CSS bajo la línea base
+    svg.style.top = px(base - box.top + 2 + height * 0.15)
+    root.appendChild(svg)
+  }
+
+  const lines = (node, lineHeight) => Math.round(node.getBoundingClientRect().height / lineHeight)
+
+  async function ready() {
+    await document.fonts.ready
+    for (const img of root.querySelectorAll('img')) {
+      await img.decode().catch(() => {})
+      if (!img.naturalWidth) throw new Error('no se pudo cargar ' + img.src.slice(0, 120))
+    }
+  }
+
+  // ── Las piezas ──────────────────────────────────────────────────────────────────────────────────────────────
+
+  /** Captura: titular arriba alineado con la tarjeta, sublínea, y la captura sin barra de estado dentro de la tarjeta. */
+  async function shot(s) {
+    const [W, H] = s.page
+    const c = s.card
+    root.className = 'paper'
+    root.style.width = px(W)
+    root.style.height = px(H)
+    const head = el('div', 'head')
+    Object.assign(head.style, { left: px(c.x), width: px(c.w), top: '0', height: px(c.y) })
+    const title = el('h1', 'title')
+    Object.assign(title.style, { fontSize: px(s.type.title[0]), lineHeight: px(s.type.title[1]), letterSpacing: px(s.type.tracking) })
+    const span = withInk(title, s.title, s.ink)
+    const sub = el('p', 'sub', s.sub)
+    Object.assign(sub.style, { fontSize: px(s.type.sub[0]), lineHeight: px(s.type.sub[1]), marginTop: px(Math.round(s.type.title[0] * 0.36)) })
+    head.append(title, sub)
+    const card = el('div', 'card')
+    Object.assign(card.style, { left: px(c.x), top: px(c.y), width: px(c.w), height: px(c.h), borderRadius: px(c.r) })
+    const img = el('img')
+    img.src = s.image
+    card.appendChild(img)
+    root.append(head, card)
+    await ready()
+    let upscale = null
+    if (s.fit) {
+      // de pie (prueba en seco): la imagen cubre la tarjeta y se encuadra con `fit` (fracciones del sobrante)
+      const k = Math.max(c.w / img.naturalWidth, c.h / img.naturalHeight) * (s.fit.zoom || 1)
+      const w = img.naturalWidth * k, h = img.naturalHeight * k
+      Object.assign(img.style, { width: px(w), height: px(h), left: px(-(w - c.w) * s.fit.x), top: px(-(h - c.h) * s.fit.y) })
+    } else {
+      // del simulador: la pantalla a todo el ancho sin la barra de estado, o la zona `frame` (en puntos) a todo el ancho
+      const pt = img.naturalWidth / s.source.pt[0]
+      const ratio = img.naturalHeight / img.naturalWidth, want = s.source.pt[1] / s.source.pt[0]
+      if (Math.abs(ratio - want) > 0.01) warnings.push(`la captura mide ${img.naturalWidth}×${img.naturalHeight}: no es del ${s.device}`)
+      const f = s.frame || { x: 0, y: s.source.statusBar, w: s.source.pt[0] }
+      const k = c.w / (f.w * pt)
+      Object.assign(img.style, { width: px(img.naturalWidth * k), left: px(-f.x * pt * k), top: px(-f.y * pt * k) })
+      // el borde de abajo de la tarjeta, en puntos de la pantalla
+      const bottom = f.y + c.h / (k * pt)
+      if (bottom > img.naturalHeight / pt + 0.5) warnings.push('la captura no llena la tarjeta')
+      if (s.frame && (f.x < 0 || f.x + f.w > s.source.pt[0] || f.y < s.source.statusBar)) warnings.push(`el encuadre (${f.x}, ${f.y}, ${f.w}) se sale de la pantalla o entra en la barra de estado`)
+      // cuánto se amplía cada píxel de la captura en el archivo final (más de ~1,5 empieza a verse blando)
+      upscale = k * window.devicePixelRatio
+      if (upscale > 1.5) warnings.push(`el encuadre amplía la captura ×${upscale.toFixed(2).replace('.', ',')}: puede verse blanda`)
+    }
+    // la sublínea en una línea: baja de medio en medio punto hasta `subMin`
+    for (let f = s.type.sub[0]; sub.scrollWidth > c.w + 0.5 && f > s.type.subMin; ) { f = Math.max(s.type.subMin, f - 0.5); sub.style.fontSize = px(f) }
+    if (sub.scrollWidth > c.w + 0.5) { sub.style.whiteSpace = 'normal'; warnings.push(`sublínea en dos líneas: «${s.sub}»`) }
+    const n = lines(title, s.type.title[1])
+    if (n > s.type.titleLines) warnings.push(`titular en ${n} líneas: «${s.title}»`)
+    if (head.scrollHeight > c.y) warnings.push('el titular no cabe sobre la tarjeta')
+    if (span) underline(span, s.n, 9)
+    if (s.stamp) {
+      const st = el('div', 'stamp', s.stamp)
+      Object.assign(st.style, { right: px(W - c.x - c.w + 10), bottom: px(H - c.y - c.h + 10) })
+      root.appendChild(st)
+    }
+    return { subSize: parseFloat(sub.style.fontSize), titleLines: n, upscale }
+  }
+
+  function videoRoot(v) {
+    root.className = ''
+    root.style.width = px(v.page[0])
+    root.style.height = px(v.page[1])
+  }
+
+  /** La franja de papel de arriba (tapa la barra de estado y la de título) con su velo. */
+  async function band(s) {
+    videoRoot(s.video)
+    const b = el('div', 'band')
+    b.style.height = px(s.video.band)
+    const veil = el('div', 'veil')
+    Object.assign(veil.style, { top: px(s.video.band), height: px(s.video.veil) })
+    root.append(b, veil)
+    await ready()
+    return {}
+  }
+
+  /** Un rótulo, solo el texto, centrado en la franja. */
+  async function caption(s) {
+    const v = s.video, c = v.caption
+    videoRoot(v)
+    const box = el('div', 'caption')
+    Object.assign(box.style, { top: px(c.top), height: px(c.bottom - c.top) })
+    const p = el('p', null, s.text)
+    Object.assign(p.style, { fontSize: px(c.size), lineHeight: px(c.line), maxWidth: px(c.maxWidth) })
+    if (c.lines === 1) p.style.whiteSpace = 'nowrap'
+    box.appendChild(p)
+    root.appendChild(box)
+    await ready()
+    const n = lines(p, c.line)
+    if (n > c.lines || p.scrollWidth > c.maxWidth + 0.5) warnings.push(`rótulo en ${n} líneas o más ancho que ${c.maxWidth}: «${s.text}»`)
+    return { lines: n }
+  }
+
+  /** «Sequence shortened»: cursiva pequeña abajo a la derecha, dentro de la franja. */
+  async function short(s) {
+    const v = s.video
+    videoRoot(v)
+    const p = el('p', 'short', s.text)
+    Object.assign(p.style, { fontSize: px(v.short), lineHeight: px(v.short * 1.2), right: px(Math.round(v.short * 1.1)), top: px(v.band - v.short * 1.2 - Math.round(v.short * 0.55)) })
+    root.appendChild(p)
+    await ready()
+    return {}
+  }
+
+  /** Un toque: una mancha de tinta cortada a mano, ladrillo al 55 %, centrada en el punto tocado. */
+  async function tap(s) {
+    videoRoot(s.video)
+    const d = window.AulaInk.dot(s.video.tap, s.seed)
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('class', 'tap')
+    svg.setAttribute('viewBox', `0 0 ${d.w} ${d.h}`)
+    svg.setAttribute('width', d.w)
+    svg.setAttribute('height', d.h)
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    path.setAttribute('d', d.d)
+    path.setAttribute('fill', 'currentColor')
+    svg.appendChild(path)
+    Object.assign(svg.style, { left: px(s.x - d.w / 2), top: px(s.y - d.h / 2) })
+    root.appendChild(svg)
+    await ready()
+    return {}
+  }
+
+  /** La cartela final: el icono, «Aula», el aviso del Mac o servidor y el del inicio de sesión. */
+  async function end(s) {
+    const v = s.video, e = v.end
+    videoRoot(v)
+    const box = el('div', 'end')
+    const icon = el('img')
+    icon.src = s.icon
+    Object.assign(icon.style, { width: px(e.icon), height: px(e.icon) })
+    const name = el('h1', 'name', 'Aula')
+    Object.assign(name.style, { fontSize: px(e.name), lineHeight: px(e.name * 1.1), marginTop: px(Math.round(e.icon * 0.2)) })
+    const l1 = el('p', 'l1', s.line1)
+    Object.assign(l1.style, { fontSize: px(e.line1), lineHeight: px(e.line1 * 1.35), marginTop: px(Math.round(e.name * 0.42)), maxWidth: px(v.page[0] * 0.86) })
+    const l2 = el('p', 'l2', s.line2)
+    Object.assign(l2.style, { fontSize: px(e.line2), lineHeight: px(e.line2 * 1.35), marginTop: px(Math.round(e.line1 * 0.45)) })
+    box.append(icon, name, l1, l2)
+    root.appendChild(box)
+    await ready()
+    if (lines(l2, e.line2 * 1.35) > 1) warnings.push(`la línea 2 de la cartela no cabe en una línea: «${s.line2}»`)
+    return {}
+  }
+
+  /** Hoja de contacto: las piezas en rejilla con su nombre (las transparentes, sobre un damero). */
+  async function sheet(s) {
+    root.className = 'sheet'
+    root.style.width = px(s.width)
+    root.style.gridTemplateColumns = `repeat(${s.columns}, minmax(0, 1fr))`
+    root.appendChild(el('h1', null, s.title))
+    for (const it of s.items) {
+      const f = el('figure', it.checker ? 'checker' : '')
+      const img = el('img')
+      img.src = it.image
+      f.append(img, el('figcaption', null, it.label))
+      root.appendChild(f)
+    }
+    await ready()
+    root.style.height = px(root.scrollHeight)
+    return { height: root.scrollHeight }
+  }
+
+  window.renderArt = async (spec) => {
+    root.replaceChildren()
+    root.removeAttribute('style')
+    warnings.length = 0
+    const kinds = { shot, band, caption, short, tap, end, sheet }
+    const out = await kinds[spec.kind](spec)
+    // un respiro para que el pintado esté hecho (la ventana está oculta: sin requestAnimationFrame)
+    await new Promise((r) => setTimeout(r, 60))
+    return { ...out, warnings: [...warnings] }
+  }
+</script>
+</body>
+</html>

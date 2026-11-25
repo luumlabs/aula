@@ -9,7 +9,7 @@ import { log } from '../log'
 import type { LocalAIService } from '../local-ai/service'
 import { findInstalledLocalApps } from '../local-ai/servers'
 import { codexIsLoggedIn, codexLogin, codexLogout } from './codex-account'
-import { ManagedCodex } from './codex-installer'
+import { ManagedCodex, setAppManagedCodex } from './codex-installer'
 import { AgentError, CancelledError } from './errors'
 import { addToolDirectory, findExecutable, prepareLocator } from './locator'
 import { probeCLI } from './probe'
@@ -33,8 +33,13 @@ export class AgentsService {
     this.local = options.local
     this.codex = options.codex
     this.cacheMs = options.cacheMs ?? 30_000
-    // el Codex que instaló Aula se encuentra aunque no esté en el PATH
+    // el Codex que instaló Aula se encuentra aunque no esté en el PATH: en `bin/`, junto al host de Code Mode, o donde lo dejaban
+    // las versiones anteriores de Aula (esa instalación, sin el host, se completa sola antes de usarla: `prepareCodexExecutable`)
+    addToolDirectory(this.codex.binFolder)
     addToolDirectory(this.codex.installFolder)
+    setAppManagedCodex(this.codex)
+    // lo que dejó una instalación interrumpida (Aula se cerró a medias) vuelve a su sitio o se borra, antes de cualquier otra
+    this.codex.tidy().catch((err: unknown) => log.warn('[agents] no pude recoger lo que dejó la instalación de Codex', err))
   }
 
   /** CLIs instaladas y con sesión, Ollama/LM Studio en marcha, ficha del ordenador y modelo local recomendado. */

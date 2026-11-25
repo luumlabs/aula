@@ -1,18 +1,16 @@
 // El servicio de agentes que usa la interfaz: detección de todo lo que hay en el ordenador (CLIs, servidores locales, ficha,
 // modelo recomendado) y «Conectar con ChatGPT» con el Codex oficial que instala Aula (aquí, un paquete falso servido en local).
-import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { gzipSync } from 'node:zlib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { CodexLoginEvent, HardwareProfile } from '@shared/agents'
 import { FakeServer, reply } from '../local-ai/__fixtures__/fake-server'
-import { tar, tarEntry } from '../local-ai/__fixtures__/tar'
 import { Downloader } from '../local-ai/downloader'
 import { LocalAIService } from '../local-ai/service'
-import { codexTriple, ManagedCodex, pickCodexAsset, PINNED_CODEX_SHA256 } from './codex-installer'
-import { locatorOverrides } from './locator'
+import { ManagedCodex, prepareCodexExecutable } from './codex-installer'
+import { findExecutable, locatorOverrides } from './locator'
 import { AgentsService, modelIdArg } from './service'
+import { fakeCodexPackage, sha256 } from './__fixtures__/codex-package'
 import { cleanupTempDirs, makeTempDir, posixIt, writeNodeTool } from './__fixtures__/support'
 
 const GB = 1_073_741_824
@@ -60,14 +58,15 @@ afterEach(async () => {
   cleanupTempDirs()
 })
 
+/** El paquete oficial completo, falso: `bin/codex` (el guion de arriba) y, a su lado, el host de Code Mode. */
 async function codexPackage(): Promise<ManagedCodex> {
-  const data = gzipSync(tar(tarEntry(`codex-${codexTriple()}`, { data: FAKE_CODEX, mode: 0o755 })))
+  const data = fakeCodexPackage({ codex: FAKE_CODEX })
   const server = new FakeServer((r) => (r.path.endsWith('.tar.gz') ? reply.file(data, r) : reply.notFound()))
   servers.push(server)
   const origin = await server.start()
   return new ManagedCodex({
     root,
-    asset: { name: 'codex.tar.gz', url: `${origin}/codex.tar.gz`, bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') },
+    asset: { name: 'codex-package-test.tar.gz', url: `${origin}/codex-package-test.tar.gz`, bytes: data.length, sha256: sha256(data) },
     downloader: new Downloader({ attempts: 1, retryDelayMs: 0, diskMargin: 0, freeSpace: () => 2 ** 40 })
   })
 }
@@ -107,7 +106,7 @@ describe('Conectar con ChatGPT', () => {
     const events: CodexLoginEvent[] = []
     const result = await service.connectChatGPT({ onEvent: (e) => events.push(e) })
     expect(result).toEqual({ connected: true, executable: codex.binary, managedHome: true })
-    expect(codex.binary).toBe(join(root, 'tools', 'codex', '0.162.1', process.platform === 'win32' ? 'codex.exe' : 'codex'))
+    expect(codex.binary).toBe(join(root, 'tools', 'codex', '0.162.1', 'bin', process.platform === 'win32' ? 'codex.exe' : 'codex'))
     expect(existsSync(join(codex.sessionFolder, 'auth.json'))).toBe(true) // nunca en ~/.codex
     expect(events.some((e) => e.type === 'downloading')).toBe(true)
     expect(events).toContainEqual({ type: 'waitingForBrowser', url: 'https://auth.openai.com/oauth/authorize?x=1' })
@@ -140,21 +139,25 @@ describe('Conectar con ChatGPT', () => {
     expect(existsSync(join(codex.sessionFolder, 'auth.json'))).toBe(false)
   })
 
-  it('elige el paquete oficial de Codex de cada sistema', () => {
-    expect(codexTriple('darwin', 'arm64')).toBe('aarch64-apple-darwin')
-    expect(codexTriple('linux', 'x64')).toBe('x86_64-unknown-linux-musl')
-    expect(codexTriple('win32', 'x64')).toBe('x86_64-pc-windows-msvc')
-    expect(codexTriple('linux', 'ia32')).toBeUndefined()
-    const assets = [
-      { name: 'codex-x86_64-pc-windows-msvc.exe.zip', size: 10, browser_download_url: 'https://github.com/openai/codex/releases/download/rust-v0.162.1/codex-x86_64-pc-windows-msvc.exe.zip', digest: 'sha256:' + 'a'.repeat(64) },
-      { name: 'codex-x86_64-unknown-linux-musl.tar.gz', size: 10, browser_download_url: 'https://evil.example/codex.tar.gz', digest: 'sha256:' + 'b'.repeat(64) }
-    ]
-    // A2-P2-21: la huella fijada manda; si GitHub publica otra para ese nombre, el paquete no se usa
-    expect(pickCodexAsset(assets, 'x86_64-pc-windows-msvc')).toBeUndefined()
-    const real = [{ ...assets[0], digest: 'sha256:' + PINNED_CODEX_SHA256['codex-x86_64-pc-windows-msvc.exe.zip'] }]
-    expect(pickCodexAsset(real, 'x86_64-pc-windows-msvc')?.sha256).toBe(PINNED_CODEX_SHA256['codex-x86_64-pc-windows-msvc.exe.zip'])
-    expect(pickCodexAsset([{ ...assets[0], digest: null }], 'x86_64-pc-windows-msvc')?.sha256).toBe(PINNED_CODEX_SHA256['codex-x86_64-pc-windows-msvc.exe.zip'])
-    expect(pickCodexAsset(assets, 'x86_64-unknown-linux-musl')).toBeUndefined() // solo desde github.com
+  // issue #66: el Codex que dejaban las versiones anteriores (solo `codex`, sin el host de Code Mode)
+  posixIt('la instalación de antes, sin el host, se sigue encontrando, se completa sola y la sesión sigue', async () => {
+    const codex = await codexPackage()
+    mkdirSync(codex.installFolder, { recursive: true })
+    const legacy = join(codex.installFolder, 'codex')
+    writeFileSync(legacy, FAKE_CODEX, { mode: 0o755 })
+    writeFileSync(join(codex.installFolder, '.installed'), codex.version)
+    mkdirSync(codex.sessionFolder, { recursive: true })
+    writeFileSync(join(codex.sessionFolder, 'auth.json'), '{}')
+    const service = new AgentsService({ local: local(), codex })
+    // las carpetas del ordenador y, al final, las dos que añade el servicio para el Codex de Aula (en su orden)
+    locatorOverrides.searchDirectories = [join(root, 'bin'), codex.binFolder, codex.installFolder]
+    expect(findExecutable('codex')).toBe(legacy)
+    expect((await service.detect(true)).codexManagedLoggedIn).toBe(true) // sigue conectada: nada que pedir al estudiante
+    expect(await prepareCodexExecutable(legacy)).toBe(join(codex.binFolder, 'codex'))
+    expect(findExecutable('codex')).toBe(join(codex.binFolder, 'codex'))
+    expect(existsSync(join(codex.binFolder, 'codex-code-mode-host'))).toBe(true)
+    expect(existsSync(join(codex.sessionFolder, 'auth.json'))).toBe(true) // la sesión de ChatGPT no se toca
+    expect((await service.detect(true)).codexManagedLoggedIn).toBe(true)
   })
 })
 

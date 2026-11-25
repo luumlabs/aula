@@ -54,7 +54,7 @@ final class AppModel {
     /// argumento «-AulaStoreShots») la enseñan sin ella, como se ve Aula conectada al Mac.
     var showsDemoBar: Bool {
         #if DEBUG
-        return inDemo && !pageShowsDemoNotice && !ProcessInfo.processInfo.arguments.contains("-AulaStoreShots")
+        return inDemo && !pageShowsDemoNotice && !StoreShots.on
         #else
         return inDemo && !pageShowsDemoNotice
         #endif
@@ -81,10 +81,29 @@ final class AppModel {
         default: return nil
         }
     }
+    /// La hoja de conexión. Las capturas del App Store no la enseñan mientras se abre la demostración (solo el papel).
+    var showsConnectScreen: Bool {
+        #if DEBUG
+        if StoreShots.on, case .starting = stage { return false }
+        #endif
+        return true
+    }
     private var demo: DemoServer?
 
     /// ¿Esta copia de la app trae la demostración? (scripts/dev/ios-demo.mjs la graba antes de archivar).
-    let demoArchive: DemoArchive? = Bundle.main.url(forResource: "Demo", withExtension: "aulademo").flatMap { DemoArchive(url: $0) }
+    let demoArchive: DemoArchive? = AppModel.loadDemoArchive()
+
+    nonisolated private static func loadDemoArchive() -> DemoArchive? {
+        #if DEBUG
+        // capturas del App Store: una grabación que no va dentro de la app (Preview-*.aulademo, en Documents)
+        if let url = StoreShots.archive {
+            let archive = DemoArchive(url: url)
+            if archive == nil { NSLog("[Aula] -AulaDemo: no se pudo leer %@", url.path) }
+            return archive
+        }
+        #endif
+        return Bundle.main.url(forResource: "Demo", withExtension: "aulademo").flatMap { DemoArchive(url: $0) }
+    }
 
     private let controller = TailnetController.shared
     private var started = false
@@ -109,6 +128,10 @@ final class AppModel {
     func start() async {
         guard !started else { return }
         started = true
+        #if DEBUG
+        // capturas del App Store: la demostración sola y sin Tailscale (ni aviso de red local ni pantalla de conexión)
+        if StoreShots.on { return await startDemo() }
+        #endif
         TailnetEvents.shared.set { [weak self] event in
             Task { @MainActor in self?.handle(event) }
         }
@@ -265,6 +288,11 @@ final class AppModel {
     /// (si cambió de puerto, la interfaz se recarga en el nuevo, en la misma pantalla).
     func cameToForeground() async {
         guard started else { return }
+        #if DEBUG
+        // capturas del App Store: la demostración no se vuelve a abrir (al arrancar se abriría dos veces, y una navegación
+        // de la primera página, por el puerto viejo, acabaría en Safari)
+        if StoreShots.on { return }
+        #endif
         // iOS pudo quitarle el puerto a la demostración mientras la app estaba suspendida: se abre en otro
         if inDemo { await startDemo() }
         await controller.applicationWillEnterForeground()
@@ -305,15 +333,29 @@ final class AppModel {
     func startDemo() async {
         guard let demoArchive else { return }
         demo?.stop()
-        let server = DemoServer(archive: demoArchive, unavailable: Texts.demoUnavailable, chatReply: Texts.demoChatReply)
+        #if DEBUG
+        // capturas: una pregunta que no es la grabada recibe el texto grabado (la respuesta del tutor), no el aviso
+        let chatReply = StoreShots.on ? "" : Texts.demoChatReply
+        let route = StoreShots.routeFragment
+        // capturas: el aviso de la IA de la demostración ya visto (el material del App Store no lo enseña)
+        let query = StoreShots.on ? "?demo=1&storeshots=1" : "?demo=1"
+        #else
+        let chatReply = Texts.demoChatReply
+        let route: String? = nil
+        let query = "?demo=1"
+        #endif
+        let server = DemoServer(archive: demoArchive, unavailable: Texts.demoUnavailable, chatReply: chatReply)
         do {
             let port = try await server.start()
             demo = server
             inDemo = true
             // lo que se estuviera abriendo de la red ya no pinta nada sobre la demostración
             supersede()
-            // «demo=1»: la interfaz usa sus datos de ejemplo donde el Mac daría los del estudiante
-            stage = .ready(URL(string: "http://127.0.0.1:\(port)/?demo=1")!)
+            // «demo=1»: la interfaz usa sus datos de ejemplo donde el Mac daría los del estudiante; el fragmento, la
+            // pantalla en la que arranca (solo las capturas lo ponen)
+            var address = URLComponents(string: "http://127.0.0.1:\(port)/\(query)")!
+            address.percentEncodedFragment = route
+            stage = .ready(address.url!)
         } catch {
             server.stop()
             demo = nil
