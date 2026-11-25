@@ -14,6 +14,10 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   device that hasn't accepted can't start a chat, a course or an AI routine. It asks again if you switch to another
   company, and a model that runs on your own computer needs no notice.
 - **Settings → About links to the privacy policy and to help**, on the computer and on your devices.
+- **Short written answers can take several lines** for a list or a few steps
+  ([#69](https://github.com/luumlabs/aula/issues/69)). With a keyboard, Shift+Enter starts a new line; pasted text
+  keeps its line breaks, and the field grows up to six lines before it scrolls. Enter, or Return on a phone, still
+  checks, as before. A wrong answer is crossed out line by line. Number, formula and chemistry answers stay on one line.
 - **Settings → About ends with a small *Support Aula* section.** Aula is free and open source, with no ads or
   tracking, and nothing you study reaches us; if you'd like to help, a button opens GitHub Sponsors, and a star on
   GitHub or telling your classmates helps too. On the computer, *Help → Support Aula…* leads there. In the iPhone and

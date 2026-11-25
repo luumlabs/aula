@@ -152,7 +152,7 @@ and animations follow your system's *reduce motion* setting.
 | <kbd>⌘</kbd> <kbd>,</kbd> | Settings |
 | <kbd>⌘</kbd> <kbd>[</kbd> / <kbd>]</kbd> (macOS) · <kbd>Alt</kbd> <kbd>←</kbd> / <kbd>→</kbd> (Windows, Linux) | Back · Forward |
 | <kbd>⌘</kbd> <kbd>⌃</kbd> <kbd>S</kbd> (macOS) · <kbd>Ctrl</kbd> <kbd>\\</kbd> (Windows, Linux) | Show or hide the sidebar |
-| Exercises | <kbd>Enter</kbd> check · <kbd>A</kbd>–<kbd>Z</kbd> or <kbd>1</kbd>–<kbd>9</kbd> pick an option · <kbd>⌘</kbd> <kbd>Enter</kbd> submit an open answer |
+| Exercises | <kbd>Enter</kbd> check · <kbd>A</kbd>–<kbd>Z</kbd> or <kbd>1</kbd>–<kbd>9</kbd> pick an option · <kbd>⇧</kbd> <kbd>Enter</kbd> new line in a short answer · <kbd>⌘</kbd> <kbd>Enter</kbd> submit an open answer |
 | Flashcards | <kbd>Space</kbd> flip · <kbd>1</kbd>–<kbd>4</kbd> rate · <kbd>H</kbd> hint · <kbd>⌘</kbd> <kbd>Z</kbd> undo |
 | Mock exam | <kbd>Alt</kbd> <kbd>←</kbd> / <kbd>→</kbd> previous / next · <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>L</kbd> flag |
 | Document reader | <kbd>⌘</kbd> <kbd>F</kbd> find · <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>H</kbd> highlight the selection · <kbd>⌘</kbd> <kbd>+</kbd> / <kbd>−</kbd> zoom · <kbd>⌘</kbd> <kbd>0</kbd> fit to width · <kbd>←</kbd> / <kbd>→</kbd> or <kbd>Page Up</kbd> / <kbd>Page Down</kbd> change page · <kbd>Esc</kbd> clear the selection |

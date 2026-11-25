@@ -46,7 +46,8 @@ export interface ExerciseController {
   checkedWrong: boolean
   canHint: boolean
   canSayDontKnow: boolean
-  /** Respuesta abierta: ↩ es salto de línea y se comprueba con ⌘↩. */
+  /** Respuesta abierta: ↩ es salto de línea y se comprueba con ⌘↩ (la pista del botón Comprobar). La corta también admite
+   *  varias líneas, pero con Mayús+↩: su ↩ comprueba, así que aquí no cuenta. */
   multiline: boolean
   hasContinue: boolean
   edit: (fn: (d: Draft) => Draft) => void
