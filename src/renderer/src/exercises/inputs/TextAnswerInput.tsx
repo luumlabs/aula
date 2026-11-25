@@ -1,12 +1,14 @@
 // Respuesta escrita: número (con unidad y coma decimal), expresión, ecuación, conjunto, intervalo, punto, respuesta corta
 // y química. Con la vista previa de lo que entiende Aula («Así lo leo», KaTeX/mhchem) y una barra de símbolos
-// (fracción, raíz, potencia, π, ±, ≤, flechas de reacción…) que escribe donde está el cursor.
-import { useEffect, useMemo, useRef, useState } from 'react'
+// (fracción, raíz, potencia, π, ±, ≤, flechas de reacción…) que escribe donde está el cursor. Las de matemáticas y química
+// son de una línea. La corta crece hasta seis líneas (una lista, unos pasos): Intro comprueba, como siempre; Mayús+Intro
+// hace un salto de línea y lo pegado conserva los suyos.
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Answer } from '@shared/schema/exercises'
 import { RichText } from '@renderer/lib/RichText'
-import { canAutoFocus, cx, InkStrike, Tooltip } from '@renderer/design'
+import { canAutoFocus, cx, InkStrike, Tooltip, useTouchOnly } from '@renderer/design'
 import { answerInputMode, keysFor, type AnswerKey } from '../keys'
 import { api } from '@renderer/lib/api'
 import { signedNumberKeyboard } from '@renderer/lib/device'
@@ -14,7 +16,14 @@ import { chemTex, insertAt, mathPreview, previewIsUseful, usesDecimalComma } fro
 import { Tex } from '../ui'
 import { partTone, type InputProps } from './shared'
 import type { GradeResult } from '../types'
-import { answerField } from './answerField'
+import { answerField, enterAction } from './answerField'
+import { StruckLines } from './StruckLines'
+
+/** El campo que crece: una línea de la misma altura que el de una línea (h-12, 3rem) y hasta seis (luego desplaza). Su
+ *  relleno y su letra, que también lleva la copia del tachado de varias líneas para partir los renglones igual. El texto
+ *  de ejemplo, en una línea (cortado), como en el campo de una línea: partido en varias, haría crecer el campo vacío. */
+const AREA_TEXT = 'px-4 py-[calc((3rem-26px)/2)] text-[17px] leading-[24px] tabular'
+const AREA_BOX = 'min-h-12 max-h-[calc(3rem+120px)] resize-none overflow-y-hidden placeholder:truncate'
 
 type TextKind = Extract<Answer['kind'], 'numeric' | 'expression' | 'equation' | 'set' | 'interval' | 'point' | 'short' | 'chem' | 'unknown'>
 
@@ -76,17 +85,61 @@ export function TextAnswerInput(props: InputProps<Extract<Answer, { kind: TextKi
   // los mensajes del analizador matemático están en español (aún sin catálogo en inglés)
   const spanish = i18n.language.startsWith('es')
   const spec = useSpec(answer)
-  const ref = useRef<HTMLInputElement>(null)
+  // la respuesta corta puede ocupar varias líneas (una lista, una definición con pasos); las de números y fórmulas, una
+  const multiline = answer.kind === 'short'
+  const line = useRef<HTMLInputElement>(null)
+  const area = useRef<HTMLTextAreaElement>(null)
+  const field = (): HTMLInputElement | HTMLTextAreaElement | null => area.current ?? line.current
   const keys = useMemo(() => keysFor(answer), [answer])
   const [keysOpen, setKeysOpen] = useState(() => readKeysPref() ?? spec.keysOpen)
   const comma = usesDecimalComma(lang)
   const text = draft.text
+  const hintId = useId()
+  // con teclado, el lector de pantalla avisa de Mayús+Intro; con el dedo no hay esa tecla (Intro comprueba, como en el chat)
+  const touch = useTouchOnly()
+  const keysHint = multiline && !locked && !touch
 
   useEffect(() => {
     // al volver a intentarlo, la respuesta anterior queda seleccionada: lo que escribas la sustituye
     // con el dedo no: sacaría el teclado al llegar a cada pregunta (se escribe al tocar el campo)
-    if (autoFocus && !locked && canAutoFocus()) requestAnimationFrame(() => { ref.current?.focus({ preventScroll: true }); ref.current?.select() })
+    if (autoFocus && !locked && canAutoFocus()) requestAnimationFrame(() => { field()?.focus({ preventScroll: true }); field()?.select() })
   }, [autoFocus, locked])
+
+  // el campo que crece se mide con lo escrito: de una línea a seis y, después, desplaza (la barra, solo si no cabe)
+  const [grown, setGrown] = useState(false)
+  const grow = useCallback((): void => {
+    const el = area.current
+    if (!el) {
+      setGrown(false)
+      return
+    }
+    el.style.height = 'auto'
+    const cs = getComputedStyle(el)
+    const one = parseFloat(cs.lineHeight) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+    // vacío, una línea sin medir: Chromium cuenta el texto de ejemplo (partido) y el campo saltaría al escribir y al borrar
+    const inner = el.value ? el.scrollHeight : one
+    const want = inner + el.offsetHeight - el.clientHeight
+    const max = parseFloat(cs.maxHeight)
+    el.style.height = `${want}px`
+    el.style.overflowY = want > max + 0.5 ? 'auto' : 'hidden'
+    // ¿más de una línea? (un salto escrito o un texto que no cabe y se parte): el tachado va renglón a renglón
+    setGrown(inner > one + 1)
+  }, [])
+  useLayoutEffect(grow, [grow, text, multiline])
+  useEffect(() => {
+    // otro ancho (la ventana, el tutor al lado, girar el teléfono) o el tamaño del texto: se vuelve a medir
+    const el = area.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    let frame = 0
+    const ro = new ResizeObserver(() => {
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; grow() })
+    })
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [grow, multiline])
 
   const preview = useMemo(() => {
     if (!text.trim()) return null
@@ -103,7 +156,7 @@ export function TextAnswerInput(props: InputProps<Extract<Answer, { kind: TextKi
   }, [text, spec.preview, answer, comma])
 
   const insert = (k: AnswerKey): void => {
-    const el = ref.current
+    const el = field()
     const start = el?.selectionStart ?? text.length
     const end = el?.selectionEnd ?? text.length
     const r = insertAt(text, start, end, k.insert, k.caretBack)
@@ -134,6 +187,35 @@ export function TextAnswerInput(props: InputProps<Extract<Answer, { kind: TextKi
   // incorrecto: una sola señal (el tachado y la nota de debajo), sin borde rojo ni fondo rosa
   const fieldTone = struck || result?.status === 'incorrect' ? undefined : tone
   const wide = answer.kind === 'equation' || answer.kind === 'expression' || answer.kind === 'interval' || answer.kind === 'set' || (answer.kind === 'chem' && answer.mode !== 'number') || answer.kind === 'short'
+  const seed = `respuesta:${exerciseId}:${text}`
+
+  // lo común a los dos campos (el de una línea y el que crece)
+  const fieldProps = {
+    ...answerField,
+    value: text,
+    readOnly: locked,
+    spellCheck: answer.kind === 'short' || (answer.kind === 'chem' && answer.mode === 'name'),
+    autoComplete: 'off',
+    // un número exacto (√3/3, −1/2) se escribe con el teclado entero: el decimal no tiene «−» ni «/» (keys.ts)
+    inputMode: answerInputMode(answer, signedNumberKeyboard(api.platform)),
+    'aria-label': t('ex.yourAnswer'),
+    'aria-invalid': struck || undefined,
+    placeholder: spec.placeholder,
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => set((d) => ({ ...d, text: e.target.value })),
+    onKeyDown: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
+      if (locked || enterAction(e.nativeEvent, multiline) !== 'check') return
+      e.preventDefault()
+      onSubmit()
+    },
+    className: cx(
+      'w-full rounded-[14px] border bg-field text-text outline-none transition placeholder:text-text3',
+      'focus:shadow-[0_0_0_3px_var(--accent-wash)]',
+      multiline ? cx(AREA_TEXT, AREA_BOX) : 'h-12 px-4 text-[17px] tabular',
+      keys.length > 0 && 'pr-12',
+      locked && 'cursor-default'
+    ),
+    style: { borderColor: fieldTone ? `color-mix(in oklab, ${fieldTone} 60%, transparent)` : 'color-mix(in oklab, var(--line-strong) 40%, transparent)', background: fieldTone ? `color-mix(in oklab, ${fieldTone} 6%, var(--field))` : undefined, color: struck ? 'var(--text2)' : undefined }
+  }
 
   return (
     // el campo, su vista previa y la fila de símbolos: con el teclado abierto se ven enteros (study/Chrome.tsx)
@@ -145,39 +227,22 @@ export function TextAnswerInput(props: InputProps<Extract<Answer, { kind: TextKi
           </span>
         )}
         <div className={cx('relative flex items-center', wide ? 'min-w-[240px] flex-1' : 'w-[260px] max-w-full')}>
-          <input
-            {...answerField}
-            ref={ref}
-            value={text}
-            readOnly={locked}
-            spellCheck={answer.kind === 'short' || (answer.kind === 'chem' && answer.mode === 'name')}
-            autoComplete="off"
-            // un número exacto (√3/3, −1/2) se escribe con el teclado entero: el decimal no tiene «−» ni «/» (keys.ts)
-            inputMode={answerInputMode(answer, signedNumberKeyboard(api.platform))}
-            aria-label={t('ex.yourAnswer')}
-            placeholder={spec.placeholder}
-            onChange={(e) => set((d) => ({ ...d, text: e.target.value }))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing && !locked) {
-                e.preventDefault()
-                onSubmit()
-              }
-            }}
-            className={cx(
-              'h-12 w-full rounded-[14px] border bg-field px-4 text-[17px] text-text tabular outline-none transition placeholder:text-text3',
-              'focus:shadow-[0_0_0_3px_var(--accent-wash)]',
-              keys.length > 0 && 'pr-12',
-              locked && 'cursor-default'
-            )}
-            aria-invalid={struck || undefined}
-            style={{ borderColor: fieldTone ? `color-mix(in oklab, ${fieldTone} 60%, transparent)` : 'color-mix(in oklab, var(--line-strong) 40%, transparent)', background: fieldTone ? `color-mix(in oklab, ${fieldTone} 6%, var(--field))` : undefined, color: struck ? 'var(--text2)' : undefined }}
-          />
-          {struck && (
+          {multiline ? (
+            // Intro hace lo del botón principal (su pista lo dice); Mayús+Intro, salto de línea: el lector de pantalla lo avisa
+            <textarea {...fieldProps} ref={area} rows={1} aria-multiline aria-describedby={keysHint ? hintId : undefined} />
+          ) : (
+            <input {...fieldProps} ref={line} />
+          )}
+          {/* oculto: solo se lee como descripción del campo (ni se repite al recorrer la página ni se copia al seleccionar) */}
+          {keysHint && <span id={hintId} hidden>{t('ex.shortKeys')}</span>}
+          {struck && !grown && (
             // el mismo texto, invisible y en la misma letra, para que el tachado mida lo escrito
-            <span aria-hidden className={cx('pointer-events-none absolute inset-y-0 left-0 flex items-center overflow-hidden whitespace-pre px-4 text-[17px] tabular text-transparent', keys.length > 0 ? 'right-12' : 'right-0')}>
-              <InkStrike seed={`respuesta:${exerciseId}:${text}`} alpha={0.9}>{text}</InkStrike>
+            <span aria-hidden dir="auto" className={cx('pointer-events-none absolute inset-y-0 left-0 flex items-center overflow-hidden whitespace-pre px-4 text-[17px] tabular text-transparent', keys.length > 0 ? 'right-12' : 'right-0')}>
+              <InkStrike seed={seed} alpha={0.9}>{text}</InkStrike>
             </span>
           )}
+          {/* lo escrito en varias líneas se tacha renglón a renglón */}
+          {struck && grown && <StruckLines field={area} text={text} seed={seed} className={cx(AREA_TEXT, keys.length > 0 && 'pr-12')} />}
           {keys.length > 0 && !locked && (
             <Tooltip label={keysOpen ? t('ex.hideKeys') : t('ex.showKeys')}>
               <button

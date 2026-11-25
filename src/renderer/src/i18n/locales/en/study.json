@@ -33,6 +33,7 @@
     "true": "True",
     "false": "False",
     "yourAnswer": "Your answer",
+    "shortKeys": "Shift+Enter starts a new line.",
     "readAs": "I read it as:",
     "notYet": "Not yet",
     "notUnderstood": "Not readable yet",
