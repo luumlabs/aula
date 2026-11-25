@@ -31,12 +31,13 @@ describe('GitHub Sponsors, solo en «Apoya a Aula»', () => {
   it('SPONSORS_URL solo se usa ahí y en el apartado de Ajustes → Acerca de', () => {
     expect(using(/\bSPONSORS_URL\b/)).toEqual([DEFINED, SECTION].sort())
     // dentro de Ajustes, además de importarlo, solo en «Apoya a Aula» (SupportAula)
-    const text = app.find((f) => f.path === SECTION)?.text ?? ''
+    const text = (app.find((f) => f.path === SECTION)?.text ?? '').replace(/\r\n/g, '\n')
     const imported = /^import \{[^}]*\} from '@renderer\/lib\/supportLink'$/m.exec(text)
     const start = text.indexOf('function SupportAula(')
     const end = text.indexOf('\n}\n', start)
     expect(imported).not.toBeNull()
     expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
     const lineOf = (at: number): number => text.slice(0, at).split('\n').length
     const elsewhere = [...text.matchAll(/\bSPONSORS_URL\b/g)]
       .map((m) => m.index)
