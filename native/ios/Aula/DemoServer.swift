@@ -118,6 +118,7 @@ final class DemoServer: @unchecked Sendable {
     /// Lo que se contesta a algo que la demostración no trae.
     private let unavailable: String
     /// Lo que dice Aula en el chat a una pregunta que no es la grabada (antes de enseñar su cuestionario de ejemplo).
+    /// Vacío: lo que contestó al grabar.
     private let chatReply: String
     private let days: Int
     private let queue = DispatchQueue(label: "aula.demo.server", qos: .userInitiated)
@@ -325,6 +326,7 @@ final class DemoServer: @unchecked Sendable {
 
     /// Un evento del chat grabado, como respuesta a otra pregunta: el mensaje de Aula con otro id (la interfaz lo añade en
     /// vez de tomarlo por el que ya tiene) y con el texto de la demostración. Lo demás (su tarjeta de ejemplo) se queda.
+    /// Con `text` vacío se queda también el texto grabado (las capturas del App Store: la respuesta real del tutor).
     static func asNewReply(_ line: String, id: String, text: String) -> String {
         guard var event = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
               var payload = event["payload"] as? [String: Any], var message = payload["message"] as? [String: Any],
@@ -332,7 +334,7 @@ final class DemoServer: @unchecked Sendable {
         message["id"] = id
         // la hora de ahora, no la de la grabación
         message["date"] = ISO8601DateFormatter.string(from: Date(), timeZone: TimeZone(identifier: "UTC")!, formatOptions: [.withInternetDateTime, .withFractionalSeconds])
-        if let was = message["text"] as? String, !was.isEmpty { message["text"] = text }
+        if !text.isEmpty, let was = message["text"] as? String, !was.isEmpty { message["text"] = text }
         payload["message"] = message
         event["payload"] = payload
         guard let data = try? JSONSerialization.data(withJSONObject: event, options: [.withoutEscapingSlashes]) else { return line }

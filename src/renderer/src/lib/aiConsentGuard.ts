@@ -9,6 +9,8 @@ import type { AulaClientError, InvokeGuard } from './api'
 export interface AIConsentGuardDeps {
   /** ¿Es la demostración? (sin Mac: nada se pide ni se guarda) */
   demo(): boolean
+  /** ¿El aviso de la demostración ya se da por visto? (las capturas del App Store) */
+  demoSeen?(): boolean
   /** El estado del aviso en el Mac (`ai.consent`). */
   fetch(): Promise<AIConsentState>
   /** Acepta esos destinatarios en el Mac (`ai.acceptConsent`). */
@@ -56,7 +58,7 @@ export function createAIConsentGuard(d: AIConsentGuardDeps): InvokeGuard & { for
     async before(method, args) {
       if (!sendsToAI(method, args)) return
       if (d.demo()) {
-        if (demoOk) return
+        if (demoOk || d.demoSeen?.()) return
         await once(async () => {
           if (!(await d.ask({ needed: true, recipients: [] }, true))) throw d.declined()
           demoOk = true

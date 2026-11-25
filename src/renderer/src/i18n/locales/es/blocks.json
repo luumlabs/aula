@@ -25,6 +25,8 @@
   "example": {
     "eyebrow": "Ejemplo resuelto",
     "progress": "Paso {{shown}} de {{total}}",
+    "steps_one": "{{count}} paso",
+    "steps_other": "{{count}} pasos",
     "result": "Resultado",
     "first": "Ver el primer paso",
     "next": "Siguiente paso",
