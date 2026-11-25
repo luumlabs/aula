@@ -5,7 +5,15 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-25
+
 ### New
+- **Reorganized study interface** ([#62](https://github.com/luumlabs/aula/pull/62)): a three-group sidebar with focus
+  mode, study actions in ⌘K, a Settings index, redesigned Today and day screens, five course tabs with one review queue,
+  red-pen mistake marking, the tutor beside each exercise, and a chat that opens with what's next.
+- **Phone and tablet polish** ([#64](https://github.com/luumlabs/aula/pull/64)): real touch hit areas, pinch-to-zoom on
+  plots, iPad layout while typing, iOS system text size, a fitting calculator, swipe-to-close sheets, native-style Back
+  navigation, edge-to-edge Android layout, and a working demo mock exam.
 - **Save a chart as PNG** from its desktop export menu. Bar, line, area, pie, scatter and histogram charts keep
   their current layout, axes, values, legends and hover readout, including painted overflow. Entrance animations
   appear complete in the image while the live chart continues normally.
@@ -42,6 +50,8 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
   highlighting, a copy button, line numbers from three lines, and long lines scroll inside the card instead of spilling
   out. In an exercise you haven't solved yet, a code block hides its output when it would reveal the answer, while
   keeping errors and tracebacks that are part of the question.
+- **Speed unit converter label and missing keyboard shortcuts** ([#60](https://github.com/luumlabs/aula/pull/60),
+  [#63](https://github.com/luumlabs/aula/pull/63)).
 - **Saving a figure with Enter or Space from its menu keeps the current slide open.**
 - **The iPhone and iPad demo no longer shows "Open another Aula"**, which did nothing there.
 - **A worked example no longer says "Step 0 of 3" before you open it**: it says how many steps it has.

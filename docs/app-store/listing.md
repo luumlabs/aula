@@ -23,7 +23,7 @@ where Apple counts bytes), the version, both privacy manifests, the license noti
 | Privacy policy URL | https://github.com/luumlabs/aula/blob/main/docs/PRIVACY.md |
 | Availability | Every country and region **except China mainland** (it needs an ICP filing and approval for AI chat) and **France** (it needs the French encryption declaration; add it later). Not available on Apple silicon Macs nor on Apple Vision Pro: untick both in *Pricing and Availability* (the project also says so: `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD` and `SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD` are `NO`) |
 | EU Digital Services Act | Not a trader |
-| Version | **0.2.7** (App Store Connect creates "1.0": change it), build 6 (the next one is 7). See [Version and build](#version-and-build) |
+| Version | **0.2.7** (App Store Connect creates "1.0": change it), build 7. See [Version and build](#version-and-build) |
 | Release | *Manually release this version*: publish it once the notarized Mac 0.2.7 is the latest release, where *Aula for Mac* sends people |
 
 **App privacy** (the questionnaire): *Do you or your third-party partners collect data from this app?* **Yes**. Types
