@@ -192,6 +192,15 @@ export function unsupportedFlag(text: string): string | undefined {
   return undefined
 }
 
+/**
+ * Codex no pudo arrancar su «modo código»: desde 0.147 lo lleva un programa aparte, `codex-code-mode-host`, que tiene que estar
+ * junto a `codex` («Code Mode is unavailable because failed to spawn code-mode host …: host executable was not found»).
+ */
+export function isCodeModeHostFailure(text: string): boolean {
+  const lower = text.toLowerCase()
+  return lower.includes('code-mode host') || lower.includes('codex-code-mode-host') || lower.includes('code mode is unavailable')
+}
+
 export function isNetworkFailure(text: string): boolean {
   const lower = text.toLowerCase()
   const phrases = ['enotfound', 'econnrefused', 'econnreset', 'etimedout', 'getaddrinfo', 'fetch failed', 'network is unreachable',
@@ -373,7 +382,10 @@ export const AgentL10n = {
   mcpCouldNotStart: (server: string, reason: string): string =>
     tr(`No pude iniciar el servidor MCP «${server}»: ${reason}`, `I couldn’t start the MCP server “${server}”: ${reason}`),
   mcpNotConnected: (server: string): string => tr(`El servidor MCP «${server}» no está conectado.`, `The MCP server “${server}” isn’t connected.`),
-  detail: (text: string): string => tr(`Detalle: ${text}`, `Details: ${text}`)
+  detail: (text: string): string => tr(`Detalle: ${text}`, `Details: ${text}`),
+  /** Mientras se completa el Codex de Aula antes de usarlo (p. ej. una instalación de antes, sin el host de Code Mode). */
+  completingCodex: (percent: number): string =>
+    tr(`Completando Codex: descargando lo que le falta (${percent} %)…`, `Completing Codex: downloading what it’s missing (${percent}%)…`)
 }
 
 /** Un texto fijo o calculado al usarlo (para que siga el idioma de la interfaz). */
@@ -514,6 +526,32 @@ export class CLIErrorClassifier {
     return tr(`Detalle de ${this.cliName}: ${clipped}`, `Details from ${this.cliName}: ${clipped}`)
   }
 
+  /**
+   * Falta (o no se abre) el host de Code Mode junto a la CLI: qué pasa, qué hacer y el detalle de la CLI. Para la creación entera.
+   * El Codex de Aula se completa solo una vez por sesión (`ManagedCodex.prepare`): por eso se pide volver a abrir Aula.
+   */
+  codeModeHostMissing(raw: string): AgentError {
+    const cli = this.cliName
+    const detail = raw.trim()
+    const sentences = [
+      tr(
+        `${cli} no pudo arrancar su «modo código»: falta, o no se pudo abrir, \`codex-code-mode-host\`, un programa que va junto a \`${this.executableName}\`.`,
+        `${cli} couldn’t start its “code mode”: \`codex-code-mode-host\`, a program that goes next to \`${this.executableName}\`, is missing or couldn’t be opened.`
+      ),
+      tr(
+        `Si es el ${cli} que instaló Aula, cierra Aula y vuelve a abrirla: lo completa antes de volver a usarlo.`,
+        `If it’s the ${cli} that Aula installed, quit Aula and open it again: Aula completes it before using it again.`
+      ),
+      tr(
+        'Si vuelve a pasar, seguramente un antivirus lo quita o lo bloquea: permite ese archivo en el antivirus.',
+        'If it happens again, an antivirus is probably removing or blocking that file: allow it in your antivirus.'
+      ),
+      tr(`Si instalaste ${cli} tú, reinstálalo o actualízalo.`, `If you installed ${cli} yourself, reinstall or update it.`)
+    ]
+    if (detail) sentences.push(this.#cliDetail(detail))
+    return new AgentError('notInstalled', sentences.join(' '))
+  }
+
   unsupportedFlag(flag: string): AgentError {
     return new AgentError(
       'unsupported',
@@ -524,7 +562,10 @@ export class CLIErrorClassifier {
   /** Convierte un texto de error (de stderr o del flujo de eventos) en el `AgentError` más útil. */
   classify(text: string, hint?: AgentErrorKind, retryAfter?: number, opts: ClassifyOptions = {}): AgentError {
     const message = text.trim()
-    if (hint === 'notLoggedIn' || isAuthFailure(message)) return this.notLoggedIn
+    if (hint === 'notLoggedIn') return this.notLoggedIn
+    // antes que las demás: el mensaje lleva la ruta del ordenador, que podría contener cualquier palabra
+    if (isCodeModeHostFailure(message)) return this.codeModeHostMissing(message)
+    if (isAuthFailure(message)) return this.notLoggedIn
     // sin saldo antes que el límite: algunos proveedores lo dan como 429, pero esperar no lo arregla
     if (opts.status === 402 || isQuotaExhausted(message)) return this.quotaExhausted(message)
     if (hint === 'rateLimited' || isRateLimit(message)) {

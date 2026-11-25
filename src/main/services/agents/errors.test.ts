@@ -5,7 +5,20 @@ import { basename, dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { setAILocale } from '@shared/ai/i18n'
 import { functionName, negotiateVersion, normalizedInputSchema, parseArguments, sanitizeName, toolOutputFromResult, toolResult } from '../../mcp/protocol'
-import { AgentError, CLIErrorClassifier, clip, humanDuration, isAuthFailure, isNetworkFailure, isQuotaExhausted, isRateLimit, parseRateLimit, rateLimitPhrase, unsupportedFlag } from './errors'
+import {
+  AgentError,
+  CLIErrorClassifier,
+  clip,
+  humanDuration,
+  isAuthFailure,
+  isCodeModeHostFailure,
+  isNetworkFailure,
+  isQuotaExhausted,
+  isRateLimit,
+  parseRateLimit,
+  rateLimitPhrase,
+  unsupportedFlag
+} from './errors'
 import { AgentSandbox, SHARED_WORK_NAME, sharedEmptyWorkDirectory } from './sandbox'
 import { cleanupTempDirs, makeTempDir } from './__fixtures__/support'
 
@@ -205,6 +218,49 @@ describe('CLIErrorClassifier', () => {
     expect(new AgentError('rateLimited', 'x', 60).code).toBe('ai_rate_limit')
     expect(new AgentError('notInstalled', 'x').code).toBe('ai_not_installed')
     expect(new AgentError('cancelled', 'x').code).toBe('cancelled')
+  })
+})
+
+describe('El host de Code Mode que le falta a Codex (issue #66)', () => {
+  // el texto de Codex 0.162.1 (`take_unavailable_warning` + `ConnectionError::Spawn`), con la ruta del issue
+  const WINDOWS =
+    'Code Mode is unavailable because failed to spawn code-mode host C:\\Users\\ana\\AppData\\Roaming\\Aula\\tools\\codex\\0.162.1\\codex-code-mode-host.exe: ' +
+    'host executable was not found. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`.'
+  const LINUX = 'failed to spawn code-mode host /home/ana/.config/Aula/tools/codex/0.162.1/codex-code-mode-host: Permission denied (os error 13)'
+
+  it('se reconoce (y nada más)', () => {
+    for (const t of [WINDOWS, LINUX, 'Code Mode is unavailable because code-mode host is disabled.']) expect(isCodeModeHostFailure(t), t).toBe(true)
+    for (const t of ['The model `x` does not exist', 'code review mode', 'host unreachable', '']) expect(isCodeModeHostFailure(t), t).toBe(false)
+  })
+
+  it('mensaje claro: falta una pieza, qué hacer y el detalle; para la creación entera', () => {
+    const error = CLIErrorClassifier.codex.classify(WINDOWS)
+    expect(error).toMatchObject({ kind: 'notInstalled', code: 'ai_not_installed' })
+    expect(error.message).toMatch(/^Codex no pudo arrancar su «modo código»: falta, o no se pudo abrir, `codex-code-mode-host`/)
+    // el de Aula se completa una vez por sesión: no promete otra descarga al reintentar, pide volver a abrir Aula
+    expect(error.message).toContain('Si es el Codex que instaló Aula, cierra Aula y vuelve a abrirla: lo completa antes de volver a usarlo.')
+    expect(error.message).not.toContain('vuelve a intentarlo')
+    expect(error.message).toContain('Si vuelve a pasar, seguramente un antivirus lo quita o lo bloquea')
+    expect(error.message).toContain('Si instalaste Codex tú, reinstálalo o actualízalo.')
+    expect(error.message).toContain('Detalle de Codex: Code Mode is unavailable')
+    expect(CLIErrorClassifier.codex.classify(LINUX).kind).toBe('notInstalled')
+    // la ruta del ordenador no hace que parezca otra cosa (aquí, «unauthorized» en el nombre de la carpeta)
+    expect(CLIErrorClassifier.codex.classify(WINDOWS.replace('ana', 'unauthorized')).kind).toBe('notInstalled')
+    // una pista de sesión de la CLI manda
+    expect(CLIErrorClassifier.codex.classify(WINDOWS, 'notLoggedIn').kind).toBe('notLoggedIn')
+  })
+
+  it('en inglés', () => {
+    setAILocale('en')
+    try {
+      const message = CLIErrorClassifier.codex.classify(WINDOWS).message
+      expect(message).toMatch(/^Codex couldn’t start its “code mode”: `codex-code-mode-host`, a program that goes next to `codex`, is missing or couldn’t be opened\./)
+      expect(message).toContain('If it’s the Codex that Aula installed, quit Aula and open it again: Aula completes it before using it again.')
+      expect(message).toContain('If it happens again, an antivirus is probably removing or blocking that file: allow it in your antivirus.')
+      expect(message).toContain('Details from Codex: Code Mode is unavailable')
+    } finally {
+      setAILocale('es')
+    }
   })
 })
 
