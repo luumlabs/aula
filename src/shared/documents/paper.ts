@@ -1,7 +1,49 @@
 // Piezas del papel compartidas por la vista de impresión (PDF), Word y Markdown: así los tres salen iguales (mismas letras
 // de las opciones, mismos huecos, mismo barajado de «ordenar» y «relacionar»). Isomorfo.
 import type { Block } from '../schema/blocks'
-import type { Exercise } from '../schema/exercises'
+import type { Answer, Exercise } from '../schema/exercises'
+
+/** Normaliza una cadena para comprobar si la salida de un bloque `code` coincide con una respuesta del ejercicio. */
+function normOutput(s: string): string {
+  return s.replace(/`/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+/** ¿La salida de un bloque `code` daría la respuesta del ejercicio (p. ej. «¿qué imprime?»)? */
+export function outputRevealsAnswer(output: string, answer: Answer): boolean {
+  const out = normOutput(output)
+  if (!out) return false
+  switch (answer.kind) {
+    case 'choice':
+      return answer.options.some((o) => o.correct && normOutput(o.md) === out)
+    case 'numeric':
+      return [answer.value, ...answer.alternatives].some((v) => normOutput(v) === out)
+    case 'short':
+      return answer.accepted.some((a) => normOutput(a) === out)
+    case 'expression':
+    case 'equation':
+    case 'interval':
+    case 'chem':
+      return normOutput(answer.expected) === out
+    case 'set':
+    case 'point':
+      return answer.expected.some((v) => normOutput(v) === out) || normOutput(answer.expected.join(', ')) === out
+    case 'cloze':
+      return answer.blanks.some((b) => b.accepted.some((a) => normOutput(a) === out))
+    case 'open': {
+      const model = normOutput(answer.modelAnswer)
+      return !!model && model === out
+    }
+    case 'multi':
+      return answer.parts.some((p) => outputRevealsAnswer(output, p.answer))
+    default:
+      return false
+  }
+}
+
+/** Oculta `output` de un bloque `code` en un enunciado solo cuando daría la respuesta (un error o traza que explica el enunciado se queda). */
+export function stripRevealedCodeOutput(blocks: Block[], answer: Answer): Block[] {
+  return blocks.map((b) => (b.type === 'code' && b.output?.trim() && outputRevealsAnswer(b.output, answer) ? { ...b, output: undefined } : b))
+}
 
 /** Letra de una opción («a», «b»…; a partir de la 27, su número). */
 export function choiceLetter(i: number): string {
@@ -14,9 +56,9 @@ export function blanks(md: string): string {
   return md.replace(/\[\[(\d+)\]\]/g, '**($1)** ________')
 }
 
-/** El enunciado listo para papel (los huecos con su línea). */
+/** El enunciado listo para papel (los huecos con su línea y sin salidas de código que den la respuesta). */
 export function printablePrompt(e: Exercise): Block[] {
-  return e.prompt.map((b) => (b.type === 'text' && b.md.includes('[[') ? { ...b, md: blanks(b.md) } : b))
+  return stripRevealedCodeOutput(e.prompt, e.answer).map((b) => (b.type === 'text' && b.md.includes('[[') ? { ...b, md: blanks(b.md) } : b))
 }
 
 /**

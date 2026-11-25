@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion, useAnimate } from 'motion/react'
 import type { Block } from '@shared/schema/blocks'
 import type { Answer, AnswerPart } from '@shared/schema/exercises'
+import { stripRevealedCodeOutput } from '@shared/documents/paper'
 import { StaticBlocks } from './Blocks'
 import type { BlockContext } from '@renderer/blocks/types'
 import { RichText } from '@renderer/lib/RichText'
@@ -140,7 +141,7 @@ export function ExerciseView({ controller: c, ctx, skillTitle, continueLabel, ac
       {header}
       {prompt.length > 0 && (
         <div className="exercise-prompt">
-          <StaticBlocks blocks={prompt} ctx={{ ...ctx, inPrompt: !c.finished, exerciseId: ex.id }} />
+          <StaticBlocks blocks={c.finished ? prompt : stripRevealedCodeOutput(prompt, ex.answer)} ctx={{ ...ctx, inPrompt: !c.finished, exerciseId: ex.id }} />
         </div>
       )}
       <div ref={scope}>
@@ -227,7 +228,7 @@ function PartRow({ index, part, c, common, exam }: { index: number; part: Answer
     <div className={cx('flex gap-3', index > 0 && 'mt-5 border-t-[0.5px] border-line pt-5')}>
       <span className="t-reading min-w-[26px] text-text2">{part.label || index + 1})</span>
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        {part.prompt.length > 0 && <StaticBlocks blocks={part.prompt} ctx={{ ...common(part.answer).ctx, inPrompt: !c.finished, exerciseId: c.exercise.id }} className="gap-3" />}
+        {part.prompt.length > 0 && <StaticBlocks blocks={c.finished ? part.prompt : stripRevealedCodeOutput(part.prompt, part.answer)} ctx={{ ...common(part.answer).ctx, inPrompt: !c.finished, exerciseId: c.exercise.id }} className="gap-3" />}
         <AnswerArea {...common(part.answer, draft, (fn) => c.editPart(index, fn), pr, ex.id)} autoFocus={index === 0 && !c.finished} prompt={part.prompt} />
         {!exam && pr && pr.status !== 'invalid' && (c.checked || c.finished) && <PartFeedback result={pr} />}
         {!exam && !c.finished && hints > 0 && <HintList hints={part.hints} shown={hints} />}

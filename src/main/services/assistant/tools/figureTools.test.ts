@@ -91,6 +91,19 @@ describe('block_reference del chat y del tutor', () => {
     expect(blockReferenceFor('chart')!.schema[0]).toContain('"highlight":true')
   })
 
+  it('code: su línea del catálogo y la referencia entera (lenguajes, alias, la salida y las vallas en los textos)', async () => {
+    const ref = blockReferenceFor('code')!
+    expect(ref.schema[0]).toContain('"type":"code"')
+    expect(ref.schema[0]).toContain('block_reference("code")')
+    expect(ref.reference).toContain('# code — program listing')
+    expect(ref.reference).toMatch(/Languages: [^\n]*python/)
+    expect(ref.reference).toContain('py → python')
+    expect(blockReferenceFor('snippet')!.reference).toContain('# code')
+    const out = JSON.parse(textOf(await blockReferenceTool().run({ type: 'code' } as never, call)))
+    expect(out.ok).toBe(true)
+    expect(out.reference).toContain('"output"')
+  })
+
   it('un bloque básico sigue saliendo del catálogo; uno que no existe, error', async () => {
     expect(blockReferenceFor('table')!.schema[0]).toContain('"type":"table"')
     expect(blockReferenceFor('table')!.reference).toBeUndefined()

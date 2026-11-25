@@ -311,20 +311,20 @@ export function FlipCard({ card, flipped, onFlip, assetUrl }: { card: Flashcard;
         <div className={cx(face, flipped && 'select-none')} {...hidden(flipped)}>
           <span className="t-eyebrow">{t('cards.front')}</span>
           {figure}
-          <div className="t-reading text-[22px] leading-[32px] text-text"><RichText text={front} /></div>
+          <div className="t-reading max-w-full text-[22px] leading-[32px] text-text"><RichText text={front} /></div>
         </div>
         <div className={cx(face, !flipped && 'select-none')} {...hidden(!flipped)} style={{ transform: 'rotateY(180deg)' }}>
           <span className="t-eyebrow">{t('cards.back')}</span>
           {card.kind === 'cloze' ? (
-            <div className="t-reading text-[22px] leading-[32px] text-text"><RichText text={revealedFront} /></div>
+            <div className="t-reading max-w-full text-[22px] leading-[32px] text-text"><RichText text={revealedFront} /></div>
           ) : (
             <>
-              <div className="t-callout text-text3 line-clamp-2"><RichText text={front} inline /></div>
+              <div className="t-callout max-w-full text-text3 line-clamp-2"><RichText text={front} inline /></div>
               <div className="h-px w-16 bg-line" />
-              <div className="t-reading text-[22px] leading-[32px] text-text"><RichText text={card.back} /></div>
+              <div className="t-reading max-w-full text-[22px] leading-[32px] text-text"><RichText text={card.back} /></div>
             </>
           )}
-          {card.kind === 'cloze' && card.back && <div className="t-callout text-text2"><RichText text={card.back} /></div>}
+          {card.kind === 'cloze' && card.back && <div className="t-callout max-w-full text-text2"><RichText text={card.back} /></div>}
         </div>
       </motion.div>
     </div>

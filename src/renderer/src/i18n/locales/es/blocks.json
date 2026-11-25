@@ -42,7 +42,9 @@
     "copied": "Copiado",
     "copyFailed": "No se pudo copiar",
     "code": "Código",
-    "output": "Salida"
+    "output": "Salida",
+    "text": "Texto",
+    "pseudocode": "Pseudocódigo"
   },
   "predict": {
     "eyebrow": "Piensa antes de seguir",
