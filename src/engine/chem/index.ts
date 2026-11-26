@@ -82,6 +82,8 @@ export type { AromaticMode, Depiction, DepictLabel, DepictOptions, LabelPart, Me
 export { FUNCTIONAL_GROUP_KINDS, detectFunctionalGroups, groupKindsForLabel } from './functional-groups'
 export type { FunctionalGroup, FunctionalGroupKind } from './functional-groups'
 export { GROUP_NAMES_ES, structureInfo } from './structure-tool'
+export { MOLECULE_LIBRARY, lookupMolecule, normalizeMoleculeName, resolveStructureInput, searchMolecules } from './molecule-library'
+export type { MoleculeCategory, NamedMolecule, ResolvedMoleculeRef, ResolvedStructureInput } from './molecule-library'
 
 // MARK: Nomenclatura
 

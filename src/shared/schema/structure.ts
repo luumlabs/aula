@@ -89,7 +89,7 @@ function decodeStep(raw: unknown): StructureStep | undefined {
 export function decodeStructure(raw: unknown, d = 0): StructureBlock | undefined {
   if (!isObj(raw)) return undefined
   const c: Obj = raw
-  const smiles = (flexStr(c, 'smiles') ?? '').trim().slice(0, STRUCTURE_LIMITS.smiles)
+  const smiles = (flexStr(c, 'smiles') ?? flexStr(c, 'molecule') ?? flexStr(c, 'compound') ?? '').trim().slice(0, STRUCTURE_LIMITS.smiles)
   const aromaticRaw = str(c, 'aromatic')?.toLowerCase()
   return prune({
     smiles, title: str(c, 'title'), caption: str(c, 'caption'), alt: flexStr(c, 'alt') ?? '', formula: flexStr(c, 'formula'),

@@ -5,6 +5,9 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 
 ## [Unreleased]
 
+### New
+- **Named molecule library for 2D chemical structures** ([#28](https://github.com/luumlabs/aula/issues/28)): `structure` blocks and the `chemistry` tool now accept ~100 common textbook molecules by name in English or Spanish (for example `glucose` / `glucosa`, `aspirin`, `caffeine`, `acetic acid`, all 20 amino acids, nucleobases and sugars), including inside mixtures and reactions, as well as a `"molecule"` field alias. Every entry is verified against its SMILES, formula and 2D layout.
+
 ## [0.2.7] - 2026-11-25
 
 ### New

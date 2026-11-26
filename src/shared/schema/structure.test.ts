@@ -44,9 +44,12 @@ describe('bloque structure', () => {
     expect(b.notes).toEqual([{ atom: 2, text: 'α' }])
   })
 
-  it('la SMILES se recorta (espacios fuera, 500 caracteres como mucho)', () => {
+  it('la SMILES se recorta (espacios fuera, 500 caracteres como mucho) y acepta molecule/compound', () => {
     expect(structure('{"type":"structure","smiles":"  CCO  "}').smiles).toBe('CCO')
     expect(structure(`{"type":"structure","smiles":"${'C'.repeat(700)}"}`).smiles).toHaveLength(500)
+    expect(structure('{"type":"structure","molecule":"glucose"}').smiles).toBe('glucose')
+    expect(structure('{"type":"structure","compound":"aspirina"}').smiles).toBe('aspirina')
+    expect(structure('{"type":"structure","smiles":"CCO","molecule":"glucose"}').smiles).toBe('CCO')
   })
 
   it('se guarda igual y mínimo', () => {
