@@ -1,9 +1,7 @@
-// Tarjeta principal de Hoy: la fecha, el saludo en serif subrayado a pincel, una frase con lo que toca, la racha en una línea
-// y la acción principal (la única en ladrillo de la pantalla) con la meta del día al lado. A la derecha, el arco de Aula con
-// la luz de la hora que es (tinta y acuarela). Sin ceros: antes de estudiar se dice la meta; después, cuánto llevas.
+// El umbral de Hoy: el saludo subrayado, la marca a pincel, la racha y el siguiente paso sobre el papel.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { Button, Card, Chip, Icon, BrushUnderline, ArchLight, archLightFor } from '@renderer/design'
+import { Button, Chip, Icon, AulaMark, BrushUnderline } from '@renderer/design'
 import type { HomeSummary } from '@shared/ipc/home'
 import { capitalize, fmtDate } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -26,18 +24,17 @@ export function Hero({ data, mode }: { data: HomeSummary; mode: HeroMode }) {
   // el curso por el que empieza la sesión: el del primer paso pendiente (o el primero de la lista)
   const courseId = left.courseId ?? data.plan[0]?.courseId ?? data.courses[0]?.id
   const startPlan = () => courseId && navigate({ name: 'study', id: courseId, mode: 'plan', start: true })
-  const scene = archLightFor(new Date().getHours())
   const subtitle = mode === 'empty' ? t('subtitleEmpty') : mode === 'firstRun' ? t('firstRun.subtitle') : left.steps ? t('subtitle', { count: left.steps, minutes: left.minutes }) : t('subtitleDone')
 
   return (
-    <Card enterAnim padded={false} className="relative h-full min-h-[280px] overflow-hidden">
-      <div className="relative grid h-full grid-cols-1 @3xl:grid-cols-[1fr_auto] gap-6 p-7 @3xl:p-8">
+    <header className="aula-threshold relative isolate overflow-hidden border-b border-rule">
+      <div className="relative grid grid-cols-1 gap-6 px-1 py-6 @3xl:grid-cols-[1fr_auto] @3xl:py-8">
         <div className="flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center gap-2">
               <span className="t-eyebrow">{capitalize(fmtDate(new Date()))}</span>
-              {/* en pantallas estrechas (el teléfono), el arco en pequeño a la derecha de la fecha: en su sitio, sin tapar nada */}
-              <ArchLight scene={scene} className="@3xl:hidden ml-auto -my-1 -mr-1 h-[60px] w-[72px]" />
+              {/* en pantallas estrechas (el teléfono), la marca pequeña junto a la fecha */}
+              <span className="ml-auto @3xl:hidden"><AulaMark size={48} /></span>
             </div>
             <motion.h1 className="t-display mt-2.5 text-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}>
               {/* el saludo, subrayado a pincel: lo primero que se lee del día */}
@@ -84,12 +81,12 @@ export function Hero({ data, mode }: { data: HomeSummary; mode: HeroMode }) {
           </div>
         </div>
 
-        {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche); con el ratón encima, se mueve despacio */}
+        {/* la marca de Aula conserva el pulso de su trazo, sin paisaje */}
         <div className="hidden @3xl:flex w-[248px] items-center justify-center">
-          <ArchLight live scene={scene} className="h-[190px] w-[228px]" />
+          <AulaMark size={145} alive />
         </div>
       </div>
-    </Card>
+    </header>
   )
 }
 

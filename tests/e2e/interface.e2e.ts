@@ -211,7 +211,9 @@ test('A4-P2-9/10/12 · la pista no se sale ni se queda pegada; el foco no cambia
   await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('Tab')
   expect(await js<string>(page, 'getComputedStyle(document.activeElement).borderTopLeftRadius')).toBe('14px')
-  // la barra lateral plegada: todos sus botones con nombre
+  // la barra lateral opcional, plegada: todos sus botones con nombre
+  await page.getByRole('button', { name: 'More', exact: true }).first().click()
+  await page.getByRole('menuitem', { name: 'Expand sidebar' }).click()
   await page.getByRole('button', { name: 'Collapse sidebar' }).click()
   await page.waitForTimeout(400)
   expect(await js<string[]>(page, `[...document.querySelectorAll('nav[aria-label="Aula"] button')].filter((b) => !(b.getAttribute('aria-label') || b.textContent.trim())).map((b) => b.outerHTML.slice(0, 80))`)).toEqual([])

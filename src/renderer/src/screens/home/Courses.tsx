@@ -9,14 +9,15 @@ import { courseBuilding, courseRunIssue, coursePartial } from '../course/failure
 import { useLatestRunsMap } from '../course/runs'
 import { showsAsSample } from '@renderer/lib/sample'
 
-export function CourseCards({ courses }: { courses: HomeCourse[] }) {
+export function CourseCards({ courses, catalog = false }: { courses: HomeCourse[]; catalog?: boolean }) {
   const { t } = useTranslation(['home', 'common', 'course'])
   const { dark } = useTheme()
   const runs = useLatestRunsMap()
   return (
     <section>
-      <SectionTitle title={t('courses')} />
-      <div className="grid gap-4 mt-3 grid-cols-1 @xl:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
+      {!catalog && <SectionTitle title={t('courses')} />}
+      {catalog && courses.length === 0 && <p className="t-body py-5 text-text3">{t('common:nav.noCourses')}</p>}
+      <div className={cx("grid gap-4 mt-3 grid-cols-1 @xl:grid-cols-2 @4xl:grid-cols-3", !catalog && "@6xl:grid-cols-4")}>
         {courses.map((c, i) => {
           const tone = toneForHue(c.hue)
           const fill = dark ? tone.fillDark : tone.fillLight
@@ -83,7 +84,7 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
             </Card>
           )
         })}
-        <Card enterAnim interactive padded={false} onClick={() => navigate({ name: 'create' })} className="min-h-[220px] bg-transparent! border-dashed! border-line-strong/50! shadow-none!">
+        {!catalog && <Card enterAnim interactive padded={false} onClick={() => navigate({ name: 'create' })} className="min-h-[220px] bg-transparent! border-dashed! border-line-strong/50! shadow-none!">
           <div className="h-full min-h-[220px] grid place-items-center text-center p-6">
             <div className="flex flex-col items-center">
               <motion.div className="grid place-items-center w-12 h-12 rounded-full bg-accent-wash text-accent-text" whileHover={{ rotate: 90 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
@@ -93,7 +94,7 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
               <div className="t-ui text-text3 mt-0.5">{t('newCourseHint')}</div>
             </div>
           </div>
-        </Card>
+        </Card>}
       </div>
     </section>
   )

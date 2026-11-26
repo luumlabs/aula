@@ -1,35 +1,32 @@
-// «El plan de hoy»: los pasos de todos los cursos, ordenados por lo que más sube la nota. Cada paso lleva delante el glifo
-// a tinta de lo que toca (repasar, aprender, practicar), no el icono del curso repetido; el nombre del curso solo sale si el
-// plan mezcla varios. Los minutos del día ya están en el saludo: aquí no se repiten (ni un «0 de 60 min»).
+// «El plan de hoy»: el hilo une las filas, con un sello de curso junto a cada paso.
 import { useTranslation } from 'react-i18next'
-import { Card, Group, Row, SectionTitle, Icon, InkStrike, type IconName } from '@renderer/design'
-import type { HomePlanItem, PlanKind } from '@shared/ipc/home'
+import { Card, Group, Row, SectionTitle, DrawnTile, PixelIcon, InkStrike, toneForHue, useTheme } from '@renderer/design'
+import type { HomePlanItem } from '@shared/ipc/home'
 import { startPlanItem } from './actions'
 import { mixesCourses, planLeft } from './derive'
-
-const KIND_ICON: Record<PlanKind, IconName> = { cards: 'cards', mistakes: 'mistakes', learn: 'learn', practice: 'practice', exam: 'exam', review: 'repeat' }
 
 /** Dentro de la fila (una línea con «…»): en el teléfono, hasta dos líneas. */
 const WRAP = 'block truncate phone:whitespace-normal phone:line-clamp-2'
 
 export function PlanCard({ plan }: { plan: HomePlanItem[] }) {
   const { t } = useTranslation('home')
+  const { dark } = useTheme()
   const total = planLeft(plan).minutes
   const several = mixesCourses(plan)
   return (
-    <Card enterAnim padded="lg" className="h-full">
+    <Card variant="sheet" padded={false} className="pt-3">
       <SectionTitle title={t('plan')} detail={total > 0 ? t('planDetail', { minutes: total }) : undefined} />
       {plan.length === 0 ? (
         <p className="t-body text-text2 py-4">{t('planEmpty')}</p>
       ) : (
-        <Group plain inset={56} className="mt-2 -mx-4">
+        <Group plain inset={56} className="aula-plan-thread mt-2">
           {plan.slice(0, 6).map((p, i) => (
             <Row
               key={p.id}
               index={i}
               onClick={() => startPlanItem(p)}
               className={p.done ? 'rounded-[12px] opacity-55' : 'rounded-[12px]'}
-              leading={<Icon name={KIND_ICON[p.kind]} size={20} className="text-text" />}
+              leading={<PlanIcon item={p} dark={dark} />}
               title={
                 p.done ? (
                   // hecho: tachado a mano (se dibuja la primera vez que se ve hecho)
@@ -49,5 +46,14 @@ export function PlanCard({ plan }: { plan: HomePlanItem[] }) {
         </Group>
       )}
     </Card>
+  )
+}
+
+function PlanIcon({ item, dark }: { item: HomePlanItem; dark: boolean }) {
+  const tone = toneForHue(item.hue)
+  return (
+    <DrawnTile seed={item.courseId} size={32} fill={dark ? tone.fillDark : tone.fillLight} ink={dark ? tone.inkDark : tone.inkLight}>
+      <PixelIcon icon={item.icon} hue={item.hue} size={23} />
+    </DrawnTile>
   )
 }

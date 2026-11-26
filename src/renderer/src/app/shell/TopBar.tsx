@@ -5,12 +5,15 @@ import { Icon, IconButton, Kbd, cx } from '@renderer/design'
 import { navigate, useNav } from '../router'
 import { usePalette } from './CommandPalette'
 import { api } from '@renderer/lib/api'
-import { SidebarToggle, useSidebarState } from './Sidebar'
+import { SidebarToggle, TOGGLE_SIDEBAR_EVENT, useSidebarState } from './Sidebar'
 import { useTitleStore } from '../title'
+import { EditorialMore, EditorialPlaces } from './EditorialNav'
 
-const COMPACT_ROOTS: ReadonlySet<string> = new Set(['inbox', 'chat', 'calendar', 'home'])
+const toggleSidebar = () => window.dispatchEvent(new Event(TOGGLE_SIDEBAR_EVENT))
 
-export function TopBar({ title, right, compact }: { title?: ReactNode; right?: ReactNode; compact?: boolean }) {
+const COMPACT_ROOTS: ReadonlySet<string> = new Set(['courses', 'chat', 'calendar', 'home'])
+
+export function TopBar({ title, right, compact, sidebarOpen }: { title?: ReactNode; right?: ReactNode; compact?: boolean; sidebarOpen?: boolean }) {
   const { t } = useTranslation()
   const { back, forward, canBack, canForward, route } = useNav()
   const openPalette = usePalette((s) => s.open)
@@ -39,12 +42,27 @@ export function TopBar({ title, right, compact }: { title?: ReactNode; right?: R
             <Icon name="settings" size={20} />
           </IconButton>
         )}
+        <EditorialMore compact />
         <IconButton label={t('search.placeholder')} size="lg" onClick={openPalette}>
           <Icon name="search" size={20} />
         </IconButton>
       </div>
     )
   }
+  if (!sidebarOpen) return (
+    <header className={cx('drag relative z-10 flex min-h-[52px] shrink-0 items-center gap-1 border-b border-rule px-3',
+      isMac ? 'pl-[92px]' : !api.remote && 'pr-[150px]')}>
+      <div className="no-drag flex items-center">
+        <IconButton label={t('nav.back')} size="sm" disabled={!canBack} onClick={back}><Icon name="chevron-left" size={16} /></IconButton>
+        <IconButton label={t('nav.forward')} size="sm" disabled={!canForward} onClick={forward}><Icon name="chevron-right" size={16} /></IconButton>
+      </div>
+      {route.name !== 'study' && <EditorialPlaces />}
+      <div className="min-w-0 flex-1 truncate pl-2 t-headline">{compactOnly || COMPACT_ROOTS.has(route.name) ? null : title}</div>
+      {right && <div className="no-drag flex items-center gap-1">{right}</div>}
+      {route.name !== 'study' && <IconButton className="no-drag" label={t('search.placeholder')} size="sm" onClick={openPalette}><Icon name="search" size={16} /></IconButton>}
+      <EditorialMore toggleSidebar={toggleSidebar} />
+    </header>
+  )
   return (
     <div className={cx('drag relative z-10 flex h-[52px] shrink-0 items-center gap-1 px-3', !isMac && !api.remote && 'pr-[150px]')}>
       {collapsed && <SidebarToggle className="mr-1" />}
@@ -65,6 +83,7 @@ export function TopBar({ title, right, compact }: { title?: ReactNode; right?: R
           {!api.remote && <Kbd>{isMac ? '⌘K' : 'Ctrl K'}</Kbd>}
         </button>
       )}
+      <EditorialMore sidebarOpen toggleSidebar={toggleSidebar} />
     </div>
   )
 }

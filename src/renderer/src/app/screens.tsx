@@ -36,6 +36,7 @@ function screen(factory: () => Promise<{ default: ComponentType }>): ScreenEntry
 
 export const SCREENS: Record<RouteName, ScreenEntry> = {
   home: screen(() => import('../screens/home')),
+  courses: screen(() => import('../screens/courses')),
   course: screen(() => import('../screens/course')),
   study: screen(() => import('../screens/study')),
   calendar: screen(() => import('../screens/calendar')),
@@ -70,7 +71,7 @@ export function prepareScreen(r: Route): Promise<void> | null {
   return Promise.all([code, capped]).then(() => undefined)
 }
 
-const IDLE_ORDER: RouteName[] = ['home', 'course', 'chat', 'calendar', 'study', 'create', 'inbox', 'stats', 'documents', 'settings', 'tools', 'run']
+const IDLE_ORDER: RouteName[] = ['home', 'courses', 'course', 'chat', 'calendar', 'study', 'create', 'inbox', 'stats', 'documents', 'settings', 'tools', 'run']
 
 /** Tras el primer pintado, en reposo, trae el código de las pantallas una a una (la primera visita ya no espera a la red). */
 export function preloadScreensWhenIdle(): () => void {

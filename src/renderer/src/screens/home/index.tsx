@@ -1,9 +1,6 @@
-// Inicio: un tablero de cinco bloques que llena la ventana. Arriba, el saludo (con la racha y la meta de hoy) y el examen
-// más cercano, que flota; en medio, el plan de hoy y la semana, que también flota; abajo, las portadas de los cursos.
-// Un solo botón ladrillo («Empezar el plan»). Con solo los cursos de ejemplo, el saludo invita a crear el tuyo y el examen
-// de ejemplo no sale (no es tuyo).
+// Hoy: el umbral abre el plan. Los exámenes y la semana acompañan; los cursos quedan al pie.
 import { useTranslation } from 'react-i18next'
-import { Stagger, cx } from '@renderer/design'
+import { Stagger } from '@renderer/design'
 import { useRpc } from '@renderer/lib/useRpc'
 import { showsAsSample } from '@renderer/lib/sample'
 import { useScreenTitle } from '@renderer/app/title'
@@ -26,24 +23,20 @@ export default function Home() {
   const mode: HeroMode = !hasCourses ? 'empty' : summary.courses.every((c) => showsAsSample(c.id)) ? 'firstRun' : 'study'
   const exams = mode === 'study' ? ownExams(summary.exams, showsAsSample) : []
   return (
-    <div className="@container flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pt-1 pb-10">
-      <Stagger className="grid grid-cols-12 gap-4" gap={0.05}>
-        <div className={cx('col-span-12', exams.length > 0 && '@5xl:col-span-8')}>
+    <div className="@container flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-1 pb-10 @lg:px-6">
+      <Stagger className="mx-auto grid max-w-[70rem] grid-cols-12 gap-x-6 gap-y-5" gap={0.05}>
+        <div className="col-span-12">
           <Hero data={summary} mode={mode} />
         </div>
-        {exams.length > 0 && (
-          <div className="col-span-12 @5xl:col-span-4">
-            <ExamCard exams={exams} />
-          </div>
-        )}
         {hasCourses && (
           <>
             <div className="col-span-12 @5xl:col-span-7">
               <PlanCard plan={summary.plan} />
             </div>
-            <div className="col-span-12 @5xl:col-span-5">
+            <aside className="col-span-12 flex flex-col gap-4 @5xl:col-span-5">
+              {exams.length > 0 && <ExamCard exams={exams} />}
               <WeekCard events={summary.upcoming} courses={summary.courses} />
-            </div>
+            </aside>
           </>
         )}
         <div className="col-span-12 mt-2">

@@ -11,7 +11,7 @@ describe('la pestaña de la pantalla de ahora', () => {
     expect(tabOwner([home, course], 1)).toBe('home')
   })
   it('lo abierto desde otra pestaña es de esa pestaña', () => {
-    expect(tabOwner([home, { name: 'inbox' }, { name: 'settings' }], 2)).toBe('inbox')
+    expect(tabOwner([home, { name: 'courses' }, { name: 'settings' }], 2)).toBe('courses')
     expect(tabOwner([home, { name: 'calendar' }, course, { name: 'stats' }], 3)).toBe('calendar')
   })
   it('mira solo hasta la entrada de ahora (no lo que queda delante)', () => {
@@ -28,7 +28,7 @@ describe('tocar una pestaña', () => {
   })
   it('la de ahora en su raíz: sube arriba', () => {
     expect(tabTap('home', { stack: [home], index: 0, route: home })).toBe('top')
-    expect(tabTap('inbox', { stack: [home, { name: 'inbox' }], index: 1, route: { name: 'inbox' } })).toBe('top')
+    expect(tabTap('courses', { stack: [home, { name: 'courses' }], index: 1, route: { name: 'courses' } })).toBe('top')
   })
   it('la de ahora en una pantalla abierta desde ella: vuelve a su raíz', () => {
     expect(tabTap('home', { stack: [home, course], index: 1, route: course })).toBe('pop')

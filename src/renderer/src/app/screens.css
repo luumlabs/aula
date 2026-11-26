@@ -46,3 +46,39 @@
 /* data-ambient (ambient.css/ambient.ts) NO toca estas animaciones: solo pausa bucles, y estas terminan solas. Quitarlas con
    la ventana sin ver y volver a ponerlas al volver las arranca otra vez desde opacidad 0: toda la pantalla parpadeaba
    (power.e2e.ts). La capa que se va se quita igual con su temporizador (LEAVE_MS en App.tsx). */
+
+/* El umbral y el cuaderno: local paper effects, never over a control or figure. */
+.aula-threshold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 87% 47%, var(--sun-glow), transparent 61%);
+}
+.aula-plan-thread { position: relative; isolation: isolate; }
+.aula-plan-thread::before {
+  content: '';
+  position: absolute;
+  inset: 1.5rem auto 1.5rem 1.85rem;
+  width: 1px;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--rule);
+}
+.aula-notebook::before {
+  content: '';
+  position: absolute;
+  inset: 4rem auto 0 0.55rem;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--accent-wash) 10%, var(--accent-wash) 90%, transparent);
+}
+.aula-chat-paper { background: radial-gradient(ellipse 55% 20% at 70% 0, var(--sun-glow), transparent); }
+@media (max-width: 640px) {
+  .aula-threshold::before { background: radial-gradient(ellipse 55% 45% at 92% 16%, var(--sun-glow), transparent); }
+  .aula-chat-paper { background: radial-gradient(ellipse 85% 13% at 50% 0, var(--sun-glow), transparent); }
+}
+@media (forced-colors: active) {
+  .aula-notebook::before, .aula-threshold::before, .aula-plan-thread::before { display: none; }
+}
