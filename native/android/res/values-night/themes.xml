@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- El mismo papel y la misma luz, de noche (los tokens oscuros de styles.css). -->
 <resources>
-    <color name="paper">#181613</color>
-    <color name="ink">#EFE6DC</color>
-    <color name="soft">#B3ACA3</color>
-    <color name="brick">#EE9F72</color>
-    <color name="on_brick">#2B160B</color>
-    <color name="field">#1FEFE6DC</color>
-    <color name="line">#24EFE6DC</color>
-    <color name="page_top">#1F1D19</color>
-    <color name="page_bottom">#1F1D1A</color>
+    <color name="paper">#121110</color>
+    <color name="ink">#F2EFE9</color>
+    <color name="soft">#B5AFA7</color>
+    <color name="brick">#E89266</color>
+    <color name="on_brick">#1D0F07</color>
+    <color name="field">#1FF2EFE9</color>
+    <color name="line">#24F2EFE9</color>
+    <color name="page_top">#121110</color>
+    <color name="page_bottom">#1A1816</color>
     <style name="Aula" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/paper</item>
         <item name="android:colorAccent">@color/brick</item>

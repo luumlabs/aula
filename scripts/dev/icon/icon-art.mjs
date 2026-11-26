@@ -6,6 +6,7 @@
 // `detail` simplifica el dibujo para tamaños pequeños: 'full' (≥128 px), 'mid' (48–64 px), 'small' (≤32 px).
 
 import { INK_PROPOSALS } from './ink-art.mjs'
+import { umbralIcon } from './umbral-art.mjs'
 
 const rad = (deg) => (deg * Math.PI) / 180
 const f = (n) => Number(n.toFixed(2))
@@ -538,7 +539,9 @@ export const PROPOSALS = {
   d2: { name: 'D2 · Claustro de papel', art: cloister2 },
   e: { name: 'E · Arco y claustro (C×D)', art: blend },
   // a tinta y acuarela, de la misma mano que el icono de Faro (ink-art.mjs)
-  ...INK_PROPOSALS
+  ...INK_PROPOSALS,
+  // El umbral: arco de un solo trazo a pincel, suelo y medio sol terracota (umbral-art.mjs)
+  umbral: { name: 'El umbral', art: umbralIcon, tray: { horizon: true } }
 }
 
 export function detailFor(size) {

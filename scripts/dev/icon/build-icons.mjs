@@ -30,9 +30,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { PROPOSALS, iconSvg, traySvg } from './icon-art.mjs'
 import { PAINTINGS } from './paint-art.mjs'
 
-/** La propuesta que se publica: «Tinta A · Arco a tinta» (ink-art.mjs), de la misma mano que el icono de Faro; elegida el
- *  10-11 (antes, «Sumi-e mínimo B», paint-art.mjs). */
-export const CHOSEN = 'inkA'
+/** La identidad actual de Aula: «El umbral» (umbral-art.mjs). */
+export const CHOSEN = 'umbral'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const args = process.argv.slice(2)
@@ -221,8 +220,8 @@ async function buildRepoAssets(id) {
 
 // ── Claro, oscuro y tintado ──────────────────────────────────────────────────────────────────────────────────────────
 const LOOKS = ['light', 'dark', 'tinted']
-/** ¿La propuesta sabe dibujarse en oscuro y tintado? (hoy, «Arco a tinta»). */
-const hasLooks = (id) => id === 'inkA'
+/** ¿La propuesta sabe dibujarse en oscuro y tintado? */
+const hasLooks = (id) => id === 'inkA' || id === 'umbral'
 /** El dibujo a sangre (sin esquinas ni sombra) en un aspecto: lo que piden iOS y las capas de Icon Composer. */
 const square = (id, look, size = 1024) => iconSvg(id, { size, platform: 'square', look, detail: 'full' })
 
@@ -245,9 +244,10 @@ async function buildLooks(id) {
   const composer = at('build/icon.icon')
   rmSync(composer, { recursive: true, force: true })
   for (const look of LOOKS) write(join(composer, 'Assets', `aula-${look}.png`), await raster(square(id, look), 1024))
+  const lightFill = id === 'umbral' ? 'srgb:0.99216,0.98824,0.97647,1.00000' : 'srgb:0.97255,0.95294,0.91765,1.00000'
   write(join(composer, 'icon.json'), JSON.stringify({
     'fill-specializations': [
-      { value: { 'automatic-gradient': 'srgb:0.97255,0.95294,0.91765,1.00000' } },
+      { value: { 'automatic-gradient': lightFill } },
       { appearance: 'dark', value: 'system-dark' }
     ],
     groups: [{
@@ -257,7 +257,7 @@ async function buildLooks(id) {
           { appearance: 'dark', value: 'aula-dark.png' },
           { appearance: 'tinted', value: 'aula-tinted.png' }
         ],
-        name: 'Arco a tinta',
+        name: nameOf(id),
         glass: false
       }],
       shadow: { kind: 'none', opacity: 0 },
