@@ -41,9 +41,9 @@ const press = (...patterns) => `(async () => { ${sleep}
 const SHOTS = [
   { name: 'tutor', size: [1120, 1100], route: { name: 'chat' }, fakeAI: true, wait: 11000, rect: [0, 0, 1120, 904], out: [1400, 1130],
     eval: { en: ask('Why is cos 210° negative?'), es: ask('¿Por qué cos 210° es negativo?') } },
-  { name: 'notes', size: [1120, 640], route: { name: 'documents' }, wait: 6000, window: 'hidden', rect: [0, 0, 900, 729], paper: true, out: [1400, 1163], q: 75,
+  { name: 'notes', size: [1120, 640], route: { name: 'documents' }, wait: 6000, window: 'hidden', rect: { en: [0, 0, 900, 838], es: [0, 0, 900, 567] }, paper: true, out: { en: [1400, 1300], es: [1400, 912] }, q: 75,
     eval: press('/^(Create document|Crear documento)$/', '/^(Cheat sheet|Chuleta)/') },
-  { name: 'exam', size: [1120, 856], route: { name: 'study', id: 'exam-2-math112', mode: 'exam' }, wait: 4500, out: [1400, 1070] }
+  { name: 'exam', size: [1120, 820], route: { name: 'course', id: 'exam-2-math112', tab: 'exam' }, wait: 4500, out: [1400, 1025] }
 ]
 
 const sips = (...args) => execFileSync('sips', args, { stdio: 'ignore' })
@@ -66,25 +66,27 @@ async function shoot(s, lang) {
   const code = typeof s.eval === 'object' ? s.eval[lang] : s.eval
   if (code) await win.evaluate(code)
   await win.waitForTimeout(s.wait)
+  const rect = Array.isArray(s.rect) ? s.rect : s.rect?.[lang] ?? null
   // capturePage a escala del dispositivo: el recorte va en px CSS y sale al doble
-  const png = await app.evaluate(async ({ BrowserWindow }, [which, rect]) => {
+  const png = await app.evaluate(async ({ BrowserWindow }, [which, box]) => {
     const all = BrowserWindow.getAllWindows()
     const target = all.find((w) => (which === 'hidden' ? !w.isVisible() : w.isVisible())) ?? all[0]
-    const img = await target.webContents.capturePage(rect ? { x: rect[0], y: rect[1], width: rect[2], height: rect[3] } : undefined)
+    const img = await target.webContents.capturePage(box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined)
     return img.toPNG().toString('base64')
-  }, [s.window ?? 'visible', s.rect ?? null])
+  }, [s.window ?? 'visible', rect])
   await app.close()
   rmSync(home, { recursive: true, force: true })
 
   const tmp = join(tmpdir(), `aula-landing-${s.name}-${lang}.png`)
   writeFileSync(tmp, Buffer.from(png, 'base64'))
   // el documento no trae márgenes: hoja blanca con margen (72 y 68 px por lado) y, alrededor, 60 px de papel
-  if (s.paper) {
-    const [w, h] = [s.rect[2] * 2, s.rect[3] * 2]
+  if (s.paper && rect) {
+    const [w, h] = [rect[2] * 2, rect[3] * 2]
     sips('-p', String(h + 136), String(w + 144), '--padColor', 'FFFFFF', tmp, '--out', tmp)
-    sips('-p', String(h + 256), String(w + 264), '--padColor', 'F2ECE2', tmp, '--out', tmp)
+    sips('-p', String(h + 256), String(w + 264), '--padColor', 'FAF8F3', tmp, '--out', tmp)
   }
-  sips('-z', String(s.out[1]), String(s.out[0]), tmp, '--out', tmp)
+  const outSize = Array.isArray(s.out) ? s.out : s.out[lang]
+  sips('-z', String(outSize[1]), String(outSize[0]), tmp, '--out', tmp)
   const file = join(OUT, `${s.name}-${lang}.jpg`)
   sips('-s', 'format', 'jpeg', '-s', 'formatOptions', String(s.q ?? 80), tmp, '--out', file)
   rmSync(tmp, { force: true })

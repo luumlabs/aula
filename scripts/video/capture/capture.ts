@@ -261,6 +261,10 @@ async function instant(s: Session, a: Action): Promise<void> {
       await scrollAt(page, p[0], p[1], a.dy)
       break
     }
+    case 'files': {
+      await page.locator(a.selector).first().setInputFiles(a.paths)
+      break
+    }
   }
 }
 

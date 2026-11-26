@@ -19,8 +19,8 @@ await win.setViewportSize({ width: 1440, height: 900 })
 await win.waitForLoadState('domcontentloaded')
 await win.waitForTimeout(2500)
 const ID = 'exam-2-math112'
-// el recuadro del visor 3D de moléculas en la ventana de 1440×900
-const MOL = { x: 300, y: 118, width: 730, height: 580 }
+// el recuadro del visor 3D de moléculas en la ventana de 1440×900 (se mide en vivo en el canvas)
+let MOL = { x: 180, y: 118, width: 760, height: 580 }
 const go = async (route, wait = 2200) => {
   await win.evaluate((r) => window.__aula?.navigate?.(r), route)
   await win.waitForTimeout(wait)
@@ -34,8 +34,8 @@ await shot('today')
 await go({ name: 'course', id: ID, tab: 'overview' }, 2600)
 await shot('course')
 await go({ name: 'study', id: ID, mode: 'learn', skill: 'reference-angles' }, 3000)
-// la opción A de la pregunta de entrada (las fórmulas no se encuentran por texto: se pulsa en su sitio)
-await win.mouse.click(832, 453)
+// la opción A de la pregunta de entrada
+await win.locator('[data-predict-open] button, [data-predict-open] [role="button"], [data-predict-open] [role="radio"]').first().click({ timeout: 5000 }).catch(() => undefined)
 await win.waitForTimeout(900)
 await win.getByRole('button', { name: /Continue/ }).first().click({ timeout: 5000 }).catch(() => undefined)
 await win.waitForTimeout(2600)
@@ -49,12 +49,17 @@ await shot('calendar')
 // modelos en 3D, gráficas y herramientas
 // la molécula gira sola: una secuencia de fotogramas (solo su recuadro), para que en el corto gire de verdad
 await go({ name: 'tools', tool: 'molecules' }, 4200)
+const molBox = await win.locator('canvas').first().boundingBox().catch(() => null)
+if (molBox && molBox.width > 100 && molBox.height > 100) {
+  MOL = { x: Math.round(molBox.x), y: Math.round(molBox.y), width: Math.round(molBox.width), height: Math.round(molBox.height) }
+  writeFileSync(join(OUT, 'mol-rect.json'), JSON.stringify({ x: MOL.x, y: MOL.y, w: MOL.width, h: MOL.height }))
+}
 await shot('molecules')
 for (let i = 0; i < 36; i++) {
   await win.screenshot({ path: join(OUT, `mol-${String(i).padStart(2, '0')}.jpg`), type: 'jpeg', quality: 90, clip: MOL })
   await win.waitForTimeout(40)
 }
-console.log('✓ molécula girando (36 fotogramas)')
+console.log('✓ molécula girando (36 fotogramas)', MOL)
 await go({ name: 'tools', tool: 'grapher' }, 3600)
 await shot('grapher')
 await go({ name: 'tools', tool: 'periodic' }, 3200)
@@ -114,7 +119,7 @@ await win.waitForTimeout(3500)
 await shot('reader')
 // crear un curso desde la conversación
 await go({ name: 'chat' }, 2400)
-await win.getByRole('button', { name: /^New$/ }).first().click({ timeout: 4000 }).catch(() => undefined)
+await win.getByRole('button', { name: /^New/ }).first().click({ timeout: 4000 }).catch(() => undefined)
 const ask = win.getByRole('textbox', { name: 'Message Aula…' })
 await ask.fill('I have an English test on Monday at 10')
 await ask.press('Enter')
@@ -125,4 +130,13 @@ await shot('chat-plan')
 await win.getByRole('button', { name: 'Create the course' }).click({ timeout: 30000 }).catch(() => undefined)
 await win.waitForTimeout(6000)
 await shot('chat-course')
+// vistas de iPad y teléfono para el cierre («On your Mac, your iPad, your iPhone»)
+await win.setViewportSize({ width: 1180, height: 820 })
+await go({ name: 'home' }, 2000)
+await win.screenshot({ path: join(OUT, 'ipad.jpg'), type: 'jpeg', quality: 92 })
+console.log('✓ ipad')
+await win.setViewportSize({ width: 390, height: 844 })
+await go({ name: 'home' }, 1800)
+await win.screenshot({ path: join(OUT, 'iphone.jpg'), type: 'jpeg', quality: 92 })
+console.log('✓ iphone')
 await app.close()

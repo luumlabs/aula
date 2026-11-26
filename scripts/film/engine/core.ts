@@ -104,8 +104,8 @@ export function mix(a: string, b: string, t: number, alpha = 1): string {
 /** Paleta del corto: la noche fría, la luz de Aula y el amanecer de acuarela. */
 export const P = {
   night0: '#0b0e1a', night1: '#131a2e', night2: '#1f2a44', night3: '#33405f', mist: '#5d6a8a',
-  ink: '#16130f', inkSoft: '#2a2520', paper: '#f6efe2', paper2: '#e9dfcc', paperShade: '#cdbfa6',
-  brick: '#bf5a36', brickDeep: '#8f3b20', brickLight: '#ea9a6c', sun: '#f2b24a', sunCore: '#fff1cf', glow: '#f7c877',
+  ink: '#181614', inkSoft: '#2a2520', paper: '#faf8f3', paper2: '#ede8de', paperShade: '#d2c9ba',
+  brick: '#b8502d', brickDeep: '#8f3b20', brickLight: '#e89266', sun: '#f2b24a', sunCore: '#fff1cf', glow: '#f7c877',
   dawn0: '#fbe9d2', dawn1: '#f6cfae', dawn2: '#e9a98c', dawn3: '#b7c4d6', dawn4: '#8ea4c0', sky: '#dfe7ee',
   leaf: '#7f9a78', sea: '#6f93a8'
 }

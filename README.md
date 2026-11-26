@@ -2,7 +2,7 @@
 <p align="right"><b>English</b> · <a href="README.es.md">Español</a></p>
 
 <p align="center">
-  <img src="docs/media/landing/icon-176.png" width="88" height="88" alt="Aula's app icon: a brick-red arch drawn in ink and watercolor, with the sun rising inside it">
+  <img src="docs/media/landing/icon-176.png" width="88" height="88" alt="Aula's app icon: a hand-brushed arch with a rising terracotta sun over warm cotton paper">
 </p>
 
 <h1 align="center">Aula</h1>
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/luumlabs/aula/releases/latest"><img src="https://img.shields.io/github/v/release/luumlabs/aula?style=flat-square&label=download&color=B4502F" alt="Download the latest release"></a>
+  <a href="https://github.com/luumlabs/aula/releases/latest"><img src="https://img.shields.io/github/v/release/luumlabs/aula?style=flat-square&label=download&color=B8502D" alt="Download the latest release"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/open%20source-AGPL--3.0-1d1d1f?style=flat-square" alt="Open source under the AGPL-3.0 license"></a>
 </p>
 
@@ -24,7 +24,7 @@
   <a href="#see-it-in-90-seconds">
     <picture>
       <source media="(prefers-reduced-motion: reduce)" srcset="docs/media/landing/hero-still.jpg">
-      <img src="docs/media/landing/hero.gif" width="960" alt="Ten seconds of Aula: lecture notes, slides, a whiteboard photo and a class recording are dropped into a new course, Statistics for psychology; a team of AI agents plans it, writes the lessons and exercises and checks the answers, and the course is ready with 4 topics, 36 exercises and 24 flashcards">
+      <img src="docs/media/landing/hero.gif" width="960" alt="Ten seconds of Aula: lecture notes, slides, a whiteboard photo and a class recording are dropped into a new course, Statistics for psychology; a team of AI agents plans it, writes the lessons and exercises and checks the answers, and the course is ready with 2 topics, 18 exercises and 12 flashcards">
     </picture>
   </a>
   <br>
@@ -201,7 +201,7 @@ OpenCode works too, if it's installed and signed in. More detail: [docs/FEATURES
 
 ## How to help
 
-<a href="https://github.com/luumlabs/aula/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/luumlabs/aula/good%20first%20issue?style=flat-square&label=good%20first%20issues&color=B4502F" alt="Open good first issues"></a>
+<a href="https://github.com/luumlabs/aula/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/luumlabs/aula/good%20first%20issue?style=flat-square&label=good%20first%20issues&color=B8502D" alt="Open good first issues"></a>
 
 Aula is made in the open, and you don't need to be an expert to help.
 

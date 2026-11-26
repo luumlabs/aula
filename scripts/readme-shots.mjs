@@ -37,6 +37,7 @@ const quizChat = (text) => `(async () => {
 
 const SHOTS = [
   { name: 'home', route: 'home', dark: true },
+  { name: 'courses', route: 'courses', dark: true },
   { name: 'course', route: course('overview'), dark: true },
   { name: 'learn', route: study('learn', { skill: 'reference-angles' }) },
   { name: 'cards', route: study('cards') },
@@ -60,6 +61,6 @@ for (const lang of ['en', 'es'])
       const args = ['scripts/shot.mjs', '--demo', '--lang', lang, '--route', s.route, '--theme', theme, '--size', '1440x900', '--wait', String(s.wait ?? 4200), '--out', file]
       const evalCode = typeof s.eval === 'object' ? s.eval[lang] : s.eval
       if (evalCode) args.push('--eval', evalCode)
-      execFileSync('node', args, { stdio: 'inherit', env: { ...process.env, ...(s.env ?? {}) } })
+      execFileSync('node', args, { stdio: 'inherit', env: { ...process.env, AULA_HIDDEN: '1', ...(s.env ?? {}) } })
     }
   }

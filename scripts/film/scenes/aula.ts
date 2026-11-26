@@ -28,13 +28,24 @@ export async function initAula(): Promise<string[]> {
   TILES = layTiles()
   const names = [...new Set(SHOTS.map((s) => s.img))].filter((n) => n !== 'devices').map((n) => `${n}.png`)
   const mol = Array.from({ length: MOL_FRAMES }, (_, i) => `mol-${String(i).padStart(2, '0')}.jpg`)
-  await Promise.all([...names, ...mol, 'ipad.jpg', 'iphone.jpg'].map(load))
+  await Promise.all([
+    ...names.map(load),
+    ...mol.map(load),
+    load('ipad.jpg'),
+    load('iphone.jpg'),
+    fetch('vt://work/mol-rect.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((box) => {
+        if (box && typeof box.w === 'number' && box.w > 100) MOL = box
+      })
+      .catch(() => undefined)
+  ])
   return Object.keys(shots)
 }
 
 /** Fotogramas de la molécula girando y su recuadro dentro de la captura de 1440×900 (scripts/film/shots.mjs → MOL). */
 const MOL_FRAMES = 36
-const MOL = { x: 300, y: 118, w: 730, h: 580 }
+let MOL = { x: 180, y: 118, w: 760, h: 580 }
 
 /** Una pantalla de la app como una lámina sobre el papel: esquinas redondas, sombra suave y un leve vuelco. `over` pinta
  *  encima un recorte animado (la molécula que gira). */

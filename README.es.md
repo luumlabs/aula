@@ -2,7 +2,7 @@
 <p align="right"><a href="README.md">English</a> · <b>Español</b></p>
 
 <p align="center">
-  <img src="docs/media/landing/icon-176.png" width="88" height="88" alt="El icono de Aula: un arco de ladrillo dibujado a tinta y acuarela, con el sol saliendo dentro">
+  <img src="docs/media/landing/icon-176.png" width="88" height="88" alt="El icono de Aula: un arco pintado a pincel con un sol de ladrillo asomando sobre papel de algodón cálido">
 </p>
 
 <h1 align="center">Aula</h1>
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/luumlabs/aula/releases/latest"><img src="https://img.shields.io/github/v/release/luumlabs/aula?style=flat-square&label=descargar&color=B4502F" alt="Descargar la última versión"></a>
+  <a href="https://github.com/luumlabs/aula/releases/latest"><img src="https://img.shields.io/github/v/release/luumlabs/aula?style=flat-square&label=descargar&color=B8502D" alt="Descargar la última versión"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/c%C3%B3digo%20abierto-AGPL--3.0-1d1d1f?style=flat-square" alt="Código abierto con licencia AGPL-3.0"></a>
 </p>
 
@@ -25,7 +25,7 @@
   <a href="#mírala-en-90-segundos">
     <picture>
       <source media="(prefers-reduced-motion: reduce)" srcset="docs/media/landing/hero-still.jpg">
-      <img src="docs/media/landing/hero.gif" width="960" alt="Diez segundos de Aula: unos apuntes, unas diapositivas, una foto de la pizarra y la grabación de una clase entran en un curso nuevo, Statistics for psychology; un equipo de agentes de IA lo planifica, escribe las lecciones y los ejercicios y comprueba las respuestas, y el curso queda listo con 4 temas, 36 ejercicios y 24 tarjetas">
+      <img src="docs/media/landing/hero.gif" width="960" alt="Diez segundos de Aula: unos apuntes, unas diapositivas, una foto de la pizarra y la grabación de una clase entran en un curso nuevo, Statistics for psychology; un equipo de agentes de IA lo planifica, escribe las lecciones y los ejercicios y comprueba las respuestas, y el curso queda listo con 2 temas, 18 ejercicios y 12 tarjetas">
     </picture>
   </a>
   <br>
@@ -204,7 +204,7 @@ OpenCode también funciona, si está instalado y con la sesión iniciada. Más d
 
 ## Cómo ayudar
 
-<a href="https://github.com/luumlabs/aula/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/luumlabs/aula/good%20first%20issue?style=flat-square&label=good%20first%20issues&color=B4502F" alt="Issues abiertos marcados good first issue"></a>
+<a href="https://github.com/luumlabs/aula/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/luumlabs/aula/good%20first%20issue?style=flat-square&label=good%20first%20issues&color=B8502D" alt="Issues abiertos marcados good first issue"></a>
 
 Aula se hace en abierto, y no hace falta ser experto para echar una mano.
 
