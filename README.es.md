@@ -80,7 +80,7 @@ por temas y un botón para practicar lo que fallaste. También puedes imprimir u
 <!-- El vídeo es la URL del adjunto sola en su línea: GitHub la convierte en un reproductor que también funciona para
      quien no ha iniciado sesión. Una etiqueta <video src="…"> deja la URL de github.com, que esas visitas no pueden abrir. -->
 
-https://github.com/user-attachments/assets/7becaa0b-db21-4d95-b9d6-fc581fab9b4d
+https://github.com/user-attachments/assets/dfe84366-3f26-4372-8cc0-7e7ef3b6e00f
 
 <sub>Un curso entero, de principio a fin: se crea con cuatro archivos y después vienen una lección, un ejercicio que pilla
 un error típico, el cuaderno de errores, las tarjetas, un simulacro y el plan de hoy. Sin voz y con rótulos en inglés.

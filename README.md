@@ -78,7 +78,7 @@ topic and a button to practice what you missed. You can also print a practice ex
 <!-- The video is the bare attachment URL on a line of its own: GitHub turns it into a player that also plays for
      visitors who aren't signed in. A <video src="…"> tag keeps the github.com URL, which they can't open. -->
 
-https://github.com/user-attachments/assets/7becaa0b-db21-4d95-b9d6-fc581fab9b4d
+https://github.com/user-attachments/assets/dfe84366-3f26-4372-8cc0-7e7ef3b6e00f
 
 <sub>A whole course, end to end: built from four files, then a lesson, an exercise that catches a common mistake, the
 mistakes notebook, flashcards, a mock exam and the plan for today. No voice. Player not loading?
