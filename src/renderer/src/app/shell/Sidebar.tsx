@@ -2,7 +2,7 @@
 // abajo, atenuado, lo de consulta (Documentos, Herramientas, Estadísticas) y Ajustes, que se ve también plegada. Vive
 // directamente sobre el vidrio de la ventana (sin panel propio): el papel de la derecha es la única hoja. Se pliega a solo
 // iconos (con una transición CSS del ancho, sin JavaScript por fotograma). La fila elegida se desliza.
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { create } from 'zustand'
@@ -51,6 +51,7 @@ interface SidebarState {
   /** Lo que se ve: plegada si la plegó el estudiante o si está estudiando. */
   collapsed: boolean
   toggle: () => void
+  expand: () => void
   setFocus: (focus: boolean) => void
 }
 
@@ -65,13 +66,22 @@ export const useSidebarState = create<SidebarState>((set, get) => ({
     set({ pinned: collapsed, focus: false, collapsed })
     saveCollapsed(collapsed)
   },
+  expand: () => {
+    set({ pinned: false, focus: false, collapsed: false })
+    saveCollapsed(false)
+  },
   setFocus: (focus) => set((s) => ({ focus, collapsed: s.pinned || focus }))
 }))
 
 /** Al entrar a estudiar, la barra se pliega; al salir, vuelve a como la dejó el estudiante. */
 export function useStudyFocus(studying: boolean): void {
   const setFocus = useSidebarState((s) => s.setFocus)
-  useEffect(() => setFocus(studying), [studying, setFocus])
+  const prev = useRef(studying)
+  useEffect(() => {
+    if (prev.current === studying) return
+    prev.current = studying
+    setFocus(studying)
+  }, [studying, setFocus])
 }
 
 /** Ancho de la barra: en macOS, plegada, deja sitio a los semáforos de la ventana (x 22…80). */

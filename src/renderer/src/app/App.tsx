@@ -9,7 +9,7 @@ import { setLanguage, pickLanguage } from '@renderer/i18n'
 import { applyEngineLanguage } from '@engine/language'
 import { useSettings, wireSettings } from '@renderer/lib/settings'
 import { wireCourses } from '@renderer/lib/courses'
-import { Sidebar, TOGGLE_SIDEBAR_EVENT } from './shell/Sidebar'
+import { Sidebar, TOGGLE_SIDEBAR_EVENT, useSidebarState } from './shell/Sidebar'
 import { KeychainNotice } from './shell/KeychainNotice'
 import { UpdateNotice } from './shell/UpdateNotice'
 import { CompactTabs } from './shell/CompactTabs'
@@ -44,8 +44,15 @@ export function App() {
   const remote = api.remote
   const compact = useCompact()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const sidebarOpenRef = useRef(false)
   useEffect(() => {
-    const toggle = () => setSidebarOpen((open) => !open)
+    const toggle = () => {
+      const next = !sidebarOpenRef.current
+      sidebarOpenRef.current = next
+      // al abrir la barra a mano desde el menú editorial, siempre aparece desplegada (también estudiando)
+      if (next) useSidebarState.getState().expand()
+      setSidebarOpen(next)
+    }
     window.addEventListener(TOGGLE_SIDEBAR_EVENT, toggle)
     return () => window.removeEventListener(TOGGLE_SIDEBAR_EVENT, toggle)
   }, [])
