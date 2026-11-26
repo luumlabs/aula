@@ -12,11 +12,50 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { markPaths } from './paint/markPaths'
 import { useInkReveal, wasDrawn, type RevealPlan } from './paint/Ink'
 import { useTheme } from './theme'
+import { idleCels, umbralViewBox, workingCels } from './umbralFrames'
 import './aulaMark.css'
 
 export type MarkState = 'idle' | 'thinking' | 'working' | 'done' | 'waiting' | 'paused' | 'offline'
 
-export function AulaMark({ size = 24, state = 'idle', className, hover = false, label, draw = false, alive = false, boil = false }: { size?: number; state?: MarkState; className?: string; hover?: boolean; label?: string; draw?: boolean; alive?: boolean; boil?: boolean }) {
+interface MarkProps {
+  size?: number
+  state?: MarkState
+  className?: string
+  hover?: boolean
+  label?: string
+  draw?: boolean
+  alive?: boolean
+  boil?: boolean
+}
+
+export function AulaMark(props: MarkProps) {
+  const state = props.state ?? 'idle'
+  // Keep the one-shot reveal, completion and unavailable states; the live mark uses the approved hand-painted cels.
+  if (props.draw || (state !== 'idle' && state !== 'thinking' && state !== 'working')) return <GestureMark {...props} />
+  const { size = 24, className, hover, label, alive, boil } = props
+  const working = state !== 'idle'
+  const cels = working ? workingCels : idleCels
+  const period = working ? 1500 : 2400
+  const loop = working || alive || boil
+  return (
+    <svg
+      width={size} height={size} viewBox={umbralViewBox}
+      className={['umbral-mark', className].filter(Boolean).join(' ')}
+      data-umbral={working ? 'working' : 'idle'}
+      data-loop={loop ? '' : undefined} data-hover={hover ? '' : undefined}
+      role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}
+    >
+      {cels.slice(0, loop || hover ? undefined : 1).map(([ink, sun], i) => (
+        <g key={i} className="umbral-cel" style={{ animationDelay: i ? `${(i - cels.length) * period / cels.length}ms` : '0ms' }}>
+          <path d={ink} fill="currentColor" />
+          <path d={sun} fill="var(--accent)" />
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function GestureMark({ size = 24, state = 'idle', className, hover = false, label, draw = false, alive = false, boil = false }: MarkProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const door = `aula-door-${uid}`
   const arch = state === 'waiting' ? 'var(--accent)' : state === 'paused' || state === 'offline' ? 'var(--text3)' : 'currentColor'
