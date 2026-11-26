@@ -30,7 +30,7 @@ export interface EdgeRoute {
   dashed: boolean
   order: number
 }
-export interface DiagramLayout { nodes: NodeBox[]; edges: EdgeRoute[]; width: number; height: number; cycle?: { cx: number; cy: number; rx: number; ry: number } }
+export interface DiagramLayout { nodes: NodeBox[]; edges: EdgeRoute[]; width: number; height: number; direction?: 'tb' | 'lr'; cycle?: { cx: number; cy: number; rx: number; ry: number } }
 
 export const NODE_FONT = 14
 const DETAIL_FONT = 12
@@ -271,16 +271,11 @@ export function layoutDiagram(raw: DiagramBlock, measure: Measure = estimateMeas
 }
 
 const PAD = 16
+/** Ancho cómodo de una tarjeta de estudio: por encima, un flujo horizontal se encoge demasiado; un árbol muy ancho se lee mejor de lado. */
+const AUTO_MAX_LR_WIDTH = 900
+const AUTO_WIDE_TB_WIDTH = 860
 
-function layoutGraph(b: DiagramBlock, sizes: Map<string, { w: number; h: number }>, measure: Measure): DiagramLayout {
-  const lr = b.direction.toLowerCase() === 'lr'
-  const g = new dagre.graphlib.Graph({ multigraph: false })
-  g.setGraph({ rankdir: lr ? 'LR' : 'TB', nodesep: lr ? 22 : 30, ranksep: lr ? 62 : 50, edgesep: 14, marginx: PAD, marginy: PAD, ranker: b.kind === 'tree' ? 'longest-path' : 'network-simplex' })
-  g.setDefaultEdgeLabel(() => ({}))
-  for (const n of b.nodes) {
-    const s = sizes.get(n.id)!
-    g.setNode(n.id, { width: s.w, height: s.h })
-  }
+function collectValidEdges(b: DiagramBlock): DiagramEdge[] {
   const ids = new Set(b.nodes.map((n) => n.id))
   const edges: DiagramEdge[] = []
   const seen = new Set<string>()
@@ -290,11 +285,92 @@ function layoutGraph(b: DiagramBlock, sizes: Map<string, { w: number; h: number 
     if (seen.has(k)) continue
     seen.add(k)
     edges.push(e)
+  }
+  return edges
+}
+
+function runDagre(b: DiagramBlock, sizes: Map<string, { w: number; h: number }>, edges: DiagramEdge[], measure: Measure, dir: 'tb' | 'lr'): dagre.graphlib.Graph {
+  const lr = dir === 'lr'
+  const g = new dagre.graphlib.Graph({ multigraph: false })
+  g.setGraph({ rankdir: lr ? 'LR' : 'TB', nodesep: lr ? 22 : 30, ranksep: lr ? 62 : 50, edgesep: 14, marginx: PAD, marginy: PAD, ranker: b.kind === 'tree' ? 'longest-path' : 'network-simplex' })
+  g.setDefaultEdgeLabel(() => ({}))
+  for (const n of b.nodes) {
+    const s = sizes.get(n.id)!
+    g.setNode(n.id, { width: s.w, height: s.h })
+  }
+  for (const e of edges) {
     const label = e.label?.trim() ? e.label.slice(0, 200) : undefined
     const lw = label ? Math.min(180, measureLabel(label, 12, false, measure) + 16) : 0
     g.setEdge(e.from, e.to, label ? { width: lw, height: 22, labelpos: 'c', minlen: 1 } : { minlen: 1 })
   }
   dagre.layout(g)
+  return g
+}
+
+/**
+ * Elige arriba-abajo («tb») o izquierda-derecha («lr») según la forma del diagrama cuando `direction` es «auto» (o se
+ * omite): las direcciones explícitas se respetan siempre; los diagramas de decisión (con rombos) van de arriba abajo;
+ * las cadenas cortas y los abanicos demasiado anchos en vertical se colocan de izquierda a derecha.
+ */
+export function chooseDiagramDirection(
+  raw: DiagramBlock,
+  measure: Measure = estimateMeasure
+): 'tb' | 'lr' {
+  const d = raw.direction.trim().toLowerCase()
+  if (d === 'lr' || d === 'rl' || d === 'horizontal' || d === 'right') return 'lr'
+  if (d === 'tb' || d === 'td' || d === 'vertical' || d === 'down') return 'tb'
+  const b = cappedDiagram(raw)
+  if (b.nodes.length <= 1) return 'tb'
+  if (b.nodes.some((n) => n.shape === 'diamond')) return 'tb'
+  const sizes = new Map(b.nodes.map((n) => [n.id, nodeSize(n, measure)]))
+  const edges = collectValidEdges(b)
+  return pickAutoDirection(b, sizes, edges, measure).dir
+}
+
+function pickAutoDirection(
+  b: DiagramBlock,
+  sizes: Map<string, { w: number; h: number }>,
+  edges: DiagramEdge[],
+  measure: Measure
+): { dir: 'tb' | 'lr'; graph: dagre.graphlib.Graph } {
+  const gTb = runDagre(b, sizes, edges, measure, 'tb')
+  const gLr = runDagre(b, sizes, edges, measure, 'lr')
+  const tbW = gTb.graph().width ?? 0
+  const tbH = gTb.graph().height ?? 0
+  const lrW = gLr.graph().width ?? 0
+  const lrH = gLr.graph().height ?? 0
+
+  // Cadena lineal (1 nodo por nivel): en horizontal si cabe sin encogerse demasiado; si es muy larga, vertical.
+  const ranks = rankOrder(b, edges)
+  const perRank = new Map<number, number>()
+  for (const r of ranks.values()) perRank.set(r, (perRank.get(r) ?? 0) + 1)
+  const maxBreadth = Math.max(0, ...perRank.values())
+  if (maxBreadth === 1 && b.nodes.length >= 2) {
+    return lrW <= AUTO_MAX_LR_WIDTH ? { dir: 'lr', graph: gLr } : { dir: 'tb', graph: gTb }
+  }
+  // Árbol o abanico muy ancho en vertical: de lado las hojas se apilan limpiamente.
+  if (tbW > AUTO_WIDE_TB_WIDTH && lrW < tbW * 0.85) return { dir: 'lr', graph: gLr }
+  // Grafo muy alto y estrecho en vertical que cabe cómodo en horizontal.
+  if (tbH > 0 && tbW / tbH < 0.6 && lrW <= AUTO_MAX_LR_WIDTH && lrH < tbH * 0.8) return { dir: 'lr', graph: gLr }
+  return { dir: 'tb', graph: gTb }
+}
+
+function layoutGraph(b: DiagramBlock, sizes: Map<string, { w: number; h: number }>, measure: Measure): DiagramLayout {
+  const edges = collectValidEdges(b)
+  const d = b.direction.trim().toLowerCase()
+  let dir: 'tb' | 'lr'
+  let g: dagre.graphlib.Graph
+  if (d === 'lr' || d === 'rl' || d === 'horizontal' || d === 'right') {
+    dir = 'lr'
+    g = runDagre(b, sizes, edges, measure, 'lr')
+  } else if (d === 'tb' || d === 'td' || d === 'vertical' || d === 'down' || b.nodes.length <= 1 || b.nodes.some((n) => n.shape === 'diamond')) {
+    dir = 'tb'
+    g = runDagre(b, sizes, edges, measure, 'tb')
+  } else {
+    const picked = pickAutoDirection(b, sizes, edges, measure)
+    dir = picked.dir
+    g = picked.graph
+  }
   const order = rankOrder(b, edges)
   const nodes: NodeBox[] = b.nodes.map((n) => {
     const v = g.node(n.id)
@@ -320,7 +396,7 @@ function layoutGraph(b: DiagramBlock, sizes: Map<string, { w: number; h: number 
     return { key: edgeKey(e.from, e.to), from: e.from, to: e.to, d: basisPath(pts), head: e.arrow ? headPath(prev, tip) : undefined, pts: ink, barbs, label, labelAt: at, dashed: e.dashed, order: Math.max(order.get(e.from) ?? 0, 0) + i * 0.001 }
   })
   const gl = g.graph()
-  return { nodes, edges: routes, width: Math.ceil(gl.width ?? 0), height: Math.ceil(gl.height ?? 0) }
+  return { nodes, edges: routes, width: Math.ceil(gl.width ?? 0), height: Math.ceil(gl.height ?? 0), direction: dir }
 }
 
 function midOf(pts: Pt[]): Pt {
