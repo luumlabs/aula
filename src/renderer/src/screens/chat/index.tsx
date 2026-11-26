@@ -5,6 +5,7 @@
 // La conversación en sí (pensando, pasos, texto que fluye, desplazamiento) está en Conversation.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { studentTextOf } from '@engine/assistant/trust'
+import type { TutorContext } from '@shared/assistant/types'
 import { Trans, useTranslation } from 'react-i18next'
 import { LayoutGroup, motion } from 'motion/react'
 import { AulaMark, Button, Drawer, Icon, InkSpot, cx, toast, useMarkPhase } from '@renderer/design'
@@ -76,7 +77,7 @@ export default function ChatScreen() {
       composer.current?.restore(studentTextOf(draft), draft.mentions, draft.files)
     }
   }
-  const ask = (text: string) => void send({ text, files: [], mentions: [] })
+  const ask = (text: string, context?: TutorContext) => void send({ text, files: [], mentions: [], ...(context ? { context } : {}) })
   const actions = useMemo<ChatActions>(() => ({ ask }), [activeId, conv.send])
   const cancel = async (id: string) => {
     const m = await conv.cancel(id)

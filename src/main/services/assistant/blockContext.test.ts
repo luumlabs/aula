@@ -35,4 +35,17 @@ describe('el bloque que mira el estudiante', () => {
     const s = systemPrompt({ appLanguage: 'es', course: makePack({ id: 'c', title: 'Trigonometría' }) })
     expect(s).toMatch(/what they marked on a figure[^\n]*statement of an exercise they haven't solved yet[^\n]*hint-first/)
   })
+
+  it('una figura marcada dentro del chat no manda a buscarla con get_lesson ni get_exercise', () => {
+    const markedFigure = { studentText: '¿Qué pasa en este paso?', context: 'En el diagrama «Ciclo de Krebs»: «Citrato».' }
+    const message = newMessage('user', `${markedFigure.studentText}\n\n${markedFigure.context}`, {
+      context: { screen: 'chat', blockID: 'chat-fig-1', markedFigure }
+    })
+    const s = turnPrompt({ message, history: [], info, courses: [], runs: [], mentions: '', attachments: '', earlierFiles: '' })
+    expect(s).toContain('Looking at a figure shown earlier in this conversation (marked by the student below)')
+    expect(s).not.toContain('get_lesson')
+    expect(s).not.toContain('get_exercise')
+    expect(s).toContain('¿Qué pasa en este paso?')
+    expect(s).toContain('Citrato')
+  })
 })

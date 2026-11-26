@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { decodeBlock } from '@shared/schema/blocks'
 import { drawItemShape } from '@engine/drawing/shapes'
-import { inlineBlockOf } from './InlineBlock'
+import { chatFigureContext, inlineBlockOf } from './InlineBlock'
 
 const nodesOf = (raw: unknown): number => {
   const b = inlineBlockOf(raw)
@@ -40,5 +40,20 @@ describe('bloques del chat', () => {
     expect(inlineBlockOf({ type: 'table', headers: ['A', 'B'], rows: [['1', '2']] })?.type).toBe('table')
     expect(inlineBlockOf('no es un bloque')).toBeUndefined()
     expect(inlineBlockOf(null)).toBeUndefined()
+  })
+
+  it('el contexto de «Marcar y preguntar» en una figura del chat conserva la procedencia y el curso si lo hay', () => {
+    const marked = { studentText: '¿Por qué aquí?', context: 'En el diagrama «Mitosis»: «Anafase».' }
+    expect(chatFigureContext(null, 'blk-1', marked)).toEqual({
+      screen: 'chat',
+      blockID: 'blk-1',
+      markedFigure: marked
+    })
+    expect(chatFigureContext('bio-101', 'blk-2', marked)).toEqual({
+      courseID: 'bio-101',
+      screen: 'chat',
+      blockID: 'blk-2',
+      markedFigure: marked
+    })
   })
 })
