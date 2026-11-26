@@ -4,6 +4,7 @@
 // en español y compacto.
 import { AtomKey, Formula, compositionsEqual, type Composition } from './formula'
 import { detectFunctionalGroups, type FunctionalGroupKind } from './functional-groups'
+import { resolveStructureInput, searchMolecules } from './molecule-library'
 import { EXPANDED_MAX_HEAVY, SmilesError, heavyAtomCount, parseStructure, smilesComposition, smilesFormulaParts, type SmilesMolecule } from './smiles'
 import { smilesErrorHint, smilesErrorMessage } from './smiles-messages'
 import { drawableStyles } from './structure-depict'
@@ -36,18 +37,24 @@ function atomText(mol: SmilesMolecule, i: number): string {
 
 const formulaOf = (c: { composition: Composition; charge: number }): Formula => Formula.fromComposition(c.composition, c.charge)
 
-/** Informe de una SMILES (o de una reacción «A.B>>C.D») para la IA. Nunca lanza. */
+/** Informe de una SMILES, nombre de la biblioteca o reacción («A.B>>C.D») para la IA. Nunca lanza. */
 export function structureInfo(input: string): ChemToolResult {
+  const resolved = resolveStructureInput(input)
   let parsed
   try {
     parsed = parseStructure(input)
   } catch (e) {
     if (!(e instanceof SmilesError)) return { ok: false, text: 'No pude leer la SMILES.' }
     const hint = smilesErrorHint(e.kind)
-    return { ok: false, text: `SMILES no válida: ${smilesErrorMessage(e.kind, 'es')}${hint ? ' ' + hint : ''}` }
+    const suggestions = searchMolecules(input, 4)
+    const suggest = suggestions.length ? ` ¿Buscabas en la biblioteca: ${suggestions.map((m) => `«${m.es}» / «${m.en}»`).join(', ')}?` : ''
+    return { ok: false, text: `SMILES no válida: ${smilesErrorMessage(e.kind, 'es')}${hint ? ' ' + hint : ''}${suggest}` }
   }
   const mol = parsed.molecule
   const lines: string[] = [`SMILES válida: ${mol.source}`]
+  if (resolved.resolved.length) {
+    lines.push(`• Biblioteca de moléculas: ${resolved.resolved.map((r) => `«${r.input}» → ${r.molecule.smiles} (${r.molecule.es} / ${r.molecule.en})`).join(' · ')}`)
+  }
   let result: Pick<ChemToolResult, 'value' | 'unit' | 'latex'> = {}
   if (parsed.species) {
     const side = (which: 'reactant' | 'product' | 'agent'): Formula[] => parsed.species!.filter((s) => s.side === which).map((s) => formulaOf(smilesComposition(mol, s.atoms)))

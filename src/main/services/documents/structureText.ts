@@ -6,14 +6,17 @@ import { Formula } from '@engine/chem/formula'
 import { SmilesError, parseStructure, smilesComposition, smilesFormulaParts, type ParsedStructure } from '@engine/chem/smiles'
 
 /** Fórmula de la molécula (una por sustancia: «C4H10, C4H10») o ecuación de la reacción (\ce{}), si la SMILES se lee. */
-function formulaTex(b: BlockOf<'structure'>): string | undefined {
-  let parsed: ParsedStructure
+function parsedOf(b: BlockOf<'structure'>): ParsedStructure | undefined {
   try {
-    parsed = parseStructure(b.smiles)
+    return parseStructure(b.smiles)
   } catch (e) {
-    if (e instanceof SmilesError) return b.formula ? `\\ce{${b.formula}}` : undefined
+    if (e instanceof SmilesError) return undefined
     throw e
   }
+}
+
+function formulaTex(b: BlockOf<'structure'>, parsed: ParsedStructure | undefined): string | undefined {
+  if (!parsed) return b.formula ? `\\ce{${b.formula}}` : undefined
   const mol = parsed.molecule
   const species = parsed.species
   if (!species) {
@@ -39,8 +42,10 @@ export interface StructureTextOptions {
 /** Texto del bloque bajo su rótulo («*[Fórmula estructural: Aspirina]*»). */
 export function structureMarkdown(b: BlockOf<'structure'>, opts: StructureTextOptions = {}): string {
   const lines: string[] = []
-  const tex = opts.inPrompt ? undefined : formulaTex(b)
-  const head = [tex ? `$${tex}$` : undefined, b.smiles ? `SMILES: \`${b.smiles}\`` : undefined].filter(Boolean).join(' · ')
+  const parsed = parsedOf(b)
+  const tex = opts.inPrompt ? undefined : formulaTex(b, parsed)
+  const canonicalSmiles = parsed ? parsed.molecule.source : b.smiles
+  const head = [tex ? `$${tex}$` : undefined, canonicalSmiles ? `SMILES: \`${canonicalSmiles}\`` : undefined].filter(Boolean).join(' · ')
   if (head) lines.push(head)
   if (b.conditions) lines.push(`*${b.conditions}*`)
   const groups = opts.inPrompt ? [] : b.groups.filter((g) => g.label.trim())

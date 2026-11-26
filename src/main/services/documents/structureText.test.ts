@@ -50,4 +50,12 @@ describe('estructuras en los documentos', () => {
     expect(out).not.toContain('El OH')
     expect(structureMarkdown(b)).toContain('$\\ce{C2H6O}$')
   })
+  it('un nombre de la biblioteca escribe su SMILES canónica (sin revelar el nombre en un enunciado)', () => {
+    const b = decodeBlock({ type: 'structure', molecule: 'glucose', caption: 'Identifica este azúcar' }) as BlockOf<'structure'>
+    const promptOut = structureMarkdown(b, { inPrompt: true })
+    expect(promptOut).toContain('SMILES: `OC[C@H]1O[C@@H](O)[C@H](O)[C@@H](O)[C@@H]1O`')
+    expect(promptOut).not.toContain('glucose')
+    expect(promptOut).not.toContain('C6H12O6')
+    expect(structureMarkdown(b)).toContain('$\\ce{C6H12O6}$')
+  })
 })

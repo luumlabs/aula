@@ -7,6 +7,7 @@
 // Kekulé, estereoquímica guardada (/ \ @), grupos R con clase, isótopos y reacciones.
 import { PeriodicTable } from './elements'
 import { AtomKey, type Composition } from './formula'
+import { resolveStructureInput } from './molecule-library'
 import { smilesErrorMessage, type SmilesErrorKind } from './smiles-messages'
 
 export type { SmilesErrorKind } from './smiles-messages'
@@ -538,9 +539,10 @@ export interface ParsedStructure {
 /** ¿Es una reacción (lleva «>»)? */
 export const isReactionSmiles = (input: string): boolean => smilesText(input).includes('>')
 
-/** Lee una molécula o una reacción «reactivos>agentes>productos» («A.B>>C.D»). */
+/** Lee una molécula (SMILES o nombre de la biblioteca) o una reacción «reactivos>agentes>productos» («A.B>>C.D»). */
 export function parseStructure(input: string): ParsedStructure {
-  const src = smilesText(input)
+  const resolved = resolveStructureInput(input)
+  const src = resolved.resolved.length ? resolved.smiles : smilesText(input)
   if (!src.includes('>')) return { molecule: parseSmiles(src) }
   if (src.length > SMILES_MAX_LENGTH) fail({ type: 'tooLong', limit: SMILES_MAX_LENGTH })
   const parts = src.split('>')

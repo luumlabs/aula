@@ -7,6 +7,7 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 
 ### New
 - **Automatic diagram direction** ([#28](https://github.com/luumlabs/aula/issues/28)): diagrams now default to `direction: "auto"` when omitted, choosing top-down (`tb`) or left-right (`lr`) from the graph's shape (short linear pipelines and overly wide trees go left-to-right; decision flowcharts, balanced trees and long chains stay top-down). Explicit `"tb"` and `"lr"` directions are always preserved.
+- **Named molecule library for 2D chemical structures** ([#28](https://github.com/luumlabs/aula/issues/28)): `structure` blocks and the `chemistry` tool now accept ~100 common textbook molecules by name in English or Spanish (for example `glucose` / `glucosa`, `aspirin`, `caffeine`, `acetic acid`, all 20 amino acids, nucleobases and sugars), including inside mixtures and reactions, as well as a `"molecule"` field alias. Every entry is verified against its SMILES, formula and 2D layout.
 
 ## [0.2.7] - 2026-11-25
 

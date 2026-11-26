@@ -34,4 +34,19 @@ describe('structureInfo: varias sustancias y avisos de dibujo', () => {
     expect(structureInfo('CC(C)(C)O').text).not.toContain('desarrollada')
     expect(structureInfo('CCC1(C)CCCCC1').text).toContain('la fórmula desarrollada (style expanded) sale con H encimados')
   })
+  it('acepta nombres de la biblioteca (inglés, español y reacciones) y sugiere si no existe', () => {
+    const g = structureInfo('glucose')
+    expect(g.ok).toBe(true)
+    expect(g.text).toContain('Biblioteca de moléculas: «glucose» →')
+    expect(g.text).toContain('Fórmula molecular: C6H12O6')
+
+    const rxn = structureInfo('etanol.ácido acético>>acetato de etilo.agua')
+    expect(rxn.ok).toBe(true)
+    expect(rxn.text).toContain('SMILES válida: CCO.CC(=O)O>>CC(=O)OCC.O')
+    expect(rxn.text).toContain('Ajustada 1:1')
+
+    const bad = structureInfo('gluc')
+    expect(bad.ok).toBe(false)
+    expect(bad.text).toContain('glucosa')
+  })
 })
