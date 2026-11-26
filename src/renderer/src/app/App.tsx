@@ -9,7 +9,9 @@ import { setLanguage, pickLanguage } from '@renderer/i18n'
 import { applyEngineLanguage } from '@engine/language'
 import { useSettings, wireSettings } from '@renderer/lib/settings'
 import { wireCourses } from '@renderer/lib/courses'
-import { Sidebar } from './shell/Sidebar'
+import { Sidebar, TOGGLE_SIDEBAR_EVENT } from './shell/Sidebar'
+import { KeychainNotice } from './shell/KeychainNotice'
+import { UpdateNotice } from './shell/UpdateNotice'
 import { CompactTabs } from './shell/CompactTabs'
 import { isCompact, useCompact } from './shell/compact'
 import { installScreenScroll } from './shell/screenScroll'
@@ -41,6 +43,12 @@ export function App() {
   // desde un dispositivo (iPad, iPhone, Android): sin ventana que arrastrar; en el teléfono, pestañas abajo en vez de barra lateral
   const remote = api.remote
   const compact = useCompact()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  useEffect(() => {
+    const toggle = () => setSidebarOpen((open) => !open)
+    window.addEventListener(TOGGLE_SIDEBAR_EVENT, toggle)
+    return () => window.removeEventListener(TOGGLE_SIDEBAR_EVENT, toggle)
+  }, [])
   // estudiando en el teléfono, la sesión ocupa la pantalla: sin la barra de arriba ni las pestañas (se sale con el «✕» de su
   // cápsula, o con «atrás» del sistema); quedaba poco sitio para el ejercicio, sobre todo en un iPhone SE
   const immersive = useNav((s) => compact && s.route.name === 'study')
@@ -107,9 +115,15 @@ export function App() {
       <div className={cx('relative flex h-full', compact && 'flex-col')} style={remote && !compact ? { paddingTop: 'var(--safe-top)' } : undefined}>
         {/* el hueco de arriba (sobre la hoja) también arrastra la ventana */}
         {!remote && <div aria-hidden className="drag absolute inset-x-0 top-0 h-2" />}
-        {!compact && <Sidebar />}
-        <Sheet compact={compact}>
-          {!immersive && <Bar compact={compact} />}
+        {!compact && sidebarOpen && <Sidebar />}
+        <Sheet compact={compact} sidebarOpen={sidebarOpen}>
+          {!immersive && <Bar compact={compact} sidebarOpen={sidebarOpen} />}
+          {!compact && !sidebarOpen && (
+            <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex flex-col gap-1 empty:hidden [&>*]:pointer-events-auto">
+              <KeychainNotice collapsed />
+              <UpdateNotice collapsed />
+            </div>
+          )}
           <Screens />
         </Sheet>
         {compact && !immersive && <CompactTabs />}
@@ -152,14 +166,14 @@ function Backdrop({ compact }: { compact: boolean }) {
  * de 16 px (casi concéntricas con las de la ventana); en Windows y Linux llega hasta los bordes de arriba, derecha y abajo
  * (allí se dibujan los botones de la ventana) y solo redondea el lado de la barra lateral.
  */
-function Sheet({ children, compact }: { children: ReactNode; compact?: boolean }) {
+function Sheet({ children, compact, sidebarOpen }: { children: ReactNode; compact?: boolean; sidebarOpen?: boolean }) {
   const mac = api.platform === 'darwin'
   return (
     <main
       className={cx(
         'paper-grain relative flex min-w-0 flex-1 flex-col overflow-clip bg-paper',
-        // en el teléfono la hoja es toda la pantalla: sin marco, y empieza bajo la hora y la batería (con su papel detrás)
-        compact ? 'min-h-0' : cx('border-[0.5px] border-line shadow-[var(--e1)]', mac ? 'my-2 mr-2 rounded-[16px]' : 'rounded-l-[16px] border-r-0 border-y-0')
+        // sin barra lateral (modo editorial) o en teléfono la hoja llena toda la ventana; con barra lateral conserva su marco
+        compact || !sidebarOpen ? 'min-h-0' : cx('border-[0.5px] border-line shadow-[var(--e1)]', mac ? 'my-2 mr-2 rounded-[16px]' : 'rounded-l-[16px] border-r-0 border-y-0')
       )}
       style={compact ? { paddingTop: 'var(--safe-top)' } : undefined}
     >
@@ -168,9 +182,9 @@ function Sheet({ children, compact }: { children: ReactNode; compact?: boolean }
   )
 }
 
-function Bar({ compact }: { compact?: boolean }) {
+function Bar({ compact, sidebarOpen }: { compact?: boolean; sidebarOpen?: boolean }) {
   const { title, right } = useTitleStore()
-  return <TopBar title={title} right={right} compact={compact} />
+  return <TopBar title={title} right={right} compact={compact} sidebarOpen={sidebarOpen} />
 }
 
 /** Una pantalla pintada: la de delante o una que se desvanece. `id` cambia con cada visita (A → B → A son tres capas). */

@@ -2,7 +2,7 @@
 // ahora y qué hace tocar una.
 import type { Route } from '../router'
 
-export const TAB_ROOTS = ['home', 'chat', 'calendar', 'inbox'] as const
+export const TAB_ROOTS = ['home', 'chat', 'courses', 'calendar'] as const
 export type TabRoot = (typeof TAB_ROOTS)[number]
 
 const isTab = (name: string): name is TabRoot => (TAB_ROOTS as readonly string[]).includes(name)

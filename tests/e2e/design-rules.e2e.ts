@@ -10,6 +10,7 @@ import { go, homeWithDemoCourse, launch } from './helpers'
 const C = 'exam-2-math112'
 const SCREENS: Array<[string, Record<string, unknown>]> = [
   ['home', { name: 'home' }],
+  ['courses', { name: 'courses' }],
   ['course', { name: 'course', id: C }],
   ['course-learn', { name: 'course', id: C, tab: 'learn' }],
   ['course-review', { name: 'course', id: C, tab: 'review' }],

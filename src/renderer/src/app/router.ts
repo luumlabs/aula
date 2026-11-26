@@ -23,6 +23,7 @@ export function canonicalTab(tab?: string): { view: CourseView; focus?: LegacyCo
 
 export type Route =
   | { name: 'home' }
+  | { name: 'courses' }
   | { name: 'course'; id: string; tab?: CourseTab; skill?: string }
   /** `start`: entrar directamente en el primer paso (la sesión guiada de «Empezar el plan» y «Estudiar ahora»). No se guarda
    *  en la dirección: al recargar no vuelve a arrancar. */

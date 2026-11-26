@@ -13,6 +13,8 @@
     "stats": "Statistics",
     "settings": "Settings",
     "courses": "Your courses",
+    "coursesShort": "Courses",
+    "moreMenu": "More sections",
     "newCourse": "New course",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",

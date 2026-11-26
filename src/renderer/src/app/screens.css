@@ -46,3 +46,122 @@
 /* data-ambient (ambient.css/ambient.ts) NO toca estas animaciones: solo pausa bucles, y estas terminan solas. Quitarlas con
    la ventana sin ver y volver a ponerlas al volver las arranca otra vez desde opacidad 0: toda la pantalla parpadeaba
    (power.e2e.ts). La capa que se va se quita igual con su temporizador (LEAVE_MS en App.tsx). */
+
+/* ── El umbral y el cuaderno: atmósfera propia de Aula (papel, luz del arco, rotulador, margen de cuaderno) ── */
+.aula-topbar::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -12px 0;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 92%, transparent), transparent);
+}
+.aula-place-mark {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 2px;
+  height: 2.5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--text) 42%, var(--accent));
+  opacity: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 80%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 80%, transparent);
+  transition: opacity 180ms ease;
+}
+.aula-place-mark.is-on {
+  opacity: 0.82;
+}
+
+/* Cabecera de Hoy: luz arquitectónica tibia entrando por el umbral (cero nubes, cero pájaros) */
+.aula-threshold::before {
+  content: '';
+  position: absolute;
+  inset: -44px -24px 0 -24px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(380px 210px at 85% 58%, var(--arch-glow), transparent 68%),
+    radial-gradient(520px 200px at 66% 36%, var(--arch-glow-2), transparent 70%);
+}
+
+/* Subrayado de rotulador mate bajo encabezados de sección en Hoy */
+.aula-section-label {
+  position: relative;
+  width: fit-content;
+  padding-bottom: 5px;
+}
+.aula-section-label::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -8px;
+  bottom: 0;
+  height: 7px;
+  background: var(--aula-hi, var(--hi-ochre));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M1.5 5.6C14 3.2 38 2.4 62 2.6C78 2.7 92 3.4 98.6 4.6C99.6 5.4 98.8 6.6 97 6.9C84 7.6 70 7.4 56 8C38 8.8 18 9.2 3.4 8.6C0.8 8.2 0.2 6.6 1.5 5.6Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M1.5 5.6C14 3.2 38 2.4 62 2.6C78 2.7 92 3.4 98.6 4.6C99.6 5.4 98.8 6.6 97 6.9C84 7.6 70 7.4 56 8C38 8.8 18 9.2 3.4 8.6C0.8 8.2 0.2 6.6 1.5 5.6Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+
+/* El plan de hoy: hilo vertical de tinta entre pasos */
+.aula-plan-thread {
+  position: relative;
+  isolation: isolate;
+}
+.aula-plan-thread::before {
+  content: '';
+  position: absolute;
+  top: 26px;
+  bottom: 26px;
+  left: 29.5px;
+  width: 1px;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--line-strong), var(--line) 85%, transparent);
+}
+.aula-plan-dot {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--text3);
+}
+.aula-plan-dot.is-done {
+  background: var(--text3);
+  box-shadow: none;
+}
+.aula-plan-dot.is-now {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-wash);
+}
+
+/* Estudio: línea vertical muy tenue de margen de cuaderno a la izquierda */
+.aula-notebook::before {
+  content: '';
+  position: absolute;
+  inset: 4.5rem auto 2rem 0.65rem;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--margin-line) 10%, var(--margin-line) 90%, transparent);
+}
+
+/* Chat: luz cenital tibia muy suave arriba del hilo, sin corte duro en el borde superior */
+.aula-chat-paper {
+  background: radial-gradient(520px 140px at 56% 128px, var(--arch-glow), transparent 72%);
+}
+
+@media (max-width: 720px) {
+  .aula-notebook::before { display: none; }
+  .aula-threshold::before { background: radial-gradient(ellipse 65% 45% at 88% 36%, var(--arch-glow), transparent 70%); }
+  .aula-chat-paper { background: radial-gradient(ellipse 80% 120px at 50% 108px, var(--arch-glow), transparent 72%); }
+}
+@media (forced-colors: active) {
+  .aula-notebook::before,
+  .aula-threshold::before,
+  .aula-plan-thread::before,
+  .aula-section-label::after {
+    display: none;
+  }
+}

@@ -84,14 +84,8 @@ export function Sidebar({ todayCount = 0 }: { todayCount?: number }) {
   const inboxCount = useInboxCount()
   const route = useNav((s) => s.route)
   const collapsed = useSidebarState((s) => s.collapsed)
-  const toggle = useSidebarState((s) => s.toggle)
   // modo concentración: en una lección, un ejercicio, las tarjetas o el simulacro solo queda lo que se estudia
   useStudyFocus(route.name === 'study')
-  // «Ver → Mostrar u ocultar la barra lateral» del menú de la app
-  useEffect(() => {
-    window.addEventListener(TOGGLE_SIDEBAR_EVENT, toggle)
-    return () => window.removeEventListener(TOGGLE_SIDEBAR_EVENT, toggle)
-  }, [toggle])
   const isMac = api.platform === 'darwin'
   const { reducedMotion } = useTheme()
   const markState = useAulaMarkState()

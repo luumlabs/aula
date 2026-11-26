@@ -22,6 +22,8 @@ const js = <T>(page: Page, code: string): Promise<T> => page.evaluate(code) as P
 test('A4-P1-1 · el curso de ejemplo se marca y su examen no cuenta en el resumen del calendario', async () => {
   // primer arranque en inglés con la biblioteca vacía: Aula instala sus cursos de ejemplo
   const { app, page } = await launch({ home: home({}, {}, false) })
+  await page.getByRole('button', { name: 'More sections', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Expand sidebar' }).click()
   const nav = page.locator('nav[aria-label="Aula"]')
   await expect(nav.getByText('Exam #2 · MATH 101')).toBeVisible({ timeout: 15_000 })
   await expect(nav.getByText('Example course').first()).toBeVisible()
@@ -91,9 +93,10 @@ test('A4-P1-4 · una tarjeta que se pulsa es un botón y se abre con Intro', asy
 
 test('A4-P1-5 · en inglés la bandeja se llama «Inbox» (no «Updates»), filtra con un menú y el resumen de la mañana se ve con sus datos', async () => {
   const { app, page } = await launch({ home: home(), env: { AULA_SEED: 'demo' } })
-  const nav = page.locator('nav[aria-label="Aula"]')
-  await expect(nav.getByRole('button', { name: /^Inbox/ })).toBeVisible()
-  await expect(nav.getByRole('button', { name: /^Updates/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'More sections', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: /^Inbox/ })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: /^Updates/ })).toHaveCount(0)
+  await page.keyboard.press('Escape')
   await go(page, { name: 'inbox' })
   await expect(page.getByRole('tab', { name: /^Inbox/ })).toBeVisible()
   // la vista previa del resumen de la mañana es su primera línea: con las cifras, no un «Today:» suelto
@@ -211,7 +214,9 @@ test('A4-P2-9/10/12 · la pista no se sale ni se queda pegada; el foco no cambia
   await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('Tab')
   expect(await js<string>(page, 'getComputedStyle(document.activeElement).borderTopLeftRadius')).toBe('14px')
-  // la barra lateral plegada: todos sus botones con nombre
+  // la barra lateral opcional, plegada: todos sus botones con nombre
+  await page.getByRole('button', { name: 'More sections', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Expand sidebar' }).click()
   await page.getByRole('button', { name: 'Collapse sidebar' }).click()
   await page.waitForTimeout(400)
   expect(await js<string[]>(page, `[...document.querySelectorAll('nav[aria-label="Aula"] button')].filter((b) => !(b.getAttribute('aria-label') || b.textContent.trim())).map((b) => b.outerHTML.slice(0, 80))`)).toEqual([])
