@@ -22,6 +22,8 @@ export type Action = (
   | { do: 'drag'; from: Target; to: Target; dur?: number }
   /** Desplaza la rueda sobre el objetivo `dy` pt en `dur` s. */
   | { do: 'scroll'; to: Target; dy: number; dur?: number }
+  /** Adjunta archivos reales a un `<input type="file">`. */
+  | { do: 'files'; selector: string; paths: string[] }
   /** JavaScript en la página (para casos sueltos). */
   | { do: 'eval'; js: string }
 ) & { soft?: boolean }

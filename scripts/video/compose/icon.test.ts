@@ -49,7 +49,7 @@ describe('icono pintado', () => {
     expect(alpha(20, 19)).toBe(0)
   })
   it('la puerta es el hueco por dentro del pincel del arco, hasta el horizonte', () => {
-    expect(ICON.door).toEqual({ top: 264, w: 228, bottom: 672 })
+    expect(ICON.door).toEqual({ top: 215, w: 282, bottom: 644 })
     expect(ICON.sun.y).toBe(ICON.door.bottom)
   })
   it('la tinta sale con su color y transparencia; el papel y lo de fuera de la squircle, transparentes', () => {
@@ -59,11 +59,11 @@ describe('icono pintado', () => {
     expect(Array.from(ink.data.slice(4, 8))).toEqual([0xb9, 0x59, 0x36, 255])
     expect(ink.data[11]).toBe(0)
   })
-  it('el trazo del arco se posa abajo a la izquierda, pasa por la clave y sale por debajo del horizonte a la derecha', () => {
+  it('el trazo del arco se posa abajo a la izquierda, pasa por la clave y sale por debajo de la base a la derecha', () => {
     const pts = STROKES.arch.pts()
     expect(pts[0][0]).toBeLessThan(ICON.cx)
-    expect(Math.min(...pts.map((p) => p[1]))).toBeCloseTo(216, 0)
-    expect(pts[pts.length - 1][1]).toBeGreaterThan(ICON.door.bottom)
+    expect(Math.min(...pts.map((p) => p[1]))).toBeLessThan(ICON.door.top)
+    expect(pts[pts.length - 1][0]).toBeGreaterThan(ICON.cx)
     expect(pathLength(pts)).toBeGreaterThan(900)
   })
 })

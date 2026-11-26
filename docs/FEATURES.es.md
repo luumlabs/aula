@@ -15,10 +15,12 @@ Tus cursos y tu progreso se guardan en tu ordenador. Aula funciona con la IA que
 ChatGPT, o una clave de API) o con un modelo gratis que corre en tu propio equipo. No hay cuentas ni rastreo.
 
 <p align="center">
-  <img src="media/screenshots/home-light-es.png" width="1000" alt="La pantalla Hoy de Aula: un saludo con el plan y la meta del día, la racha, el próximo examen con su cuenta atrás y la nota estimada, el plan de hoy y un pequeño calendario de la semana">
+  <img src="media/screenshots/home-light-es.png" width="1000" alt="La pantalla Hoy de Aula: barra superior editorial (Hoy, Aula, Cursos, Calendario), el saludo con la marca del umbral, el plan de hoy con los iconos de cada curso, la cuenta atrás del examen y el calendario de la semana">
 </p>
 
 ## Cursos
+
+Todo descansa sobre papel cálido con cuatro lugares centrados arriba (**Hoy · Aula · Cursos · Calendario**); si prefieres la barra lateral clásica, puedes desplegarla cuando quieras desde *Más secciones* o con <kbd>⌘</kbd><kbd>⌃</kbd><kbd>S</kbd> / <kbd>Ctrl</kbd><kbd>\</kbd>.
 
 Pulsa <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>N</kbd> y di qué quieres estudiar. Añade la fecha del examen si la hay, y los
 archivos que tengas: PDF, Word, PowerPoint, Excel, EPUB, páginas web, Markdown, archivos de texto o de código, enlaces,
@@ -38,10 +40,14 @@ un cambio si no te convence.
 
 <table>
   <tr>
+    <td width="50%"><img src="media/screenshots/courses-light-es.png" alt="Tus cursos: filtros por examen o repaso, portada de pigmento mate e icono del curso dibujado a mano"></td>
     <td width="50%"><img src="media/screenshots/create-light-es.png" alt="Curso nuevo: qué quieres estudiar, la fecha y el nivel del examen, tus materiales y el tamaño del curso"></td>
-    <td width="50%"><img src="media/screenshots/course-light-es.png" alt="Un curso: la nota estimada con un cuadrado por tema, la cuenta atrás del examen, qué hacer ahora y el mapa del curso"></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="media/screenshots/course-light-es.png" width="900" alt="Un curso: la nota estimada con un cuadrado por tema, la cuenta atrás del examen, qué hacer ahora y el mapa del curso">
+</p>
 
 ## Lecciones
 

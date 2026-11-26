@@ -15,10 +15,12 @@ Your courses and progress are stored on your computer. Aula works with the AI yo
 subscription, or an API key) or with a free model that runs on your own machine. There's no account and no tracking.
 
 <p align="center">
-  <img src="media/screenshots/home-light-en.png" width="1000" alt="Aula's Today screen: a greeting with today's plan and goal, the streak, the next exam with its countdown and estimated grade, the plan for today and a small calendar of the week">
+  <img src="media/screenshots/home-light-en.png" width="1000" alt="Aula's Today screen: centered top navigation (Today, Aula, Courses, Calendar), a warm greeting with the live arch mark, today's plan with course icons, the next exam countdown and this week's calendar">
 </p>
 
 ## Courses
+
+Everything sits on open warm paper with four main places at the top (**Today · Aula · Courses · Calendar**); if you prefer a classic sidebar, toggle it anytime from *More sections* or <kbd>⌘</kbd><kbd>⌃</kbd><kbd>S</kbd> / <kbd>Ctrl</kbd><kbd>\</kbd>.
 
 Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>N</kbd> and say what you want to study. Add the exam date if there is one, and
 any files you have: PDF, Word, PowerPoint, Excel, EPUB, web pages, Markdown, text or code files, links, pasted text, or
@@ -37,10 +39,14 @@ don't like it.
 
 <table>
   <tr>
+    <td width="50%"><img src="media/screenshots/courses-light-en.png" alt="Your courses: filter by exam or review, matte pigment cover and animated hand-drawn course icon"></td>
     <td width="50%"><img src="media/screenshots/create-light-en.png" alt="New course: what you want to study, the exam date and level, your materials and the course size"></td>
-    <td width="50%"><img src="media/screenshots/course-light-en.png" alt="A course: the estimated grade with a square for each topic, the exam countdown, what to do now and the course map"></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="media/screenshots/course-light-en.png" width="900" alt="A course: the estimated grade with a square for each topic, the exam countdown, what to do now and the course map">
+</p>
 
 ## Lessons
 

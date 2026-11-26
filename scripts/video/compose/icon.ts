@@ -1,37 +1,34 @@
-// El icono de Aula («Tinta A · Arco a tinta», scripts/dev/icon/ink-art.mjs) para el prólogo, el final y los avisos del
-// vídeo: el mismo dibujo que build/icon.png, en dos versiones (entero y sin el sol, idéntico fuera de él), el sol como
-// sprite recortado por la línea del suelo para hacerlo salir, y la geometría de la puerta.
+// El icono de Aula («El umbral», scripts/dev/icon/umbral-art.mjs) para el prólogo, el final y los avisos del vídeo:
+// el mismo dibujo que build/icon.png, en dos versiones (entero y sin el sol, idéntico fuera de él), el sol como sprite
+// recortado por la línea del suelo para hacerlo salir, y la geometría de la puerta.
 import { archPath, iconSvg } from '../../dev/icon/icon-art.mjs'
-import { INK_ARCH, inkArch } from '../../dev/icon/ink-art.mjs'
+import { BOX as UMBRAL_BOX, umbralIcon } from '../../dev/icon/umbral-art.mjs'
 
 type Canvas = OffscreenCanvas | HTMLCanvasElement
 // los módulos del icono son JS sin tipos: su API, tal como la usa el vídeo
 const svgOf = iconSvg as (id: string, o: { size: number; platform: 'mac' | 'plain'; detail?: 'full' | 'mid' | 'small'; art?: string }) => string
-const archArt = inkArch as (detail: 'full' | 'mid' | 'small', o?: { sun?: boolean }) => string
-const M = INK_ARCH as { cx: number; ground: number; top: number; width: number; band: number; sun: number; line: [number, number] }
-/** Del lienzo de 1024 del dibujo a la caja del arte (824, que empieza en 100). */
-const U = (v: number): number => v - 100
+const umbralArt = umbralIcon as (detail: 'full' | 'mid' | 'small', o?: { look?: 'light' | 'dark' | 'tinted'; sun?: boolean }) => string
+const K = ((700 / Math.max(UMBRAL_BOX.w, UMBRAL_BOX.h)) * 824) / 1024
+/** Del lienzo de 1024 del dibujo a la caja del arte (824). */
+const U = (v: number): number => 412 + (v - UMBRAL_BOX.cx) * K
+const V = (v: number): number => 412 + (v - UMBRAL_BOX.cy) * K
 
-export const ICON_ID = 'inkA'
+export const ICON_ID = 'umbral'
 
 /** Trazos del icono para descubrir la tinta (unidades del arte): el eje del arco (se posa abajo a la izquierda, sube,
- *  gira por la clave y baja por la derecha hasta pasar el suelo) y la línea del suelo (de izquierda a derecha). `w`:
- *  ancho de la máscara (la banda de ladrillo, sus dos líneas de tinta y el temblor). */
+ *  gira por la clave y baja por la derecha hasta salir con cola) y la línea del suelo (de izquierda a derecha). */
 export const STROKES = {
-  arch: { w: 150, pts: () => archAxis() },
-  horizon: { w: 72, pts: () => [[U(M.line[0]) - 12, ARCH.horizon + 6], [U(M.line[1]) + 12, ARCH.horizon + 2]] as [number, number][] }
+  arch: { w: 84, pts: () => archAxis() },
+  horizon: { w: 68, pts: () => [[U(230), V(848)], [U(890), V(852)]] as [number, number][] }
 }
 
 function archAxis(): [number, number][] {
-  const { R, top, w, horizon } = ARCH
-  const cx = U(M.cx)
-  const cy = top + R
-  const pts: [number, number][] = [[cx - R, horizon + w * 0.12]]
-  for (let i = 0; i <= 48; i++) {
+  const pts: [number, number][] = [[U(328), V(812)], [U(334), V(670)], [U(340), V(552)]]
+  for (let i = 1; i < 48; i++) {
     const a = Math.PI + (i / 48) * Math.PI
-    pts.push([cx + R * Math.cos(a), cy + R * Math.sin(a)])
+    pts.push([U(523 + 184 * Math.cos(a)), V(496 + 178 * Math.sin(a))])
   }
-  pts.push([cx + R, horizon + w * 0.55 + 18])
+  pts.push([U(706), V(552)], [U(710), V(712)], [U(725), V(791)], [U(758), V(816)])
   return pts
 }
 
@@ -42,10 +39,6 @@ export function pathLength(pts: [number, number][]): number {
   return L
 }
 
-/** El arco (ink-art.mjs, INK_ARCH) en unidades del arte: el eje de la banda de ladrillo (radio y clave), su ancho y el
- *  suelo. La puerta es lo de dentro de la banda. */
-const ARCH = { R: M.width / 2 - M.band / 2, top: U(M.top) + M.band / 2, w: M.band, horizon: U(M.ground) }
-
 /** Caja del arte (824) dentro del lienzo `plain` de 1024: squircle en (32, 32) de 960. */
 export const ICON = {
   canvas: 1024,
@@ -54,11 +47,11 @@ export const ICON = {
   art: 824,
   /** Radio de la squircle en unidades del arte. */
   radius: 185.4,
-  cx: U(M.cx),
-  /** La puerta: el hueco por dentro de la banda del arco, hasta el suelo. */
-  door: { top: ARCH.top + ARCH.w / 2, w: 2 * (ARCH.R - ARCH.w / 2), bottom: ARCH.horizon },
-  /** El medio sol ámbar que sale sobre el horizonte (centro y radio, unidades del arte). */
-  sun: { x: U(M.cx), y: ARCH.horizon, r: M.sun }
+  cx: Math.round(U(523)),
+  /** La puerta: el hueco por dentro del trazo del arco, hasta el suelo. */
+  door: { top: Math.round(V(318 + 19)), w: Math.round(2 * (184 - 19) * K), bottom: Math.round(V(840)) },
+  /** El medio sol ladrillo que sale sobre el suelo (centro y radio, unidades del arte). */
+  sun: { x: Math.round(U(523)), y: Math.round(V(840)), r: Math.round(112 * K) }
 }
 
 /** Puerta del arco (en unidades del arte), para recortar el sol. */
@@ -171,15 +164,15 @@ async function rasterSvg(svg: string, size: number): Promise<OffscreenCanvas> {
 export async function loadIconAssets(): Promise<IconAssets> {
   // el mismo dibujo que build/icon.png, en el lienzo «plain» (la squircle casi a sangre)
   const full = await rasterSvg(svgOf(ICON_ID, { size: ICON.canvas, platform: 'plain', detail: 'full' }), ICON.canvas)
-  const noSun = await rasterSvg(svgOf(ICON_ID, { size: ICON.canvas, platform: 'plain', detail: 'full', art: archArt('full', { sun: false }) }), ICON.canvas)
+  const noSun = await rasterSvg(svgOf(ICON_ID, { size: ICON.canvas, platform: 'plain', detail: 'full', art: umbralArt('full', { sun: false }) }), ICON.canvas)
   const s = ICON.sun
   const k = ICON.boxSize / ICON.art
-  const x = Math.floor(toCanvas(s.x - s.r - 14))
-  const y = Math.floor(toCanvas(s.y - s.r - 14))
-  const w = Math.ceil(toCanvas(s.x + s.r + 14)) - x
+  const x = Math.floor(toCanvas(s.x - s.r - 20))
+  const y = Math.floor(toCanvas(s.y - s.r - 36))
+  const w = Math.ceil(toCanvas(s.x + s.r + 20)) - x
   const h = Math.ceil(toCanvas(s.y + 30)) - y
-  const { sprite, mask } = extractSun(pixels(full, x, y, w, h), pixels(noSun, x, y, w, h), 0x3a, true)
-  // papel: la media de un trozo sin pintar (arriba en el centro, por encima de las aguadas)
+  const { sprite, mask } = extractSun(pixels(full, x, y, w, h), pixels(noSun, x, y, w, h), 0x2d, true)
+  // papel: la media de un trozo sin pintar (arriba en el centro)
   const p = pixels(noSun, Math.round(toCanvas(ICON.cx - 26)), Math.round(toCanvas(12)), 50, 30).data
   const avg = [0, 1, 2].map((c) => {
     let sum = 0
@@ -189,7 +182,7 @@ export async function loadIconAssets(): Promise<IconAssets> {
   return {
     icon: await createImageBitmap(full),
     iconNoSun: await createImageBitmap(noSun),
-    ink: await bitmap(extractInk(pixels(noSun, 0, 0, ICON.canvas, ICON.canvas), avg as [number, number, number])),
+    ink: await bitmap(extractInk(pixels(noSun, 0, 0, ICON.canvas, ICON.canvas), avg as [number, number, number], 0x14)),
     sun: { image: await bitmap(sprite), mask: await bitmap(mask), x, y, r: s.r * k },
     slab: '#' + avg.map((v) => v.toString(16).padStart(2, '0')).join('')
   }
