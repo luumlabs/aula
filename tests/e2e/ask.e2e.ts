@@ -1,7 +1,7 @@
 // «Marcar y preguntar al tutor» y el recorrido guiado de las figuras, con la app real: se rodea una parte de una figura de
 // la lección, se pregunta y el tutor recibe el nombre de la parte; con el teclado también; en el simulacro no se ofrece.
 import { test, expect, type Page } from 'playwright/test'
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { go, homeWithDemoCourse, launch } from './helpers'
 
@@ -154,6 +154,46 @@ test('Esc cierra el modo de marcar; en la práctica se ofrece y en el simulacro 
   await expect(page.locator('[data-block="diagram"]').first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Mark and ask the tutor' })).toHaveCount(0)
   await expect(page.locator('[data-ask-layer]')).toHaveCount(0)
+  expect(errors).toEqual([])
+  await app.close()
+})
+
+test('marcar y preguntar en una figura dentro del chat envía la pregunta en la misma conversación', async () => {
+  test.setTimeout(120_000)
+  const home = homeWithDemoCourse()
+  const threadsDir = join(home, 'Assistant', 'threads')
+  mkdirSync(threadsDir, { recursive: true })
+  const now = new Date().toISOString()
+  writeFileSync(
+    join(threadsDir, 'chat-fig.json'),
+    JSON.stringify({
+      id: 'chat-fig',
+      title: 'Diagram in chat',
+      created: now,
+      updated: now,
+      messages: [
+        { id: 'u1', role: 'user', text: 'Draw the diagram', date: now },
+        { id: 'a1', role: 'assistant', text: `Here it is:\n\n\`\`\`aula-block\n${JSON.stringify(DIAGRAM)}\n\`\`\``, date: now }
+      ]
+    })
+  )
+  const { app, page } = await launch({ home })
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await go(page, { name: 'chat', conversation: 'chat-fig' })
+  const reply = page.locator('[data-role="assistant"]').first()
+  const markBtn = reply.getByRole('button', { name: 'Mark and ask the tutor' })
+  await expect(markBtn).toBeVisible()
+  await markBtn.click()
+  await expect(reply.locator('[data-ask-overlay]')).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Enter')
+  await reply.getByPlaceholder('What would you like to know about what you marked?').fill('Why does this connect?')
+  await reply.getByRole('button', { name: 'Ask the tutor', exact: true }).click()
+  const sent = page.locator('[data-role="user"]').filter({ hasText: 'Why does this connect?' })
+  await expect(sent).toBeVisible()
+  await expect(sent).toContainText('“Quadrants”')
+  await expect.poll(async () => page.locator('[data-role="assistant"]').count(), { timeout: 60_000 }).toBeGreaterThan(1)
   expect(errors).toEqual([])
   await app.close()
 })

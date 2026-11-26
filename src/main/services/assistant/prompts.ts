@@ -353,9 +353,12 @@ export function turnPrompt(i: TurnPromptInput): string {
     }
     if (ctx.exerciseID) s += `- Exercise id: \`${ctx.exerciseID}\` (use \`get_exercise\` to read it and its key)\n`
     if (ctx.blockID) {
-      s += ctx.exerciseID
-        ? `- Looking at the figure block \`${ctx.blockID}\` in the statement of that exercise (\`get_exercise\` shows it with its parts)\n`
-        : `- Looking at the figure block \`${ctx.blockID}\` of that lesson (\`get_lesson\` with \`block_id\` gives its exact parts)\n`
+      s +=
+        ctx.screen === 'chat'
+          ? '- Looking at a figure shown earlier in this conversation (marked by the student below)\n'
+          : ctx.exerciseID
+            ? `- Looking at the figure block \`${ctx.blockID}\` in the statement of that exercise (\`get_exercise\` shows it with its parts)\n`
+            : `- Looking at the figure block \`${ctx.blockID}\` of that lesson (\`get_lesson\` with \`block_id\` gives its exact parts)\n`
     }
     if (ctx.lastInput) s += `- Their last answer: ${ctx.lastInput}\n`
     if (ctx.lastResult) s += `- Result: ${ctx.lastResult}\n`

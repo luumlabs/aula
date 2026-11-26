@@ -238,7 +238,7 @@ const StreamText = memo(function StreamText({ text, live, packId, language }: { 
           ))
         ) : (
           <div key={`${i}-b`} className="chat-para">
-            <InlineBlock raw={s.raw} packId={packId} language={language} />
+            <InlineBlock raw={s.raw} packId={packId} language={language} live={revealing} />
           </div>
         )
       )}

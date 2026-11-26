@@ -6,6 +6,7 @@
 // («Mirando: ejercicio 1 de 10»). Vacío, Aula habla primero y propone preguntas rápidas (como el chat vacío).
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { studentTextOf } from '@engine/assistant/trust'
+import type { TutorContext } from '@shared/assistant/types'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { AnimatePresence, motion } from 'motion/react'
@@ -82,7 +83,8 @@ export function TutorPanel({ screenKey }: { screenKey: string }) {
       if (!ok) composer.current?.restore(studentTextOf({ text: draft.text, context: draftContext(draft, context ?? undefined) }), draft.mentions, draft.files)
     })
   }
-  const ask = (text: string) => send({ text, files: [], mentions: [] })
+  const ask = (text: string, extraContext?: TutorContext) =>
+    send({ text, files: [], mentions: [], ...(extraContext ? { context: { ...(context ?? {}), ...extraContext, screen: extraContext.screen ?? context?.screen } } : {}) })
   const actions = useMemo<ChatActions>(() => ({ ask }), [thread?.id, context])
   const cancel = async (id: string) => {
     const m = await conv.cancel(id)

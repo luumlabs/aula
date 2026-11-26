@@ -5,6 +5,9 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 
 ## [Unreleased]
 
+### New
+- **«Mark and ask» inside chat figures** ([#28](https://github.com/luumlabs/aula/issues/28)): diagrams, drawings, labeled figures, maps and 2D chemical structures rendered inside Chat and Tutor replies now support circling, highlighting and annotating parts to ask follow-up questions in the same conversation, preserving untrusted-content provenance.
+
 ## [0.2.7] - 2026-11-25
 
 ### New
