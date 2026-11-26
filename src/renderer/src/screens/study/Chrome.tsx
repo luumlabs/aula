@@ -73,7 +73,7 @@ export function StudyFrame({ capsule, bottom, children, onExit, wide, reading, s
       <div className="pointer-events-none absolute inset-x-0 top-2 z-20 flex justify-center px-6 phone:px-3">{capsule}</div>
       <div ref={scroller} onClickCapture={revealAnswer} className="@container flex min-h-0 flex-1 flex-col overflow-y-auto">
         {/* se selecciona el texto, no lo que se arrastra o gira (lienzos) */}
-        <div className={cx('aula-notebook selectable relative mx-auto w-full shrink-0 px-6 pt-[76px] [&_canvas]:select-none', bottom ? 'pb-4' : 'pb-36', wide ? 'max-w-[1080px]' : reading ? 'max-w-[700px]' : 'max-w-[800px]', className)}>
+        <div className={cx(reading && 'aula-notebook', 'selectable relative mx-auto w-full shrink-0 px-6 pt-[76px] [&_canvas]:select-none', bottom ? 'pb-4' : 'pb-36', wide ? 'max-w-[1080px]' : reading ? 'max-w-[700px]' : 'max-w-[800px]', className)}>
           {children}
         </div>
         {/* las acciones, pegadas justo debajo de lo que se estudia (no al fondo de la ventana); si lo de arriba es largo, se

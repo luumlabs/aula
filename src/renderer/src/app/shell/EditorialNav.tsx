@@ -5,12 +5,19 @@ import { AulaMark, cx, Icon, IconButton, Menu, type IconName } from '@renderer/d
 import { useAulaMarkState } from '@renderer/screens/chat/liveStatus'
 import { navigate, useNav, type Route } from '../router'
 import { TABS } from './CompactTabs'
-import { tabOwner } from './tabs'
 import { useInboxCount } from './inboxCount'
+
+function editorialPlace(route: Route): 'home' | 'chat' | 'courses' | 'calendar' | null {
+  if (route.name === 'home') return 'home'
+  if (route.name === 'chat') return 'chat'
+  if (route.name === 'calendar') return 'calendar'
+  if (route.name === 'courses' || route.name === 'course' || route.name === 'study' || route.name === 'run') return 'courses'
+  return null
+}
 
 export function EditorialPlaces() {
   const { t } = useTranslation()
-  const active = useNav((s) => tabOwner(s.stack, s.index))
+  const active = useNav((s) => editorialPlace(s.route))
   const mark = useAulaMarkState()
   return (
     <nav aria-label="Aula" className="no-drag flex shrink-0 items-center gap-1">
