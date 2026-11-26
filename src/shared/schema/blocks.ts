@@ -94,6 +94,16 @@ export interface NumberLineBlock {
 }
 
 export const DIAGRAM_KINDS = ['flow', 'concept', 'tree', 'cycle', 'layers'] as const
+export type DiagramDirection = 'auto' | 'tb' | 'lr'
+
+/** Dirección de un diagrama: «tb» (arriba-abajo), «lr» (izquierda-derecha) o «auto» (la elige la forma del grafo). */
+export function normalizeDiagramDirection(raw: string | undefined): DiagramDirection {
+  switch (raw?.trim().toLowerCase()) {
+    case 'lr': case 'rl': case 'horizontal': case 'right': return 'lr'
+    case 'tb': case 'td': case 'vertical': case 'down': return 'tb'
+    default: return 'auto'
+  }
+}
 export type DiagramKind = (typeof DIAGRAM_KINDS)[number]
 export const DIAGRAM_SHAPES = ['box', 'round', 'diamond', 'circle', 'note'] as const
 export type DiagramShape = (typeof DIAGRAM_SHAPES)[number]
@@ -438,7 +448,7 @@ function decodeBody(type: string, rawType: string, c: Obj, d: number): BlockBody
     case 'diagram': {
       const form = diagramForm(c, rawType)
       return prune({
-        type, kind: form ? FORM_BASE[form] : lowerEnum(c, 'kind', DIAGRAM_KINDS, 'flow'), form, build: bool(c, 'build') === true ? true : undefined, title: str(c, 'title'), direction: str(c, 'direction') ?? 'tb',
+        type, kind: form ? FORM_BASE[form] : lowerEnum(c, 'kind', DIAGRAM_KINDS, 'flow'), form, build: bool(c, 'build') === true ? true : undefined, title: str(c, 'title'), direction: normalizeDiagramDirection(str(c, 'direction')),
         nodes: list(c, 'nodes', decodeDiagramNode, d), edges: list(c, 'edges', decodeDiagramEdge, d), caption: str(c, 'caption'),
         steps: list(c, 'steps', decodeDiagramStep, d).slice(0, 60)
       })

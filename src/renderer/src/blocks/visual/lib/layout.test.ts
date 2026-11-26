@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decodeBlock, type BlockOf } from '@shared/schema/blocks'
 import { decodeMap } from '@shared/schema/visual'
-import { basisPath, clipToNode, effectiveEdges, layoutDiagram, rankOrder, stepHighlight, type NodeBox } from './diagramLayout'
+import { basisPath, chooseDiagramDirection, clipToNode, effectiveEdges, layoutDiagram, rankOrder, stepHighlight, type NodeBox } from './diagramLayout'
 import { arcPath, arrowHead, canvasSize, drawItemShape, polarPoint } from './drawing'
 import { fitProjection, isWorldView, mapBounds, needsDetail, regionFeature, regionIndexAt, routeMidpoint, sanitizeMap } from './mapGeo'
 import { FIT_FACTORS, deckTransition, initialFit, keyAction, slideTheme, updateFit } from './slides'
@@ -29,9 +29,51 @@ describe('disposición de diagramas', () => {
   })
   it('de izquierda a derecha con direction "lr"', () => {
     const l = layoutDiagram({ ...flow, direction: 'lr' })
+    expect(l.direction).toBe('lr')
     const x = Object.fromEntries(l.nodes.map((n) => [n.id, n.x]))
     expect(x.a).toBeLessThan(x.b)
     expect(x.b).toBeLessThan(x.e)
+  })
+  it('dirección automática según la forma: cadena corta → lr, larga → tb, decisión → tb, árbol muy ancho → lr', () => {
+    const shortChain = diagram({
+      kind: 'flow',
+      nodes: [{ id: 'a', label: 'ADN' }, { id: 'b', label: 'ARN' }, { id: 'c', label: 'Proteína' }],
+      edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }]
+    })
+    expect(shortChain.direction).toBe('auto')
+    const shortLayout = layoutDiagram(shortChain)
+    expect(shortLayout.direction).toBe('lr')
+    expect(shortLayout.nodes[0].x).toBeLessThan(shortLayout.nodes[2].x)
+
+    // Forzar tb sobre la misma cadena se respeta siempre
+    expect(chooseDiagramDirection({ ...shortChain, direction: 'tb' })).toBe('tb')
+
+    // Cadena lineal muy larga: vertical para que no se encoja horizontalmente
+    const longChain = diagram({
+      kind: 'flow',
+      nodes: Array.from({ length: 8 }, (_, i) => ({ id: `n${i}`, label: `Paso número ${i + 1}` })),
+      edges: Array.from({ length: 7 }, (_, i) => ({ from: `n${i}`, to: `n${i + 1}` }))
+    })
+    expect(chooseDiagramDirection(longChain)).toBe('tb')
+
+    // Diagrama de decisión (con rombo): arriba-abajo
+    expect(chooseDiagramDirection(flow)).toBe('tb')
+
+    // Árbol en abanico muy ancho: de lado para apilar hojas sin desbordar
+    const wideTree = diagram({
+      kind: 'tree',
+      nodes: [{ id: 'r', label: 'Reinos' }, ...Array.from({ length: 7 }, (_, i) => ({ id: `c${i}`, label: `Categoría larga ${i + 1}` }))],
+      edges: Array.from({ length: 7 }, (_, i) => ({ from: 'r', to: `c${i}` }))
+    })
+    expect(chooseDiagramDirection(wideTree)).toBe('lr')
+
+    // Árbol compacto: arriba-abajo clásico
+    const smallTree = diagram({
+      kind: 'tree',
+      nodes: [{ id: 'r', label: 'Raíz' }, { id: 'a', label: 'Rama A' }, { id: 'b', label: 'Rama B' }],
+      edges: [{ from: 'r', to: 'a' }, { from: 'r', to: 'b' }]
+    })
+    expect(chooseDiagramDirection(smallTree)).toBe('tb')
   })
   it('ciclo: nodos sobre una elipse y flechas entre consecutivos si no hay escritas', () => {
     const c = diagram({ kind: 'cycle', nodes: ['A', 'B', 'C', 'D', 'E'].map((id) => ({ id, label: id })) })
