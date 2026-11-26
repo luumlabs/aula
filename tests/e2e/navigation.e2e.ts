@@ -20,6 +20,7 @@ interface Win {
 type R = Record<string, unknown>
 const ROUTES: R[] = [
   { name: 'home' },
+  { name: 'courses' },
   { name: 'course', id: COURSE },
   { name: 'calendar' },
   { name: 'course', id: COURSE, tab: 'practice' },
@@ -156,6 +157,8 @@ test('barra lateral en tres grupos, Ajustes también plegada y modo concentraci�
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   const nav = page.locator('nav[aria-label="Aula"]')
+  await page.getByRole('button', { name: 'More sections', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Expand sidebar' }).click()
   await expect(nav.getByText('Exam #2 · MATH 101')).toBeVisible()
   // el orden: lo de cada día, los cursos con «New course» al final, lo de consulta y Ajustes
   const names = await page.evaluate<string[]>(`[...document.querySelectorAll('nav[aria-label="Aula"] button')].map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim())`)
@@ -205,4 +208,34 @@ test('barra lateral en tres grupos, Ajustes también plegada y modo concentraci�
   expect(await width()).toBeGreaterThan(200)
   expect(errors).toEqual([])
   await app.close()
+})
+
+test('El umbral: navegación editorial en Mac, iPad y teléfono, en claro y oscuro', async () => {
+  test.setTimeout(90_000)
+  const home = homeWithDemoCourse()
+  writeFileSync(join(home, 'settings.json'), JSON.stringify({ version: 2, onboarded: true, general: { language: 'en' } }))
+  const { app, page } = await launch({ home })
+  try {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await expect(page.locator('html')).toHaveClass(colorScheme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b).*$/)
+      for (const width of [1440, 820, 390]) {
+        await page.setViewportSize({ width, height: 820 })
+        const nav = page.getByRole('navigation', { name: 'Aula', exact: true })
+        await expect(nav.getByRole('button')).toHaveText(['Today', 'Aula', 'Courses', 'Calendar'])
+        await nav.getByRole('button', { name: 'Courses', exact: true }).click()
+        const courses = page.locator('[data-screen="courses"][data-active="true"]')
+        await expect(courses.getByRole('heading', { name: 'Your courses' })).toBeVisible()
+        await expect(courses.getByText('Exam #2 · MATH 101')).toBeVisible()
+        expect(await courses.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+        await page.getByRole('button', { name: 'More sections', exact: true }).first().click()
+        await page.getByRole('menuitem', { name: /^Inbox/ }).click()
+        await expect(page.locator('[data-screen="inbox"][data-active="true"]')).toBeVisible()
+        await nav.getByRole('button', { name: 'Today', exact: true }).click()
+        await expect(page.locator('[data-screen="home"][data-active="true"] .umbral-mark:visible').first()).toBeVisible()
+      }
+    }
+  } finally {
+    await app.close()
+  }
 })

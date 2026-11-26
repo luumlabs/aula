@@ -1,7 +1,7 @@
 // Tus cursos: tarjetas con el tono del curso (plano y suave), su icono pixel-art grande y la nota estimada.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { Card, CoverBand, DrawnBorder, PixelIcon, ProgressBar, SectionTitle, toneForHue, Chip, Spinner, Icon, cx, useTheme } from '@renderer/design'
+import { Card, CoverBand, DrawnBorder, PixelIcon, ProgressBar, toneForHue, Chip, Spinner, Icon, cx, useTheme } from '@renderer/design'
 import type { HomeCourse } from '@shared/ipc/home'
 import { daysUntil, fmtPercent } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -9,14 +9,19 @@ import { courseBuilding, courseRunIssue, coursePartial } from '../course/failure
 import { useLatestRunsMap } from '../course/runs'
 import { showsAsSample } from '@renderer/lib/sample'
 
-export function CourseCards({ courses }: { courses: HomeCourse[] }) {
+export function CourseCards({ courses, catalog = false }: { courses: HomeCourse[]; catalog?: boolean }) {
   const { t } = useTranslation(['home', 'common', 'course'])
   const { dark } = useTheme()
   const runs = useLatestRunsMap()
   return (
     <section>
-      <SectionTitle title={t('courses')} />
-      <div className="grid gap-4 mt-3 grid-cols-1 @xl:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
+      {!catalog && (
+        <h2 className="aula-section-label t-title2 text-text mb-3" style={{ ['--aula-hi' as string]: 'var(--hi-graphite)' }}>
+          {t('courses')}
+        </h2>
+      )}
+      {catalog && courses.length === 0 && <p className="t-body py-6 text-text3">{t('common:nav.noCourses')}</p>}
+      <div className={cx('grid gap-4 mt-3 grid-cols-1 @xl:grid-cols-2 @4xl:grid-cols-3', !catalog && '@6xl:grid-cols-4')}>
         {courses.map((c, i) => {
           const tone = toneForHue(c.hue)
           const fill = dark ? tone.fillDark : tone.fillLight
@@ -83,17 +88,19 @@ export function CourseCards({ courses }: { courses: HomeCourse[] }) {
             </Card>
           )
         })}
-        <Card enterAnim interactive padded={false} onClick={() => navigate({ name: 'create' })} className="min-h-[220px] bg-transparent! border-dashed! border-line-strong/50! shadow-none!">
-          <div className="h-full min-h-[220px] grid place-items-center text-center p-6">
-            <div className="flex flex-col items-center">
-              <motion.div className="grid place-items-center w-12 h-12 rounded-full bg-accent-wash text-accent-text" whileHover={{ rotate: 90 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
-                <Icon name="plus" size={20} />
-              </motion.div>
-              <div className="t-headline mt-3">{t('newCourse')}</div>
-              <div className="t-ui text-text3 mt-0.5">{t('newCourseHint')}</div>
+        {!catalog && (
+          <Card enterAnim interactive padded={false} onClick={() => navigate({ name: 'create' })} className="min-h-[220px] bg-transparent! border-dashed! border-line-strong/50! shadow-none!">
+            <div className="h-full min-h-[220px] grid place-items-center text-center p-6">
+              <div className="flex flex-col items-center">
+                <motion.div className="grid place-items-center w-12 h-12 rounded-full bg-accent-wash text-accent-text" whileHover={{ rotate: 90 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}>
+                  <Icon name="plus" size={20} />
+                </motion.div>
+                <div className="t-headline mt-3">{t('newCourse')}</div>
+                <div className="t-ui text-text3 mt-0.5">{t('newCourseHint')}</div>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
     </section>
   )

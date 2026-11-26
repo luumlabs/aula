@@ -248,8 +248,11 @@ for (const theme of ['light', 'dark'] as const) for (const fixture of DIAGRAM_FI
     try {
       await go(page, { name: 'study', id: PACK, mode: 'learn', skill: SKILLS[0] })
       const figure = page.locator('[data-block="diagram"]').first()
-      // al estudiar la barra lateral se pliega sola (modo concentración); abierta a mano, a 800 px la figura vuelve a ser estrecha
-      if (fixture.narrow) await page.getByRole('button', { name: /^(Expand sidebar|Desplegar la barra)$/ }).click()
+      // en modo editorial la barra lateral está plegada por defecto; al desplegarla a mano, a 800 px la figura vuelve a ser estrecha
+      if (fixture.narrow) {
+        await page.getByRole('button', { name: /^(More sections|Más secciones)$/ }).first().click()
+        await page.getByRole('menuitem', { name: /^(Expand sidebar|Desplegar la barra)$/ }).click()
+      }
       await page.setViewportSize({ width: fixture.narrow ? 800 : 1440, height: 1100 })
       await settle(page, figure)
       const progressPath = join(home, 'Packs', PACK, 'progress.json'), beforeProgress = readFileSync(progressPath, 'utf8')

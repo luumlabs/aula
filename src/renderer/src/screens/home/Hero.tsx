@@ -1,9 +1,8 @@
-// Tarjeta principal de Hoy: la fecha, el saludo en serif subrayado a pincel, una frase con lo que toca, la racha en una línea
-// y la acción principal (la única en ladrillo de la pantalla) con la meta del día al lado. A la derecha, el arco de Aula con
-// la luz de la hora que es (tinta y acuarela). Sin ceros: antes de estudiar se dice la meta; después, cuánto llevas.
+// El umbral de Hoy: cabecera abierta sobre el papel con luz cálida desde el arco, el saludo en serif subrayado a pincel,
+// la marca «El umbral» viva, la racha, la única acción en ladrillo y un enlace sereno para hablar con Aula.
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { Button, Card, Chip, Icon, BrushUnderline, ArchLight, archLightFor } from '@renderer/design'
+import { Button, Chip, Icon, AulaMark, BrushUnderline } from '@renderer/design'
 import type { HomeSummary } from '@shared/ipc/home'
 import { capitalize, fmtDate } from '@renderer/lib/format'
 import { navigate } from '@renderer/app/router'
@@ -23,36 +22,36 @@ export function Hero({ data, mode }: { data: HomeSummary; mode: HeroMode }) {
   const { t } = useTranslation(['home', 'common'])
   const g = t(`common:greeting.${greetingKey()}`)
   const left = planLeft(data.plan)
-  // el curso por el que empieza la sesión: el del primer paso pendiente (o el primero de la lista)
   const courseId = left.courseId ?? data.plan[0]?.courseId ?? data.courses[0]?.id
   const startPlan = () => courseId && navigate({ name: 'study', id: courseId, mode: 'plan', start: true })
-  const scene = archLightFor(new Date().getHours())
   const subtitle = mode === 'empty' ? t('subtitleEmpty') : mode === 'firstRun' ? t('firstRun.subtitle') : left.steps ? t('subtitle', { count: left.steps, minutes: left.minutes }) : t('subtitleDone')
 
   return (
-    <Card enterAnim padded={false} className="relative h-full min-h-[280px] overflow-hidden">
-      <div className="relative grid h-full grid-cols-1 @3xl:grid-cols-[1fr_auto] gap-6 p-7 @3xl:p-8">
-        <div className="flex flex-col justify-between min-w-0">
+    <header className="aula-threshold relative isolate border-b border-rule">
+      <div className="relative grid grid-cols-1 gap-6 px-1 pt-4 pb-6 @3xl:grid-cols-[1fr_auto] @3xl:items-end @3xl:pt-6 @3xl:pb-7">
+        <div className="flex min-w-0 flex-col justify-between">
           <div>
             <div className="flex items-center gap-2">
               <span className="t-eyebrow">{capitalize(fmtDate(new Date()))}</span>
-              {/* en pantallas estrechas (el teléfono), el arco en pequeño a la derecha de la fecha: en su sitio, sin tapar nada */}
-              <ArchLight scene={scene} className="@3xl:hidden ml-auto -my-1 -mr-1 h-[60px] w-[72px]" />
+              <span className="ml-auto @3xl:hidden">
+                <AulaMark size={44} />
+              </span>
             </div>
-            <motion.h1 className="t-display mt-2.5 text-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}>
-              {/* el saludo, subrayado a pincel: lo primero que se lee del día */}
-              <BrushUnderline seed="greeting" delay={550}>{data.name ? t('common:greeting.withName', { greeting: g, name: data.name }) : g}</BrushUnderline>
+            <motion.h1 className="t-display mt-2 text-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}>
+              <BrushUnderline seed="greeting" delay={550}>
+                {data.name ? t('common:greeting.withName', { greeting: g, name: data.name }) : g}
+              </BrushUnderline>
             </motion.h1>
-            <p className="t-body text-text2 mt-3 max-w-[540px] text-pretty">{subtitle}</p>
+            <p className="mt-3 max-w-[540px] font-serif text-[calc(17rem/15)] leading-[1.5] text-text2 text-pretty">{subtitle}</p>
             {mode === 'study' && <StreakLine streak={data.streak} />}
           </div>
-          <div className="mt-6">
+          <div className="mt-5">
             {mode === 'empty' ? (
               <>
                 <Button variant="primary" size="lg" icon={<Icon name="create" size={16} />} onClick={() => navigate({ name: 'create' })}>
                   {t('createFirst')}
                 </Button>
-                <div className="flex flex-wrap gap-1.5 mt-4">
+                <div className="mt-4 flex flex-wrap gap-1.5">
                   {(['chem', 'english', 'calc', 'history'] as const).map((k) => (
                     <Chip key={k} onClick={() => navigate({ name: 'create', prefill: { title: t(`suggestions.${k}`) } })}>
                       {t(`suggestions.${k}`)}
@@ -65,31 +64,38 @@ export function Hero({ data, mode }: { data: HomeSummary; mode: HeroMode }) {
                 <Button variant="primary" size="lg" icon={<Icon name="create" size={16} />} onClick={() => navigate({ name: 'create' })}>
                   {t('firstRun.create')}
                 </Button>
-                {/* probar con el ejemplo: un enlace de texto, no otro botón */}
-                <button type="button" className="relative touch-target t-callout font-medium text-accent-text hover:underline underline-offset-4 outline-none focus-visible:underline" onClick={startPlan}>
+                <button type="button" className="touch-target relative t-callout font-medium text-accent-text hover:underline underline-offset-4 outline-none focus-visible:underline" onClick={startPlan}>
                   {t('firstRun.tryExample')}
                 </button>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                {/* con todo hecho no se ofrece empezar un plan vacío: queda la meta del día */}
                 {left.steps > 0 && (
                   <Button variant="primary" size="lg" onClick={() => (courseId ? startPlan() : navigate({ name: 'create' }))}>
                     {t('continue')}
                   </Button>
                 )}
                 <GoalLine done={data.today.minutesDone} goal={data.today.minutesGoal} />
+                <button
+                  type="button"
+                  onClick={() => navigate({ name: 'chat' })}
+                  className="touch-target relative inline-flex items-center gap-1.5 t-ui font-medium text-text hover:text-accent-text transition-colors outline-none focus-visible:underline underline-offset-4"
+                >
+                  <AulaMark size={17} />
+                  <span>{t('talkToAula')}</span>
+                  <Icon name="chevron-right" size={13} className="text-text3" />
+                </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* el arco de Aula: dentro, la luz de la hora que es (amanece, mediodía, atardece, noche); con el ratón encima, se mueve despacio */}
-        <div className="hidden @3xl:flex w-[248px] items-center justify-center">
-          <ArchLight live scene={scene} className="h-[190px] w-[228px]" />
+        {/* El umbral, vivo sobre la luz cálida del papel (sin nubes ni pájaros) */}
+        <div className="hidden @3xl:flex w-[224px] items-center justify-center pb-1">
+          <AulaMark size={146} alive />
         </div>
       </div>
-    </Card>
+    </header>
   )
 }
 

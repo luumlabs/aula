@@ -1,9 +1,16 @@
 # Sistema de diseño de Aula — «Papel y luz», más vivo
 
 Aula conserva su identidad original:
-**papel cálido** donde se lee, **una sola luz** (el ladrillo `#B4502F` / `#EA9A6C` en oscuro) para la acción principal y la
-selección, el **sol** (`--sun`) solo para lo que está en vivo, **serif** (New York en macOS; Newsreader fuera) para títulos,
-saludos y cifras, y la tipografía del sistema (SF) para la interfaz. Nada de degradados de colores ni arcoíris.
+**papel de algodón cálido** (`#FAF8F3` en claro, `#121110` en oscuro) donde se lee, **una sola luz** (el ladrillo
+`#B8502D` / `#E89266` en oscuro) para la acción principal y la selección, el **sol** (`--sun`) solo para lo que está en
+vivo, **serif** (New York en macOS; Newsreader fuera) para títulos, saludos, lugares de navegación y cifras, y la
+tipografía del sistema (SF) para la interfaz. Nada de degradados de colores ni arcoíris.
+
+La navegación principal vive sobre el papel en una barra superior editorial con cuatro lugares centrados en serif
+(`Hoy · Aula · Cursos · Calendario`), con la barra lateral clásica disponible de forma opcional desde «Más secciones» o
+`⌘⌃S` / `Ctrl+\`. En **Hoy**, la cabecera abierta sobre el papel lleva la luz arquitectónica cálida (`--arch-glow`) y la
+marca viva **«El umbral»** (fotogramas pintados a mano en stop-motion, `umbralFrames.ts`). En **Estudio**, un hilo de
+margen de cuaderno (`--margin-line`) acompaña la columna de lectura.
 
 Lo nuevo de la versión 2: la pantalla se aprovecha entera con **tarjetas tipo burbuja** (rejilla tipo bento, aire de 16 px
 entre ellas), y hay **detalles animados**: los iconos de los cursos y los compañeros, **dibujados a mano** (línea a pincel,

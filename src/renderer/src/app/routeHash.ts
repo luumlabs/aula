@@ -5,7 +5,7 @@
 import type { Route } from './router'
 
 /** Pantallas a las que se puede volver (las de desarrollo y las que dependen de algo en marcha, no). */
-const RESTORABLE: ReadonlySet<Route['name']> = new Set(['home', 'course', 'study', 'calendar', 'chat', 'tools', 'documents', 'inbox', 'stats'])
+const RESTORABLE: ReadonlySet<Route['name']> = new Set(['home', 'courses', 'course', 'study', 'calendar', 'chat', 'tools', 'documents', 'inbox', 'stats'])
 const TEXT_FIELDS = ['id', 'tab', 'skill', 'mode', 'date', 'view', 'conversation', 'tool', 'doc'] as const
 
 export function routeToHash(route: Route): string {

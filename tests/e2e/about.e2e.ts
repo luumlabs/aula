@@ -125,11 +125,11 @@ test('Ayuda → «Apoyar a Aula…» lleva a su apartado de Acerca de y deja ah�
     await expect(title).toBeFocused()
     // el foco va ahí una vez por llegada: si se lleva a otro panel (sin tocar Ajustes) mientras lo de encima aún cambia de
     // alto, el apartado se queda arriba y el foco, donde se llevó
-    const fold = page.getByRole('button', { name: 'Plegar la barra', exact: true })
-    await fold.focus()
+    const outside = page.getByRole('button', { name: 'Más secciones', exact: true })
+    await outside.focus()
     await page.evaluate(`document.querySelector('[data-settings-section="ai"]').style.paddingTop = '600px'`)
     await page.waitForTimeout(300)
-    await expect(fold).toBeFocused()
+    await expect(outside).toBeFocused()
     await expect(title).not.toBeFocused()
     await expect(support).toBeInViewport()
 

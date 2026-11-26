@@ -43,7 +43,7 @@ test('⌘K sin escribir: lo primero es seguir con el plan de hoy; las acciones d
   page.on('pageerror', (e) => errors.push(e.message))
   const input = page.locator('[cmdk-input]')
   const selected = page.locator('[cmdk-item][data-selected="true"]')
-  const course = page.locator('nav[aria-label="Aula"]').getByText('Exam #2 · MATH 101')
+  const course = page.locator('main').getByText('Exam #2 · MATH 101').first()
   await expect(course).toBeVisible()
 
   await page.keyboard.press('Control+k')

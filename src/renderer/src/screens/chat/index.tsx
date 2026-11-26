@@ -99,7 +99,7 @@ export default function ChatScreen() {
   const spoken = (thread?.messages.length ?? 0) > 0
   return (
     <ChatActionsContext.Provider value={actions}>
-      <div className="@container flex min-h-0 flex-1 gap-4 px-6 pb-4">
+      <div className="aula-chat-paper @container flex min-h-0 flex-1 gap-4 px-4 pb-4 @lg:px-6">
         {/* las conversaciones, sobre el papel y separadas por un filete (no es un objeto: no va en tarjeta) */}
         <div className="hidden @4xl:flex w-[268px] shrink-0 flex-col border-r border-rule pr-4 pt-1">
           <ThreadList threads={threads} active={activeId} onOpen={open} onNew={startNew} />
@@ -120,7 +120,7 @@ export default function ChatScreen() {
             language={i18n.language}
             onCancelQueued={(id) => void cancel(id)}
             empty={emptyView}
-            contentClassName="mx-auto max-w-[760px] px-2 pt-4 pb-6"
+            contentClassName="mx-auto max-w-[760px] px-2 pt-5 pb-6"
             jumpClassName="max-w-[780px] px-2"
           />
           <div className="mx-auto w-full max-w-[780px] px-2">
