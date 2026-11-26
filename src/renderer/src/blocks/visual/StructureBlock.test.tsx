@@ -215,4 +215,12 @@ describe('piezas del bloque', () => {
     expect(ce('[Na+].[Cl-]')).toBe('NaCl')
     expect(ce('*')).toBeUndefined()
   })
+  it('dibuja moléculas de la biblioteca por nombre en inglés o español', () => {
+    const g = structureView(block({ smiles: 'glucose' }), 'skeletal', estimateMeasure)
+    expect(g.ok).toBe(true)
+    if (g.ok) expect(formulaCe(g.parsed, false)?.ce).toBe('C6H12O6')
+    const ac = structureView(block({ smiles: 'ácido acético' }), 'skeletal', estimateMeasure)
+    expect(ac.ok).toBe(true)
+    if (ac.ok) expect(formulaCe(ac.parsed, false)?.ce).toBe('C2H4O2')
+  })
 })
