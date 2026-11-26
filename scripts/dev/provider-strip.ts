@@ -30,8 +30,8 @@ const ITEMS: Item[] = [
 
 // los colores de «Papel y luz» (styles.css)
 const THEMES = {
-  light: { ink: '#201e1a', caption: '#585550', accent: '#b4502f' },
-  dark: { ink: '#f0eae3', caption: '#c2bdb7', accent: '#ea9a6c' }
+  light: { ink: '#191714', caption: '#524d46', accent: '#b8502d' },
+  dark: { ink: '#f2efe9', caption: '#b5afa7', accent: '#e89266' }
 } as const
 
 /** Los pies que cambian en español. */

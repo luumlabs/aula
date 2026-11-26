@@ -158,3 +158,40 @@
 :root:is([data-ambient='calm'], [data-ambient='off']) .aula-mark:is([data-alive], [data-boil]) :is(.am-sun, .am-boil) {
   animation-play-state: paused !important;
 }
+
+/* El umbral: un fotograma pintado a mano por paso (1,7 fps en reposo, ~4 fps trabajando). */
+.umbral-mark {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.umbral-cel:not(:first-child) {
+  opacity: 0;
+}
+.umbral-mark:is([data-loop], [data-hover]:hover) .umbral-cel,
+[data-aula-hover]:hover .umbral-mark[data-hover] .umbral-cel {
+  animation: umbral-idle 2400ms steps(1, end) infinite;
+}
+.umbral-mark[data-umbral='working'][data-loop] .umbral-cel {
+  animation-name: umbral-working;
+  animation-duration: 1440ms;
+}
+@keyframes umbral-idle {
+  0%, 24.99% { opacity: 1; }
+  25%, 100% { opacity: 0; }
+}
+@keyframes umbral-working {
+  0%, 16.65% { opacity: 1; }
+  16.66%, 100% { opacity: 0; }
+}
+:root:is(.reduce-motion, [data-ambient='off'], [data-ambient='calm']) .umbral-mark[data-umbral='idle'] .umbral-cel {
+  animation: none !important;
+}
+:root:is(.reduce-motion, [data-ambient='off']) .umbral-mark .umbral-cel {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .umbral-mark .umbral-cel {
+    animation: none !important;
+  }
+}

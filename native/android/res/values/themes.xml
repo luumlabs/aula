@@ -2,17 +2,17 @@
 <!-- «Papel y luz»: papel cálido de fondo y el ladrillo como única luz, los mismos tokens que la interfaz
      (src/renderer/src/styles.css: paper, surface…). Sin barra de título: la pantalla es la de Aula. -->
 <resources>
-    <color name="paper">#FCFAF5</color>
-    <color name="ink">#2A2520</color>
-    <color name="soft">#77716A</color>
-    <color name="brick">#B4502F</color>
-    <color name="on_brick">#FFFFFF</color>
-    <color name="field">#0F2A2520</color>
-    <color name="line">#1A2A2520</color>
-    <color name="icon_paper">#F2EADC</color>
+    <color name="paper">#FAF8F3</color>
+    <color name="ink">#191714</color>
+    <color name="soft">#68635B</color>
+    <color name="brick">#B8502D</color>
+    <color name="on_brick">#FFFDF9</color>
+    <color name="field">#0F191714</color>
+    <color name="line">#1A191714</color>
+    <color name="icon_paper">#FDFCF9</color>
     <!-- lo que se ve bajo las barras mientras la página no dice sus colores: arriba la hoja con su grano (paper, un poco
          más oscura en promedio), abajo la barra de pestañas (surface) -->
-    <color name="page_top">#F4F1EB</color>
+    <color name="page_top">#FAF8F3</color>
     <color name="page_bottom">#FFFDF9</color>
     <style name="Aula" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/paper</item>
