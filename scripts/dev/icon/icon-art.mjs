@@ -554,7 +554,7 @@ export function detailFor(size) {
  * @param {{ size: number, platform?: 'mac' | 'plain', detail?: 'full' | 'mid' | 'small', art?: string }} o
  *   `art`: otro dibujo para la misma caja (el vídeo pide el icono sin el sol).
  */
-export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size), look = 'light', art = PROPOSALS[id].art(detail, look === 'light' ? undefined : { look }) }) {
+export function iconSvg(id, { size, platform = 'mac', detail = detailFor(size), look = 'light', paper = true, art = PROPOSALS[id].art(detail, look === 'light' && paper ? undefined : { look, paper }) }) {
   // mac: squircle de 824 en (100,100) del lienzo 1024. plain: casi a sangre (margen de 1/32). square: el dibujo a sangre,
   // sin esquinas ni sombra (iOS y las capas de Icon Composer: la forma y el fondo los pone el sistema).
   if (platform === 'square') {

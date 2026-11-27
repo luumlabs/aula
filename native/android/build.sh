@@ -133,10 +133,10 @@ for pair in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
   size=${pair##*:}
   mkdir -p "$GEN/mipmap-${pair%%:*}"
   java -Djava.awt.headless=true "$HERE/tools/Icon.java" "$A/AppIcon.appiconset/icon-1024.png" \
-    "$GEN/mipmap-${pair%%:*}/ic_launcher_foreground.png" "$size" $(( size * 76 / 108 )) F2EADC
+    "$GEN/mipmap-${pair%%:*}/ic_launcher_foreground.png" "$size" $(( size * 76 / 108 )) FDFCF9
   # la capa de los iconos temáticos (Android 13 o posterior): el arco en una sola tinta, algo más pequeño
   java -Djava.awt.headless=true "$HERE/tools/Icon.java" "$A/AppIcon.appiconset/icon-1024.png" \
-    "$GEN/mipmap-${pair%%:*}/ic_launcher_monochrome.png" "$size" $(( size * 66 / 108 )) F2EADC mono
+    "$GEN/mipmap-${pair%%:*}/ic_launcher_monochrome.png" "$size" $(( size * 66 / 108 )) FDFCF9 mono
 done
 
 # ── 2b. lo que va en assets/: lo que la app pone en la página (el mismo Shell.js que la app del iPhone), los avisos de

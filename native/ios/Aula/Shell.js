@@ -86,7 +86,7 @@
     if (!base) {
       const body = document.body && rgba(getComputedStyle(document.body).backgroundColor)
       const html = rgba(getComputedStyle(document.documentElement).backgroundColor)
-      const c = body && body[3] > 0 ? body : html && html[3] > 0 ? html : dark ? [24, 22, 19, 1] : [252, 250, 245, 1]
+      const c = body && body[3] > 0 ? body : html && html[3] > 0 ? html : dark ? [18, 17, 16, 1] : [250, 248, 243, 1]
       base = { rgb: c.slice(0, 3), el: null }
     }
     let rgb = base.rgb

@@ -107,10 +107,10 @@ const LOOKS = {
 }
 
 /** El arte de «El umbral» en la caja local de 824 px del generador multiplataforma. */
-export function umbralIcon(detail, { look = 'light', sun = true } = {}) {
+export function umbralIcon(detail, { look = 'light', sun = true, paper = true } = {}) {
   const c = LOOKS[look]
   const k = ((700 / Math.max(BOX.w, BOX.h)) * 824) / 1024
   const frame = detail === 'small' ? cel({ seed: 3, weight: 1.45 }) : HERO
   const path = (d, color) => `<path d="${d}" fill="${color}"/>`
-  return `${c.paper ? `<rect width="824" height="824" fill="${c.paper}"/>` : ''}<g transform="translate(412 412) scale(${k}) translate(${-BOX.cx} ${-BOX.cy})">${frame.ink.map((d) => path(d, c.ink)).join('')}${sun ? frame.sun.map((d) => path(d, c.sun)).join('') : ''}</g>`
+  return `${paper && c.paper ? `<rect width="824" height="824" fill="${c.paper}"/>` : ''}<g transform="translate(412 412) scale(${k}) translate(${-BOX.cx} ${-BOX.cy})">${frame.ink.map((d) => path(d, c.ink)).join('')}${sun ? frame.sun.map((d) => path(d, c.sun)).join('') : ''}</g>`
 }

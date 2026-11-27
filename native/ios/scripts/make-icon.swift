@@ -17,7 +17,7 @@ let inner = 824.0 * Double(src.width) / 1024.0
 let scale = Double(size) / inner
 let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
 // el papel del propio icono, para que las esquinas (transparentes en el de macOS) no se noten
-ctx.setFillColor(CGColor(srgbRed: 0.965, green: 0.941, blue: 0.890, alpha: 1))
+ctx.setFillColor(CGColor(srgbRed: 0.99216, green: 0.98824, blue: 0.97647, alpha: 1))
 ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
 ctx.interpolationQuality = .high
 let drawn = Double(src.width) * scale

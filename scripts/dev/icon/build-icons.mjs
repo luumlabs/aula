@@ -223,11 +223,11 @@ const LOOKS = ['light', 'dark', 'tinted']
 /** ¿La propuesta sabe dibujarse en oscuro y tintado? */
 const hasLooks = (id) => id === 'inkA' || id === 'umbral'
 /** El dibujo a sangre (sin esquinas ni sombra) en un aspecto: lo que piden iOS y las capas de Icon Composer. */
-const square = (id, look, size = 1024) => iconSvg(id, { size, platform: 'square', look, detail: 'full' })
+const square = (id, look, { size = 1024, paper = true } = {}) => iconSvg(id, { size, platform: 'square', look, detail: 'full', paper })
 
 async function buildLooks(id) {
   const at = (p) => join(ROOT, p)
-  // iPhone y iPad: el claro y el tintado, opacos; el oscuro, sin fondo (lo pone el sistema)
+  // iPhone y iPad (compatibilidad con iOS 18, Android y material del App Store): el claro y el tintado, opacos; el oscuro, sin fondo
   const ios = at('native/ios/Aula/Assets.xcassets/AppIcon.appiconset')
   const names = { light: 'icon-1024.png', dark: 'icon-1024-dark.png', tinted: 'icon-1024-tinted.png' }
   for (const look of LOOKS) {
@@ -240,34 +240,44 @@ async function buildLooks(id) {
     })),
     info: { author: 'xcode', version: 1 }
   }, null, 2) + '\n')
-  // macOS 26+: Icon Composer, una capa por aspecto; el fondo claro es el papel y el oscuro, el del sistema
-  const composer = at('build/icon.icon')
-  rmSync(composer, { recursive: true, force: true })
-  for (const look of LOOKS) write(join(composer, 'Assets', `aula-${look}.png`), await raster(square(id, look), 1024))
+  // macOS 26+ e iOS/iPadOS 26+: Icon Composer con capas separadas del fondo; el fondo claro es el papel y el oscuro, el del sistema
   const lightFill = id === 'umbral' ? 'srgb:0.99216,0.98824,0.97647,1.00000' : 'srgb:0.97255,0.95294,0.91765,1.00000'
-  write(join(composer, 'icon.json'), JSON.stringify({
-    'fill-specializations': [
-      { value: { 'automatic-gradient': lightFill } },
-      { appearance: 'dark', value: 'system-dark' }
-    ],
-    groups: [{
-      layers: [{
-        'image-name-specializations': [
-          { value: 'aula-light.png' },
-          { appearance: 'dark', value: 'aula-dark.png' },
-          { appearance: 'tinted', value: 'aula-tinted.png' }
-        ],
-        name: nameOf(id),
-        glass: false
+  const composerPngs = {
+    light: await raster(square(id, 'light', { paper: id !== 'umbral' }), 1024),
+    dark: await raster(square(id, 'dark'), 1024),
+    tinted: await raster(square(id, 'tinted'), 1024)
+  }
+  const writeComposer = (dir, supportedPlatforms) => {
+    rmSync(dir, { recursive: true, force: true })
+    for (const look of LOOKS) write(join(dir, 'Assets', `aula-${look}.png`), composerPngs[look])
+    write(join(dir, 'icon.json'), JSON.stringify({
+      'fill-specializations': [
+        { value: { solid: lightFill } },
+        { appearance: 'dark', value: 'system-dark' }
+      ],
+      groups: [{
+        layers: [{
+          'image-name-specializations': [
+            { value: 'aula-light.png' },
+            { appearance: 'dark', value: 'aula-dark.png' },
+            { appearance: 'tinted', value: 'aula-tinted.png' }
+          ],
+          name: nameOf(id),
+          glass: false
+        }],
+        shadow: { kind: 'none', opacity: 0 },
+        translucency: { enabled: false, value: 0.5 },
+        specular: false
       }],
-      shadow: { kind: 'none', opacity: 0 },
-      translucency: { enabled: false, value: 0.5 },
-      specular: false
-    }],
-    'supported-platforms': { squares: ['macOS'] }
-  }, null, 2) + '\n')
+      'supported-platforms': supportedPlatforms
+    }, null, 2) + '\n')
+  }
+  const composer = at('build/icon.icon')
+  writeComposer(composer, { squares: ['macOS'] })
   compileAssetCatalog(composer, at('build/Assets.car'))
-  console.log('✓ claro, oscuro y tintado: build/icon.icon, build/Assets.car y el catálogo de iOS')
+  // iPhone y iPad (iOS/iPadOS 26+ Liquid Glass): Xcode compila native/ios/Aula/AppIcon.icon junto al catálogo en Assets.car
+  writeComposer(at('native/ios/Aula/AppIcon.icon'), { circles: ['watchOS'], squares: 'shared' })
+  console.log('✓ claro, oscuro y tintado: build/icon.icon, build/Assets.car, native/ios/Aula/AppIcon.icon y AppIcon.appiconset')
 }
 
 /** Icon Composer → Assets.car con actool (Xcode 26 o posterior). El icono se llama «Icon» (CFBundleIconName). */
