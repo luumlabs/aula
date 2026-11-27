@@ -12,6 +12,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { createReadStream, readFileSync, statSync } from 'node:fs'
+import { gzipSync } from 'node:zlib'
 import type { AddressInfo } from 'node:net'
 import { PairingError, type DeviceRegistry, type RemoteDeviceView } from '@main/services/remote/devices'
 import { noopValue, reachesDevices, remoteCall, rewriteAssets } from '@main/services/remote/policy'
@@ -66,6 +67,8 @@ export class RemoteServer {
    *  (uno retirado o caducado se corta) y los de los dispositivos, `remote.*`, solo llegan a un propietario. */
   private streams = new Map<ServerResponse, string>()
   private stopTap: (() => void) | null = null
+  /** Caché en memoria de recursos inmutables (`/assets/*`) ya comprimidos con gzip: ahorra >1,3 MB por arranque en iPhone/iPad. */
+  private gzipCache = new Map<string, Buffer>()
   port = 0
 
   constructor(private readonly o: RemoteServerOptions) {}
@@ -98,6 +101,7 @@ export class RemoteServer {
   async stop(): Promise<void> {
     this.stopTap?.()
     this.stopTap = null
+    this.gzipCache.clear()
     for (const s of [...this.streams.keys()]) this.drop(s)
     const server = this.server
     this.server = null
@@ -198,14 +202,14 @@ export class RemoteServer {
       try { const data = readFileSync(this.o.icon ?? ''); res.writeHead(200, { 'content-type': 'image/png', 'content-length': String(data.length), 'cache-control': 'public, max-age=86400' }); res.end(data) } catch { this.fail(res, 404, 'not_found') }
       return
     }
-    if (path === '/remote-bridge.js') return this.send(res, 200, 'text/javascript; charset=utf-8', REMOTE_BRIDGE_JS, { 'cache-control': 'no-cache' })
+    if (path === '/remote-bridge.js') return this.send(res, 200, 'text/javascript; charset=utf-8', REMOTE_BRIDGE_JS, { 'cache-control': 'no-cache' }, req)
     if (path.startsWith('/admin/')) return this.admin(req, res, path, method)
     if (path === '/pair' && method === 'GET') {
       const nonce = randomBytes(16).toString('base64')
       return this.send(res, 200, 'text/html; charset=utf-8', pairingPage(this.o.language(), nonce, this.o.host ?? 'mac'), {
         'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
         'cache-control': 'no-store'
-      })
+      }, req)
     }
     if (path === '/pair/complete' && method === 'POST') return this.pair(req, res)
 
@@ -217,7 +221,7 @@ export class RemoteServer {
     if (path.startsWith('/asset/')) return device ? this.asset(req, res, path) : this.fail(res, 401, 'forbidden')
     if (path.startsWith('/upload/') && method === 'PUT') return device ? this.upload(req, res, path, device) : this.fail(res, 401, 'forbidden')
     if (method !== 'GET' && method !== 'HEAD') return this.fail(res, 405, 'invalid_args')
-    return this.page(res, path, device, method === 'HEAD')
+    return this.page(req, res, path, device, method === 'HEAD')
   }
 
   /** La consola del servidor: `aula-server status` y `aula-server link`. Solo desde este ordenador (nunca por la red privada)
@@ -282,7 +286,7 @@ export class RemoteServer {
     const refusal = await consentRefusal(this.consent, device.id, method, args)
     if (refusal) return this.json(res, 200, { ok: false, error: refusal })
     const envelope = await dispatchRemote(method, this.o.uploads.resolve(device.id, args), device.id)
-    this.send(res, 200, 'application/json; charset=utf-8', rewriteAssets(JSON.stringify(envelope) ?? '{"ok":true}'), { 'cache-control': 'no-store' })
+    this.send(res, 200, 'application/json; charset=utf-8', rewriteAssets(JSON.stringify(envelope) ?? '{"ok":true}'), { 'cache-control': 'no-store' }, req)
   }
 
   /** Un archivo elegido en el dispositivo: se copia al Mac y queda como «dado por el estudiante» (remote/uploads.ts). */
@@ -345,7 +349,7 @@ export class RemoteServer {
   }
 
   /** La interfaz: sus archivos tal cual; la página, con el puente delante y solo para un dispositivo emparejado. */
-  private page(res: ServerResponse, path: string, device: RemoteDeviceView | undefined, head: boolean): void {
+  private page(req: IncomingMessage, res: ServerResponse, path: string, device: RemoteDeviceView | undefined, head: boolean): void {
     const paired = !!device
     const file = resolveAppUrl('app://aula' + path, this.o.rendererRoot)
     if (!file) return this.fail(res, 404, 'not_found')
@@ -358,16 +362,48 @@ export class RemoteServer {
       // También trae su «viewport» de escritorio: se cambia por el de un dispositivo (uno solo: las apps nativas retocan el
       // primero que encuentran, y hasta entonces mandaba el último)
       html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<meta[^>]+name=["']viewport["'][^>]*>/gi, '').replace(/<head>/i, '<head><meta name="viewport" content="' + DEVICE_VIEWPORT + '"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' + (this.o.host === 'server' ? '<meta name="aula-host" content="server">' : '') + (this.isOwner(device) ? '<meta name="aula-device" content="owner">' : '') + '<script src="/remote-bridge.js"></script>')
-      return this.send(res, 200, type, head ? '' : html, { 'content-security-policy': REMOTE_CSP, 'cache-control': 'no-store' })
+      return this.send(res, 200, type, head ? '' : html, { 'content-security-policy': REMOTE_CSP, 'cache-control': 'no-store' }, head ? undefined : req)
     }
     let size: number
     try { size = statSync(file).size } catch { return this.fail(res, 404, 'not_found') }
-    res.writeHead(200, { 'content-type': type, 'content-length': String(size), 'x-content-type-options': 'nosniff', 'cache-control': /\/assets\//.test(path) ? 'public, max-age=31536000, immutable' : 'no-cache' })
+    const immutable = /\/assets\//.test(path)
+    const cacheControl = immutable ? 'public, max-age=31536000, immutable' : 'no-cache'
+    if (size >= 1024 && this.acceptsGzip(req) && this.compressible(type)) {
+      let gz = immutable ? this.gzipCache.get(file) : undefined
+      if (!gz) {
+        try {
+          gz = gzipSync(readFileSync(file), { level: 6 })
+        } catch {
+          return this.fail(res, 404, 'not_found')
+        }
+        if (immutable) {
+          if (this.gzipCache.size >= 120) {
+            const oldest = this.gzipCache.keys().next().value
+            if (oldest !== undefined) this.gzipCache.delete(oldest)
+          }
+          this.gzipCache.set(file, gz)
+        }
+      }
+      res.writeHead(200, { 'content-type': type, 'content-encoding': 'gzip', vary: 'accept-encoding', 'content-length': String(gz.length), 'x-content-type-options': 'nosniff', 'cache-control': cacheControl })
+      res.end(head ? undefined : gz)
+      return
+    }
+    res.writeHead(200, { 'content-type': type, 'content-length': String(size), 'x-content-type-options': 'nosniff', 'cache-control': cacheControl })
     if (head) { res.end(); return }
     createReadStream(file).on('error', () => res.destroy()).pipe(res)
   }
 
   // MARK: Utilidades
+
+  private acceptsGzip(req?: IncomingMessage): boolean {
+    if (!req) return false
+    const ae = req.headers['accept-encoding']
+    return typeof ae === 'string' && /\bgzip\b/i.test(ae)
+  }
+
+  private compressible(type: string): boolean {
+    return /^text\/|javascript|json|svg\+xml|manifest\+json/i.test(type)
+  }
 
   private async body(req: IncomingMessage, res: ServerResponse): Promise<unknown> {
     // solo JSON: una página de otro sitio no puede enviar este tipo sin permiso previo (y la cookie es SameSite=Strict)
@@ -382,9 +418,15 @@ export class RemoteServer {
     try { return JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null') as unknown } catch { this.fail(res, 400, 'invalid_args'); return undefined }
   }
 
-  private send(res: ServerResponse, status: number, type: string, body: string, headers: Record<string, string> = {}): void {
-    const data = Buffer.from(body, 'utf8')
-    res.writeHead(status, { 'content-type': type, 'content-length': String(data.length), 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', ...headers })
+  private send(res: ServerResponse, status: number, type: string, body: string, headers: Record<string, string> = {}, req?: IncomingMessage): void {
+    let data: Buffer = Buffer.from(body, 'utf8')
+    const extra: Record<string, string> = { ...headers }
+    if (data.length >= 1024 && this.acceptsGzip(req) && this.compressible(type)) {
+      data = gzipSync(data, { level: 6 })
+      extra['content-encoding'] = 'gzip'
+      extra['vary'] = 'accept-encoding'
+    }
+    res.writeHead(status, { 'content-type': type, 'content-length': String(data.length), 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', ...extra })
     res.end(data)
   }
 

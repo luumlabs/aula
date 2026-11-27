@@ -220,7 +220,7 @@ function layersReducer(s: LayersState, a: LayersAction): LayersState {
 }
 
 /** Lo que dura el fundido de la pantalla que se va (después se quita sí o sí, con un temporizador: nunca se queda colgada). */
-const LEAVE_MS = 200
+const LEAVE_MS = 130
 
 /**
  * Las pantallas, en capas: la nueva entra encima de la anterior, que se desvanece debajo y se quita a los `LEAVE_MS`. No hay

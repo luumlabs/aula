@@ -109,6 +109,8 @@ function syncIdleTimer(): void {
 const nextIdleDelay = () => 7000 + Math.random() * 11000
 
 const HOVERABLE = '[data-pixel-hover], button, a[href], [role="button"], [role="option"], [role="menuitem"], [role="link"], [role="tab"], label'
+/** Personajes que ya hicieron su entrada en esta sesión: al volver a la pestaña aparecen al instante sin repetir el bucle por píxel. */
+const enteredOnce = new WeakMap<CompiledAnim, Set<string>>()
 
 /** Pinta un personaje en un canvas y le da vida. */
 export class PixelPlayer {
@@ -124,7 +126,7 @@ export class PixelPlayer {
   private wantVar = 0
   private dpr = 1
   private dead = false
-  private reveal: { thr: Float32Array; base: ImageData } | null = null
+  private reveal: { thr: Float32Array; base: ImageData; out: ImageData } | null = null
   private visible = false
   private hovered = false
   private replayAt = 0
@@ -139,7 +141,12 @@ export class PixelPlayer {
     this.o = o
     this.resize()
     const animated = !o.reduced
-    if (animated && o.entrance !== 'none') {
+    const enterKey = `${o.size}:${o.entrance}`
+    const seen = enteredOnce.get(o.anim)
+    const shouldEnter = animated && o.entrance !== 'none' && !seen?.has(enterKey)
+    if (shouldEnter) {
+      if (seen) seen.add(enterKey)
+      else enteredOnce.set(o.anim, new Set([enterKey]))
       this.entranceStart = performance.now()
       wake(this)
     } else {
@@ -168,7 +175,7 @@ export class PixelPlayer {
   resize(): void {
     const { anim, size } = this.o
     const css = (size * anim.stride) / anim.size
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const dpr = typeof window !== 'undefined' ? Math.min(2, window.devicePixelRatio || 1) : 1
     const px = Math.max(1, Math.round(css * dpr))
     if (this.canvas.width !== px) {
       this.canvas.width = px
@@ -339,18 +346,20 @@ export class PixelPlayer {
           const n = hash01(Math.floor(x / Math.max(1, W / 9)), Math.floor(y / Math.max(1, W / 9))) * 0.6 + hash01(x, y) * 0.4
           thr[y * W + x] = drop ? (y / W) * 0.82 + n * 0.18 : (Math.hypot(x - c, y - c) / (c * 1.42)) * 0.7 + n * 0.3
         }
-      this.reveal = { thr, base }
+      this.reveal = { thr, base, out: new ImageData(W, W) }
     }
-    const { thr, base } = this.reveal
+    const { thr, base, out } = this.reveal
     const dur = this.o.entrance === 'drop' ? 0.05 + anim.stride * 0.022 + 0.3 : 0.05 + 0.55 + 0.2
     const p = RAMP_IN(t / dur) * 1.25
-    const out = new ImageData(W, W)
     const src = base.data
     const dst = out.data
     for (let i = 0; i < W * W; i++) {
       const a = Math.max(0, Math.min(1, (p - thr[i]) / 0.16))
-      if (a <= 0) continue
       const o = i * 4
+      if (a <= 0) {
+        dst[o + 3] = 0
+        continue
+      }
       dst[o] = src[o]
       dst[o + 1] = src[o + 1]
       dst[o + 2] = src[o + 2]

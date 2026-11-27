@@ -1,13 +1,13 @@
 /* Cambio de pantalla sin página vacía: la nueva entra encima (opacidad y un poco de subida) mientras la anterior se desvanece
    debajo. Solo transform y opacity (compositor). `backwards`: al terminar no queda ningún estilo (ni capa de composición). */
 .screen-enter {
-  animation: screen-enter 240ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  animation: screen-enter 160ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
 }
 .screen-leave {
-  animation: screen-leave 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: screen-leave 120ms cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 @keyframes screen-enter {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes screen-leave {
@@ -73,16 +73,33 @@
   opacity: 0.82;
 }
 
-/* Cabecera de Hoy: luz arquitectónica tibia entrando por el umbral (cero nubes, cero pájaros) */
+/* Cabecera de Hoy: luz arquitectónica tibia entrando por el umbral (cero nubes, cero pájaros).
+   El lienzo del halo desborda a los lados y por debajo del filete, pero se extingue suavemente antes de tocar cualquier
+   borde —y antes del borde superior del contenedor con scroll— para que nunca aparezcan recortes rectangulares. */
 .aula-threshold::before {
   content: '';
   position: absolute;
-  inset: -44px -24px 0 -24px;
+  inset: -4px -360px -160px -360px;
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(380px 210px at 85% 58%, var(--arch-glow), transparent 68%),
-    radial-gradient(520px 200px at 66% 36%, var(--arch-glow-2), transparent 70%);
+    radial-gradient(
+      440px 158px at calc(100% - 472px) max(162px, calc(100% - 252px)),
+      var(--arch-glow) 0%,
+      color-mix(in srgb, var(--arch-glow) 72%, transparent) 24%,
+      color-mix(in srgb, var(--arch-glow) 36%, transparent) 48%,
+      color-mix(in srgb, var(--arch-glow) 12%, transparent) 70%,
+      color-mix(in srgb, var(--arch-glow) 3%, transparent) 86%,
+      transparent 100%
+    ),
+    radial-gradient(
+      560px 142px at calc(100% - 680px) max(146px, calc(100% - 270px)),
+      var(--arch-glow-2) 0%,
+      color-mix(in srgb, var(--arch-glow-2) 68%, transparent) 26%,
+      color-mix(in srgb, var(--arch-glow-2) 30%, transparent) 52%,
+      color-mix(in srgb, var(--arch-glow-2) 8%, transparent) 76%,
+      transparent 100%
+    );
 }
 
 /* Subrayado de rotulador mate bajo encabezados de sección en Hoy */
@@ -149,13 +166,42 @@
 
 /* Chat: luz cenital tibia muy suave arriba del hilo, sin corte duro en el borde superior */
 .aula-chat-paper {
-  background: radial-gradient(520px 140px at 56% 128px, var(--arch-glow), transparent 72%);
+  background: radial-gradient(
+    480px 124px at 56% 132px,
+    var(--arch-glow) 0%,
+    color-mix(in srgb, var(--arch-glow) 68%, transparent) 26%,
+    color-mix(in srgb, var(--arch-glow) 30%, transparent) 52%,
+    color-mix(in srgb, var(--arch-glow) 8%, transparent) 76%,
+    transparent 100%
+  );
+}
+
+@container (max-width: 47.99rem) {
+  .aula-threshold::before {
+    inset: -4px -220px -140px -220px;
+    background: radial-gradient(
+      245px 118px at calc(100% - 250px) 122px,
+      var(--arch-glow) 0%,
+      color-mix(in srgb, var(--arch-glow) 70%, transparent) 26%,
+      color-mix(in srgb, var(--arch-glow) 32%, transparent) 52%,
+      color-mix(in srgb, var(--arch-glow) 10%, transparent) 76%,
+      transparent 100%
+    );
+  }
 }
 
 @media (max-width: 720px) {
   .aula-notebook::before { display: none; }
-  .aula-threshold::before { background: radial-gradient(ellipse 65% 45% at 88% 36%, var(--arch-glow), transparent 70%); }
-  .aula-chat-paper { background: radial-gradient(ellipse 80% 120px at 50% 108px, var(--arch-glow), transparent 72%); }
+  .aula-chat-paper {
+    background: radial-gradient(
+      ellipse 62% 104px at 50% 112px,
+      var(--arch-glow) 0%,
+      color-mix(in srgb, var(--arch-glow) 68%, transparent) 26%,
+      color-mix(in srgb, var(--arch-glow) 30%, transparent) 52%,
+      color-mix(in srgb, var(--arch-glow) 8%, transparent) 76%,
+      transparent 100%
+    );
+  }
 }
 @media (forced-colors: active) {
   .aula-notebook::before,

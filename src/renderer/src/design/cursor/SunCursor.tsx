@@ -114,11 +114,14 @@ export function SunCursor({ enabled, dark, reducedMotion }: { enabled: boolean; 
     let ripples: { x: number; y: number; t: number }[] = []
     let raf = 0
     let dpr = 1
+    // Solo limpiamos la región sucia del fotograma anterior en vez de toda la pantalla Retina (ahorra decenas de millones de px/s).
+    let dirty: { x: number; y: number; w: number; h: number } | null = null
 
     const size = (): void => {
-      dpr = window.devicePixelRatio || 1
+      dpr = Math.min(2, window.devicePixelRatio || 1)
       canvas.width = Math.round(window.innerWidth * dpr)
       canvas.height = Math.round(window.innerHeight * dpr)
+      dirty = null
     }
     const draw = (): void => {
       raf = 0
@@ -127,10 +130,27 @@ export function SunCursor({ enabled, dark, reducedMotion }: { enabled: boolean; 
       points = prune(points, now)
       ripples = ripples.filter((r) => ripple(r.t, now))
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      if (dirty) {
+        const x = Math.max(0, Math.floor(dirty.x * dpr))
+        const y = Math.max(0, Math.floor(dirty.y * dpr))
+        const w = Math.min(canvas.width - x, Math.ceil(dirty.w * dpr))
+        const h = Math.min(canvas.height - y, Math.ceil(dirty.h * dpr))
+        if (w > 0 && h > 0) ctx.clearRect(x, y, w, h)
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.lineCap = 'round'
-      // la cola: una cinta con degradado de la punta vieja al sol, con su resplandor cálido
+      ctx.lineJoin = 'round'
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      const expand = (x0: number, y0: number, x1: number, y1: number) => {
+        if (x0 < minX) minX = x0
+        if (y0 < minY) minY = y0
+        if (x1 > maxX) maxX = x1
+        if (y1 > maxY) maxY = y1
+      }
+      // la cola: una cinta con degradado de la punta vieja al sol y halo ligero en dos pasadas (sin shadowBlur costoso en CPU/GPU)
       const rib = ribbon(points, now)
       if (rib) {
         const grad = (rgb: string, k: number): CanvasGradient => {
@@ -140,13 +160,18 @@ export function SunCursor({ enabled, dark, reducedMotion }: { enabled: boolean; 
           return g
         }
         ctx.beginPath()
-        rib.outline.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+        for (let i = 0; i < rib.outline.length; i++) {
+          const [x, y] = rib.outline[i]
+          if (i) ctx.lineTo(x, y)
+          else ctx.moveTo(x, y)
+          expand(x - 10, y - 10, x + 10, y + 10)
+        }
         ctx.closePath()
-        ctx.shadowColor = `rgba(${tone.glow},${rib.alpha * 0.7})`
-        ctx.shadowBlur = 12
+        ctx.lineWidth = 7
+        ctx.strokeStyle = grad(tone.glow, 0.24)
+        ctx.stroke()
         ctx.fillStyle = grad(tone.core, 1)
         ctx.fill()
-        ctx.shadowBlur = 0
       }
       for (const r of ripples) {
         const w = ripple(r.t, now)
@@ -158,7 +183,10 @@ export function SunCursor({ enabled, dark, reducedMotion }: { enabled: boolean; 
         ctx.lineWidth = 2.2
         ctx.stroke()
         ctx.globalAlpha = 1
+        const pad = w.r + 5
+        expand(r.x - pad, r.y - pad, r.x + pad, r.y + pad)
       }
+      dirty = minX <= maxX ? { x: minX - 2, y: minY - 2, w: maxX - minX + 4, h: maxY - minY + 4 } : null
       // solo sigue mientras quede algo que pintar
       if (points.length > 1 || ripples.length) raf = requestAnimationFrame(draw)
     }

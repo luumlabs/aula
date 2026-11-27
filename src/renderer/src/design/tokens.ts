@@ -11,10 +11,10 @@ export const spring = {
   bouncy: { type: 'spring', stiffness: 204, damping: 22, mass: 1 } as Transition
 }
 
-export const duration = { fast: 0.15, base: 0.24, slow: 0.36 }
+export const duration = { fast: 0.12, base: 0.18, slow: 0.24 }
 
-/** Entrada de filas y bloques: aparecen subiendo 6 px. */
+/** Entrada de filas y bloques: aparecen subiendo 4 px. */
 export const enter: Variants = {
-  hidden: { opacity: 0, y: 6 },
+  hidden: { opacity: 0, y: 4 },
   show: { opacity: 1, y: 0, transition: { duration: duration.slow, ease: [0.2, 0.7, 0.2, 1] } }
 }

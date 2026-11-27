@@ -178,11 +178,12 @@ function resampleClosed(poly, step) {
   return resample([...poly, poly[0]], step).slice(0, -1)
 }
 
-/** Contorno → camino SVG suave (Catmull-Rom cerrado a cúbicas), redondeado a 0,1. */
-export function toPath(poly, step = 6.5) {
+/** Contorno → camino SVG suave (Catmull-Rom cerrado a cúbicas), redondeado a `decimals` (0,1 por defecto). */
+export function toPath(poly, step = 6.5, decimals = 1) {
   let q = resampleClosed(poly, step)
   if (area(q) < 0) q = q.reverse()
-  const r = (v) => Math.round(v * 10) / 10
+  const scale = decimals === 0 ? 1 : 10 ** decimals
+  const r = (v) => (scale === 1 ? Math.round(v) : Math.round(v * scale) / scale)
   const m = q.length
   let d = `M${r(q[0][0])},${r(q[0][1])}`
   for (let i = 0; i < m; i++) {
@@ -210,13 +211,13 @@ export function arc(cx, cy, r, a0, a1, step = 8, ry = r) {
 }
 
 /** Atajo: trazo → camino SVG. */
-export const brush = (center, o) => toPath(stroke(center, o), o?.smooth ?? 6.5)
+export const brush = (center, o) => toPath(stroke(center, o), o?.smooth ?? 6.5, o?.decimals ?? 1)
 
 /**
  * Una pincelada redonda que se aprieta y se levanta (el sol rojo de la tinta china): media luna llena si `half`, con
  * la base casi recta. Borde vivo de pincel, nunca un círculo de compás.
  */
-export function dab(cx, cy, r, { seed = 1, half = true, edge = 0.03, base = 0.06, squash = 1, lean = 0.05 } = {}) {
+export function dab(cx, cy, r, { seed = 1, half = true, edge = 0.03, base = 0.06, squash = 1, lean = 0.05, smooth = 5.5, decimals = 1 } = {}) {
   const nE = noise(seed * 17 + 1)
   const nB = noise(seed * 17 + 2)
   const pts = []
@@ -242,5 +243,5 @@ export function dab(cx, cy, r, { seed = 1, half = true, edge = 0.03, base = 0.06
     }
     pts.reverse()
   }
-  return toPath(pts, 5.5)
+  return toPath(pts, smooth, decimals)
 }

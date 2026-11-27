@@ -13,8 +13,10 @@ struct AulaApp: App {
         WindowGroup {
             RootView(model: model)
                 .task { await model.start() }
-                .onChange(of: phase) { _, now in
-                    if now == .active { Task { await model.cameToForeground() } }
+                .onChange(of: phase) { old, now in
+                    // Solo al volver desde segundo plano (no al bajar el Centro de Control, Face ID ni en el arranque inicial):
+                    // evita recargar toda la vista web innecesariamente cuando iOS nunca suspendió la app.
+                    if old == .background, now == .active { Task { await model.cameToForeground() } }
                 }
         }
     }

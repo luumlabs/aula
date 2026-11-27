@@ -226,6 +226,7 @@ actor TailnetController {
     private var forwarders: [String: LoopbackForwarder] = [:]
     private var needsLoginSince: Date?
     private var kickedLogin = false
+    private var startupPolls = 0
 
     /// How long start() waits for running / needsLogin before rejecting.
     static let startTimeout: Duration = .seconds(60)
@@ -321,6 +322,7 @@ actor TailnetController {
         options = nil
         needsLoginSince = nil
         kickedLogin = false
+        startupPolls = 0
         failWaiters(AulaTailscaleError.stopped)
         update(.stopped)
     }
@@ -406,6 +408,7 @@ actor TailnetController {
         options = opts
         needsLoginSince = nil
         kickedLogin = false
+        startupPolls = 0
 
         // up() blocks (in a detached task inside TailscaleKit) until the node
         // is Running, or fails on a backend error (e.g. an invalid auth key).
@@ -431,7 +434,14 @@ actor TailnetController {
     private func pollOnce(generation gen: Int) async -> Duration? {
         guard gen == generation, node != nil else { return nil }
         await refresh()
-        return snapshot.state == .running ? .seconds(5) : .seconds(1)
+        if snapshot.state == .running { return .seconds(5) }
+        // Al arrancar consultamos cada 200 ms durante los primeros ~2 s para detectar Running/aulas sin perder hasta 1 s.
+        startupPolls += 1
+        if snapshot.state == .starting {
+            if startupPolls <= 10 { return .milliseconds(200) }
+            if startupPolls <= 15 { return .milliseconds(400) }
+        }
+        return .seconds(1)
     }
 
     private func upFinished(generation gen: Int, error: Error?) async {

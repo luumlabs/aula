@@ -63,7 +63,11 @@
   const grain = (rgb, dark) => (dark ? mix(rgb, [255, 240, 219], 0.03) : mix(rgb, [84, 64, 43], 0.05))
   function opacity(el) {
     let o = 1
-    for (let e = el; e && e.nodeType === 1; e = e.parentElement) o *= Number(getComputedStyle(e).opacity || 1)
+    for (let e = el; e && e.nodeType === 1 && e !== document.documentElement; e = e.parentElement) {
+      const v = Number(getComputedStyle(e).opacity || 1)
+      if (v < 1) o *= v
+      if (e === document.body) break
+    }
     return o
   }
   const hex = (rgb) => '#' + rgb.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')
@@ -141,16 +145,24 @@
     }
   }
 
-  // se mira otra vez cuando algo puede cambiar: el tema, la pantalla (la interfaz la apunta con history.replaceState),
-  // un diálogo que se abre (las capas van en <body>), un toque, el tamaño. Las transiciones duran: varias miradas.
+  // Se vuelve a mirar solo cuando cambia algo capaz de cambiar el color de los bordes: el tema (<html class/style>),
+  // capas montadas en <body> (diálogos, cajones), cambio de tamaño o ruta. Evitamos disparar en cada toque/clic:
+  // lanzar 4× elementsFromPoint + getComputedStyle en cada tap bloqueaba las transiciones en iPhone y Android.
   let timers = []
-  function soon() {
+  function schedule(delays) {
     timers.forEach(clearTimeout)
-    timers = [0, 120, 320, 700].map((ms) => setTimeout(report, ms))
+    timers = delays.map((ms) => setTimeout(report, ms))
+  }
+  function soon() {
+    schedule([60, 280])
+  }
+  function onNav() {
+    // esperar a que termine la transición de pantalla (160 ms) para no forzar layout en mitad de la animación
+    schedule([220])
   }
   window.__aulaShell = () => {
     last = ''
-    soon()
+    schedule([0, 220])
   }
 
   solid()
@@ -162,13 +174,12 @@
     const original = history[name]
     history[name] = function (...args) {
       const out = original.apply(this, args)
-      soon()
+      onNav()
       return out
     }
   }
   for (const name of ['resize', 'orientationchange', 'popstate', 'pageshow', 'load']) window.addEventListener(name, soon)
-  document.addEventListener('click', soon, true)
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.__aulaShell())
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', soon)
-  soon()
+  schedule([0, 220])
 })()

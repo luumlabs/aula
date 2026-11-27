@@ -25,7 +25,7 @@ export default function Home() {
   const exams = mode === 'study' ? ownExams(summary.exams, showsAsSample) : []
   return (
     <div className="@container flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-1 pb-10 @lg:px-6">
-      <Stagger className="mx-auto grid max-w-[70rem] grid-cols-12 gap-x-7 gap-y-5" gap={0.05}>
+      <Stagger className="relative isolate mx-auto grid max-w-[70rem] grid-cols-12 gap-x-7 gap-y-5" gap={0.025}>
         <div className="col-span-12">
           <Hero data={summary} mode={mode} />
         </div>

@@ -19,9 +19,11 @@ function activeLayer(name?: Route['name']): HTMLElement | null {
 /** La zona que se desplaza de una pantalla: la más grande con algo que desplazar. */
 export function mainScroller(layer: HTMLElement | null = activeLayer()): HTMLElement | null {
   if (!layer) return null
+  const candidates = layer.querySelectorAll<HTMLElement>('.overflow-y-auto, .overflow-auto, .overflow-y-scroll')
+  const list = candidates.length ? candidates : layer.querySelectorAll<HTMLElement>('*')
   let best: HTMLElement | null = null
   let area = 0
-  for (const el of layer.querySelectorAll<HTMLElement>('*')) {
+  for (const el of list) {
     if (el.scrollHeight <= el.clientHeight + 1) continue
     const a = el.clientWidth * el.clientHeight
     if (a <= area) continue

@@ -38,8 +38,8 @@ struct WebEvents {
 }
 
 struct WebView: PlatformViewRepresentable {
-    /// El túnel de ahora: http://127.0.0.1:<puerto>. Si cambia (al volver de segundo plano), se recarga en el nuevo.
-    let base: URL
+    /// El túnel de ahora: http://127.0.0.1:<puerto>, o nil mientras se conecta (la vista ya se precalienta).
+    let base: URL?
     var events = WebEvents()
     /// window.aulaApp.supportLink(): Ajustes → Acerca de puede enseñar «Apoya a Aula» (AppModel.supportLink).
     var supportLink = false
@@ -142,7 +142,12 @@ struct WebView: PlatformViewRepresentable {
             view.scrollView.rightEdgeEffect.isHidden = true
         }
         #endif
-        context.coordinator.show(base, in: view)
+        if let base {
+            context.coordinator.show(base, in: view)
+        } else {
+            // Precalienta los procesos de WebKit (WebContent/Networking/GPU) mientras Tailscale conecta en paralelo.
+            view.loadHTMLString("", baseURL: nil)
+        }
         return view
     }
 
@@ -239,8 +244,18 @@ struct WebView: PlatformViewRepresentable {
         }
 
         /// Carga la interfaz en el túnel `base` (una sola vez por túnel), en la pantalla en la que estaba: la interfaz
-        /// apunta su pantalla en el fragmento de la dirección («#…»).
-        func show(_ base: URL, in view: WKWebView) {
+        /// apunta su pantalla en el fragmento de la dirección («#…»). Con `nil`, limpia la vista sin destruir WebKit.
+        func show(_ base: URL?, in view: WKWebView) {
+            guard let base else {
+                if shown != nil {
+                    shown = nil
+                    #if canImport(UIKit)
+                    (view as? AulaWebView)?.pageCanGoBack = false
+                    #endif
+                    view.loadHTMLString("", baseURL: nil)
+                }
+                return
+            }
             guard shown != base, var parts = URLComponents(url: base, resolvingAgainstBaseURL: false) else { return }
             shown = base
             #if canImport(UIKit)
@@ -248,9 +263,11 @@ struct WebView: PlatformViewRepresentable {
             (view as? AulaWebView)?.pageCanGoBack = false
             #endif
             // la consulta de la dirección se conserva («?demo=1» en la demostración); el fragmento es el de la pantalla en
-            // la que estaba, y en la primera carga, el de `base` (solo lo trae la demostración de las capturas)
+            // la que estaba (solo si venía ya de Aula, no de about:blank), y en la primera carga, el de `base`
             parts.path = "/"
-            if let now = view.url { parts.percentEncodedFragment = URLComponents(url: now, resolvingAgainstBaseURL: false)?.percentEncodedFragment }
+            if let now = view.url, now.host == "127.0.0.1" {
+                parts.percentEncodedFragment = URLComponents(url: now, resolvingAgainstBaseURL: false)?.percentEncodedFragment
+            }
             if let url = parts.url { view.load(URLRequest(url: url)) }
         }
 
@@ -304,7 +321,8 @@ struct WebView: PlatformViewRepresentable {
         }
 
         private func failed(_ error: Error) {
-            // cancelar una carga para empezar otra no es un fallo
+            // cancelar una carga para empezar otra (o un fallo mientras no hay túnel cargado) no es un fallo
+            guard shown != nil else { return }
             if (error as NSError).domain == NSURLErrorDomain, (error as NSError).code == NSURLErrorCancelled { return }
             shown = nil
             events.failed()

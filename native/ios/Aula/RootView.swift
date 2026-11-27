@@ -12,23 +12,24 @@ struct RootView: View {
         GeometryReader { geo in
             ZStack {
                 Color("Paper").ignoresSafeArea()
-                switch model.stage {
-                case .ready(let base):
-                    VStack(spacing: 0) {
-                        if model.showsDemoBar {
-                            DemoBar(tint: Color(hex: model.pageTop) ?? Color("Paper"), safeTop: geo.safeAreaInsets.top) { Task { await model.exitDemo() } }
-                        }
-                        // solo la zona del sistema (muesca, barra de inicio), no la del teclado: con el teclado abierto la
-                        // vista web acaba encima de él y la página no tiene que moverse para enseñar el campo
-                        WebView(base: base, events: events, supportLink: model.supportLink)
-                            .ignoresSafeArea(.container, edges: model.showsDemoBar ? [.horizontal, .bottom] : .all)
+                // La vista web se monta desde el inicio (oculta mientras conecta Tailscale) para arrancar los procesos
+                // de WebKit en paralelo con la red privada y evitar ~500–800 ms de espera al llegar a .ready.
+                VStack(spacing: 0) {
+                    if model.showsDemoBar {
+                        DemoBar(tint: Color(hex: model.pageTop) ?? Color("Paper"), safeTop: geo.safeAreaInsets.top) { Task { await model.exitDemo() } }
                     }
-                    .transition(.opacity)
-                default:
-                    if model.showsConnectScreen {
-                        ConnectView(model: model)
-                            .transition(.opacity)
-                    }
+                    // solo la zona del sistema (muesca, barra de inicio), no la del teclado: con el teclado abierto la
+                    // vista web acaba encima de él y la página no tiene que moverse para enseñar el campo
+                    WebView(base: readyBase, events: events, supportLink: model.supportLink)
+                        .ignoresSafeArea(.container, edges: model.showsDemoBar ? [.horizontal, .bottom] : .all)
+                }
+                .opacity(isReady ? 1 : 0)
+                .allowsHitTesting(isReady)
+                .accessibilityHidden(!isReady)
+
+                if !isReady, model.showsConnectScreen {
+                    ConnectView(model: model)
+                        .transition(.opacity)
                 }
             }
         }
@@ -59,9 +60,13 @@ struct RootView: View {
         )
     }
 
+    private var readyBase: URL? {
+        if case .ready(let base) = model.stage { return base }
+        return nil
+    }
+
     private var isReady: Bool {
-        if case .ready = model.stage { return true }
-        return false
+        readyBase != nil
     }
 }
 
@@ -86,7 +91,7 @@ struct ConnectView: View {
             content
                 .padding(.top, 2)
                 .frame(maxWidth: 460)
-            if model.demoArchive != nil {
+            if model.hasDemo {
                 // sin Mac a mano (o antes de instalar nada): Aula de verdad, con un curso de ejemplo
                 Button(Texts.demoAction) { Task { await model.startDemo() } }
                     .buttonStyle(QuietButton())

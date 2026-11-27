@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 import { request } from 'node:http'
+import { gunzipSync } from 'node:zlib'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -54,6 +55,7 @@ beforeAll(async () => {
   mkdirSync(join(renderer, 'assets'), { recursive: true })
   writeFileSync(join(renderer, 'index.html'), '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \'self\'"><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Aula</title></head><body><div id="root"></div></body></html>')
   writeFileSync(join(renderer, 'assets', 'app.js'), 'console.log(1)')
+  writeFileSync(join(renderer, 'assets', 'bundle.js'), 'export const x = ' + JSON.stringify('aula '.repeat(600)) + ';\n')
 
   const { handle } = await import('../rpc')
   const note = (method: string) => (args: unknown, ctx: { remote?: { deviceId: string } }) => { seen.push({ method, args, device: ctx.remote?.deviceId }); return { src: 'aula-asset://pack/curso/assets/fig.png' } }
@@ -246,6 +248,19 @@ describe('servidor remoto', () => {
     // sin nadie a quien mandar (un modelo en el propio Mac), pasa
     recipients = []
     expect((await rpc('create.addFiles', { paths: [] })).ok).toBe(true)
+  })
+  it('comprime con gzip los recursos grandes cuando el cliente lo acepta', async () => {
+    const raw = await new Promise<{ status: number; enc?: string; body: Buffer }>((resolve, reject) => {
+      request(url + '/assets/bundle.js', { headers: { 'accept-encoding': 'gzip, deflate' } }, (res) => {
+        const chunks: Buffer[] = []
+        res.on('data', (c: Buffer) => chunks.push(c))
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, enc: res.headers['content-encoding'], body: Buffer.concat(chunks) }))
+      }).on('error', reject).end()
+    })
+    expect(raw.status).toBe(200)
+    expect(raw.enc).toBe('gzip')
+    expect(raw.body.length).toBeLessThan(300)
+    expect(gunzipSync(raw.body).toString('utf8')).toContain('export const x = ')
   })
   it('al retirar el dispositivo, su cookie deja de valer', async () => {
     devices.revoke(devices.list()[0].id)

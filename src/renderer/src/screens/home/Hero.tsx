@@ -27,7 +27,7 @@ export function Hero({ data, mode }: { data: HomeSummary; mode: HeroMode }) {
   const subtitle = mode === 'empty' ? t('subtitleEmpty') : mode === 'firstRun' ? t('firstRun.subtitle') : left.steps ? t('subtitle', { count: left.steps, minutes: left.minutes }) : t('subtitleDone')
 
   return (
-    <header className="aula-threshold relative isolate border-b border-rule">
+    <header className="aula-threshold relative border-b border-rule">
       <div className="relative grid grid-cols-1 gap-6 px-1 pt-4 pb-6 @3xl:grid-cols-[1fr_auto] @3xl:items-end @3xl:pt-6 @3xl:pb-7">
         <div className="flex min-w-0 flex-col justify-between">
           <div>
@@ -37,8 +37,8 @@ export function Hero({ data, mode }: { data: HomeSummary; mode: HeroMode }) {
                 <AulaMark size={44} />
               </span>
             </div>
-            <motion.h1 className="t-display mt-2 text-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}>
-              <BrushUnderline seed="greeting" delay={550}>
+            <motion.h1 className="t-display mt-2 text-text" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26, delay: 0.02 }}>
+              <BrushUnderline seed="greeting" delay={260}>
                 {data.name ? t('common:greeting.withName', { greeting: g, name: data.name }) : g}
               </BrushUnderline>
             </motion.h1>

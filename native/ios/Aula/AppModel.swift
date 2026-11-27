@@ -95,18 +95,25 @@ final class AppModel {
     private var demo: DemoServer?
 
     /// ¿Esta copia de la app trae la demostración? (scripts/dev/ios-demo.mjs la graba antes de archivar).
-    let demoArchive: DemoArchive? = AppModel.loadDemoArchive()
+    /// Solo comprobamos la ruta al arrancar; el archivo de ~11 MB y su índice JSON se leen en segundo plano únicamente si se abre.
+    let hasDemo: Bool = AppModel.demoURL() != nil
+    private var loadedDemoArchive: DemoArchive?
 
-    nonisolated private static func loadDemoArchive() -> DemoArchive? {
+    nonisolated private static func demoURL() -> URL? {
         #if DEBUG
         // capturas del App Store: una grabación que no va dentro de la app (Preview-*.aulademo, en Documents)
-        if let url = StoreShots.archive {
-            let archive = DemoArchive(url: url)
-            if archive == nil { NSLog("[Aula] -AulaDemo: no se pudo leer %@", url.path) }
-            return archive
-        }
+        if let url = StoreShots.archive { return url }
         #endif
-        return Bundle.main.url(forResource: "Demo", withExtension: "aulademo").flatMap { DemoArchive(url: $0) }
+        return Bundle.main.url(forResource: "Demo", withExtension: "aulademo")
+    }
+
+    nonisolated private static func loadDemoArchive() -> DemoArchive? {
+        guard let url = demoURL() else { return nil }
+        let archive = DemoArchive(url: url)
+        #if DEBUG
+        if StoreShots.archive != nil, archive == nil { NSLog("[Aula] -AulaDemo: no se pudo leer %@", url.path) }
+        #endif
+        return archive
     }
 
     private let controller = TailnetController.shared
@@ -224,15 +231,17 @@ final class AppModel {
         do {
             let endpoint = try await controller.connect(host: mac, port: 80)
             guard gen == attempt else { return }
-            let answers = await Self.isAula(port: endpoint.port, secret: endpoint.secret)
+            // Comprobar /health y fijar la cookie del túnel en paralelo ahorra un salto IPC serie antes de cargar la página.
+            async let answersTask = Self.isAula(port: endpoint.port, secret: endpoint.secret)
+            async let cookieTask: Void = Self.setGateCookie(endpoint.secret)
+            let answers = await answersTask
+            await cookieTask
             guard gen == attempt else { return }
             guard answers else {
                 stage = .macUnreachable
                 scheduleRetry()
                 return
             }
-            await Self.setGateCookie(endpoint.secret)
-            guard gen == attempt else { return }
             retry?.cancel()
             stage = .ready(URL(string: "http://127.0.0.1:\(endpoint.port)")!)
         } catch {
@@ -340,7 +349,15 @@ final class AppModel {
 
     /// Abre la demostración: el curso de ejemplo, servido por la propia app.
     func startDemo() async {
-        guard let demoArchive else { return }
+        let archive: DemoArchive?
+        if let cached = loadedDemoArchive {
+            archive = cached
+        } else {
+            let loaded = await Task.detached(priority: .userInitiated) { Self.loadDemoArchive() }.value
+            loadedDemoArchive = loaded
+            archive = loaded
+        }
+        guard let demoArchive = archive else { return }
         demo?.stop()
         #if DEBUG
         // capturas: una pregunta que no es la grabada recibe el texto grabado (la respuesta del tutor), no el aviso

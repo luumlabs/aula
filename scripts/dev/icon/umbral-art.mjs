@@ -31,9 +31,9 @@ function geometry({ lift = 0 } = {}) {
 }
 
 /** Un fotograma del umbral: `seed` cambia el carácter de cada trazo (dibujado otra vez a mano). */
-export function cel({ seed = 3, lift = 0, open = 0, jitter = 0, rays = 0, weight = 1 } = {}) {
+export function cel({ seed = 3, lift = 0, open = 0, jitter = 0, rays = 0, weight = 1, smooth, sunSmooth, decimals } = {}) {
   const g = geometry({ lift })
-  const common = { jitter, wobble: 1.4, edge: 0.025, swell: 0.12 }
+  const common = { jitter, wobble: 1.4, edge: 0.025, swell: 0.12, ...(smooth ? { smooth } : {}), ...(decimals !== undefined ? { decimals } : {}) }
   const arch = brush(g.arch, {
     ...common,
     w: 38 * weight,
@@ -66,7 +66,14 @@ export function cel({ seed = 3, lift = 0, open = 0, jitter = 0, rays = 0, weight
       [1, 0.46]
     ]
   })
-  const sun = dab(g.sun.cx, g.sun.cy, 110 + open, { seed: seed + 5, edge: 0.014, base: 0.035, squash: 0.95 })
+  const sun = dab(g.sun.cx, g.sun.cy, 110 + open, {
+    seed: seed + 5,
+    edge: 0.014,
+    base: 0.035,
+    squash: 0.95,
+    ...(sunSmooth ? { smooth: sunSmooth } : {}),
+    ...(decimals !== undefined ? { decimals } : {})
+  })
   const rayPaths = []
   if (rays > 0) {
     for (const [a, len] of [
@@ -83,7 +90,17 @@ export function cel({ seed = 3, lift = 0, open = 0, jitter = 0, rays = 0, weight
             [g.sun.cx + Math.cos(rad) * r0, g.sun.cy - Math.sin(rad) * r0],
             [g.sun.cx + Math.cos(rad) * r1, g.sun.cy - Math.sin(rad) * r1]
           ],
-          { w: 22, seed: seed + 9 + a, wobble: 0.2, edge: 0.03, swell: 0.05, startBlob: 1.1, profile: [[0, 1.05], [1, 0.7]] }
+          {
+            w: 22,
+            seed: seed + 9 + a,
+            wobble: 0.2,
+            edge: 0.03,
+            swell: 0.05,
+            startBlob: 1.1,
+            profile: [[0, 1.05], [1, 0.7]],
+            ...(smooth ? { smooth } : {}),
+            ...(decimals !== undefined ? { decimals } : {})
+          }
         )
       )
     }

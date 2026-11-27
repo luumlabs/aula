@@ -47,7 +47,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
   // la hoja no lleva relleno a los lados: su texto se alinea con el resto de la página; en el teléfono, la holgada encoge
   // (con 28 px por lado el texto de dentro se quedaba en una columna)
   const pad = padded === false ? '' : sheet ? 'pt-5 pb-2' : padded === 'sm' ? 'p-4' : padded === 'lg' ? 'p-7 phone:p-5' : 'p-5'
-  const shadow = sheet ? undefined : elevation === 3 ? 'var(--e3)' : elevation === 2 ? 'var(--e2)' : 'var(--e1)'
+  const shadowClass = sheet ? '' : elevation === 3 ? 'shadow-[var(--e3)]' : elevation === 2 ? 'shadow-[var(--e2)]' : 'shadow-[var(--e1)]'
   // una tarjeta que se pulsa es un botón: se enfoca con Tab y se abre con Intro o Espacio, como `Row` (A4-P1-4). Solo
   // reacciona a las teclas sobre ella misma, no sobre un campo o un botón de dentro.
   const clickable = typeof rest.onClick === 'function'
@@ -69,9 +69,18 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
     <motion.div
       ref={setRef}
       variants={enterAnim ? enter : undefined}
-      className={cx('relative', sheet ? 'border-t border-rule' : 'rounded-[22px] bg-surface border-[0.5px] border-line', mark && !sheet && 'isolate', pad, interactive && 'cursor-default', className)}
-      style={{ boxShadow: shadow, ...(wash && !sheet ? { backgroundImage: `linear-gradient(color-mix(in oklab, ${wash} 9%, transparent), color-mix(in oklab, ${wash} 9%, transparent))` } : {}), ...style }}
-      whileHover={interactive && !sheet && !reducedMotion ? { y: -2, boxShadow: 'var(--e2)', transition: spring.snappy } : undefined}
+      className={cx(
+        'relative',
+        sheet ? 'border-t border-rule' : 'rounded-[22px] bg-surface border-[0.5px] border-line',
+        shadowClass,
+        mark && !sheet && 'isolate',
+        pad,
+        interactive && 'cursor-default',
+        interactive && !sheet && 'transition-shadow duration-150 hover:shadow-[var(--e2)]',
+        className
+      )}
+      style={{ ...(wash && !sheet ? { backgroundImage: `linear-gradient(color-mix(in oklab, ${wash} 9%, transparent), color-mix(in oklab, ${wash} 9%, transparent))` } : {}), ...style }}
+      whileHover={interactive && !sheet && !reducedMotion ? { y: -2, transition: spring.snappy } : undefined}
       whileTap={interactive && clickable ? { scale: 0.985, transition: spring.snappy } : undefined}
       {...rest}
       {...keys}
@@ -155,9 +164,9 @@ export function Row({ leading, title, subtitle, trailing, chevron, onClick, sele
           onClick()
         }
       }}
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 3 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, delay: Math.min(index, 12) * 0.035, ease: [0.2, 0.7, 0.2, 1] }}
+      transition={{ duration: 0.18, delay: Math.min(index, 6) * 0.016, ease: [0.2, 0.7, 0.2, 1] }}
       className={cx(
         'group/row relative flex min-h-[52px] items-center gap-3 px-4 py-2.5 outline-none transition-colors',
         onClick && 'hover:bg-fill1 active:bg-fill2 focus-visible:bg-fill1',
@@ -191,7 +200,7 @@ function ChevronRightSmall() {
 /** Encabezado de pantalla (título serif) y de sección. */
 export function PageHeader({ eyebrow, title, subtitle, actions, className }: { eyebrow?: ReactNode; title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <motion.header className={cx('flex items-end justify-between gap-6 flex-wrap', className)} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.36 }}>
+    <motion.header className={cx('flex items-end justify-between gap-6 flex-wrap', className)} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <div className="min-w-0">
         {eyebrow && <div className="t-eyebrow mb-2">{eyebrow}</div>}
         <h1 className="t-title1 text-text">{title}</h1>
