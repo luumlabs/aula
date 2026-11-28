@@ -61,6 +61,13 @@ export const api = {
   get server(): boolean {
     return this.remote && (window.aula as { server?: boolean } | undefined)?.server === true
   },
+  /** En qué equipo corre la Aula remota («mac», «windows» o «server»). */
+  get host(): 'mac' | 'windows' | 'server' {
+    if (!this.remote) return 'mac'
+    const h = (window.aula as { host?: string } | undefined)?.host
+    if (h === 'server' || h === 'windows') return h
+    return this.server ? 'server' : 'mac'
+  },
   /** Quién usa Aula desde aquí (ventana, propietario, dispositivo de un Mac o de un servidor): lo que se arregla aquí (device.ts). */
   get role(): DeviceRole {
     return deviceRole({ remote: this.remote, owner: this.owner, server: this.server })

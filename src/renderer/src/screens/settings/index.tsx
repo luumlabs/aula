@@ -74,10 +74,10 @@ export default function SettingsScreen() {
   const shown = ORDER.filter((id) => !(remote && (id === 'platforms' || id === 'devices' || id === 'data')))
   const active = useActiveSection(scroller, shown, !!settings)
   if (!settings) return null
-  const note = owner ? t('remote.subtitleOwner') : remote ? (api.server ? t('remote.subtitleServer') : t('remote.subtitle')) : null
+  const note = owner ? t('remote.subtitleOwner') : remote ? (api.server ? t('remote.subtitleServer') : api.host === 'windows' ? t('remote.subtitleWin') : t('remote.subtitle')) : null
   const body: Record<SettingsSection, ReactNode> = {
     ai: (
-      <Section title={t('ai.title')} detail={remote ? (api.server ? t('ai.remote.detailServer') : t('ai.remote.detail')) : t('ai.auto')} rule={false}>
+      <Section title={t('ai.title')} detail={remote ? (api.server ? t('ai.remote.detailServer') : api.host === 'windows' ? t('ai.remote.detailWin') : t('ai.remote.detail')) : t('ai.auto')} rule={false}>
         {remote ? <AIChoices /> : <AIPicker plain />}
       </Section>
     ),

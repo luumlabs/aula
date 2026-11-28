@@ -47,10 +47,28 @@ jobs:
           for arch in x64 arm64; do
             test -x "native/tsnet/bin/linux-$arch/aula-tsnet"
           done
+      - name: Build the Windows sidecars
+        if: runner.os == 'Windows'
+        run: |
+          native/tsnet/build.sh windows
+          for arch in x64 arm64; do
+            test -s "native/tsnet/bin/win-$arch/aula-tsnet.exe"
+          done
       - name: Build validation installers without publishing
         run: |
           npx electron-vite build
           npx electron-builder --publish never -c.directories.output=packaging-ci
+      - name: Verify embedded Tailscale sidecars in unpacked packages
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            for dir in win-unpacked win-arm64-unpacked; do
+              test -s "packaging-ci/$dir/resources/bin/aula-tsnet.exe"
+            done
+          else
+            for dir in linux-unpacked linux-arm64-unpacked; do
+              test -x "packaging-ci/$dir/resources/bin/aula-tsnet"
+            done
+          fi
       - name: Verify installer metadata and record the source
         run: |
           node --input-type=module <<'NODE'

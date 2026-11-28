@@ -186,7 +186,10 @@ Notes for building on a Mac:
 - Android needs the JDK and the Android SDK in `.toolchain` (`native/android/setup.sh`, once), Go (its Tailscale
   component, `native/tsnet/build.sh android`) and the release key matching `native/android/release-cert.sha256`; see
   [The Android app](#the-android-app-apk).
-- Windows needs nothing else (no Wine): the installer is unsigned.
+- Windows carries the Tailscale component too (`resources/bin/aula-tsnet.exe`, x64 and arm64 inside the dual-arch NSIS
+  installer: *Aula on your devices*). `native/tsnet/build.sh windows` cross-compiles `native/tsnet/bin/win-x64` and
+  `win-arm64` with the same Go toolchain before `electron-builder` (no Wine needed; the installer stays unsigned). The
+  script checks both unpacked packages contain `resources/bin/aula-tsnet.exe`.
 - The Linux `.deb` needs GNU tar on the `PATH` as `gtar` (`brew install gnu-tar`, or the `gtar` that electron-builder
   keeps in `~/Library/Caches/electron-builder/linux-tools-mac*`). Without it the script builds only the AppImages (the
   ones that update themselves) and says so.

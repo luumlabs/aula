@@ -1,9 +1,11 @@
 // La red privada de Tailscale, dentro de Aula: un proceso auxiliar (`aula-tsnet`, native/tsnet) que se une a la red del
-// estudiante como un equipo más («aula-mac») y reenvía hasta el servidor remoto las conexiones de sus dispositivos (solo
-// las de su misma cuenta de Tailscale). No hace falta instalar Tailscale en el Mac. Aquí se arranca, se le pasa la clave
-// por su entrada (nunca por argumentos) y se sigue su estado, que cuenta en una línea JSON por cambio.
-import { spawn, type ChildProcess } from 'node:child_process'
+// estudiante como un equipo más («aula-mac» en macOS, «aula-windows» en Windows) y reenvía hasta el servidor remoto las
+// conexiones de sus dispositivos (solo las de su misma cuenta de Tailscale). No hace falta instalar Tailscale aparte. Aquí
+// se arranca, se le pasa la clave por su entrada (nunca por argumentos) y se sigue su estado, que cuenta en una línea JSON
+// por cambio.
+import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import type { RemoteStatus } from '@shared/ipc/remote'
 import { log } from '@main/services/log'
@@ -12,6 +14,46 @@ import { tr } from '@shared/ai/i18n'
 export type TailnetView = RemoteStatus['tailnet'] & { dnsName?: string; ips?: string[] }
 
 export const TAILNET_HOSTNAME = 'aula-mac'
+export const WINDOWS_TAILNET_HOSTNAME = 'aula-windows'
+
+/** Nombre por defecto en la red privada para la app de escritorio (en modo servidor manda `serverHostname()`). */
+export function defaultTailnetHostname(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? WINDOWS_TAILNET_HOSTNAME : TAILNET_HOSTNAME
+}
+
+/** Nombre del ejecutable del componente de Tailscale en cada sistema. */
+export function tailnetBinaryName(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'aula-tsnet.exe' : 'aula-tsnet'
+}
+
+/** Ruta al componente de Tailscale: dentro de la app empaquetada o, en desarrollo, donde lo deja `native/tsnet/build.sh`. */
+export function resolveTailnetBinary(opts: {
+  isPackaged: boolean
+  resourcesPath: string
+  appPath: string
+  platform?: NodeJS.Platform
+  arch?: string
+  exists?: (path: string) => boolean
+}): string {
+  const platform = opts.platform ?? process.platform
+  const arch = opts.arch ?? process.arch
+  const exists = opts.exists ?? existsSync
+  const name = tailnetBinaryName(platform)
+  const packaged = join(opts.resourcesPath, 'bin', name)
+  if (opts.isPackaged) return packaged
+  const binDir = join(opts.appPath, 'native', 'tsnet', 'bin')
+  const candidates = platform === 'win32'
+    ? [join(binDir, `win-${arch}`, name), join(binDir, name)]
+    : platform === 'linux'
+      ? [join(binDir, `linux-${arch}`, name), join(binDir, name)]
+      : [join(binDir, name)]
+  return candidates.find((p) => exists(p)) ?? packaged
+}
+
+/** Opciones de arranque del proceso auxiliar (en Windows oculta la ventana de consola). */
+export function tailnetSpawnOptions(): SpawnOptions {
+  return { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true }
+}
 
 interface SidecarEvent { type?: string; authURL?: string; hostname?: string; dnsName?: string; ips?: string[]; user?: string; message?: string }
 
@@ -22,21 +64,22 @@ export class Tailnet {
   private restarts = 0
   private retry: ReturnType<typeof setTimeout> | null = null
 
-  constructor(private readonly o: { binary: string; stateDir: string; proxyKey: string; onChange: () => void; /** «aula-mac» o, como servidor, «aula-server». */ hostname?: string }) {
+  constructor(private readonly o: { binary: string; stateDir: string; proxyKey: string; onChange: () => void; /** «aula-mac», «aula-windows» o, como servidor, «aula-server». */ hostname?: string; spawn?: typeof spawn }) {
     this.view = { state: existsSync(o.binary) ? 'off' : 'unavailable' }
   }
 
   get status(): TailnetView { return this.view }
-  get hostname(): string { return this.o.hostname ?? TAILNET_HOSTNAME }
+  get hostname(): string { return this.o.hostname ?? defaultTailnetHostname() }
   get available(): boolean { return existsSync(this.o.binary) }
 
-  /** Arranca la red privada apuntando al servidor remoto de este Mac. */
+  /** Arranca la red privada apuntando al servidor remoto de este equipo. */
   start(targetPort: number): void {
     this.wanted = true
     if (this.child || !this.available) { if (!this.available) this.set({ state: 'unavailable' }); return }
     mkdirSync(this.o.stateDir, { recursive: true })
     this.set({ state: 'starting' })
-    const child = spawn(this.o.binary, ['--state-dir', this.o.stateDir, '--hostname', this.hostname, '--target', `127.0.0.1:${targetPort}`, '--listen-port', '80'], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const run = this.o.spawn ?? spawn
+    const child = run(this.o.binary, ['--state-dir', this.o.stateDir, '--hostname', this.hostname, '--target', `127.0.0.1:${targetPort}`, '--listen-port', '80'], tailnetSpawnOptions())
     this.child = child
     // si el proceso muere enseguida, escribir en su entrada falla después (EPIPE): sin quien lo escuche, ese error tumbaría
     // Aula entera; su salida ya dice qué pasó

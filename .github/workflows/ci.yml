@@ -69,8 +69,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Go tests and the Linux sidecar
-        run: native/tsnet/build.sh test linux
+      - name: Go tests and the Linux and Windows sidecars
+        run: |
+          native/tsnet/build.sh test linux
+          native/tsnet/build.sh windows
+          (cd native/tsnet && GOOS=windows GOARCH=amd64 go vet . && GOOS=windows GOARCH=arm64 go vet .)
       - name: Android SDK pieces (build-tools 37, android-36)
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"

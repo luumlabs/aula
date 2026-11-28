@@ -17,9 +17,9 @@ import (
 func TestIsAulaHost(t *testing.T) {
 	long := "aula-" + strings.Repeat("a", 58) // 63 caracteres: el máximo de una etiqueta DNS
 	for name, want := range map[string]bool{
-		"aula-mac": true, "aula-mac-1": true, "aula-server": true, "aula-casa": true, "AULA-NAS": true, "aula-a": true,
+		"aula-mac": true, "aula-mac-1": true, "aula-windows": true, "aula-windows-2": true, "aula-server": true, "aula-casa": true, "AULA-NAS": true, "aula-a": true,
 		"aula-a--b": true, "aula-0": true, long: true,
-		"aula-mac.tail1.ts.net.": true, "AULA-Server.tail1.ts.net": true, // la primera etiqueta del nombre MagicDNS
+		"aula-mac.tail1.ts.net.": true, "aula-windows.tail1.ts.net.": true, "AULA-Server.tail1.ts.net": true, // la primera etiqueta del nombre MagicDNS
 		"aula-ipad": false, "aula-iphone-2": false, "aula-android": false, "aula-device": false, "AULA-IPAD-12": false,
 		"aula-ipad-": false, "aula-ipad-x": true, // solo «-<cifras>» detrás del nombre de un dispositivo
 		"aula": false, "aula-": false, "mac": false, "aula_server": false, "aula--x": false, "aula-x-": false,

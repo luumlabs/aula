@@ -416,8 +416,8 @@ fi
 # nunca una compilación de auditoría (acepta --remote-debugging-port, src/main/electron/debug-guard.ts)
 [ -z "${AULA_AUDIT_BUILD:-}" ] || die "AULA_AUDIT_BUILD está puesto: eso es para auditar, nunca para publicar. Quítalo (unset AULA_AUDIT_BUILD)."
 for p in "${ONLY[@]}"; do
-  # el componente de Tailscale (native/tsnet/build.sh) va en macOS y Linux (y en Android: android_build_tools)
-  case "$p" in mac|linux) need_go ;; esac
+  # el componente de Tailscale (native/tsnet/build.sh) va en macOS, Windows y Linux (y en Android: android_build_tools)
+  case "$p" in mac|win|linux) need_go ;; esac
   case "$p" in
     mac)
       if [ "${AULA_MAC_ADHOC:-}" = 1 ]; then
@@ -543,7 +543,17 @@ for p in "${ONLY[@]}"; do
            node scripts/release-mac-dmg.mjs finish "$OUT" "$VERSION" --identity "$MAC_IDENTITY" --keychain-profile "$APPLE_KEYCHAIN_PROFILE" \
              || die "El DMG de macOS no quedó firmado, notarizado y grapado: no se firman las actualizaciones. Vuelve a compilar Mac (--only mac)."
          fi ;;
-    win) npx electron-builder --win --publish never -c.directories.output="$OUT" ;;
+    win)
+      # el componente de Tailscale para Windows (x64 y arm64): «Aula en tus dispositivos». Si falta,
+      # electron-builder solo avisa y el paquete sale sin él: se comprueba antes y después
+      native/tsnet/build.sh windows || die "No se pudo compilar native/tsnet/bin/win-*/aula-tsnet.exe (lo dice native/tsnet/build.sh)."
+      for a in x64 arm64; do
+        [ -s "native/tsnet/bin/win-$a/aula-tsnet.exe" ] || die "native/tsnet/build.sh windows no dejó native/tsnet/bin/win-$a/aula-tsnet.exe."
+      done
+      npx electron-builder --win --publish never -c.directories.output="$OUT"
+      for d in win-unpacked win-arm64-unpacked; do
+        [ -s "$OUT/$d/resources/bin/aula-tsnet.exe" ] || die "El paquete de Windows ($d) salió sin resources/bin/aula-tsnet.exe."
+      done ;;
     linux)
       # el componente de Tailscale para Linux (x64 y arm64): «Aula en tus dispositivos» y Aula como servidor. Si falta,
       # electron-builder solo avisa y el paquete sale sin él: se comprueba antes y después

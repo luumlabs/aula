@@ -5,7 +5,7 @@
 // vincular el primer dispositivo, que será el propietario.
 import { app, shell } from 'electron'
 import { randomBytes } from 'node:crypto'
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RemoteStatus } from '@shared/ipc/remote'
 import { aiLocale, tr } from '@shared/ai/i18n'
@@ -20,7 +20,7 @@ import { currentAIRecipients } from '@main/services/ai/recipients'
 import { rendererRoot } from '../protocol'
 import { emit } from '../rpc'
 import { RemoteServer } from './server'
-import { Tailnet } from './tailnet'
+import { defaultTailnetHostname, resolveTailnetBinary, Tailnet, tailnetBinaryName } from './tailnet'
 
 /** Una línea en la consola del servidor (y en el registro). */
 function say(line: string): void {
@@ -54,7 +54,7 @@ class RemoteAccess {
   private readonly server = new RemoteServer({
     devices: this.devices, uploads: this.uploads, rendererRoot: rendererRoot(), icon: join(__dirname, '../../resources/icon.png'), language: () => aiLocale(), version: app.getVersion(), proxyKey: this.proxyKey,
     cookieName: `aula_device_${installId(this.dir)}`,
-    host: this.headless ? 'server' : 'mac',
+    host: this.headless ? 'server' : process.platform === 'win32' ? 'windows' : 'mac',
     // el aviso de la IA de terceros en los dispositivos (guía 5.1.2(i))
     aiRecipients: () => currentAIRecipients(),
     ...(this.headless ? { admin: { token: this.adminToken, status: () => this.status(), link: (owner: boolean) => this.consoleLink(owner) } } : {}),
@@ -62,7 +62,7 @@ class RemoteAccess {
   })
   private readonly tailnet = new Tailnet({
     binary: tailnetBinary(), stateDir: join(this.dir, 'tailnet'), proxyKey: this.proxyKey, onChange: () => this.changed(),
-    hostname: this.headless ? serverHostname() : undefined
+    hostname: this.headless ? serverHostname() : defaultTailnetHostname()
   })
   private enabled = false
   private pairing: { code: string; expires: string; owner: boolean } | undefined
@@ -79,7 +79,7 @@ class RemoteAccess {
       say(tr(`Aula ${app.getVersion()} como servidor, sin ventana · datos en ${paths.root()}`, `Aula ${app.getVersion()} running as a server, without a window · data in ${paths.root()}`))
       for (const d of this.devices.list()) this.knownDevices.add(d.id)
       await this.setEnabled(true)
-      if (!this.tailnet.available) say(tr('Falta el componente de Tailscale (aula-tsnet): los dispositivos no podrán llegar.', 'The Tailscale component (aula-tsnet) is missing: devices will not be able to reach this server.'))
+      if (!this.tailnet.available) say(tr(`Falta el componente de Tailscale (${tailnetBinaryName()}): los dispositivos no podrán llegar.`, `The Tailscale component (${tailnetBinaryName()}) is missing: devices will not be able to reach this server.`))
       // sin propietario todavía: se abre un código de propietario (y otro cuando caduque) hasta que alguien lo use, salvo
       // tras demasiados intentos fallidos (remote/devices.ts): entonces se pide en la consola
       this.offerOwnerCode()
@@ -262,10 +262,11 @@ function withoutOwner(d: RemoteDeviceView): RemoteDeviceView {
 
 /** El componente de Tailscale: dentro de la app empaquetada o, en desarrollo, donde lo deja `native/tsnet/build.sh`. */
 function tailnetBinary(): string {
-  const packaged = join(process.resourcesPath ?? '', 'bin', 'aula-tsnet')
-  if (app.isPackaged) return packaged
-  const dev = join(app.getAppPath(), 'native', 'tsnet', 'bin', 'aula-tsnet')
-  return existsSync(dev) ? dev : packaged
+  return resolveTailnetBinary({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath ?? '',
+    appPath: app.getAppPath()
+  })
 }
 
 let instance: RemoteAccess | null = null

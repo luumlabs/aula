@@ -53,8 +53,8 @@ export interface RemoteServerOptions {
   onChange?: () => void
   /** El nombre de la cookie de esta instalación (por defecto, el de siempre). Se sigue aceptando `aula_device`. */
   cookieName?: string
-  /** Dónde corre Aula: en el Mac (con su ventana) o como servidor. Cambia lo que dicen la página de vincular y los avisos. */
-  host?: 'mac' | 'server'
+  /** Dónde corre Aula: en el Mac, en Windows (con su ventana) o como servidor. Cambia lo que dicen la página de vincular y los avisos. */
+  host?: 'mac' | 'windows' | 'server'
   /** La consola del servidor (`/admin/…`), solo en Aula como servidor. */
   admin?: { token: string; status: () => unknown; link: (owner: boolean) => unknown }
   /** A quién mandaría Aula ahora los datos (ai/recipients.ts). Sin esto no hay aviso de la IA (las pruebas de siempre). */
@@ -270,7 +270,9 @@ export class RemoteServer {
     if (verdict === 'deny') {
       const message = this.o.host === 'server'
         ? owner ? tr('Esto no se puede hacer desde un dispositivo: hazlo en la consola del servidor.', 'This can\'t be done from a device: do it on the server\'s console.') : tr('Esto solo lo puede hacer el propietario de este servidor de Aula.', 'Only the owner of this Aula server can do this.')
-        : tr('Esto solo se puede hacer desde Aula en tu Mac.', 'This can only be done from Aula on your Mac.')
+        : this.o.host === 'windows'
+          ? tr('Esto solo se puede hacer desde Aula en tu PC con Windows.', 'This can only be done from Aula on your Windows PC.')
+          : tr('Esto solo se puede hacer desde Aula en tu Mac.', 'This can only be done from Aula on your Mac.')
       return this.json(res, 200, { ok: false, error: { message, code: 'forbidden' } })
     }
     if (verdict === 'noop') return this.json(res, 200, { ok: true, value: noopValue(method) })
@@ -361,7 +363,7 @@ export class RemoteServer {
       // la página trae su propia política en una etiqueta <meta>; aquí vale la del servidor, y el puente va antes que la app.
       // También trae su «viewport» de escritorio: se cambia por el de un dispositivo (uno solo: las apps nativas retocan el
       // primero que encuentran, y hasta entonces mandaba el último)
-      html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<meta[^>]+name=["']viewport["'][^>]*>/gi, '').replace(/<head>/i, '<head><meta name="viewport" content="' + DEVICE_VIEWPORT + '"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' + (this.o.host === 'server' ? '<meta name="aula-host" content="server">' : '') + (this.isOwner(device) ? '<meta name="aula-device" content="owner">' : '') + '<script src="/remote-bridge.js"></script>')
+      html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/i, '').replace(/<meta[^>]+name=["']viewport["'][^>]*>/gi, '').replace(/<head>/i, '<head><meta name="viewport" content="' + DEVICE_VIEWPORT + '"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Aula"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png">' + (this.o.host === 'server' ? '<meta name="aula-host" content="server">' : this.o.host === 'windows' ? '<meta name="aula-host" content="windows">' : '') + (this.isOwner(device) ? '<meta name="aula-device" content="owner">' : '') + '<script src="/remote-bridge.js"></script>')
       return this.send(res, 200, type, head ? '' : html, { 'content-security-policy': REMOTE_CSP, 'cache-control': 'no-store' }, head ? undefined : req)
     }
     let size: number

@@ -1,7 +1,7 @@
 # Aula on your iPad, iPhone and Android
 
 Aula can be used from the student's own iPad, iPhone and Android phone or tablet while everything (courses, the AI, the
-data) stays on their Mac — or on their own server, with no Mac at all ([SERVER.md](SERVER.md)). The devices are only a
+data) stays on their Mac, their Windows PC — or on their own server, with no desktop app at all ([SERVER.md](SERVER.md)). The devices are only a
 window: they reach Aula over the student's private Tailscale network (their own account).
 
 - **iPad**: the whole app, as on the Mac (courses, lessons, practice, chat, calendar, documents).
@@ -41,10 +41,13 @@ On the Mac (`src/main/electron/remote/`, `src/main/services/remote/`):
   `aula-upload://<id>/<name>` reference; the server swaps it for the path of the copy (in the system temp folder,
   swept after 7 days) and registers it as a file the student gave, exactly like a file dropped on the Mac window.
 - **Private network** (`tailnet.ts` + `native/tsnet/`): a Go sidecar built on Tailscale's `tsnet` (ported from Faro)
-  joins the student's tailnet as `aula-mac` and forwards port 80 to the remote server. It only accepts peers that
+  joins the student's tailnet as `aula-mac` (or `aula-windows` on Windows, `aula-server` in server mode) and forwards
+  port 80 to the remote server. It only accepts peers that
   belong to the **same Tailscale user**, proves to itself that the upstream is Aula (HMAC challenge on `/health`)
-  before forwarding, and never uploads logs. Tailscale does not need to be installed on the Mac. The server also
-  rejects any request whose `Host` is not this computer unless it carries the sidecar's per-launch key.
+  before forwarding, and never uploads logs. Tailscale does not need to be installed on the computer (and on Windows,
+  the embedded `aula-tsnet.exe` runs in userspace without admin rights or interfering with an existing Tailscale Windows
+  install, reusing the desktop instance's existing data folder `%APPDATA%\Aula` directly with no data migration). The
+  server also rejects any request whose `Host` is not this computer unless it carries the sidecar's per-launch key.
 
 ## Settings on a device
 
@@ -381,6 +384,7 @@ Verified on a Mac, by tests in this repository:
 
 Not verified yet:
 
+- A real Windows PC hosting mobile devices over Tailscale (the Windows sidecar `aula-tsnet.exe` x64/arm64 is cross-compiled and vetted with `GOOS=windows`, and packaging/runtime logic is covered by automated tests, but live execution on Windows — including Windows Defender Firewall/SmartScreen behavior and live Android/iOS pairing against `aula-windows` — requires testing on a real Windows machine and the Windows CI packaging workflow).
 - A real iPhone.
 - On a real device: that a pinch or a double tap does not zoom (only tried in the simulator), the camera and the
   microphone, and a long session with the device going to sleep and coming back.

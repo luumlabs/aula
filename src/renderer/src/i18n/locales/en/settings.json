@@ -2,6 +2,7 @@
   "title": "Settings",
   "remote": {
     "subtitle": "These are Aula’s settings on your Mac: what you change here changes everywhere. Keys, platforms, devices and data are managed on the Mac.",
+    "subtitleWin": "These are Aula’s settings on your Windows PC: what you change here changes everywhere. Keys, platforms, devices and data are managed on your PC.",
     "subtitleServer": "These are your Aula server’s settings: what you change here changes on all your devices. The AI and its keys, platforms and devices are managed by its owner.",
     "subtitleOwner": "These are your Aula server’s settings: what you change here changes on all your devices. As the owner, you also manage the AI and its keys, platforms and devices."
   },
@@ -22,6 +23,10 @@
       "ready": "Ready on your Mac",
       "none": "No AI is ready on your Mac. Connect one in Aula on your Mac: Settings → Your AI.",
       "hint": "To connect another AI, change a key or set a spending cap, open Settings on your Mac.",
+      "detailWin": "Choose among the ones already set up on your Windows PC",
+      "readyWin": "Ready on your Windows PC",
+      "noneWin": "No AI is ready on your Windows PC. Connect one in Aula on your PC: Settings → Your AI.",
+      "hintWin": "To connect another AI, change a key or set a spending cap, open Settings on your Windows PC.",
       "detailServer": "Choose among the ones already set up on the server",
       "readyServer": "Ready on the server",
       "noneServer": "No AI is ready on the server. The owner connects one in Settings → Your AI.",
@@ -219,6 +224,17 @@
     "removeBody": "That device will no longer be able to open Aula. To use it again you’ll have to link it with a new code.",
     "failed": "Couldn’t change that",
     "owner": "Owner",
+    "win": {
+      "hint": "Use Aula from your Android phone, iPhone or iPad. Your courses, your AI and your data stay on this Windows PC: devices reach it over your private Tailscale network, encrypted end to end.",
+      "netNeedsApproval": "Waiting for your network to approve this PC",
+      "netAs": "{{user}} · this PC is called “{{name}}”",
+      "netLoginHint": "Just once. Use the same account as on your phone or tablet: only your devices will be able to reach this PC.",
+      "netApprovalTitle": "Your network has to approve this PC",
+      "netApprovalHint": "Whoever manages your Tailscale network must approve the machine “{{name}}” in its admin panel. Aula carries on by itself once they do.",
+      "netErrorHint": "Aula keeps trying by itself. Check that this PC is online.",
+      "step1": "On Android, iPhone or iPad, open the Aula app and sign in to Tailscale with the same account.",
+      "step2": "If it asks which Aula to open, choose “{{name}}” (or, in a browser with Tailscale connected, {{address}})."
+    },
     "server": {
       "title": "Your devices",
       "hint": "This Aula server is used from your devices (iPhone, iPad, Android), which reach it over your private Tailscale network, encrypted end to end. An owner, like you, also manages the AI, platforms and devices.",
