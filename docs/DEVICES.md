@@ -382,9 +382,11 @@ Verified on a Mac, by tests in this repository:
 - In the iPhone simulator, a two-finger pinch does not zoom the interface, and the bottom tabs sit above the home
   indicator.
 
+- On real Windows CI runners (`windows-latest` x64, `windows-11-arm` ARM64, and `windows-2025`): native Windows Go tests of `native/tsnet` (including `reserveStdout()` handle redirection and `TS_LOGS_DIR`/`XDG_DATA_HOME` isolation), full Electron `tests/e2e/remote-host.e2e.ts` with real `aula-tsnet.exe` reaching `needsLogin` without touching `%LocalAppData%\Tailscale`, pairing a simulated mobile client against existing courses in `AULA_HOME`, policy allowlist & NTFS reserved-name upload checks, clean shutdown, dual-arch NSIS packaging (`win-unpacked` + `win-arm64-unpacked` sidecars), and silent NSIS install/uninstall verifying `%LOCALAPPDATA%\Programs\aula\resources\bin\aula-tsnet.exe`.
+
 Not verified yet:
 
-- A real Windows PC hosting mobile devices over Tailscale (the Windows sidecar `aula-tsnet.exe` x64/arm64 is cross-compiled and vetted with `GOOS=windows`, and packaging/runtime logic is covered by automated tests, but live execution on Windows — including Windows Defender Firewall/SmartScreen behavior and live Android/iOS pairing against `aula-windows` — requires testing on a real Windows machine and the Windows CI packaging workflow).
+- Interactive live Tailscale OAuth sign-in and physical Android/iPhone pairing against a user's Windows PC on a personal tailnet (including Windows Defender Firewall / SmartScreen prompts on unsigned Windows binaries).
 - A real iPhone.
 - On a real device: that a pinch or a double tap does not zoom (only tried in the simulator), the camera and the
   microphone, and a long session with the device going to sleep and coming back.

@@ -18,7 +18,7 @@ jobs:
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       # un sistema que falla no para los demás: se ve todo lo que falla de una vez
       fail-fast: false
