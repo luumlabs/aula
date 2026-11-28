@@ -45,12 +45,23 @@ export function DevicesSection() {
   // mientras llega el estado, solo el título (sin un hueco entre dos filetes)
   if (!status) return <Section title={t('devices.title')} rule={false} />
   const server = status.server === true
+  const windows = !server && api.platform === 'win32'
+  const dk = (k: string): string => (windows ? `devices.win.${k}` : `devices.${k}`)
+  const fallbackName = server ? 'aula-server' : windows ? 'aula-windows' : 'aula-mac'
   const on = status.enabled
   const net = status.tailnet
   const ready = on && net.state === 'running'
-  const address = status.deviceURL ?? 'http://aula-mac'
-  const name = status.tailnet.name ?? (server ? 'aula-server' : 'aula-mac')
-  const headline = !on ? t('devices.off') : ready ? (status.connected ? t('devices.connected', { count: status.connected }) : t('devices.ready')) : t(`devices.net.${net.state}`)
+  const address = status.deviceURL ?? `http://${fallbackName}`
+  const name = status.tailnet.name ?? fallbackName
+  const headline = !on
+    ? t('devices.off')
+    : ready
+      ? status.connected
+        ? t('devices.connected', { count: status.connected })
+        : t('devices.ready')
+      : windows && net.state === 'needsApproval'
+        ? t('devices.win.netNeedsApproval')
+        : t(`devices.net.${net.state}`)
 
   return (
     <Section
@@ -60,11 +71,11 @@ export function DevicesSection() {
       // un servidor no se apaga desde un dispositivo: dejaría fuera a todos
       action={!server ? <Switch checked={on} disabled={busy} onChange={(v) => void run(() => api.invoke('remote.setEnabled', { enabled: v }))} label={t('devices.title')} /> : undefined}
     >
-      <p className="t-callout text-text2">{server ? t('devices.server.hint') : t('devices.hint')}</p>
+      <p className="t-callout text-text2">{server ? t('devices.server.hint') : t(dk('hint'))}</p>
 
       {on && (
         <div className="mt-4 flex flex-col">
-          <Network status={status} busy={busy} run={run} />
+          <Network status={status} windows={windows} fallbackName={fallbackName} name={name} busy={busy} run={run} />
 
           {ready && (
             <div className="border-t-[0.5px] border-line-soft py-3">
@@ -78,8 +89,8 @@ export function DevicesSection() {
                     <div className="t-ui text-text3 tabular pb-1">{t('devices.codeExpires', { left })}</div>
                   </div>
                   <ol className="mt-3 flex list-decimal flex-col gap-1 pl-5 t-callout text-text2">
-                    <li>{server ? t('devices.server.step1') : t('devices.step1')}</li>
-                    <li>{server ? t('devices.server.step2', { name }) : t('devices.step2', { address })}</li>
+                    <li>{server ? t('devices.server.step1') : t(dk('step1'))}</li>
+                    <li>{server ? t('devices.server.step2', { name }) : t(dk('step2'), { address, name })}</li>
                     <li>{t('devices.step3')}</li>
                   </ol>
                   <Button size="sm" variant="ghost" className="mt-2 -ml-2" onClick={() => void run(() => api.invoke('remote.cancelPairing'))}>{t('devices.cancelCode')}</Button>
@@ -133,10 +144,11 @@ export function DevicesSection() {
   )
 }
 
-/** La red privada: qué falta para que los dispositivos encuentren este Mac, con el único botón que toca en cada caso. */
-function Network({ status, busy, run }: { status: RemoteStatus; busy: boolean; run: (call: () => Promise<RemoteStatus>) => Promise<void> }) {
+/** La red privada: qué falta para que los dispositivos encuentren este equipo, con el único botón que toca en cada caso. */
+function Network({ status, windows, fallbackName, name, busy, run }: { status: RemoteStatus; windows: boolean; fallbackName: string; name: string; busy: boolean; run: (call: () => Promise<RemoteStatus>) => Promise<void> }) {
   const { t } = useTranslation('settings')
   const net = status.tailnet
+  const dk = (k: string): string => (windows ? `devices.win.${k}` : `devices.${k}`)
   const row = 'flex items-center justify-between gap-4 border-t-[0.5px] border-line-soft py-3'
   switch (net.state) {
     case 'running':
@@ -144,7 +156,7 @@ function Network({ status, busy, run }: { status: RemoteStatus; busy: boolean; r
         <div className={row}>
           <div className="min-w-0">
             <div className="t-callout font-medium flex items-center gap-1.5"><Icon name="check-circle" size={15} className="text-accent-text" />{t('devices.netRunning')}</div>
-            <div className="t-ui text-text3 mt-0.5 truncate">{net.user ? t(status.server ? 'devices.server.netAs' : 'devices.netAs', { user: net.user, name: net.name ?? (status.server ? 'aula-server' : 'aula-mac') }) : net.name}</div>
+            <div className="t-ui text-text3 mt-0.5 truncate">{net.user ? t(status.server ? 'devices.server.netAs' : dk('netAs'), { user: net.user, name: net.name ?? fallbackName }) : net.name}</div>
           </div>
           {/* la sesión de Tailscale de un servidor se cierra en su consola: desde aquí el dispositivo se quedaría fuera */}
           {!status.server && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => api.invoke('remote.tailnetLogout'))}>{t('devices.netLogout')}</Button>}
@@ -157,17 +169,17 @@ function Network({ status, busy, run }: { status: RemoteStatus; busy: boolean; r
         <div className={row}>
           <div className="min-w-0">
             <div className="t-callout font-medium">{t('devices.netLoginTitle')}</div>
-            <div className="t-ui text-text3 mt-0.5">{t('devices.netLoginHint')}</div>
+            <div className="t-ui text-text3 mt-0.5">{t(dk('netLoginHint'))}</div>
           </div>
           <Button variant="primary" disabled={busy || !net.authURL} iconRight={<Icon name="external" size={14} />} onClick={() => void run(() => api.invoke('remote.tailnetLogin'))}>{t('devices.netLoginAction')}</Button>
         </div>
       )
     case 'needsApproval':
-      return <Note row={row} title={t('devices.netApprovalTitle')} body={t('devices.netApprovalHint')} />
+      return <Note row={row} title={t(dk('netApprovalTitle'))} body={t(dk('netApprovalHint'), { name })} />
     case 'unavailable':
       return <Note row={row} title={t('devices.netUnavailableTitle')} body={t('devices.netUnavailableHint')} />
     case 'error':
-      return <Note row={row} title={t('devices.netErrorTitle')} body={net.message ?? t('devices.netErrorHint')} />
+      return <Note row={row} title={t('devices.netErrorTitle')} body={net.message ?? t(dk('netErrorHint'))} />
     default:
       return (
         <div className={cx(row, 'justify-start! gap-2.5 text-text2')}>

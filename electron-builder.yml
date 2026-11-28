@@ -102,6 +102,10 @@ dmg:
     - { x: 390, y: 190, type: link, path: /Applications }
 win:
   icon: build/icon.ico
+  # «Aula en tus dispositivos»: el componente de Tailscale para Windows (x64 y arm64), uno por arquitectura.
+  # `native/tsnet/build.sh windows` lo deja en bin/win-x64 y bin/win-arm64 antes de ejecutar electron-builder.
+  extraResources:
+    - { from: "native/tsnet/bin/win-${arch}", to: bin, filter: ["aula-tsnet.exe"] }
   target:
     - target: nsis
       arch: [x64, arm64]

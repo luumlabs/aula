@@ -60,8 +60,8 @@ export const WIPE_ENTRIES = [
   ...EXPORT_FOLDERS, ...EXPORT_FILES,
   'secrets.enc', 'secrets.json', 'Browser Data', 'Models', 'LocalAI', 'tools', 'Cache', 'Logs', 'Eliminados', 'Drafts', 'window.json', 'browser',
   'catalog-cache.json', 'state.json', 'Crashpad',
-  // actualizaciones (install.json, failed.json, watchdog.sh, app-update.yml)
-  'Updates',
+  // actualizaciones (install.json, failed.json, watchdog.sh, app-update.yml) y acceso remoto (dispositivos, Tailscale)
+  'Updates', 'Remote',
   // lo que Chromium deja en la carpeta del perfil (userData es la carpeta de datos; Singleton* no: es el cerrojo de esta instancia)
   'Local State', 'DevToolsActivePort', 'GPUCache', 'GPUPersistentCache', 'Code Cache', 'Dictionaries', 'Local Storage', 'Session Storage', 'IndexedDB',
   'Network', 'Cookies', 'Cookies-journal', 'Preferences', 'Network Persistent State', 'TransportSecurity', 'Trust Tokens', 'Trust Tokens-journal',

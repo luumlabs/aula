@@ -215,7 +215,7 @@ describe('propietario (Aula como servidor)', () => {
     expect(hostLabel('AULA-Mac.tail1234.ts.net.')).toBe('aula-mac')
     expect(hostLabel('aula-\u212a')).toBe('') // la «K» de Kelvin no pasa a ser una «k»: no es ASCII, no vale
     expect(hostLabel('aula-mac.caf\u00e9')).toBe('aula-mac') // solo cuenta la primera etiqueta
-    for (const yes of ['aula-mac', 'aula-mac-1', 'aula-mac-3', 'aula-server', 'aula-server-2', 'aula-casa', 'AULA-SERVER', 'aula-mac.tail1234.ts.net.', 'aula-ipadx', 'aula-ipad-x', 'aula-' + 'x'.repeat(58)])
+    for (const yes of ['aula-mac', 'aula-mac-1', 'aula-mac-3', 'aula-windows', 'aula-windows-2', 'aula-server', 'aula-server-2', 'aula-casa', 'AULA-SERVER', 'aula-mac.tail1234.ts.net.', 'aula-windows.tail1234.ts.net.', 'aula-ipadx', 'aula-ipad-x', 'aula-' + 'x'.repeat(58)])
       expect([yes, isAulaHostname(yes)]).toEqual([yes, true])
     for (const no of ['aula-ipad', 'aula-ipad-2', 'aula-iphone-12', 'aula-android-1', 'aula-device', 'aula-device-7', 'AULA-IPAD', 'aula-ipad.tail1234.ts.net', 'mac', 'aulaserver', 'aula', 'aula-', 'aula--', 'aula-x-', 'aula-ipad-', 'aula_x', 'aula-a_b',
       'aula-caf\u00e9', 'aula-\u2172', 'aula-\u212a', 'aula-' + 'x'.repeat(59), '', '.aula-mac'])
@@ -443,6 +443,10 @@ describe('archivos que sube un dispositivo', () => {
   it('deja nombres seguros', () => {
     expect(safeUploadName('C:\\Users\\ana\\clase 3.mp4')).toBe('clase 3.mp4')
     expect(safeUploadName('.../.oculto')).toBe('oculto')
+    expect(safeUploadName('apuntes.pdf.. ')).toBe('apuntes.pdf')
+    expect(safeUploadName('CON.pdf')).toBe('_CON.pdf')
+    expect(safeUploadName('nul')).toBe('_nul')
+    expect(safeUploadName('com1.txt')).toBe('_com1.txt')
     expect(safeUploadName('\u0000')).toBe('archivo')
   })
 })
@@ -487,6 +491,8 @@ describe('lo que recibe el dispositivo', () => {
     const gone = (): Promise<unknown> => Promise.resolve({ status: 401 })
     expect((await run('en', 'server', offline).invoke('courses.list')).error).toEqual({ message: 'Could not reach your Aula server.', code: 'offline' })
     expect((await run('es', 'server', offline).invoke('courses.list')).error?.message).toBe('No se pudo conectar con tu servidor de Aula.')
+    expect((await run('en', 'windows', offline).invoke('courses.list')).error).toEqual({ message: 'Could not reach Aula on your Windows PC.', code: 'offline' })
+    expect((await run('es', 'windows', offline).invoke('courses.list')).error?.message).toBe('No se pudo conectar con Aula en tu PC con Windows.')
     expect((await run('en', null, offline).invoke('courses.list')).error?.message).toBe('Could not reach Aula on your Mac.')
     expect((await run('es-ES', null, offline).invoke('courses.list')).error?.message).toBe('No se pudo conectar con Aula en tu Mac.')
     expect((await run('en', null, gone).invoke('courses.list')).error).toEqual({ message: 'This device is no longer linked.', code: 'forbidden' })
@@ -497,6 +503,13 @@ describe('lo que recibe el dispositivo', () => {
     expect(es).toContain('Vincula este dispositivo')
     expect(es.match(/nonce="N0NCE"/g)?.length).toBe(2)
     expect(pairingPage('en', 'x')).toContain('Link this device')
+    // Windows: pide el código en el PC con Windows (no en el Mac ni en aula-server)
+    const winEs = pairingPage('es', 'N0NCE', 'windows')
+    expect(winEs).toContain('PC con Windows')
+    expect(winEs).not.toContain('En tu Mac')
+    expect(winEs).not.toContain('aula-server link')
+    expect(winEs.match(/nonce="N0NCE"/g)?.length).toBe(2)
+    expect(pairingPage('en', 'x', 'windows')).toContain('Windows PC')
     // como servidor no hay Mac: el código sale del servidor (o de un propietario)
     expect(pairingPage('es', 'x', 'server')).toContain('aula-server link')
     expect(pairingPage('es', 'x', 'server')).not.toContain('En tu Mac')

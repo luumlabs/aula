@@ -80,10 +80,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"syscall"
 	"time"
 
-	"golang.org/x/sys/unix"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/envknob"
 	"tailscale.com/logtail"
@@ -202,19 +200,6 @@ func main() {
 	os.Exit(run(os.Args[1:], statusOut, os.Stdin))
 }
 
-func reserveStdout() (*os.File, error) {
-	fd, err := syscall.Dup(1)
-	if err != nil {
-		return nil, fmt.Errorf("dup stdout: %w", err)
-	}
-	syscall.CloseOnExec(fd)
-	// unix.Dup2: syscall.Dup2 does not exist on linux/arm64 (only dup3)
-	if err := unix.Dup2(2, 1); err != nil {
-		return nil, fmt.Errorf("redirect stdout: %w", err)
-	}
-	return os.NewFile(uintptr(fd), "status"), nil
-}
-
 type failingWriter struct {
 	w      io.Writer
 	onFail func(error)
@@ -235,6 +220,19 @@ func (f failingWriter) Write(p []byte) (int, error) {
 func disableLogUploads() {
 	envknob.SetNoLogsNoSupport()
 	logtail.Disable()
+}
+
+// isolateStateDirs keeps Tailscale's secondary data/log directories inside
+// stateDir on both Unix (XDG_DATA_HOME) and Windows (TS_LOGS_DIR) so Aula
+// never reads or writes a system Tailscale installation's folders.
+func isolateStateDirs(stateDir string) error {
+	dataDir := filepath.Join(stateDir, "data")
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		return fmt.Errorf("state data dir: %w", err)
+	}
+	os.Setenv("XDG_DATA_HOME", dataDir)
+	os.Setenv("TS_LOGS_DIR", dataDir)
+	return nil
 }
 
 func run(args []string, statusOut io.Writer, stdin io.Reader) int {
@@ -301,14 +299,13 @@ func run(args []string, statusOut io.Writer, stdin io.Reader) int {
 	}
 
 	em.Emit(Event{Type: "starting"})
-	// tailscale's logpolicy.LogsDir (used by ipnlocal for sockstat logs)
-	// falls back to $XDG_DATA_HOME/tailscale, i.e. ~/.local/share/tailscale
-	// on macOS. Keep that inside the state dir too.
-	os.Setenv("XDG_DATA_HOME", filepath.Join(stateDir, "data"))
+	if err := isolateStateDirs(stateDir); err != nil {
+		return fatal(err)
+	}
 
 	// Shutdown triggers: signals here, stdin EOF in readCommands.
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+	signal.Notify(sigc, shutdownSignals()...)
 	go func() {
 		select {
 		case s := <-sigc:

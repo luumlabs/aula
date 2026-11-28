@@ -2,6 +2,7 @@
   "title": "Ajustes",
   "remote": {
     "subtitle": "Son los ajustes de Aula en tu Mac: lo que cambies aquí cambia en todas partes. Las claves, las plataformas, los dispositivos y los datos se gestionan en el Mac.",
+    "subtitleWin": "Son los ajustes de Aula en tu PC con Windows: lo que cambies aquí cambia en todas partes. Las claves, las plataformas, los dispositivos y los datos se gestionan en el PC.",
     "subtitleServer": "Son los ajustes de tu servidor de Aula: lo que cambies aquí cambia en todos tus dispositivos. La IA y sus claves, las plataformas y los dispositivos los lleva su propietario.",
     "subtitleOwner": "Son los ajustes de tu servidor de Aula: lo que cambies aquí cambia en todos tus dispositivos. Como propietario, llevas también la IA y sus claves, las plataformas y los dispositivos."
   },
@@ -22,6 +23,10 @@
       "ready": "Lista en tu Mac",
       "none": "No hay ninguna IA lista en tu Mac. Conecta una en Aula, en tu Mac: Ajustes → Tu IA.",
       "hint": "Para conectar otra IA, cambiar una clave o poner un tope de gasto, abre Ajustes en tu Mac.",
+      "detailWin": "Elige entre las que ya tienes listas en tu PC con Windows",
+      "readyWin": "Lista en tu PC con Windows",
+      "noneWin": "No hay ninguna IA lista en tu PC con Windows. Conecta una en Aula, en tu PC: Ajustes → Tu IA.",
+      "hintWin": "Para conectar otra IA, cambiar una clave o poner un tope de gasto, abre Ajustes en tu PC con Windows.",
       "detailServer": "Elige entre las que ya están listas en el servidor",
       "readyServer": "Lista en el servidor",
       "noneServer": "No hay ninguna IA lista en el servidor. El propietario la conecta en Ajustes → Tu IA.",
@@ -219,6 +224,17 @@
     "removeBody": "Ese dispositivo dejará de poder entrar en Aula. Para volver a usarlo tendrás que vincularlo con un código nuevo.",
     "failed": "No se pudo cambiar",
     "owner": "Propietario",
+    "win": {
+      "hint": "Usa Aula desde tu Android, tu iPhone o tu iPad. Tus cursos, tu IA y tus datos se quedan en este PC con Windows: los dispositivos llegan a él por tu red privada de Tailscale, cifrada de extremo a extremo.",
+      "netNeedsApproval": "Esperando a que tu red apruebe este PC",
+      "netAs": "{{user}} · este PC se llama «{{name}}»",
+      "netLoginHint": "Una sola vez. Usa la misma cuenta que en tu móvil o tableta: solo tus dispositivos podrán llegar a este PC.",
+      "netApprovalTitle": "Tu red tiene que aprobar este PC",
+      "netApprovalHint": "Quien administra tu red de Tailscale debe aprobar el equipo «{{name}}» en su panel. En cuanto lo haga, sigue solo.",
+      "netErrorHint": "Aula lo vuelve a intentar sola. Comprueba que este PC tiene conexión.",
+      "step1": "En tu Android, iPhone o iPad, abre la app de Aula y entra en Tailscale con tu misma cuenta.",
+      "step2": "Si te pregunta qué Aula abrir, elige «{{name}}» (o, en un navegador con Tailscale conectado, {{address}})."
+    },
     "server": {
       "title": "Tus dispositivos",
       "hint": "Este servidor de Aula se usa desde tus dispositivos (iPhone, iPad, Android), que llegan a él por tu red privada de Tailscale, cifrada de extremo a extremo. Un propietario, como tú, lleva además la IA, las plataformas y los dispositivos.",

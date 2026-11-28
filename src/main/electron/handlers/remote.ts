@@ -21,6 +21,7 @@ export function register(): void {
   handle('remote.tailnetLogin', () => remote.tailnetLogin())
   handle('remote.tailnetLogout', () => remote.tailnetLogout())
   void remote.init()
-  // al salir: se para el servidor y el proceso de Tailscale (que no quede huérfano)
+  // al salir: se para el servidor y el proceso de Tailscale (y en will-quit se asegura que no quede bloqueando el .exe)
   app.on('before-quit', () => { void remote.shutdown() })
+  app.on('will-quit', () => { remote.terminateSidecar() })
 }

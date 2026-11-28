@@ -92,6 +92,15 @@ jobs:
           for a in x64 arm64; do
             test -x "native/tsnet/bin/linux-$a/aula-tsnet" || { echo "::error::native/tsnet/build.sh linux left no native/tsnet/bin/linux-$a/aula-tsnet"; exit 1; }
           done
+      # the Tailscale sidecar inside the Windows app (Aula on your devices): x64 and arm64 binaries bundled by electron-builder
+      - name: Build the Tailscale sidecar for Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          native/tsnet/build.sh windows
+          for a in x64 arm64; do
+            test -s "native/tsnet/bin/win-$a/aula-tsnet.exe" || { echo "::error::native/tsnet/build.sh windows left no native/tsnet/bin/win-$a/aula-tsnet.exe"; exit 1; }
+          done
       # the tests are logic and were written on Linux (paths, links): they run there; CI runs them on every change too
       - name: Type check and unit tests
         if: runner.os == 'Linux'
@@ -123,7 +132,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/draft"
           gh release download "v$V" -R "${{ github.repository }}" --dir "$RUNNER_TEMP/draft"
-          node scripts/release-verify.mjs "$RUNNER_TEMP/draft" "$V"
+          # SHA-512, sizes and notes for every uploaded feed; Ed25519 signatures are checked in the next step
+          node scripts/release-verify.mjs --no-signatures "$RUNNER_TEMP/draft" "$V"
           # the Mac files and the Android APK never come from here (their keys live only on the maintainer's Mac)
           for f in latest-mac.yml developer-id-mac.yml "Aula-$V-android.apk"; do
             test -f "$RUNNER_TEMP/draft/$f" || echo "::notice title=Still to add from the Mac::$f isn't on the draft yet: scripts/release-local.sh --only mac --only android, then --upload --repo ${{ github.repository }} (it adds to this draft)."

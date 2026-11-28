@@ -44,7 +44,9 @@ export const REMOTE_BRIDGE_JS = String.raw`(function () {
     try { var m = document.querySelector('meta[name="' + name + '"]'); return m ? m.getAttribute('content') : null } catch (err) { return null }
   }
   var owner = meta('aula-device') === 'owner'
-  var server = meta('aula-host') === 'server'
+  var host = meta('aula-host') || 'mac'
+  var server = host === 'server'
+  var windows = host === 'windows'
   // los avisos del puente, en el idioma de la interfaz (lo pone en <html lang> al elegirlo; como ella: lo que no es español
   // va en inglés)
   function say(es, en) {
@@ -97,6 +99,7 @@ export const REMOTE_BRIDGE_JS = String.raw`(function () {
     remote: true,
     owner: owner,
     server: server,
+    host: host,
     appStore: false,
     invoke: function (method, args) {
       // un enlace se abre en el propio dispositivo (en el servidor no hay quien lo vea)
@@ -113,7 +116,7 @@ export const REMOTE_BRIDGE_JS = String.raw`(function () {
           if (res.status === 401) { gone(); return { ok: false, error: { message: say('Este dispositivo ya no está vinculado.', 'This device is no longer linked.'), code: 'forbidden' } } }
           return res.json()
         })
-        .catch(function () { return { ok: false, error: { message: server ? say('No se pudo conectar con tu servidor de Aula.', 'Could not reach your Aula server.') : say('No se pudo conectar con Aula en tu Mac.', 'Could not reach Aula on your Mac.'), code: 'offline' } } })
+        .catch(function () { return { ok: false, error: { message: server ? say('No se pudo conectar con tu servidor de Aula.', 'Could not reach your Aula server.') : windows ? say('No se pudo conectar con Aula en tu PC con Windows.', 'Could not reach Aula on your Windows PC.') : say('No se pudo conectar con Aula en tu Mac.', 'Could not reach Aula on your Mac.'), code: 'offline' } } })
     },
     on: function (event, fn) {
       if (!listeners[event]) listeners[event] = []
@@ -138,6 +141,12 @@ const SERVER_PAIRING = {
   es: { lead: 'Escribe el código que enseña tu servidor de Aula al arrancar (o pídele otro con «aula-server link» en el servidor). Cuando ya tengas un dispositivo, su propietario también da códigos en Ajustes.', expired: 'Ese código caducó. Pide otro con «aula-server link» en el servidor.', tooMany: 'Demasiados intentos. Pide un código nuevo con «aula-server link» en el servidor.', noCode: 'Aula no está esperando a ningún dispositivo. Pide un código con «aula-server link» en el servidor.', full: 'Hay demasiados dispositivos vinculados. Un propietario puede quitar alguno en Ajustes.', offline: 'No se pudo conectar con tu servidor de Aula.' }
 } as const
 
+/** Lo que dice la página de vincular cuando Aula corre en un PC con Windows. */
+const WINDOWS_PAIRING = {
+  en: { lead: `On your Windows PC, open Aula → ${settingsPath('devices', 'en')} and choose “Link”. Type the code it shows.`, expired: 'That code expired. Ask for a new one on your Windows PC.', tooMany: 'Too many attempts. Ask for a new code on your Windows PC.', noCode: 'Aula is not waiting for a device. Choose “Link” on your Windows PC.', full: 'There are too many linked devices. Remove one on your Windows PC.', offline: 'Could not reach Aula on your Windows PC.' },
+  es: { lead: `En tu PC con Windows, abre Aula → ${settingsPath('devices', 'es')} y elige «Vincular». Escribe el código que te enseña.`, expired: 'Ese código caducó. Pide uno nuevo en tu PC con Windows.', tooMany: 'Demasiados intentos. Pide un código nuevo en tu PC con Windows.', noCode: 'Aula no está esperando a ningún dispositivo. Elige «Vincular» en tu PC con Windows.', full: 'Hay demasiados dispositivos vinculados. Quita alguno en tu PC con Windows.', offline: 'No se pudo conectar con Aula en tu PC con Windows.' }
+} as const
+
 /**
  * El «viewport» de las páginas para un dispositivo: a lo ancho de la pantalla, hasta los bordes (bajo la hora y la barra de
  * inicio: la interfaz se aparta con env(safe-area-inset-*)) y sin zoom, ni al enfocar un campo. El mismo que fijan las apps
@@ -145,14 +154,14 @@ const SERVER_PAIRING = {
  */
 export const DEVICE_VIEWPORT = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
 
-/** Página mínima para vincular un dispositivo: pide el código que enseña Aula en el Mac (o el servidor). Sin dependencias. Los
+/** Página mínima para vincular un dispositivo: pide el código que enseña Aula en el Mac, Windows o el servidor. Sin dependencias. Los
  *  ajustes «de app» (sin destello al tocar, sin arrastrar la página) van en su propio <style> con nonce: la política de la
  *  página no deja que la app nativa añada uno. */
-export function pairingPage(lang: 'es' | 'en', nonce: string, host: 'mac' | 'server' = 'mac'): string {
+export function pairingPage(lang: 'es' | 'en', nonce: string, host: 'mac' | 'windows' | 'server' = 'mac'): string {
   const base = lang === 'en'
     ? { title: 'Link this device to Aula', lead: `On your Mac, open Aula → ${settingsPath('devices', 'en')} and choose “Link”. Type the code it shows.`, name: 'Name of this device', code: 'Code', go: 'Link', wrong: 'That code is not right.', expired: 'That code expired. Ask for a new one on your Mac.', tooMany: 'Too many attempts. Ask for a new code on your Mac.', noCode: 'Aula is not waiting for a device. Choose “Link” on your Mac.', full: 'There are too many linked devices. Remove one on your Mac.', offline: 'Could not reach Aula on your Mac.' }
     : { title: 'Vincula este dispositivo con Aula', lead: `En tu Mac, abre Aula → ${settingsPath('devices', 'es')} y elige «Vincular». Escribe el código que te enseña.`, name: 'Nombre de este dispositivo', code: 'Código', go: 'Vincular', wrong: 'Ese código no es correcto.', expired: 'Ese código caducó. Pide uno nuevo en tu Mac.', tooMany: 'Demasiados intentos. Pide un código nuevo en tu Mac.', noCode: 'Aula no está esperando a ningún dispositivo. Elige «Vincular» en tu Mac.', full: 'Hay demasiados dispositivos vinculados. Quita alguno en tu Mac.', offline: 'No se pudo conectar con Aula en tu Mac.' }
-  const t = host === 'server' ? { ...base, ...SERVER_PAIRING[lang] } : base
+  const t = host === 'server' ? { ...base, ...SERVER_PAIRING[lang] } : host === 'windows' ? { ...base, ...WINDOWS_PAIRING[lang] } : base
   return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="${DEVICE_VIEWPORT}"><title>Aula</title>
 <style nonce="${nonce}">
 html{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation;overscroll-behavior:none}

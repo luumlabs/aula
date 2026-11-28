@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -113,8 +114,10 @@ func TestRotatingLog(t *testing.T) {
 	if len(cur) > 100 || len(old) == 0 || len(old) > 100 {
 		t.Errorf("sizes: current %d, previous %d", len(cur), len(old))
 	}
-	if st, _ := os.Stat(path); st.Mode().Perm() != 0o600 {
-		t.Errorf("log mode = %v, want 0600", st.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		if st, _ := os.Stat(path); st.Mode().Perm() != 0o600 {
+			t.Errorf("log mode = %v, want 0600", st.Mode().Perm())
+		}
 	}
 }
 
@@ -132,6 +135,25 @@ func TestLogPathPrefersTheAppsLogsFolder(t *testing.T) {
 	}
 	if got := logPath(state, func(string) string { return "/x/y.log" }); got != "/x/y.log" {
 		t.Errorf("override: %s", got)
+	}
+}
+
+func TestIsolateStateDirsKeepsTailscaleInsideStateDir(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("TS_LOGS_DIR", "")
+	state := filepath.Join(t.TempDir(), "tailnet")
+	if err := isolateStateDirs(state); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(state, "data")
+	if st, err := os.Stat(want); err != nil || !st.IsDir() {
+		t.Fatalf("data dir missing: %v", err)
+	}
+	if got := os.Getenv("XDG_DATA_HOME"); got != want {
+		t.Errorf("XDG_DATA_HOME = %q, want %q", got, want)
+	}
+	if got := os.Getenv("TS_LOGS_DIR"); got != want {
+		t.Errorf("TS_LOGS_DIR = %q, want %q", got, want)
 	}
 }
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Builds the Tailscale sidecar:
 #   native/tsnet/build.sh [test] [darwin]   bin/aula-tsnet (macOS universal: arm64 + x86_64, like the app)
+#   native/tsnet/build.sh [test] windows    bin/win-x64/aula-tsnet.exe and bin/win-arm64/aula-tsnet.exe (the Windows app)
 #   native/tsnet/build.sh [test] linux      bin/linux-x64/aula-tsnet and bin/linux-arm64/aula-tsnet (the Linux app and the
 #                                           server, see docs/SERVER.md)
 #   native/tsnet/build.sh [test] android    the Android app's client (native/android): bin/android/<abi>/libaulatsnet.so
@@ -49,8 +50,14 @@ export GOFLAGS="${GOFLAGS:-} -mod=readonly"
 
 cd "$HERE"
 if [ "${1:-}" = "test" ]; then
-  go vet ./...
-  go test -count=1 ./...
+  case "$(uname -s 2>/dev/null || echo)" in
+    MINGW*|MSYS*|CYGWIN*|Windows_NT)
+      go vet .
+      go test -count=1 . ;;
+    *)
+      go vet ./...
+      go test -count=1 ./... ;;
+  esac
   shift
 fi
 what="${1:-darwin}"
@@ -65,6 +72,15 @@ build_darwin() {
   lipo -create -output bin/aula-tsnet bin/aula-tsnet-arm64 bin/aula-tsnet-amd64
   rm -f bin/aula-tsnet-arm64 bin/aula-tsnet-amd64
   echo "built $HERE/bin/aula-tsnet"
+}
+
+build_windows() {
+  # the folder names are electron-builder's ${arch} (x64, arm64): electron-builder.yml → win.extraResources
+  for pair in x64:amd64 arm64:arm64; do
+    mkdir -p "bin/win-${pair%%:*}"
+    GOOS=windows GOARCH=${pair##*:} CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o "bin/win-${pair%%:*}/aula-tsnet.exe" .
+    echo "built $HERE/bin/win-${pair%%:*}/aula-tsnet.exe"
+  done
 }
 
 build_linux() {
@@ -88,9 +104,10 @@ build_android() {
 
 case "$what" in
   darwin) build_darwin ;;
+  windows|win) build_windows ;;
   linux) build_linux ;;
   android) build_android ;;
-  all) build_darwin; build_linux; build_android ;;
-  *) echo "usage: $0 [test] [darwin|linux|android|all]" >&2; exit 2 ;;
+  all) build_darwin; build_windows; build_linux; build_android ;;
+  *) echo "usage: $0 [test] [darwin|windows|linux|android|all]" >&2; exit 2 ;;
 esac
 echo "($(go version | awk '{print $3}'), tailscale.com $(go list -m -f '{{.Version}}' tailscale.com))"

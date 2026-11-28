@@ -440,3 +440,60 @@ describe('servidor remoto en el Mac: sin propietarios, y una ficha caducada cort
     expect(await drain(r)).not.toContain('calendar.changed')
   })
 })
+
+describe('servidor remoto en Windows: mismos controles que en Mac, sin propietarios y textos de Windows', () => {
+  let srv: import('./server').RemoteServer
+  let reg: import('@main/services/remote/devices').DeviceRegistry
+  let wurl = ''
+  const pair = async (owner: boolean): Promise<string> => {
+    const { code } = reg.startPairing({ owner })
+    const res = await fetch(wurl + '/pair/complete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: 'Pixel', platform: 'android' }) })
+    return (res.headers.get('set-cookie') ?? '').split(';')[0]
+  }
+  const open = async (c: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => (await fetch(wurl + '/events', { headers: { cookie: c } })).body!.getReader()
+
+  beforeAll(async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'aula-remote-win-'))
+    const renderer = join(dir, 'renderer')
+    mkdirSync(renderer, { recursive: true })
+    writeFileSync(join(renderer, 'index.html'), '<!doctype html><html><head><title>Aula</title></head><body></body></html>')
+    const { DeviceRegistry } = await import('@main/services/remote/devices')
+    const { UploadStore } = await import('@main/services/remote/uploads')
+    const { RemoteServer } = await import('./server')
+    reg = new DeviceRegistry(join(dir, 'devices.json'))
+    srv = new RemoteServer({ devices: reg, uploads: new UploadStore(join(dir, 'uploads'), { grant: () => true }), rendererRoot: renderer, language: () => 'es', version: '9.9.9', proxyKey: KEY, host: 'windows' })
+    wurl = `http://127.0.0.1:${await srv.start()}`
+  })
+  afterAll(async () => { await srv.stop() })
+
+  it('acepta aula-windows solo con la clave del proxy y muestra la página de vincular de Windows', async () => {
+    const status = (headers: Record<string, string>): Promise<number> => new Promise((resolve, reject) => {
+      request(wurl + '/health', { headers }, (res) => { res.resume(); resolve(res.statusCode ?? 0) }).on('error', reject).end()
+    })
+    expect(await status({ host: 'aula-windows' })).toBe(421)
+    expect(await status({ host: 'aula-windows', 'x-aula-proxy-key': 'otra' })).toBe(421)
+    expect(await status({ host: 'aula-windows', 'x-aula-proxy-key': KEY })).toBe(200)
+    const html = await (await fetch(wurl + '/pair')).text()
+    expect(html).toContain('PC con Windows')
+    expect(html).not.toContain('En tu Mac')
+  })
+
+  it('conserva la lista blanca y no concede rol de propietario a dispositivos en Windows', async () => {
+    const c = await pair(true)
+    const page = await (await fetch(wurl + '/', { headers: { cookie: c } })).text()
+    expect(page).toContain('<meta name="aula-host" content="windows"><script src="/remote-bridge.js">')
+    expect(page).not.toContain('aula-device')
+    seen = []
+    const denied = await (await fetch(wurl + '/rpc', { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ method: 'ai.setKey', args: { providerId: 'deepseek', key: 'sk-1234567890abcdef' } }) })).json() as { ok: boolean; error?: { code: string; message: string } }
+    expect(denied.error).toMatchObject({ code: 'forbidden', message: expect.stringContaining('Windows') })
+    const allowed = await (await fetch(wurl + '/rpc', { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ method: 'courses.list' }) })).json() as { ok: boolean }
+    expect(allowed.ok).toBe(true)
+    expect(seen.map((s) => s.method)).toEqual(['courses.list'])
+    const r = await open(c)
+    const { emit } = await import('../rpc')
+    emit('remote.changed' as never, { pairing: { code: '989898' } } as never)
+    emit('calendar.changed' as never, {} as never)
+    expect(await until(r, 'calendar.changed')).not.toContain('989898')
+    await r.cancel()
+  })
+})
