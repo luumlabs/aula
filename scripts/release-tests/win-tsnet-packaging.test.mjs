@@ -50,8 +50,11 @@ test('build.sh, release-local.sh y los flujos de GitHub compilan y comprueban el
   assert.match(packagingWf, /Build the Windows sidecars/)
   assert.match(packagingWf, /native\/tsnet\/build\.sh windows/)
   assert.match(packagingWf, /packaging-ci\/\$dir\/resources\/bin\/aula-tsnet\.exe/)
+  assert.match(packagingWf, /Smoke-test packaged Windows sidecar and silent NSIS install/)
 
   const ciWf = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf8')
+  assert.match(ciWf, /Tailscale sidecar Go tests and native build/)
+  assert.match(ciWf, /native\/tsnet\/build\.sh test windows/)
   assert.match(ciWf, /native\/tsnet\/build\.sh windows/)
   assert.match(ciWf, /GOOS=windows GOARCH=amd64 go vet \./)
   assert.match(ciWf, /GOOS=windows GOARCH=arm64 go vet \./)

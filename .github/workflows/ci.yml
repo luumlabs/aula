@@ -30,6 +30,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: native/tsnet/go.mod
+          cache-dependency-path: native/tsnet/go.sum
       - run: npm ci
       - name: Type check
         run: npm run typecheck
@@ -38,6 +42,21 @@ jobs:
       - name: Release metadata and publication tests
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: node --test scripts/release-tests/*.test.mjs
+      - name: Tailscale sidecar Go tests and native build
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            native/tsnet/build.sh test windows
+            for a in x64 arm64; do
+              test -s "native/tsnet/bin/win-$a/aula-tsnet.exe"
+            done
+          else
+            native/tsnet/build.sh test linux
+            for a in x64 arm64; do
+              test -x "native/tsnet/bin/linux-$a/aula-tsnet"
+            done
+          fi
       - name: Build
         id: build
         if: ${{ !cancelled() }}

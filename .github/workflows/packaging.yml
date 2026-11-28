@@ -109,6 +109,28 @@ jobs:
           writeFileSync(`${dir}/BUILD_INFO.json`, JSON.stringify(info, null, 2) + '\n')
           console.log(JSON.stringify(info, null, 2))
           NODE
+      - name: Smoke-test packaged Windows sidecar and silent NSIS install
+        if: runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          V=$(node -p "require('./package.json').version")
+          UNPACKED="packaging-ci/win-unpacked/resources/bin/aula-tsnet.exe"
+          "$UNPACKED" --help >/dev/null
+          # Invalid proxy key must emit clean NDJSON error+stopped on stdout with zero stray output
+          STATE_TMP=$(mktemp -d)
+          OUT=$("$UNPACKED" --state-dir "$STATE_TMP/state" --target 127.0.0.1:9 <<< '{"proxyKey":"short"}' 2>"$STATE_TMP/err.log" || true)
+          printf '%s\n' "$OUT" | grep -q '"type":"error"'
+          printf '%s\n' "$OUT" | grep -q '"type":"stopped"'
+          rm -rf "$STATE_TMP"
+          # Silent per-user NSIS install must place aula-tsnet.exe next to Aula.exe
+          "packaging-ci/Aula-Setup-${V}.exe" /S
+          INSTALLED_DIR="$(cygpath -u "$LOCALAPPDATA")/Programs/aula"
+          test -s "$INSTALLED_DIR/Aula.exe"
+          test -s "$INSTALLED_DIR/resources/bin/aula-tsnet.exe"
+          "$INSTALLED_DIR/resources/bin/aula-tsnet.exe" --help >/dev/null
+          if [ -x "$INSTALLED_DIR/Uninstall Aula.exe" ] || [ -f "$INSTALLED_DIR/Uninstall Aula.exe" ]; then
+            "$INSTALLED_DIR/Uninstall Aula.exe" /S || true
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: packaging-${{ runner.os }}-${{ github.sha }}
