@@ -443,6 +443,10 @@ describe('archivos que sube un dispositivo', () => {
   it('deja nombres seguros', () => {
     expect(safeUploadName('C:\\Users\\ana\\clase 3.mp4')).toBe('clase 3.mp4')
     expect(safeUploadName('.../.oculto')).toBe('oculto')
+    expect(safeUploadName('apuntes.pdf.. ')).toBe('apuntes.pdf')
+    expect(safeUploadName('CON.pdf')).toBe('_CON.pdf')
+    expect(safeUploadName('nul')).toBe('_nul')
+    expect(safeUploadName('com1.txt')).toBe('_com1.txt')
     expect(safeUploadName('\u0000')).toBe('archivo')
   })
 })

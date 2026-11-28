@@ -2,8 +2,11 @@
 // y que los guiones y flujos de CI/publicación compilan y verifican el sidecar antes de empaquetar.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { ROOT } from '../release-common.mjs'
 
@@ -39,6 +42,9 @@ test('build.sh, release-local.sh y los flujos de GitHub compilan y comprueban el
   assert.match(releaseWf, /Build the Tailscale sidecar for Windows/)
   assert.match(releaseWf, /native\/tsnet\/build\.sh windows/)
   assert.match(releaseWf, /native\/tsnet\/bin\/win-\$a\/aula-tsnet\.exe/)
+  // Step 1 verifica SHA-512 de todos los feeds aunque aún no tengan firma Ed25519; Step 2 sigue exigiendo la firma
+  assert.match(releaseWf, /node scripts\/release-verify\.mjs --no-signatures "\$RUNNER_TEMP\/draft" "\$V"/)
+  assert.match(releaseWf, /node scripts\/release-sign\.mjs --verify "\$RUNNER_TEMP\/draft"/)
 
   const packagingWf = readFileSync(join(ROOT, '.github/workflows/packaging.yml'), 'utf8')
   assert.match(packagingWf, /Build the Windows sidecars/)
@@ -49,4 +55,40 @@ test('build.sh, release-local.sh y los flujos de GitHub compilan y comprueban el
   assert.match(ciWf, /native\/tsnet\/build\.sh windows/)
   assert.match(ciWf, /GOOS=windows GOARCH=amd64 go vet \./)
   assert.match(ciWf, /GOOS=windows GOARCH=arm64 go vet \./)
+})
+
+test('release-verify.mjs exige firmas por defecto y comprueba todos los SHA-512 con --no-signatures', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'aula-verify-nosig-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const makeFeed = (feed, file, content) => {
+    const bytes = Buffer.from(content)
+    writeFileSync(join(dir, file), bytes)
+    const sha512 = createHash('sha512').update(bytes).digest('base64')
+    writeFileSync(join(dir, feed), yaml.dump({
+      version: '0.2.9',
+      path: file,
+      sha512,
+      releaseNotes: 'Notes',
+      files: [{ url: file, sha512, size: bytes.length }]
+    }))
+  }
+  makeFeed('latest.yml', 'Aula-Setup-0.2.9.exe', 'win-installer-bytes')
+  makeFeed('latest-linux.yml', 'Aula-0.2.9-linux-x86_64.AppImage', 'linux-x64-bytes')
+  makeFeed('latest-linux-arm64.yml', 'Aula-0.2.9-linux-arm64.AppImage', 'linux-arm64-bytes')
+
+  const strict = spawnSync(process.execPath, [join(ROOT, 'scripts/release-verify.mjs'), dir, '0.2.9'], { encoding: 'utf8' })
+  assert.equal(strict.status, 1)
+  assert.match(strict.stderr, /sin firma válida de Aula/)
+
+  const hashesOnly = spawnSync(process.execPath, [join(ROOT, 'scripts/release-verify.mjs'), '--no-signatures', dir, '0.2.9'], { encoding: 'utf8' })
+  assert.equal(hashesOnly.status, 0, hashesOnly.stderr)
+  assert.match(hashesOnly.stdout, /latest\.yml: archivos y hashes válidos/)
+  assert.match(hashesOnly.stdout, /latest-linux\.yml: archivos y hashes válidos/)
+  assert.match(hashesOnly.stdout, /latest-linux-arm64\.yml: archivos y hashes válidos/)
+
+  // un SHA-512 corrupto sigue fallando incluso con --no-signatures
+  writeFileSync(join(dir, 'Aula-Setup-0.2.9.exe'), 'tampered-bytes')
+  const tampered = spawnSync(process.execPath, [join(ROOT, 'scripts/release-verify.mjs'), '--no-signatures', dir, '0.2.9'], { encoding: 'utf8' })
+  assert.equal(tampered.status, 1)
+  assert.match(tampered.stderr, /SHA-512 incorrecto/)
 })

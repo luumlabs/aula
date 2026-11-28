@@ -253,6 +253,11 @@ class RemoteAccess {
     await this.server.stop().catch(() => undefined)
     if (this.headless) { try { rmSync(join(this.dir, 'admin.json'), { force: true }) } catch { /* nada */ } }
   }
+
+  /** Garantiza en `will-quit` que ningún proceso auxiliar de Tailscale siga abierto (bloqueo de .exe en Windows). */
+  terminateSidecar(): void {
+    this.tailnet.terminateNow()
+  }
 }
 
 /** El dispositivo sin la marca de propietario. */

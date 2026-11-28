@@ -59,6 +59,8 @@ interface SidecarEvent { type?: string; authURL?: string; hostname?: string; dns
 
 export class Tailnet {
   private child: ChildProcess | null = null
+  /** Procesos en cierre tras `stop()`: si la app sale antes de que acaben (Windows NSIS), `terminateNow` los cierra. */
+  private readonly exiting = new Set<ChildProcess>()
   private view: TailnetView
   private wanted = false
   private restarts = 0
@@ -105,11 +107,29 @@ export class Tailnet {
     const child = this.child
     this.child = null
     if (child) {
+      this.exiting.add(child)
       // al cerrarle la entrada termina limpio; si no, se le pide
       try { child.stdin?.end() } catch { /* ya cerrada */ }
-      setTimeout(() => { if (child.exitCode === null) child.kill('SIGTERM') }, 1500)
+      const killTimer = setTimeout(() => { if (child.exitCode === null) child.kill('SIGTERM') }, 1500)
+      killTimer.unref?.()
+      child.once('exit', () => { clearTimeout(killTimer); this.exiting.delete(child) })
     }
     this.set({ state: this.available ? 'off' : 'unavailable' })
+  }
+
+  /** Cierre inmediato al salir del proceso (evita que aula-tsnet.exe quede bloqueando una actualización NSIS en Windows). */
+  terminateNow(): void {
+    this.wanted = false
+    if (this.retry) { clearTimeout(this.retry); this.retry = null }
+    const procs = [...this.exiting, ...(this.child ? [this.child] : [])]
+    this.child = null
+    for (const p of procs) {
+      this.exiting.delete(p)
+      try { p.stdin?.end() } catch { /* ya cerrada */ }
+      if (p.exitCode === null) {
+        try { p.kill('SIGTERM') } catch { /* ya cerrado */ }
+      }
+    }
   }
 
   /** Cierra la sesión de Tailscale de este Mac (volverá a pedir que se inicie). */

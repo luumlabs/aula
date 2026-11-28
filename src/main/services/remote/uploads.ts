@@ -17,12 +17,16 @@ export class UploadError extends Error {
   constructor(readonly code: 'invalid' | 'tooBig' | 'failed') { super(code) }
 }
 
-/** Nombre de archivo seguro: sin carpetas, sin caracteres de control, sin punto inicial; conserva la extensión. */
+/** Nombres reservados de dispositivo en Windows (CON, NUL, COM1…): no pueden abrirse como archivos normales en NTFS. */
+const WINDOWS_RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i
+
+/** Nombre de archivo seguro: sin carpetas, sin caracteres de control, sin punto inicial ni final ni nombres reservados de Windows; conserva la extensión. */
 export function safeUploadName(raw: string): string {
   const base = raw.normalize('NFC').split(/[\\/]/).pop() ?? ''
   // eslint-disable-next-line no-control-regex
-  const clean = base.replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '').replace(/^\.+/, '').trim().slice(-160)
-  return clean || 'archivo'
+  const clean = base.replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '').replace(/^\.+/, '').replace(/[. ]+$/, '').trim().slice(-160)
+  if (!clean) return 'archivo'
+  return WINDOWS_RESERVED.test(clean) ? `_${clean}` : clean
 }
 
 export class UploadStore {

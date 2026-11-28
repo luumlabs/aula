@@ -137,6 +137,10 @@ describe('componente de Tailscale por plataforma', () => {
       await new Promise((r) => setImmediate(r))
       expect(stdinEnded).toBe(true)
       expect(tailnet.status.state).toBe('off')
+      // si el proceso aún no ha salido cuando llega will-quit (p. ej. actualización NSIS en Windows), terminateNow lo cierra
+      expect(child.kill).not.toHaveBeenCalled()
+      tailnet.terminateNow()
+      expect(child.kill).toHaveBeenCalledWith('SIGTERM')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

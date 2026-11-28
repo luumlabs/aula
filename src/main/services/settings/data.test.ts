@@ -57,6 +57,9 @@ describe('exportar todo', () => {
     put('Local Storage/leveldb/000003.log', 'x')
     put('Cookies', 'galletas')
     put('Cache/prices.json', '{}')
+    put('Remote/state.json', '{"version":1,"enabled":true}')
+    put('Remote/devices.json', '{"version":1,"devices":[{"id":"a1"}]}')
+    put('Remote/tailnet/tailscaled.state', 'clave-tailscale')
     put('window.json', '{}')
     put('Eliminados/viejo/pack.json', '{}')
     put('Packs/trig/runs/r1.json', '{}')
@@ -87,7 +90,7 @@ describe('exportar todo', () => {
 
   it('nombres sueltos', () => {
     for (const p of ['tools/codex/home/auth.json', 'tools/codex/home/sessions/2026/x.jsonl', 'tools/codex/home/config.toml', 'Crashpad/completed/a.dmp',
-      'LocalAI/m.gguf', 'Models/m.gguf', 'secrets.enc', 'Secrets.json', 'Browser Data/Cookies', 'Logs/main.log', 'Drafts/d/draft.json', 'Packs/../tools/x',
+      'LocalAI/m.gguf', 'Models/m.gguf', 'secrets.enc', 'Secrets.json', 'Browser Data/Cookies', 'Logs/main.log', 'Drafts/d/draft.json', 'Remote/devices.json', 'Remote/tailnet/tailscaled.state', 'Packs/../tools/x',
       'Packs/x/.aula-lock', 'Packs/x/a.tmp', 'Memory/cert.p12', 'settings.json/x', 'Packs/x/secrets.json']) {
       expect(includedInExport(p), p).toBe(false)
     }
@@ -125,9 +128,12 @@ describe('borrar todo', () => {
     put('.settings.json.bak')
     put('settings.json.damaged-1a2b3c4d5e')
     put('calendar.json.damaged-20261026120000')
-    // J3-14: lo de las actualizaciones y los secretos apartados al «Empezar de cero» también
+    // J3-14: lo de las actualizaciones, el acceso remoto (dispositivos/Tailscale) y los secretos apartados también
     put('Updates/install.json')
     put('Updates/watchdog.sh')
+    put('Remote/state.json', '{"version":1,"enabled":true}')
+    put('Remote/devices.json', '{"version":1,"devices":[]}')
+    put('Remote/tailnet/tailscaled.state', 'clave')
     put('secrets.unreadable-2026-10-27T09-30-00.enc')
     put('.secrets.enc.bak')
     put('mis-cosas.txt', 'no es de Aula')
