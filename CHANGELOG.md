@@ -5,6 +5,17 @@ All notable changes to Aula. Versions follow `MAJOR.MINOR.PATCH`; each one is a
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-11-28
+
+### New
+- **Use Aula on Windows as a private Tailscale host for Android, iPhone and iPad** ([#88](https://github.com/luumlabs/aula/pull/88), ref [#87](https://github.com/luumlabs/aula/issues/87)): the Windows installer now bundles the embedded `aula-tsnet.exe` Tailscale component (x64 and ARM64). Turn on **Settings → Aula on your devices** on your Windows PC, sign in to Tailscale and link your phone or tablet with a 6-digit code to use your existing courses, progress and settings directly (`%APPDATA%\Aula`) — no Docker, no second instance, no data migration, no internet exposure, and isolated from any system Tailscale install (`TS_LOGS_DIR` / `XDG_DATA_HOME`).
+
+### Fixed
+- **Delete all data now wipes remote access state (`Remote/`)** ([#88](https://github.com/luumlabs/aula/pull/88)): paired device hashes and local Tailscale state are removed when resetting Aula, while staying excluded from exports.
+- **Clean Windows sidecar shutdown on quit** ([#88](https://github.com/luumlabs/aula/pull/88)): `aula-tsnet.exe` is guaranteed to exit during `will-quit` so Windows NSIS updates are not blocked by a file lock.
+- **Safe remote upload filenames on Windows NTFS** ([#88](https://github.com/luumlabs/aula/pull/88)): strips trailing dots/spaces and neutralizes Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`).
+- **Release workflow verification step** ([#88](https://github.com/luumlabs/aula/pull/88)): Step 1 verifies SHA-512 digests across all uploaded feeds before Step 2 enforces Ed25519 update signatures.
+
 ## [0.2.8] - 2026-11-26
 
 ### New

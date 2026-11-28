@@ -23,8 +23,8 @@ where Apple counts bytes), the version, both privacy manifests, the license noti
 | Privacy policy URL | https://github.com/luumlabs/aula/blob/main/docs/PRIVACY.md |
 | Availability | Every country and region **except China mainland** (it needs an ICP filing and approval for AI chat) and **France** (it needs the French encryption declaration; add it later). Not available on Apple silicon Macs nor on Apple Vision Pro: untick both in *Pricing and Availability* (the project also says so: `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD` and `SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD` are `NO`) |
 | EU Digital Services Act | Not a trader |
-| Version | **0.2.8** (App Store Connect creates "1.0": change it), build 8. See [Version and build](#version-and-build) |
-| Release | *Manually release this version*: publish it once the notarized Mac 0.2.8 is the latest release, where *Aula for Mac* sends people |
+| Version | **0.2.9** (App Store Connect creates "1.0": change it), build 9. See [Version and build](#version-and-build) |
+| Release | *Manually release this version*: publish it once the notarized Mac 0.2.9 is the latest release, where *Aula for Mac* sends people |
 
 **App privacy** (the questionnaire): *Do you or your third-party partners collect data from this app?* **Yes**. Types
 **Contact Info → Email Address**, **Identifiers → User ID** and **Identifiers → Device ID**, each one: purpose *App
@@ -282,7 +282,7 @@ In Debug the web view is inspectable from Safari (*Develop → Simulator*).
 1. Register the App ID `com.luumlabs.aula.ios` (explicit, no capabilities) and check that the latest Apple Developer
    Program License Agreement is accepted and the DSA trader status is declared.
 2. Create the app in App Store Connect (*Apps → +*): iOS, the name above, English (U.S.), the bundle ID and the SKU.
-   Change the version to 0.2.8.
+   Change the version to 0.2.9.
 3. Fill in App Information, Pricing and Availability and App Privacy with the answers above.
 4. Upload the build (Xcode *Organizer → Distribute App*, or Transporter), answer export compliance on it and try it in
    TestFlight.
